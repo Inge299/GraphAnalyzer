@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  app:
+    volumes:
+      - ./app:/app/app
+      - ./plugins:/app/plugins
+      - ./data:/app/data
+    environment:
+      - ENVIRONMENT=development
+      - LOG_LEVEL=DEBUG
+    command: uvicorn app.main:app --host 0.0.0.0 --port 5000 --reload --log-level debug
+
+  postgres:
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=osint_user
+      - POSTGRES_PASSWORD=osint_password
+      - POSTGRES_DB=osint_db
+
+  redis:
+    ports:
+      - "6379:6379"
+
+  # Optional: Add pgAdmin for database management
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: osint-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@osint.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - osint-network
