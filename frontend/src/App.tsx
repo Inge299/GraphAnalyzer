@@ -1,72 +1,90 @@
-import React, { useEffect, useState } from 'react'
-import { useDispatch } from 'react-redux'
-import { api } from './services/api'
-import './App.css'
+// src/App.tsx
+import React from 'react';
+import { Provider } from 'react-redux';
+import { store } from './store';
+import { useAppSelector } from './store';
+import { TabBar } from './components/layout/TabBar';
+import { Sidebar } from './components/layout/Sidebar';
+import { InspectorPanel } from './components/layout/InspectorPanel';
+import { GraphView } from './components/views/GraphView';
+import './App.css';
 
-function App() {
-  const [backendStatus, setBackendStatus] = useState<string>('Checking...')
-  const [isConnected, setIsConnected] = useState<boolean>(false)
-  const dispatch = useDispatch()
+function AppContent() {
+  const activeView = useAppSelector((state) => state.ui.activeView);
 
-  useEffect(() => {
-    const checkBackendHealth = async () => {
-      try {
-        const response = await api.get('/health')
-        setBackendStatus(`Connected to backend (${response.data.environment} mode)`)
-        setIsConnected(true)
-      } catch (error) {
-        setBackendStatus('Backend connection failed')
-        setIsConnected(false)
-        console.error('Health check failed:', error)
-      }
+  const renderActiveView = () => {
+    switch (activeView) {
+      case 'graph':
+        return <GraphView />;
+      case 'map':
+        return <div style={styles.placeholder}>Карта (в разработке)</div>;
+      case 'table':
+        return <div style={styles.placeholder}>Таблица (в разработке)</div>;
+      case 'text':
+        return <div style={styles.placeholder}>Текст (в разработке)</div>;
+      case 'stats':
+        return <div style={styles.placeholder}>Статистика (в разработке)</div>;
+      default:
+        return <GraphView />;
     }
-
-    checkBackendHealth()
-    const interval = setInterval(checkBackendHealth, 30000) // Check every 30 seconds
-
-    return () => clearInterval(interval)
-  }, [])
+  };
 
   return (
-    <div className="app">
-      <header className="app-header">
-        <div className="logo-container">
-          <img src="/vite.svg" className="logo" alt="Vite logo" />
-          <img src="/react.svg" className="logo react" alt="React logo" />
-        </div>
-        <h1>OSINT Graph Analyzer</h1>
-        <div className="status-indicator">
-          <div className={`status-dot ${isConnected ? 'connected' : 'disconnected'}`} />
-          <p className="status-text">{backendStatus}</p>
-        </div>
-        <p className="description">
-          Visualize and analyze relationship graphs from OSINT data
-        </p>
-        <div className="info-grid">
-          <div className="info-card">
-            <h3>Graph Visualization</h3>
-            <p>Interactive graph visualization with support for up to 5,000 nodes and 50,000 edges</p>
-          </div>
-          <div className="info-card">
-            <h3>Plugin System</h3>
-            <p>Extensible plugin architecture for custom analysis algorithms</p>
-          </div>
-          <div className="info-card">
-            <h3>Real-time Updates</h3>
-            <p>WebSocket support for live graph updates and collaboration</p>
+    <div style={styles.app}>
+      <div style={styles.main}>
+        <Sidebar />
+        <div style={styles.content}>
+          <TabBar />
+          <div style={styles.viewContainer}>
+            {renderActiveView()}
           </div>
         </div>
-        <div className="action-buttons">
-          <button className="primary-button" disabled={!isConnected}>
-            Create New Graph
-          </button>
-          <button className="secondary-button" disabled={!isConnected}>
-            Load Sample Data
-          </button>
-        </div>
-      </header>
+        <InspectorPanel />
+      </div>
     </div>
-  )
+  );
 }
 
-export default App
+function App() {
+  return (
+    <Provider store={store}>
+      <AppContent />
+    </Provider>
+  );
+}
+
+const styles = {
+  app: {
+    width: '100vw',
+    height: '100vh',
+    overflow: 'hidden' as const,
+    backgroundColor: 'var(--bg-primary)',
+  },
+  main: {
+    display: 'flex',
+    width: '100%',
+    height: '100%',
+  },
+  content: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column' as const,
+    overflow: 'hidden' as const,
+  },
+  viewContainer: {
+    flex: 1,
+    overflow: 'hidden' as const,
+    position: 'relative' as const,
+  },
+  placeholder: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: '100%',
+    fontSize: '18px',
+    color: 'var(--text-disabled)',
+    backgroundColor: 'var(--bg-primary)',
+  },
+} as const;
+
+export default App;

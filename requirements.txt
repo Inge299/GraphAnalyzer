@@ -6,7 +6,7 @@ redis==5.0.1
 networkx==3.2.1
 python-dotenv==1.0.0
 pydantic-settings==2.1.0
-pydantic==2.5.0
+pydantic==2.7.0
 python-multipart==0.0.6
 celery==5.3.4
 alembic==1.12.1
@@ -17,3 +17,4 @@ python-multipart==0.0.6
 httpx==0.25.1
 tenacity==8.2.3
 structlog==24.1.0
+greenlet==3.3.2

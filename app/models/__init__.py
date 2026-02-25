@@ -1,15 +1,19 @@
 """
-Database models package.
+Database models for OSINT Graph Analyzer.
 """
-from app.database import Base
 
-# Import models here for Alembic
-# from app.models.graph import Graph, Node, Edge
-# from app.models.user import User
-# from app.models.plugin import Plugin
+from app.models.project import Project
+from app.models.graph import Graph
+from app.models.node import Node
+from app.models.edge import Edge
+from app.models.schema import ProjectSchema, NodeType, EdgeType
 
-# Export models
 __all__ = [
-    "Base",
-    # "Graph", "Node", "Edge", "User", "Plugin"
+    "Project",
+    "Graph",
+    "Node",
+    "Edge",
+    "ProjectSchema",
+    "NodeType",
+    "EdgeType",
 ]
