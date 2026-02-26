@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: osint-postgres
+    environment:
+      POSTGRES_USER: osint_user  # Важно! Это создаст пользователя
+      POSTGRES_PASSWORD: osint_password
+      POSTGRES_DB: osint_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U osint_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - osint-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: osint-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - osint-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: osint-app
+    ports:
+      - "5000:5000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@osint-postgres:5432/osint_graph
+      - REDIS_URL=redis://osint-redis:6379/0
+      - SECRET_KEY=dev-secret-key-for-development
+      - ENVIRONMENT=development
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=osint_graph
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./app:/app/app
+      - ./plugins:/app/plugins
+      - ./data:/app/data
+    networks:
+      - osint-network
+    command: uvicorn app.main:app --host 0.0.0.0 --port 5000 --reload
+
+networks:
+  osint-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:

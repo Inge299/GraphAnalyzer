@@ -35,6 +35,9 @@ COPY app ./app
 COPY plugins ./plugins
 COPY data ./data
 
+COPY alembic.ini /app/alembic.ini
+COPY alembic /app/alembic
+
 # Create non-root user
 # RUN useradd -m -u 1000 osintuser && \
 #     chown -R osintuser:osintuser /app

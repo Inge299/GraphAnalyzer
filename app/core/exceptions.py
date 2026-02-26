@@ -1,3 +1,4 @@
+# app/core/exceptions.py
 """
 Custom exceptions for OSINT Graph Analyzer.
 """
@@ -6,14 +7,18 @@ class SchemaValidationError(Exception):
     """Raised when schema validation fails."""
     pass
 
-class GraphLockError(Exception):
-    """Raised when graph is locked by another process."""
+class ValidationError(Exception):
+    """Raised when data validation fails."""
     pass
 
-class NodeNotFoundError(Exception):
-    """Raised when node is not found."""
+class ArtifactNotFoundError(Exception):
+    """Raised when artifact is not found."""
     pass
 
-class EdgeNotFoundError(Exception):
-    """Raised when edge is not found."""
+class RelationNotFoundError(Exception):
+    """Raised when relation is not found."""
+    pass
+
+class VersionNotFoundError(Exception):
+    """Raised when version is not found."""
     pass

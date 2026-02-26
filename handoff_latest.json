@@ -1,0 +1,917 @@
+{
+  "timestamp": "2026-02-24T22:21:39.563001",
+  "project_name": "OSINT Graph Analyzer",
+  "version": "v1.0",
+  "files": {
+    "alembic/env.py": {
+      "path": "alembic/env.py",
+      "size": 2490,
+      "lines": 96,
+      "hash": "240ae0fd",
+      "extension": ".py"
+    },
+    "alembic/versions/001_initial_models.py": {
+      "path": "alembic/versions/001_initial_models.py",
+      "size": 5571,
+      "lines": 128,
+      "hash": "2f4145ac",
+      "extension": ".py"
+    },
+    "app/api/deps.py": {
+      "path": "app/api/deps.py",
+      "size": 1168,
+      "lines": 45,
+      "hash": "157cb1e7",
+      "extension": ".py"
+    },
+    "app/api/routes/__init__.py": {
+      "path": "app/api/routes/__init__.py",
+      "size": 172,
+      "lines": 8,
+      "hash": "862724a2",
+      "extension": ".py"
+    },
+    "app/api/routes/edges.py": {
+      "path": "app/api/routes/edges.py",
+      "size": 6998,
+      "lines": 219,
+      "hash": "1c0bcab4",
+      "extension": ".py"
+    },
+    "app/api/routes/graphs.py": {
+      "path": "app/api/routes/graphs.py",
+      "size": 1549,
+      "lines": 59,
+      "hash": "3c34fc47",
+      "extension": ".py"
+    },
+    "app/api/routes/nodes.py": {
+      "path": "app/api/routes/nodes.py",
+      "size": 7878,
+      "lines": 249,
+      "hash": "4a2846de",
+      "extension": ".py"
+    },
+    "app/api/routes/projects.py": {
+      "path": "app/api/routes/projects.py",
+      "size": 3825,
+      "lines": 138,
+      "hash": "9c424f9e",
+      "extension": ".py"
+    },
+    "app/api/routes/schema.py": {
+      "path": "app/api/routes/schema.py",
+      "size": 3002,
+      "lines": 93,
+      "hash": "53c4ba43",
+      "extension": ".py"
+    },
+    "app/config.py": {
+      "path": "app/config.py",
+      "size": 1865,
+      "lines": 64,
+      "hash": "820d42a5",
+      "extension": ".py"
+    },
+    "app/core/exceptions.py": {
+      "path": "app/core/exceptions.py",
+      "size": 424,
+      "lines": 20,
+      "hash": "aede43d8",
+      "extension": ".py"
+    },
+    "app/database.py": {
+      "path": "app/database.py",
+      "size": 2002,
+      "lines": 71,
+      "hash": "5ef709dd",
+      "extension": ".py"
+    },
+    "app/main.py": {
+      "path": "app/main.py",
+      "size": 4139,
+      "lines": 127,
+      "hash": "8814184c",
+      "extension": ".py"
+    },
+    "app/models/__init__.py": {
+      "path": "app/models/__init__.py",
+      "size": 375,
+      "lines": 20,
+      "hash": "27c8cfcf",
+      "extension": ".py"
+    },
+    "app/models/edge.py": {
+      "path": "app/models/edge.py",
+      "size": 1670,
+      "lines": 48,
+      "hash": "bdc5cc7f",
+      "extension": ".py"
+    },
+    "app/models/graph.py": {
+      "path": "app/models/graph.py",
+      "size": 1235,
+      "lines": 37,
+      "hash": "8392e657",
+      "extension": ".py"
+    },
+    "app/models/node.py": {
+      "path": "app/models/node.py",
+      "size": 1663,
+      "lines": 49,
+      "hash": "734b7173",
+      "extension": ".py"
+    },
+    "app/models/project.py": {
+      "path": "app/models/project.py",
+      "size": 1045,
+      "lines": 26,
+      "hash": "0a8d5974",
+      "extension": ".py"
+    },
+    "app/models/schema.py": {
+      "path": "app/models/schema.py",
+      "size": 2232,
+      "lines": 66,
+      "hash": "4af8fc4a",
+      "extension": ".py"
+    },
+    "app/routers/__init__.py": {
+      "path": "app/routers/__init__.py",
+      "size": 98,
+      "lines": 6,
+      "hash": "f1f6d45a",
+      "extension": ".py"
+    },
+    "app/routers/analytics.py": {
+      "path": "app/routers/analytics.py",
+      "size": 950,
+      "lines": 38,
+      "hash": "52345891",
+      "extension": ".py"
+    },
+    "app/routers/graphs.py": {
+      "path": "app/routers/graphs.py",
+      "size": 710,
+      "lines": 29,
+      "hash": "1df94ceb",
+      "extension": ".py"
+    },
+    "app/routers/plugins.py": {
+      "path": "app/routers/plugins.py",
+      "size": 818,
+      "lines": 29,
+      "hash": "0481fd76",
+      "extension": ".py"
+    },
+    "app/services/schema_service.py": {
+      "path": "app/services/schema_service.py",
+      "size": 9220,
+      "lines": 232,
+      "hash": "a8f057c5",
+      "extension": ".py"
+    },
+    "backups/docker-compose_20260224_214935.yml": {
+      "path": "backups/docker-compose_20260224_214935.yml",
+      "size": 1710,
+      "lines": 73,
+      "hash": "502459cb",
+      "extension": ".yml"
+    },
+    "data/sample_schema.json": {
+      "path": "data/sample_schema.json",
+      "size": 628,
+      "lines": 25,
+      "hash": "a486ff39",
+      "extension": ".json"
+    },
+    "docker-compose.override.yml": {
+      "path": "docker-compose.override.yml",
+      "size": 849,
+      "lines": 39,
+      "hash": "74e634d4",
+      "extension": ".yml"
+    },
+    "docker-compose.yml": {
+      "path": "docker-compose.yml",
+      "size": 1710,
+      "lines": 73,
+      "hash": "502459cb",
+      "extension": ".yml"
+    },
+    "frontend/package-lock.json": {
+      "path": "frontend/package-lock.json",
+      "size": 174647,
+      "lines": 4788,
+      "hash": "56d8d4fd",
+      "extension": ".json"
+    },
+    "frontend/package.json": {
+      "path": "frontend/package.json",
+      "size": 1416,
+      "lines": 47,
+      "hash": "a9cf3019",
+      "extension": ".json"
+    },
+    "frontend/src/App.css": {
+      "path": "frontend/src/App.css",
+      "size": 6350,
+      "lines": 240,
+      "hash": "6b44a221",
+      "extension": ".css"
+    },
+    "frontend/src/App.tsx": {
+      "path": "frontend/src/App.tsx",
+      "size": 2252,
+      "lines": 91,
+      "hash": "07896c29",
+      "extension": ".tsx"
+    },
+    "frontend/src/components/layout/InspectorPanel.tsx": {
+      "path": "frontend/src/components/layout/InspectorPanel.tsx",
+      "size": 9759,
+      "lines": 348,
+      "hash": "77656faa",
+      "extension": ".tsx"
+    },
+    "frontend/src/components/layout/Sidebar.tsx": {
+      "path": "frontend/src/components/layout/Sidebar.tsx",
+      "size": 26699,
+      "lines": 966,
+      "hash": "589ea494",
+      "extension": ".tsx"
+    },
+    "frontend/src/components/layout/TabBar.tsx": {
+      "path": "frontend/src/components/layout/TabBar.tsx",
+      "size": 2428,
+      "lines": 94,
+      "hash": "46f1a84c",
+      "extension": ".tsx"
+    },
+    "frontend/src/components/views/GraphView.tsx": {
+      "path": "frontend/src/components/views/GraphView.tsx",
+      "size": 18553,
+      "lines": 632,
+      "hash": "4795b43f",
+      "extension": ".tsx"
+    },
+    "frontend/src/index.css": {
+      "path": "frontend/src/index.css",
+      "size": 366,
+      "lines": 14,
+      "hash": "6c2104b8",
+      "extension": ".css"
+    },
+    "frontend/src/main.tsx": {
+      "path": "frontend/src/main.tsx",
+      "size": 232,
+      "lines": 11,
+      "hash": "42c0b1d9",
+      "extension": ".tsx"
+    },
+    "frontend/src/services/api.ts": {
+      "path": "frontend/src/services/api.ts",
+      "size": 3474,
+      "lines": 101,
+      "hash": "42c02931",
+      "extension": ".ts"
+    },
+    "frontend/src/store/index.ts": {
+      "path": "frontend/src/store/index.ts",
+      "size": 1041,
+      "lines": 29,
+      "hash": "a3f67dbf",
+      "extension": ".ts"
+    },
+    "frontend/src/store/slices/graphSlice.ts": {
+      "path": "frontend/src/store/slices/graphSlice.ts",
+      "size": 2586,
+      "lines": 100,
+      "hash": "680fdb80",
+      "extension": ".ts"
+    },
+    "frontend/src/store/slices/projectsSlice.ts": {
+      "path": "frontend/src/store/slices/projectsSlice.ts",
+      "size": 3155,
+      "lines": 116,
+      "hash": "e0d0eaaf",
+      "extension": ".ts"
+    },
+    "frontend/src/store/slices/uiSlice.ts": {
+      "path": "frontend/src/store/slices/uiSlice.ts",
+      "size": 1864,
+      "lines": 69,
+      "hash": "8b4943be",
+      "extension": ".ts"
+    },
+    "frontend/src/types/api.ts": {
+      "path": "frontend/src/types/api.ts",
+      "size": 612,
+      "lines": 35,
+      "hash": "1a34867d",
+      "extension": ".ts"
+    },
+    "frontend/src/vite-env.d.ts": {
+      "path": "frontend/src/vite-env.d.ts",
+      "size": 231,
+      "lines": 12,
+      "hash": "d5ce8937",
+      "extension": ".ts"
+    },
+    "frontend/step3.py": {
+      "path": "frontend/step3.py",
+      "size": 53020,
+      "lines": 1950,
+      "hash": "36a7547a",
+      "extension": ".py"
+    },
+    "frontend/tsconfig.json": {
+      "path": "frontend/tsconfig.json",
+      "size": 718,
+      "lines": 32,
+      "hash": "8de78c65",
+      "extension": ".json"
+    },
+    "frontend/tsconfig.node.json": {
+      "path": "frontend/tsconfig.node.json",
+      "size": 244,
+      "lines": 12,
+      "hash": "df562a73",
+      "extension": ".json"
+    },
+    "frontend/vite.config.ts": {
+      "path": "frontend/vite.config.ts",
+      "size": 671,
+      "lines": 33,
+      "hash": "2cf607b3",
+      "extension": ".ts"
+    },
+    "get_structure.py": {
+      "path": "get_structure.py",
+      "size": 21941,
+      "lines": 493,
+      "hash": "de571eeb",
+      "extension": ".py"
+    },
+    "plugins/__init__.py": {
+      "path": "plugins/__init__.py",
+      "size": 1782,
+      "lines": 56,
+      "hash": "c1c21b7a",
+      "extension": ".py"
+    },
+    "plugins/examples/__init__.py": {
+      "path": "plugins/examples/__init__.py",
+      "size": 260,
+      "lines": 9,
+      "hash": "9feedc72",
+      "extension": ".py"
+    },
+    "plugins/examples/community_detector.py": {
+      "path": "plugins/examples/community_detector.py",
+      "size": 3964,
+      "lines": 112,
+      "hash": "744456d7",
+      "extension": ".py"
+    },
+    "plugins/examples/degree_analyzer.py": {
+      "path": "plugins/examples/degree_analyzer.py",
+      "size": 2783,
+      "lines": 81,
+      "hash": "a592c6a4",
+      "extension": ".py"
+    },
+    "project_context.json": {
+      "path": "project_context.json",
+      "size": 234138,
+      "lines": 4777,
+      "hash": "21d0b70d",
+      "extension": ".json"
+    }
+  },
+  "structure": {
+    "Dockerfile": "[BINARY] 1266 bytes",
+    "alembic": {
+      "env.py": "[FILE] 96 lines",
+      "versions": {
+        "001_initial_models.py": "[FILE] 128 lines"
+      }
+    },
+    "alembic.ini": "[BINARY] 1735 bytes",
+    "app": {
+      "api": {
+        "deps.py": "[FILE] 45 lines",
+        "routes": {
+          "__init__.py": "[FILE] 8 lines",
+          "edges.py": "[FILE] 219 lines",
+          "graphs.py": "[FILE] 59 lines",
+          "nodes.py": "[FILE] 249 lines",
+          "projects.py": "[FILE] 138 lines",
+          "schema.py": "[FILE] 93 lines"
+        }
+      },
+      "config.py": "[FILE] 64 lines",
+      "core": {
+        "exceptions.py": "[FILE] 20 lines"
+      },
+      "database.py": "[FILE] 71 lines",
+      "main.py": "[FILE] 127 lines",
+      "models": {
+        "__init__.py": "[FILE] 20 lines",
+        "edge.py": "[FILE] 48 lines",
+        "graph.py": "[FILE] 37 lines",
+        "node.py": "[FILE] 49 lines",
+        "project.py": "[FILE] 26 lines",
+        "schema.py": "[FILE] 66 lines"
+      },
+      "routers": {
+        "__init__.py": "[FILE] 6 lines",
+        "analytics.py": "[FILE] 38 lines",
+        "graphs.py": "[FILE] 29 lines",
+        "plugins.py": "[FILE] 29 lines"
+      },
+      "services": {
+        "schema_service.py": "[FILE] 232 lines"
+      }
+    },
+    "backup.sh": "[BINARY] 2331 bytes",
+    "backups": {
+      "checksums_20260224_214935.txt": "[BINARY] 879 bytes",
+      "data_20260224_214935.tar.gz": "[BINARY] 421 bytes",
+      "db_20260224_214935.sql.gz": "[BINARY] 2805 bytes",
+      "docker-compose_20260224_214935.yml": "[FILE] 73 lines",
+      "env_20260224_214935.backup": "[BINARY] 663 bytes",
+      "npm-deps_20260224_214935.txt": "[BINARY] 53 bytes",
+      "requirements_20260224_214935.txt": "[BINARY] 0 bytes",
+      "system_info_20260224_214935.txt": "[BINARY] 381 bytes",
+      "volume_postgres_20260224_214935.tar.gz": "[BINARY] 85 bytes",
+      "volume_redis_20260224_214935.tar.gz": "[BINARY] 87 bytes"
+    },
+    "data": {
+      "sample_schema.json": "[FILE] 25 lines"
+    },
+    "docker-compose.override.yml": "[FILE] 39 lines",
+    "docker-compose.yml": "[FILE] 73 lines",
+    "frontend": {
+      "index.html": "[BINARY] 369 bytes",
+      "package-lock.json": "[FILE] 4788 lines",
+      "package.json": "[FILE] 47 lines",
+      "src": {
+        "App.css": "[FILE] 240 lines",
+        "App.tsx": "[FILE] 91 lines",
+        "components": {
+          "layout": {
+            "InspectorPanel.tsx": "[FILE] 348 lines",
+            "Sidebar.tsx": "[FILE] 966 lines",
+            "TabBar.tsx": "[FILE] 94 lines"
+          },
+          "views": {
+            "GraphView.tsx": "[FILE] 632 lines"
+          }
+        },
+        "index.css": "[FILE] 14 lines",
+        "main.tsx": "[FILE] 11 lines",
+        "services": {
+          "api.ts": "[FILE] 101 lines"
+        },
+        "store": {
+          "index.ts": "[FILE] 29 lines",
+          "slices": {
+            "graphSlice.ts": "[FILE] 100 lines",
+            "projectsSlice.ts": "[FILE] 116 lines",
+            "uiSlice.ts": "[FILE] 69 lines"
+          }
+        },
+        "types": {
+          "api.ts": "[FILE] 35 lines"
+        },
+        "vite-env.d.ts": "[FILE] 12 lines"
+      },
+      "step3.py": "[FILE] 1950 lines",
+      "tsconfig.json": "[FILE] 32 lines",
+      "tsconfig.node.json": "[FILE] 12 lines",
+      "vite.config.ts": "[FILE] 33 lines"
+    },
+    "get-docker.sh": "[BINARY] 22405 bytes",
+    "get_structure.py": "[FILE] 493 lines",
+    "plugins": {
+      "__init__.py": "[FILE] 56 lines",
+      "examples": {
+        "__init__.py": "[FILE] 9 lines",
+        "community_detector.py": "[FILE] 112 lines",
+        "degree_analyzer.py": "[FILE] 81 lines"
+      }
+    },
+    "project_context.json": "[FILE] 4777 lines",
+    "requirements.txt": "[BINARY] 409 bytes"
+  },
+  "statistics": {
+    "total_files": 55,
+    "total_lines": 17355,
+    "by_type": {
+      ".py": 30,
+      ".yml": 3,
+      ".json": 6,
+      ".css": 2,
+      ".tsx": 6,
+      ".ts": 8
+    }
+  },
+  "key_files_content": {
+    "app/api/routes/__init__.py": {
+      "content": "\"\"\"\nAPI routes package initialization.\n\"\"\"\n\nfrom app.api.routes import projects, schema, nodes, edges, graphs\n\n__all__ = [\"projects\", \"schema\", \"nodes\", \"edges\", \"graphs\"]\n",
+      "lines": 8,
+      "hash": "862724a2"
+    },
+    "app/api/routes/edges.py": {
+      "content": "\"\"\"\nEdge management endpoints.\n\"\"\"\n\nfrom fastapi import APIRouter, HTTPException, Depends\nfrom sqlalchemy.ext.asyncio import AsyncSession\nfrom sqlalchemy import select, delete\nfrom typing import List, Dict, Any, Optional\nimport logging\nimport uuid\n\nfrom app.database import get_db\nfrom app.models.edge import Edge\nfrom app.models.node import Node\nfrom app.models.graph import Graph\nfrom app.services.schema_service import SchemaService\nfrom app.api.deps import get_graph\nfrom app.core.exceptions import SchemaValidationError\n\nrouter = APIRouter(prefix=\"/graphs/{graph_id}/edges\", tags=[\"edges\"])\nlogger = logging.getLogger(__name__)\n\n@router.post(\"\")\nasync def create_edge(\n    graph_id: int,\n    edge_data: Dict[str, Any],\n    db: AsyncSession = Depends(get_db),\n    graph: Graph = Depends(get_graph)\n):\n    \"\"\"Create a new edge.\"\"\"\n    try:\n        # Get source and target node types\n        nodes_result = await db.execute(\n            select(Node).where(\n                Node.graph_id == graph_id,\n                Node.node_id.in_([edge_data[\"source_node\"], edge_data[\"target_node\"]])\n            )\n        )\n        nodes = nodes_result.scalars().all()\n        node_types = {node.node_id: node.type for node in nodes}\n        \n        if edge_data[\"source_node\"] not in node_types:\n            raise HTTPException(status_code=400, detail=f\"Source node {edge_data['source_node']} not found\")\n        if edge_data[\"target_node\"] not in node_types:\n            raise HTTPException(status_code=400, detail=f\"Target node {edge_data['target_node']} not found\")\n        \n        # Validate against schema\n        schema_service = SchemaService(db)\n        await schema_service.validate_edge(\n            graph.project_id,\n            edge_data[\"type\"],\n            node_types[edge_data[\"source_node\"]],\n            node_types[edge_data[\"target_node\"]],\n            edge_data.get(\"attributes\", {})\n        )\n        \n        # Generate edge_id if not provided\n        if \"edge_id\" not in edge_data:\n            edge_data[\"edge_id\"] = str(uuid.uuid4())[:8]\n        \n        # Create edge\n        edge = Edge(\n            graph_id=graph_id,\n            edge_id=edge_data[\"edge_id\"],\n            source_node=edge_data[\"source_node\"],\n            target_node=edge_data[\"target_node\"],\n            type=edge_data[\"type\"],\n            attributes=edge_data.get(\"attributes\", {})\n        )\n        \n        db.add(edge)\n        await db.commit()\n        await db.refresh(edge)\n        return edge\n    except SchemaValidationError as e:\n        raise HTTPException(status_code=400, detail=str(e))\n\n@router.post(\"/batch\")\nasync def batch_create_edges(\n    graph_id: int,\n    edges_data: List[Dict[str, Any]],\n    db: AsyncSession = Depends(get_db),\n    graph: Graph = Depends(get_graph)\n):\n    \"\"\"Batch create multiple edges.\"\"\"\n    try:\n        # Get all nodes in graph\n        nodes_result = await db.execute(\n            select(Node).where(Node.graph_id == graph_id)\n        )\n        nodes = nodes_result.scalars().all()\n        node_types = {node.node_id: node.type for node in nodes}\n        \n        schema_service = SchemaService(db)\n        edges = []\n        \n        for edge_data in edges_data:\n            # Check nodes exist\n            if edge_data[\"source_node\"] not in node_types:\n                raise HTTPException(status_code=400, detail=f\"Source node {edge_data['source_node']} not found\")\n            if edge_data[\"target_node\"] not in node_types:\n                raise HTTPException(status_code=400, detail=f\"Target node {edge_data['target_node']} not found\")\n            \n            # Validate against schema\n            await schema_service.validate_edge(\n                graph.project_id,\n                edge_data[\"type\"],\n                node_types[edge_data[\"source_node\"]],\n                node_types[edge_data[\"target_node\"]],\n                edge_data.get(\"attributes\", {})\n            )\n            \n            # Generate edge_id if not provided\n            if \"edge_id\" not in edge_data:\n                edge_data[\"edge_id\"] = str(uuid.uuid4())[:8]\n            \n            edge = Edge(\n                graph_id=graph_id,\n                edge_id=edge_data[\"edge_id\"],\n                source_node=edge_data[\"source_node\"],\n                target_node=edge_data[\"target_node\"],\n                type=edge_data[\"type\"],\n                attributes=edge_data.get(\"attributes\", {})\n            )\n            edges.append(edge)\n        \n        db.add_all(edges)\n        await db.commit()\n        return {\"status\": \"success\", \"count\": len(edges)}\n    except SchemaValidationError as e:\n        raise HTTPException(status_code=400, detail=str(e))\n\n@router.get(\"\")\nasync def get_edges(\n    graph_id: int,\n    type: Optional[str] = None,\n    source_node: Optional[str] = None,\n    target_node: Optional[str] = None,\n    limit: int = 1000,\n    offset: int = 0,\n    db: AsyncSession = Depends(get_db),\n    graph: Graph = Depends(get_graph)\n):\n    \"\"\"Get edges with optional filtering.\"\"\"\n    query = select(Edge).where(Edge.graph_id == graph_id)\n    \n    if type:\n        query = query.where(Edge.type == type)\n    if source_node:\n        query = query.where(Edge.source_node == source_node)\n    if target_node:\n        query = query.where(Edge.target_node == target_node)\n    \n    query = query.limit(limit).offset(offset)\n    result = await db.execute(query)\n    return result.scalars().all()\n\n@router.get(\"/{edge_id}\")\nasync def get_edge(\n    graph_id: int,\n    edge_id: str,\n    db: AsyncSession = Depends(get_db),\n    graph: Graph = Depends(get_graph)\n):\n    \"\"\"Get specific edge.\"\"\"\n    result = await db.execute(\n        select(Edge).where(\n            Edge.graph_id == graph_id,\n            Edge.edge_id == edge_id\n        )\n    )\n    edge = result.scalar_one_or_none()\n    if not edge:\n        raise HTTPException(status_code=404, detail=\"Edge not found\")\n    return edge\n\n@router.patch(\"/{edge_id}\")\nasync def update_edge(\n    graph_id: int,\n    edge_id: str,\n    updates: Dict[str, Any],\n    db: AsyncSession = Depends(get_db),\n    graph: Graph = Depends(get_graph)\n):\n    \"\"\"Update edge attributes.\"\"\"\n    result = await db.execute(\n        select(Edge).where(\n            Edge.graph_id == graph_id,\n            Edge.edge_id == edge_id\n        )\n    )\n    edge = result.scalar_one_or_none()\n    if not edge:\n        raise HTTPException(status_code=404, detail=\"Edge not found\")\n    \n    if \"attributes\" in updates:\n        edge.attributes = {**edge.attributes, **updates[\"attributes\"]}\n    \n    await db.commit()\n    await db.refresh(edge)\n    return edge\n\n@router.delete(\"/{edge_id}\")\nasync def delete_edge(\n    graph_id: int,\n    edge_id: str,\n    db: AsyncSession = Depends(get_db),\n    graph: Graph = Depends(get_graph)\n):\n    \"\"\"Delete an edge.\"\"\"\n    await db.execute(\n        delete(Edge).where(\n            Edge.graph_id == graph_id,\n            Edge.edge_id == edge_id\n        )\n    )\n    await db.commit()\n    return {\"status\": \"success\", \"message\": \"Edge deleted\"}\n",
+      "lines": 219,
+      "hash": "1c0bcab4"
+    },
+    "app/api/routes/graphs.py": {
+      "content": "\"\"\"\nGraph management endpoints (legacy, use projects/{id}/graphs instead).\n\"\"\"\n\nfrom fastapi import APIRouter, HTTPException, Depends\nfrom sqlalchemy.ext.asyncio import AsyncSession\nfrom sqlalchemy import select\nfrom typing import Optional\nimport logging\n\nfrom app.database import get_db\nfrom app.models.graph import Graph\n\nrouter = APIRouter(prefix=\"/graphs\", tags=[\"graphs\"])\nlogger = logging.getLogger(__name__)\n\n@router.get(\"\")\nasync def get_all_graphs(\n    skip: int = 0,\n    limit: int = 100,\n    db: AsyncSession = Depends(get_db)\n):\n    \"\"\"Get all graphs.\"\"\"\n    result = await db.execute(\n        select(Graph).offset(skip).limit(limit)\n    )\n    return result.scalars().all()\n\n@router.get(\"/{graph_id}\")\nasync def get_graph(\n    graph_id: int,\n    db: AsyncSession = Depends(get_db)\n):\n    \"\"\"Get a specific graph.\"\"\"\n    result = await db.execute(\n        select(Graph).where(Graph.id == graph_id)\n    )\n    graph = result.scalar_one_or_none()\n    if not graph:\n        raise HTTPException(status_code=404, detail=f\"Graph {graph_id} not found\")\n    return graph\n\n@router.delete(\"/{graph_id}\")\nasync def delete_graph(\n    graph_id: int,\n    db: AsyncSession = Depends(get_db)\n):\n    \"\"\"Delete a graph.\"\"\"\n    result = await db.execute(\n        select(Graph).where(Graph.id == graph_id)\n    )\n    graph = result.scalar_one_or_none()\n    if not graph:\n        raise HTTPException(status_code=404, detail=f\"Graph {graph_id} not found\")\n    \n    await db.delete(graph)\n    await db.commit()\n    return {\"message\": f\"Graph {graph_id} deleted\"}\n",
+      "lines": 59,
+      "hash": "3c34fc47"
+    },
+    "app/api/routes/nodes.py": {
+      "content": "\"\"\"\nNode management endpoints.\n\"\"\"\n\nfrom fastapi import APIRouter, HTTPException, Depends\nfrom sqlalchemy.ext.asyncio import AsyncSession\nfrom sqlalchemy import select, delete\nfrom typing import List, Dict, Any, Optional\nimport logging\nfrom datetime import datetime\nimport uuid\n\nfrom app.database import get_db\nfrom app.models.node import Node\nfrom app.models.edge import Edge\nfrom app.models.graph import Graph\nfrom app.services.schema_service import SchemaService\nfrom app.api.deps import get_graph\nfrom app.core.exceptions import SchemaValidationError\n\nrouter = APIRouter(prefix=\"/graphs/{graph_id}/nodes\", tags=[\"nodes\"])\nlogger = logging.getLogger(__name__)\n\n@router.post(\"\")\nasync def create_node(\n    graph_id: int,\n    node_data: Dict[str, Any],\n    db: AsyncSession = Depends(get_db),\n    graph: Graph = Depends(get_graph)\n):\n    \"\"\"Create a new node.\"\"\"\n    try:\n        # Validate against schema\n        schema_service = SchemaService(db)\n        await schema_service.validate_node(\n            graph.project_id,\n            node_data[\"type\"],\n            node_data.get(\"attributes\", {})\n        )\n        \n        # Generate node_id if not provided\n        if \"node_id\" not in node_data:\n            node_data[\"node_id\"] = str(uuid.uuid4())[:8]\n        \n        # Check if node_id already exists\n        existing = await db.execute(\n            select(Node).where(\n                Node.graph_id == graph_id,\n                Node.node_id == node_data[\"node_id\"]\n            )\n        )\n        if existing.scalar_one_or_none():\n            raise HTTPException(status_code=400, detail=f\"Node with ID {node_data['node_id']} already exists\")\n        \n        # Create node\n        node = Node(\n            graph_id=graph_id,\n            node_id=node_data[\"node_id\"],\n            type=node_data[\"type\"],\n            attributes=node_data.get(\"attributes\", {}),\n            position_x=node_data.get(\"position_x\"),\n            position_y=node_data.get(\"position_y\")\n        )\n        \n        db.add(node)\n        await db.commit()\n        await db.refresh(node)\n        \n        return node\n    except SchemaValidationError as e:\n        raise HTTPException(status_code=400, detail=str(e))\n    except Exception as e:\n        logger.error(f\"Error creating node: {e}\")\n        await db.rollback()\n        raise HTTPException(status_code=500, detail=\"Internal server error\")\n\n@router.post(\"/batch\")\nasync def batch_create_nodes(\n    graph_id: int,\n    nodes_data: List[Dict[str, Any]],\n    db: AsyncSession = Depends(get_db),\n    graph: Graph = Depends(get_graph)\n):\n    \"\"\"Batch create multiple nodes (optimized for large imports).\"\"\"\n    try:\n        schema_service = SchemaService(db)\n        nodes = []\n        node_ids = set()\n        \n        for node_data in nodes_data:\n            # Validate each node\n            await schema_service.validate_node(\n                graph.project_id,\n                node_data[\"type\"],\n                node_data.get(\"attributes\", {})\n            )\n            \n            # Generate node_id if not provided\n            if \"node_id\" not in node_data:\n                node_data[\"node_id\"] = str(uuid.uuid4())[:8]\n            \n            # Check for duplicate IDs in batch\n            if node_data[\"node_id\"] in node_ids:\n                raise HTTPException(\n                    status_code=400, \n                    detail=f\"Duplicate node_id '{node_data['node_id']}' in batch\"\n                )\n            node_ids.add(node_data[\"node_id\"])\n            \n            node = Node(\n                graph_id=graph_id,\n                node_id=node_data[\"node_id\"],\n                type=node_data[\"type\"],\n                attributes=node_data.get(\"attributes\", {}),\n                position_x=node_data.get(\"position_x\"),\n                position_y=node_data.get(\"position_y\")\n            )\n            nodes.append(node)\n        \n        db.add_all(nodes)\n        await db.commit()\n        \n        return {\"status\": \"success\", \"count\": len(nodes), \"nodes\": nodes}\n    except SchemaValidationError as e:\n        raise HTTPException(status_code=400, detail=str(e))\n    except Exception as e:\n        logger.error(f\"Error batch creating nodes: {e}\")\n        await db.rollback()\n        raise HTTPException(status_code=500, detail=\"Internal server error\")\n\n@router.get(\"\")\nasync def get_nodes(\n    graph_id: int,\n    type: Optional[str] = None,\n    limit: int = 1000,\n    offset: int = 0,\n    db: AsyncSession = Depends(get_db),\n    graph: Graph = Depends(get_graph)\n):\n    \"\"\"Get nodes with optional filtering.\"\"\"\n    query = select(Node).where(Node.graph_id == graph_id)\n    \n    if type:\n        query = query.where(Node.type == type)\n    \n    query = query.limit(limit).offset(offset)\n    result = await db.execute(query)\n    nodes = result.scalars().all()\n    return nodes\n\n@router.get(\"/{node_id}\")\nasync def get_node(\n    graph_id: int,\n    node_id: str,\n    db: AsyncSession = Depends(get_db),\n    graph: Graph = Depends(get_graph)\n):\n    \"\"\"Get specific node.\"\"\"\n    result = await db.execute(\n        select(Node).where(\n            Node.graph_id == graph_id,\n            Node.node_id == node_id\n        )\n    )\n    node = result.scalar_one_or_none()\n    if not node:\n        raise HTTPException(status_code=404, detail=\"Node not found\")\n    return node\n\n@router.patch(\"/{node_id}\")\nasync def update_node(\n    graph_id: int,\n    node_id: str,\n    updates: Dict[str, Any],\n    db: AsyncSession = Depends(get_db),\n    graph: Graph = Depends(get_graph)\n):\n    \"\"\"Update node attributes or position.\"\"\"\n    try:\n        # Get current node\n        result = await db.execute(\n            select(Node).where(\n                Node.graph_id == graph_id,\n                Node.node_id == node_id\n            )\n        )\n        node = result.scalar_one_or_none()\n        if not node:\n            raise HTTPException(status_code=404, detail=\"Node not found\")\n        \n        # Update fields\n        if \"attributes\" in updates:\n            # Validate updated attributes against schema\n            schema_service = SchemaService(db)\n            await schema_service.validate_node(\n                graph.project_id,\n                node.type,\n                {**node.attributes, **updates[\"attributes\"]}\n            )\n            node.attributes = {**node.attributes, **updates[\"attributes\"]}\n        \n        if \"position_x\" in updates:\n            node.position_x = updates[\"position_x\"]\n        if \"position_y\" in updates:\n            node.position_y = updates[\"position_y\"]\n        \n        node.updated_at = datetime.utcnow()\n        \n        await db.commit()\n        await db.refresh(node)\n        return node\n    except SchemaValidationError as e:\n        raise HTTPException(status_code=400, detail=str(e))\n    except Exception as e:\n        logger.error(f\"Error updating node: {e}\")\n        await db.rollback()\n        raise HTTPException(status_code=500, detail=\"Internal server error\")\n\n@router.delete(\"/{node_id}\")\nasync def delete_node(\n    graph_id: int,\n    node_id: str,\n    db: AsyncSession = Depends(get_db),\n    graph: Graph = Depends(get_graph)\n):\n    \"\"\"Delete node and all its edges.\"\"\"\n    try:\n        # Delete edges connected to this node\n        await db.execute(\n            delete(Edge).where(\n                Edge.graph_id == graph_id,\n                (Edge.source_node == node_id) | (Edge.target_node == node_id)\n            )\n        )\n        \n        # Delete node\n        await db.execute(\n            delete(Node).where(\n                Node.graph_id == graph_id,\n                Node.node_id == node_id\n            )\n        )\n        \n        await db.commit()\n        return {\"status\": \"success\", \"message\": \"Node deleted\"}\n    except Exception as e:\n        logger.error(f\"Error deleting node: {e}\")\n        await db.rollback()\n        raise HTTPException(status_code=500, detail=\"Internal server error\")",
+      "lines": 249,
+      "hash": "4a2846de"
+    },
+    "app/api/routes/projects.py": {
+      "content": "\"\"\"\nProject management endpoints.\n\"\"\"\n\nfrom fastapi import APIRouter, HTTPException, Depends\nfrom sqlalchemy.ext.asyncio import AsyncSession\nfrom sqlalchemy import select\nfrom typing import Optional, List\nimport logging\n\nfrom app.database import get_db\nfrom app.models.project import Project\nfrom app.models.graph import Graph\n\nrouter = APIRouter(prefix=\"/projects\", tags=[\"projects\"])\nlogger = logging.getLogger(__name__)\n\n@router.post(\"\")\nasync def create_project(\n    name: str,\n    description: Optional[str] = None,\n    db: AsyncSession = Depends(get_db)\n):\n    \"\"\"Create a new project.\"\"\"\n    project = Project(name=name, description=description)\n    db.add(project)\n    await db.commit()\n    await db.refresh(project)\n    return project\n\n@router.get(\"\")\nasync def list_projects(\n    skip: int = 0,\n    limit: int = 100,\n    db: AsyncSession = Depends(get_db)\n):\n    \"\"\"List all projects.\"\"\"\n    result = await db.execute(\n        select(Project).offset(skip).limit(limit)\n    )\n    return result.scalars().all()\n\n@router.get(\"/{project_id}\")\nasync def get_project(\n    project_id: int,\n    db: AsyncSession = Depends(get_db)\n):\n    \"\"\"Get project by ID.\"\"\"\n    result = await db.execute(\n        select(Project).where(Project.id == project_id)\n    )\n    project = result.scalar_one_or_none()\n    if not project:\n        raise HTTPException(status_code=404, detail=f\"Project {project_id} not found\")\n    return project\n\n@router.post(\"/{project_id}/graphs\")\nasync def create_graph(\n    project_id: int,\n    name: str,\n    description: Optional[str] = None,\n    db: AsyncSession = Depends(get_db)\n):\n    \"\"\"Create a new graph in project.\"\"\"\n    # Check if project exists\n    result = await db.execute(\n        select(Project).where(Project.id == project_id)\n    )\n    project = result.scalar_one_or_none()\n    if not project:\n        raise HTTPException(status_code=404, detail=f\"Project {project_id} not found\")\n    \n    graph = Graph(project_id=project_id, name=name, description=description)\n    db.add(graph)\n    await db.commit()\n    await db.refresh(graph)\n    return graph\n\n@router.get(\"/{project_id}/graphs\")\nasync def list_project_graphs(\n    project_id: int,\n    db: AsyncSession = Depends(get_db)\n):\n    \"\"\"List all graphs in a project.\"\"\"\n    # Check if project exists\n    result = await db.execute(\n        select(Project).where(Project.id == project_id)\n    )\n    project = result.scalar_one_or_none()\n    if not project:\n        raise HTTPException(status_code=404, detail=f\"Project {project_id} not found\")\n    \n    graphs_result = await db.execute(\n        select(Graph).where(Graph.project_id == project_id)\n    )\n    return graphs_result.scalars().all()\n\n@router.put(\"/{project_id}\")\nasync def update_project(\n    project_id: int,\n    name: Optional[str] = None,\n    description: Optional[str] = None,\n    db: AsyncSession = Depends(get_db)\n):\n    \"\"\"Update a project.\"\"\"\n    result = await db.execute(\n        select(Project).where(Project.id == project_id)\n    )\n    project = result.scalar_one_or_none()\n    if not project:\n        raise HTTPException(status_code=404, detail=f\"Project {project_id} not found\")\n    \n    if name:\n        project.name = name\n    if description:\n        project.description = description\n    \n    await db.commit()\n    await db.refresh(project)\n    return project\n\n@router.delete(\"/{project_id}\")\nasync def delete_project(\n    project_id: int,\n    db: AsyncSession = Depends(get_db)\n):\n    \"\"\"Delete a project.\"\"\"\n    result = await db.execute(\n        select(Project).where(Project.id == project_id)\n    )\n    project = result.scalar_one_or_none()\n    if not project:\n        raise HTTPException(status_code=404, detail=f\"Project {project_id} not found\")\n    \n    await db.delete(project)\n    await db.commit()\n    return {\"message\": f\"Project {project_id} deleted\"}\n",
+      "lines": 138,
+      "hash": "9c424f9e"
+    },
+    "app/api/routes/schema.py": {
+      "content": "\"\"\"\nSchema management endpoints.\n\"\"\"\n\nfrom fastapi import APIRouter, HTTPException, Depends\nfrom sqlalchemy.ext.asyncio import AsyncSession\nfrom sqlalchemy import select\nfrom typing import Dict, Any\nimport logging\n\nfrom app.database import get_db\nfrom app.services.schema_service import SchemaService\nfrom app.models.project import Project\nfrom app.models.schema import NodeType, EdgeType\nfrom app.api.deps import get_project\nfrom app.core.exceptions import SchemaValidationError\n\nrouter = APIRouter(prefix=\"/projects/{project_id}/schema\", tags=[\"schema\"])\nlogger = logging.getLogger(__name__)\n\n@router.put(\"\")\nasync def update_schema(\n    project_id: int,\n    schema_data: Dict[str, Any],\n    db: AsyncSession = Depends(get_db),\n    project: Project = Depends(get_project)\n):\n    \"\"\"Update project schema.\"\"\"\n    try:\n        service = SchemaService(db)\n        schema = await service.create_or_update_schema(project_id, schema_data)\n        return {\n            \"status\": \"success\",\n            \"message\": \"Schema updated\",\n            \"version\": schema.version\n        }\n    except SchemaValidationError as e:\n        raise HTTPException(status_code=400, detail=str(e))\n    except Exception as e:\n        logger.error(f\"Error updating schema: {e}\")\n        await db.rollback()\n        raise HTTPException(status_code=500, detail=\"Internal server error\")\n\n@router.get(\"\")\nasync def get_schema(\n    project_id: int,\n    db: AsyncSession = Depends(get_db),\n    project: Project = Depends(get_project)\n):\n    \"\"\"Get project schema.\"\"\"\n    try:\n        service = SchemaService(db)\n        schema = await service.get_schema(project_id)\n        if not schema:\n            raise HTTPException(status_code=404, detail=\"Schema not found\")\n        return schema\n    except Exception as e:\n        logger.error(f\"Error getting schema: {e}\")\n        raise HTTPException(status_code=500, detail=\"Internal server error\")\n\n@router.get(\"/node-types\")\nasync def get_node_types(\n    project_id: int,\n    db: AsyncSession = Depends(get_db),\n    project: Project = Depends(get_project)\n):\n    \"\"\"Get all node types for project.\"\"\"\n    try:\n        result = await db.execute(\n            select(NodeType).where(NodeType.project_id == project_id)\n        )\n        types = result.scalars().all()\n        return types\n    except Exception as e:\n        logger.error(f\"Error getting node types: {e}\")\n        raise HTTPException(status_code=500, detail=\"Internal server error\")\n\n@router.get(\"/edge-types\")\nasync def get_edge_types(\n    project_id: int,\n    db: AsyncSession = Depends(get_db),\n    project: Project = Depends(get_project)\n):\n    \"\"\"Get all edge types for project.\"\"\"\n    try:\n        result = await db.execute(\n            select(EdgeType).where(EdgeType.project_id == project_id)\n        )\n        types = result.scalars().all()\n        return types\n    except Exception as e:\n        logger.error(f\"Error getting edge types: {e}\")\n        raise HTTPException(status_code=500, detail=\"Internal server error\")",
+      "lines": 93,
+      "hash": "53c4ba43"
+    },
+    "app/config.py": {
+      "content": "\"\"\"\"\nConfiguration management using Pydantic settings.\n\"\"\"\nfrom typing import List, Optional\nfrom pydantic_settings import BaseSettings\nfrom pydantic import AnyHttpUrl, validator\nimport json\nimport os\n\nclass Settings(BaseSettings):\n    \"\"\"\n    Application settings loaded from environment variables.\n    \"\"\"\n    # Database\n    DATABASE_URL: str\n    POSTGRES_USER: str\n    POSTGRES_PASSWORD: str\n    POSTGRES_DB: str\n\n    # Redis\n    REDIS_URL: str\n\n    # Application\n    SECRET_KEY: str\n    ENVIRONMENT: str = \"development\"\n    LOG_LEVEL: str = \"INFO\"\n    API_V1_PREFIX: str = \"/api/v1\"\n\n    # CORS\n    BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = []\n\n    @validator(\"BACKEND_CORS_ORIGINS\", pre=True)\n    def assemble_cors_origins(cls, v: str | List[str]) -> List[str] | str:\n        \"\"\"Parse CORS origins from string or list.\"\"\"\n        if isinstance(v, str) and not v.startswith(\"[\"):\n            return [i.strip() for i in v.split(\",\")]\n        elif isinstance(v, (list, str)):\n            return v\n        raise ValueError(v)\n\n    # Celery\n    CELERY_BROKER_URL: str = \"redis://redis:6379/1\"\n    CELERY_RESULT_BACKEND: str = \"redis://redis:6379/2\"\n\n    # File upload\n    MAX_UPLOAD_SIZE: int = 10 * 1024 * 1024  # 10MB\n    ALLOWED_UPLOAD_EXTENSIONS: List[str] = [\".json\", \".csv\", \".graphml\"]\n\n    # Graph settings\n    MAX_NODES_PER_GRAPH: int = 5000\n    MAX_EDGES_PER_GRAPH: int = 50000\n\n    class Config:\n        env_file = \".env\"\n        case_sensitive = True\n        extra = \"ignore\"  # Игнорировать лишние поля\n\n# Create global settings instance\nsettings = Settings()\n\n# Validate critical settings\nif settings.ENVIRONMENT == \"production\" and settings.SECRET_KEY == \"your-secret-key-here-change-in-production\":\n    raise ValueError(\"SECRET_KEY must be changed in production!\")\n",
+      "lines": 64,
+      "hash": "820d42a5"
+    },
+    "app/database.py": {
+      "content": "\"\"\"\nDatabase configuration and session management.\n\"\"\"\nfrom sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker\nfrom sqlalchemy.orm import declarative_base, declared_attr\nfrom typing import AsyncGenerator\nimport logging\n\nfrom app.config import settings\n\n# Configure logging\nlogger = logging.getLogger(__name__)\n\n# Create async engine\nengine = create_async_engine(\n    settings.DATABASE_URL,\n    echo=settings.ENVIRONMENT == \"development\",\n    pool_size=20,\n    max_overflow=10,\n    pool_pre_ping=True,\n)\n\n# Create async session factory\nAsyncSessionLocal = async_sessionmaker(\n    engine,\n    class_=AsyncSession,\n    expire_on_commit=False,\n    autocommit=False,\n    autoflush=False,\n)\n\nclass Base:\n    \"\"\"Base class for SQLAlchemy models with common attributes.\"\"\"\n\n    @declared_attr\n    def __tablename__(cls):\n        \"\"\"Generate table name automatically.\"\"\"\n        return cls.__name__.lower()\n\n    # Common columns can be added here\n    # id = Column(Integer, primary_key=True, index=True)\n    # created_at = Column(DateTime, default=datetime.utcnow)\n    # updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)\n\n# Create declarative base\nBase = declarative_base(cls=Base)\n\nasync def get_db() -> AsyncGenerator[AsyncSession, None]:\n    \"\"\"\n    Dependency for getting database sessions.\n\n    Yields:\n        AsyncSession: Database session\n    \"\"\"\n    session = AsyncSessionLocal()\n    try:\n        yield session\n    except Exception as e:\n        logger.error(f\"Database session error: {e}\")\n        await session.rollback()\n        raise\n    finally:\n        await session.close()\n\nasync def init_db() -> None:\n    \"\"\"Initialize database (for development only).\"\"\"\n    if settings.ENVIRONMENT == \"development\":\n        async with engine.begin() as conn:\n            await conn.run_sync(Base.metadata.create_all)\n        logger.info(\"Database tables created/verified\")\n",
+      "lines": 71,
+      "hash": "5ef709dd"
+    },
+    "app/main.py": {
+      "content": "\"\"\"\nMain FastAPI application module for OSINT Graph Analyzer.\n\"\"\"\nfrom fastapi import FastAPI\nfrom fastapi.middleware.cors import CORSMiddleware\nfrom fastapi.responses import JSONResponse\nimport logging\nfrom typing import Dict\n\nfrom app.config import settings\nfrom app.database import engine, Base\n\n# Import all routers\nfrom app.api.routes import projects, schema, nodes, edges, graphs\nfrom app.routers import plugins, analytics\n\n# Configure logging\nlogging.basicConfig(\n    level=getattr(logging, settings.LOG_LEVEL),\n    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'\n)\nlogger = logging.getLogger(__name__)\n\n# Create FastAPI app\napp = FastAPI(\n    title=\"OSINT Graph Analyzer\",\n    description=\"Web application for analyzing OSINT data through graph visualization\",\n    version=\"0.1.0\",\n    docs_url=\"/api/docs\" if settings.ENVIRONMENT == \"development\" else None,\n    redoc_url=\"/api/redoc\" if settings.ENVIRONMENT == \"development\" else None,\n)\n\n# Configure CORS\napp.add_middleware(\n    CORSMiddleware,\n    allow_origins=settings.BACKEND_CORS_ORIGINS,\n    allow_credentials=True,\n    allow_methods=[\"*\"],\n    allow_headers=[\"*\"],\n)\n\n@app.on_event(\"startup\")\nasync def startup_event():\n    \"\"\"Initialize application on startup.\"\"\"\n    logger.info(\"Starting up OSINT Graph Analyzer...\")\n    # Create database tables (in production use Alembic migrations)\n    async with engine.begin() as conn:\n        await conn.run_sync(Base.metadata.create_all)\n\n@app.on_event(\"shutdown\")\nasync def shutdown_event():\n    \"\"\"Cleanup on application shutdown.\"\"\"\n    logger.info(\"Shutting down OSINT Graph Analyzer...\")\n    await engine.dispose()\n\n@app.get(\"/\")\nasync def root():\n    \"\"\"Root endpoint with API information.\"\"\"\n    return {\n        \"name\": \"OSINT Graph Analyzer API\",\n        \"version\": \"0.1.0\",\n        \"status\": \"operational\",\n        \"documentation\": \"/api/docs\",\n        \"endpoints\": {\n            \"health\": \"/health\",\n            \"api_status\": \"/api/v1/status\",\n            \"projects\": \"/api/v1/projects\",\n            \"project_detail\": \"/api/v1/projects/{project_id}\",\n            \"project_graphs\": \"/api/v1/projects/{project_id}/graphs\",\n            \"schema\": \"/api/v1/projects/{project_id}/schema\",\n            \"nodes\": \"/api/v1/graphs/{graph_id}/nodes\",\n            \"edges\": \"/api/v1/graphs/{graph_id}/edges\",\n            \"graphs\": \"/api/v1/graphs\",\n            \"plugins\": \"/api/v1/plugins\",\n            \"analytics\": \"/api/v1/analytics\"\n        }\n    }\n\n@app.get(\"/health\", response_model=Dict[str, str])\nasync def health_check() -> Dict[str, str]:\n    \"\"\"\n    Health check endpoint for monitoring.\n\n    Returns:\n        Dict[str, str]: Health status information\n    \"\"\"\n    return {\n        \"status\": \"healthy\",\n        \"environment\": settings.ENVIRONMENT,\n        \"version\": \"0.1.0\"\n    }\n\n@app.get(\"/api/v1/status\")\nasync def api_status() -> Dict[str, str]:\n    \"\"\"\n    API status endpoint.\n\n    Returns:\n        Dict[str, str]: API status information\n    \"\"\"\n    return {\"status\": \"operational\", \"message\": \"API is ready\"}\n\n# Include all routers\napp.include_router(projects.router, prefix=\"/api/v1\", tags=[\"projects\"])\napp.include_router(schema.router, prefix=\"/api/v1\", tags=[\"schema\"])\napp.include_router(nodes.router, prefix=\"/api/v1\", tags=[\"nodes\"])\napp.include_router(edges.router, prefix=\"/api/v1\", tags=[\"edges\"])\napp.include_router(graphs.router, prefix=\"/api/v1\", tags=[\"graphs\"])\napp.include_router(plugins.router, prefix=\"/api/v1/plugins\", tags=[\"plugins\"])\napp.include_router(analytics.router, prefix=\"/api/v1/analytics\", tags=[\"analytics\"])\n\n@app.exception_handler(404)\nasync def custom_404_handler(request, exc):\n    \"\"\"Custom 404 error handler.\"\"\"\n    return JSONResponse(\n        status_code=404,\n        content={\"message\": \"Endpoint not found\", \"detail\": str(exc)}\n    )\n\n@app.exception_handler(500)\nasync def custom_500_handler(request, exc):\n    \"\"\"Custom 500 error handler.\"\"\"\n    logger.error(f\"Internal server error: {exc}\", exc_info=True)\n    return JSONResponse(\n        status_code=500,\n        content={\"message\": \"Internal server error\", \"detail\": \"An unexpected error occurred\"}\n    )",
+      "lines": 127,
+      "hash": "8814184c"
+    },
+    "app/models/__init__.py": {
+      "content": "\"\"\"\nDatabase models for OSINT Graph Analyzer.\n\"\"\"\n\nfrom app.models.project import Project\nfrom app.models.graph import Graph\nfrom app.models.node import Node\nfrom app.models.edge import Edge\nfrom app.models.schema import ProjectSchema, NodeType, EdgeType\n\n__all__ = [\n    \"Project\",\n    \"Graph\",\n    \"Node\",\n    \"Edge\",\n    \"ProjectSchema\",\n    \"NodeType\",\n    \"EdgeType\",\n]\n",
+      "lines": 20,
+      "hash": "27c8cfcf"
+    },
+    "app/models/edge.py": {
+      "content": "\"\"\"\nEdge model for graph relationships.\n\"\"\"\n\nfrom sqlalchemy import Column, Integer, String, JSON, DateTime, ForeignKey, Index\nfrom sqlalchemy.orm import relationship\nfrom datetime import datetime\nfrom app.database import Base\n\nclass Edge(Base):\n    \"\"\"Edge in the graph connecting nodes.\"\"\"\n\n    __tablename__ = \"edges\"\n\n    id = Column(Integer, primary_key=True)\n    graph_id = Column(Integer, ForeignKey(\"graphs.id\", ondelete=\"CASCADE\"), nullable=False)\n    edge_id = Column(String(100), nullable=False)\n    source_node = Column(String(100), nullable=False)\n    target_node = Column(String(100), nullable=False)\n    type = Column(String(100), nullable=False)\n    attributes = Column(JSON, nullable=False, default={})\n\n    created_at = Column(DateTime, default=datetime.utcnow)\n    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)\n\n    # Relationships\n    graph = relationship(\"Graph\", back_populates=\"edges\")\n    source_node_obj = relationship(\n        \"Node\",\n        foreign_keys=[source_node],\n        primaryjoin=\"and_(Node.graph_id==Edge.graph_id, Node.node_id==Edge.source_node)\",\n        viewonly=True\n    )\n    target_node_obj = relationship(\n        \"Node\",\n        foreign_keys=[target_node],\n        primaryjoin=\"and_(Node.graph_id==Edge.graph_id, Node.node_id==Edge.target_node)\",\n        viewonly=True\n    )\n\n    __table_args__ = (\n        Index(\"ix_edges_graph_id\", \"graph_id\"),\n        Index(\"ix_edges_type\", \"type\"),\n        Index(\"ix_edges_source\", \"graph_id\", \"source_node\"),\n        Index(\"ix_edges_target\", \"graph_id\", \"target_node\"),\n        Index(\"ix_edges_graph_edge\", \"graph_id\", \"edge_id\", unique=True),\n    )\n",
+      "lines": 48,
+      "hash": "bdc5cc7f"
+    },
+    "app/models/graph.py": {
+      "content": "\"\"\"\nGraph model - container for nodes and edges.\n\"\"\"\n\nfrom sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Index\nfrom sqlalchemy.orm import relationship\nfrom datetime import datetime\nfrom app.database import Base\n\nclass Graph(Base):\n    \"\"\"Graph model - container for nodes and edges.\"\"\"\n\n    __tablename__ = \"graphs\"\n\n    id = Column(Integer, primary_key=True)\n    project_id = Column(Integer, ForeignKey(\"projects.id\", ondelete=\"CASCADE\"), nullable=False)\n    name = Column(String(200), nullable=False)\n    description = Column(String(500))\n    version = Column(Integer, default=1)\n\n    # Locks for concurrent access\n    locked_by = Column(Integer, nullable=True)\n    locked_at = Column(DateTime)\n    lock_expires = Column(DateTime)\n\n    created_at = Column(DateTime, default=datetime.utcnow)\n    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)\n\n    # Relationships\n    project = relationship(\"Project\", back_populates=\"graphs\")\n    nodes = relationship(\"Node\", back_populates=\"graph\", cascade=\"all, delete-orphan\")\n    edges = relationship(\"Edge\", back_populates=\"graph\", cascade=\"all, delete-orphan\")\n\n    __table_args__ = (\n        Index(\"ix_graphs_project\", \"project_id\"),\n    )\n",
+      "lines": 37,
+      "hash": "8392e657"
+    },
+    "app/models/node.py": {
+      "content": "\"\"\"\nNode model for graph data.\n\"\"\"\n\nfrom sqlalchemy import Column, Integer, String, JSON, DateTime, ForeignKey, Float, Index\nfrom sqlalchemy.orm import relationship\nfrom datetime import datetime\nfrom app.database import Base\n\nclass Node(Base):\n    \"\"\"Node in the graph with dynamic attributes.\"\"\"\n\n    __tablename__ = \"nodes\"\n\n    id = Column(Integer, primary_key=True)\n    graph_id = Column(Integer, ForeignKey(\"graphs.id\", ondelete=\"CASCADE\"), nullable=False)\n    node_id = Column(String(100), nullable=False)\n    type = Column(String(100), nullable=False)\n    attributes = Column(JSON, nullable=False, default={})\n\n    # Position on canvas\n    position_x = Column(Float)\n    position_y = Column(Float)\n\n    created_at = Column(DateTime, default=datetime.utcnow)\n    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)\n\n    # Relationships\n    graph = relationship(\"Graph\", back_populates=\"nodes\")\n    outgoing_edges = relationship(\n        \"Edge\", \n        foreign_keys=\"[Edge.source_node]\", \n        back_populates=\"source_node_obj\",\n        primaryjoin=\"and_(Edge.graph_id==Node.graph_id, Edge.source_node==Node.node_id)\"\n    )\n    incoming_edges = relationship(\n        \"Edge\", \n        foreign_keys=\"[Edge.target_node]\", \n        back_populates=\"target_node_obj\",\n        primaryjoin=\"and_(Edge.graph_id==Node.graph_id, Edge.target_node==Node.node_id)\"\n    )\n\n    __table_args__ = (\n        Index(\"ix_nodes_graph_id\", \"graph_id\"),\n        Index(\"ix_nodes_type\", \"type\"),\n        Index(\"ix_nodes_graph_node\", \"graph_id\", \"node_id\", unique=True),\n        Index(\"ix_nodes_position\", \"graph_id\", \"position_x\", \"position_y\"),\n    )\n",
+      "lines": 49,
+      "hash": "734b7173"
+    },
+    "app/models/project.py": {
+      "content": "\"\"\"\nProject model - top level container for graphs and schemas.\n\"\"\"\n\nfrom sqlalchemy import Column, Integer, String, DateTime\nfrom sqlalchemy.orm import relationship\nfrom datetime import datetime\nfrom app.database import Base\n\nclass Project(Base):\n    \"\"\"Project model - top level container for graphs and schemas.\"\"\"\n\n    __tablename__ = \"projects\"\n\n    id = Column(Integer, primary_key=True)\n    name = Column(String(200), nullable=False)\n    description = Column(String(500))\n    created_at = Column(DateTime, default=datetime.utcnow)\n    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)\n\n    # Relationships\n    graphs = relationship(\"Graph\", back_populates=\"project\", cascade=\"all, delete-orphan\")\n    schema = relationship(\"ProjectSchema\", back_populates=\"project\", uselist=False, cascade=\"all, delete-orphan\")\n    node_types = relationship(\"NodeType\", back_populates=\"project\", cascade=\"all, delete-orphan\")\n    edge_types = relationship(\"EdgeType\", back_populates=\"project\", cascade=\"all, delete-orphan\")\n",
+      "lines": 26,
+      "hash": "0a8d5974"
+    },
+    "app/models/schema.py": {
+      "content": "\"\"\"\nSchema models for dynamic meta-model system.\n\"\"\"\n\nfrom sqlalchemy import Column, Integer, String, JSON, DateTime, ForeignKey, Index\nfrom sqlalchemy.orm import relationship\nfrom datetime import datetime\nfrom app.database import Base\n\nclass ProjectSchema(Base):\n    \"\"\"Stores meta-schema for project (node types and edge types).\"\"\"\n\n    __tablename__ = \"project_schemas\"\n\n    id = Column(Integer, primary_key=True)\n    project_id = Column(Integer, ForeignKey(\"projects.id\", ondelete=\"CASCADE\"), unique=True)\n    schema_data = Column(JSON, nullable=False)\n    version = Column(Integer, default=1)\n    created_at = Column(DateTime, default=datetime.utcnow)\n    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)\n\n    # Relationships\n    project = relationship(\"Project\", back_populates=\"schema\")\n\nclass NodeType(Base):\n    \"\"\"Cache table for node types.\"\"\"\n\n    __tablename__ = \"node_types\"\n\n    id = Column(Integer, primary_key=True)\n    project_id = Column(Integer, ForeignKey(\"projects.id\", ondelete=\"CASCADE\"))\n    type_key = Column(String(100), nullable=False)\n    display_name = Column(String(200))\n    color = Column(String(50))\n    icon = Column(String(100))\n    attribute_definitions = Column(JSON, nullable=False)\n    created_at = Column(DateTime, default=datetime.utcnow)\n\n    # Relationships\n    project = relationship(\"Project\", back_populates=\"node_types\")\n\n    __table_args__ = (\n        Index(\"ix_node_types_project_type\", \"project_id\", \"type_key\", unique=True),\n    )\n\nclass EdgeType(Base):\n    \"\"\"Cache table for edge types.\"\"\"\n\n    __tablename__ = \"edge_types\"\n\n    id = Column(Integer, primary_key=True)\n    project_id = Column(Integer, ForeignKey(\"projects.id\", ondelete=\"CASCADE\"))\n    type_key = Column(String(100), nullable=False)\n    display_name = Column(String(200))\n    from_types = Column(JSON, nullable=False)\n    to_types = Column(JSON, nullable=False)\n    attribute_definitions = Column(JSON, nullable=False)\n    created_at = Column(DateTime, default=datetime.utcnow)\n\n    # Relationships\n    project = relationship(\"Project\", back_populates=\"edge_types\")\n\n    __table_args__ = (\n        Index(\"ix_edge_types_project_type\", \"project_id\", \"type_key\", unique=True),\n    )\n",
+      "lines": 66,
+      "hash": "4af8fc4a"
+    },
+    "app/services/schema_service.py": {
+      "content": "\"\"\"\nService for managing dynamic schema (node types, edge types, attributes).\n\"\"\"\n\nfrom typing import Dict, List, Optional, Any\nfrom sqlalchemy.ext.asyncio import AsyncSession\nfrom sqlalchemy import select, update, delete\nimport logging\nfrom datetime import datetime\nimport json\n\nfrom app.models.schema import ProjectSchema, NodeType, EdgeType\nfrom app.models.project import Project\nfrom app.core.exceptions import SchemaValidationError\n\nlogger = logging.getLogger(__name__)\n\nclass SchemaService:\n    \"\"\"Service for managing dynamic schema definitions.\"\"\"\n    \n    def __init__(self, db: AsyncSession):\n        self.db = db\n    \n    async def create_or_update_schema(self, project_id: int, schema_data: Dict[str, Any]) -> ProjectSchema:\n        \"\"\"\n        Create or update project schema from JSON definition.\n        \"\"\"\n        # Validate schema structure\n        self._validate_schema_structure(schema_data)\n        \n        # Check if schema exists\n        stmt = select(ProjectSchema).where(ProjectSchema.project_id == project_id)\n        result = await self.db.execute(stmt)\n        schema = result.scalar_one_or_none()\n        \n        if schema:\n            # Update existing schema\n            schema.schema_data = schema_data\n            schema.version += 1\n            schema.updated_at = datetime.utcnow()\n        else:\n            # Create new schema\n            schema = ProjectSchema(\n                project_id=project_id,\n                schema_data=schema_data,\n                version=1\n            )\n            self.db.add(schema)\n        \n        # Update cache tables\n        await self._update_node_types_cache(project_id, schema_data.get(\"node_types\", []))\n        await self._update_edge_types_cache(project_id, schema_data.get(\"edge_types\", []))\n        \n        await self.db.commit()\n        await self.db.refresh(schema)\n        \n        logger.info(f\"Schema updated for project {project_id}, version {schema.version}\")\n        return schema\n    \n    async def get_schema(self, project_id: int) -> Optional[Dict[str, Any]]:\n        \"\"\"Get schema for project.\"\"\"\n        try:\n            stmt = select(ProjectSchema).where(ProjectSchema.project_id == project_id)\n            result = await self.db.execute(stmt)\n            schema = result.scalar_one_or_none()\n            return schema.schema_data if schema else None\n        except Exception as e:\n            logger.error(f\"Error getting schema: {e}\")\n            return None\n    \n    async def validate_node(self, project_id: int, node_type: str, attributes: Dict[str, Any]) -> bool:\n        \"\"\"Validate node attributes against schema.\"\"\"\n        stmt = select(NodeType).where(\n            NodeType.project_id == project_id,\n            NodeType.type_key == node_type\n        )\n        result = await self.db.execute(stmt)\n        node_type_def = result.scalar_one_or_none()\n        \n        if not node_type_def:\n            raise SchemaValidationError(f\"Unknown node type: {node_type}\")\n        \n        return self._validate_attributes(\n            node_type_def.attribute_definitions,\n            attributes\n        )\n    \n    async def validate_edge(self, project_id: int, edge_type: str, \n                           source_type: str, target_type: str,\n                           attributes: Dict[str, Any]) -> bool:\n        \"\"\"Validate edge attributes and type compatibility against schema.\"\"\"\n        stmt = select(EdgeType).where(\n            EdgeType.project_id == project_id,\n            EdgeType.type_key == edge_type\n        )\n        result = await self.db.execute(stmt)\n        edge_type_def = result.scalar_one_or_none()\n        \n        if not edge_type_def:\n            raise SchemaValidationError(f\"Unknown edge type: {edge_type}\")\n        \n        # Check type compatibility\n        if source_type not in edge_type_def.from_types:\n            raise SchemaValidationError(\n                f\"Edge type {edge_type} cannot have source of type {source_type}. \"\n                f\"Allowed source types: {edge_type_def.from_types}\"\n            )\n        \n        if target_type not in edge_type_def.to_types:\n            raise SchemaValidationError(\n                f\"Edge type {edge_type} cannot have target of type {target_type}. \"\n                f\"Allowed target types: {edge_type_def.to_types}\"\n            )\n        \n        # Validate attributes\n        return self._validate_attributes(\n            edge_type_def.attribute_definitions,\n            attributes\n        )\n    \n    def _validate_schema_structure(self, schema_data: Dict[str, Any]):\n        \"\"\"Validate schema JSON structure.\"\"\"\n        if \"node_types\" not in schema_data:\n            raise SchemaValidationError(\"Missing 'node_types' in schema\")\n        \n        if \"edge_types\" not in schema_data:\n            raise SchemaValidationError(\"Missing 'edge_types' in schema\")\n        \n        # Validate each node type\n        for node_type in schema_data[\"node_types\"]:\n            required_fields = [\"type\", \"name\", \"attributes\"]\n            for field in required_fields:\n                if field not in node_type:\n                    raise SchemaValidationError(f\"Node type missing '{field}' field\")\n        \n        # Validate each edge type\n        for edge_type in schema_data[\"edge_types\"]:\n            required_fields = [\"type\", \"name\", \"from_types\", \"to_types\", \"attributes\"]\n            for field in required_fields:\n                if field not in edge_type:\n                    raise SchemaValidationError(f\"Edge type missing '{field}' field\")\n    \n    async def _update_node_types_cache(self, project_id: int, node_types: List[Dict]):\n        \"\"\"Update node types cache table.\"\"\"\n        # Delete old types\n        await self.db.execute(\n            delete(NodeType).where(NodeType.project_id == project_id)\n        )\n        \n        # Insert new types\n        for nt in node_types:\n            node_type = NodeType(\n                project_id=project_id,\n                type_key=nt[\"type\"],\n                display_name=nt.get(\"name\", nt[\"type\"]),\n                color=nt.get(\"color\", \"#cccccc\"),\n                icon=nt.get(\"icon\", \"fa-circle\"),\n                attribute_definitions=nt.get(\"attributes\", [])\n            )\n            self.db.add(node_type)\n        \n        # Flush to get IDs\n        await self.db.flush()\n    \n    async def _update_edge_types_cache(self, project_id: int, edge_types: List[Dict]):\n        \"\"\"Update edge types cache table.\"\"\"\n        # Delete old types\n        await self.db.execute(\n            delete(EdgeType).where(EdgeType.project_id == project_id)\n        )\n        \n        # Insert new types\n        for et in edge_types:\n            edge_type = EdgeType(\n                project_id=project_id,\n                type_key=et[\"type\"],\n                display_name=et.get(\"name\", et[\"type\"]),\n                from_types=et.get(\"from_types\", []),\n                to_types=et.get(\"to_types\", []),\n                attribute_definitions=et.get(\"attributes\", [])\n            )\n            self.db.add(edge_type)\n        \n        # Flush to get IDs\n        await self.db.flush()\n    \n    def _validate_attributes(self, definitions: List[Dict], attributes: Dict[str, Any]) -> bool:\n        \"\"\"Validate attributes against their definitions.\"\"\"\n        for attr_def in definitions:\n            attr_name = attr_def[\"name\"]\n            attr_type = attr_def[\"type\"]\n            \n            # Check required fields\n            if attr_def.get(\"required\", False) and attr_name not in attributes:\n                raise SchemaValidationError(f\"Required attribute '{attr_name}' is missing\")\n            \n            # Validate type if present\n            if attr_name in attributes:\n                value = attributes[attr_name]\n                if not self._validate_type(value, attr_type):\n                    raise SchemaValidationError(\n                        f\"Attribute '{attr_name}' should be of type {attr_type}, got {type(value).__name__}\"\n                    )\n        \n        # Check for unknown attributes (optional strict mode)\n        known_attrs = {attr_def[\"name\"] for attr_def in definitions}\n        for attr_name in attributes:\n            if attr_name not in known_attrs:\n                logger.warning(f\"Unknown attribute '{attr_name}' found, but it will be stored anyway\")\n        \n        return True\n    \n    def _validate_type(self, value: Any, expected_type: str) -> bool:\n        \"\"\"Validate value against expected type.\"\"\"\n        if value is None:\n            return True\n        \n        type_validators = {\n            \"string\": lambda v: isinstance(v, str),\n            \"integer\": lambda v: isinstance(v, int),\n            \"number\": lambda v: isinstance(v, (int, float)),\n            \"boolean\": lambda v: isinstance(v, bool),\n            \"date\": lambda v: isinstance(v, str) and len(v) == 10,  # YYYY-MM-DD\n            \"datetime\": lambda v: isinstance(v, str) and len(v) >= 19,  # ISO format\n            \"json\": lambda v: isinstance(v, (dict, list, str, int, float, bool, type(None)))\n        }\n        \n        validator = type_validators.get(expected_type)\n        if not validator:\n            return True  # Unknown type, skip validation\n        \n        return validator(value)",
+      "lines": 232,
+      "hash": "a8f057c5"
+    },
+    "docker-compose.yml": {
+      "content": "version: '3.8'\n\nservices:\n  postgres:\n    image: postgres:15-alpine\n    container_name: osint-postgres\n    environment:\n      POSTGRES_USER: osint_user  # Важно! Это создаст пользователя\n      POSTGRES_PASSWORD: osint_password\n      POSTGRES_DB: osint_db\n    ports:\n      - \"5432:5432\"\n    volumes:\n      - postgres_data:/var/lib/postgresql/data\n    healthcheck:\n      test: [\"CMD-SHELL\", \"pg_isready -U osint_user\"]\n      interval: 10s\n      timeout: 5s\n      retries: 5\n    networks:\n      - osint-network\n\n  redis:\n    image: redis:7-alpine\n    container_name: osint-redis\n    ports:\n      - \"6379:6379\"\n    volumes:\n      - redis_data:/data\n    healthcheck:\n      test: [\"CMD\", \"redis-cli\", \"ping\"]\n      interval: 10s\n      timeout: 5s\n      retries: 5\n    networks:\n      - osint-network\n\n  app:\n    build:\n      context: .\n      dockerfile: Dockerfile\n    container_name: osint-app\n    ports:\n      - \"5000:5000\"\n    env_file:\n      - .env\n    environment:\n      - DATABASE_URL=postgresql+asyncpg://osint_user:osint_password@postgres:5432/osint_db\n      - REDIS_URL=redis://redis:6379/0\n      - SECRET_KEY=your-secret-key-here-change-in-production\n      - ENVIRONMENT=development\n      - LOG_LEVEL=INFO\n    depends_on:\n      postgres:\n        condition: service_healthy\n      redis:\n        condition: service_healthy\n    volumes:\n      - ./app:/app/app\n      - ./plugins:/app/plugins\n      - ./data:/app/data\n    networks:\n      - osint-network\n    command: uvicorn app.main:app --host 0.0.0.0 --port 5000 --reload\n\nnetworks:\n  osint-network:\n    driver: bridge\n\nvolumes:\n  postgres_data:\n  redis_data:\n",
+      "lines": 73,
+      "hash": "502459cb"
+    },
+    "frontend/package.json": {
+      "content": "{\n  \"name\": \"osint-graph-analyzer\",\n  \"private\": true,\n  \"version\": \"0.1.0\",\n  \"type\": \"module\",\n  \"scripts\": {\n    \"dev\": \"vite\",\n    \"build\": \"tsc && vite build\",\n    \"preview\": \"vite preview\",\n    \"lint\": \"eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0\"\n  },\n  \"dependencies\": {\n    \"@emotion/react\": \"^11.11.1\",\n    \"@emotion/styled\": \"^11.11.0\",\n    \"@fortawesome/fontawesome-svg-core\": \"^7.2.0\",\n    \"@fortawesome/free-regular-svg-icons\": \"^7.2.0\",\n    \"@fortawesome/free-solid-svg-icons\": \"^7.2.0\",\n    \"@fortawesome/react-fontawesome\": \"^3.2.0\",\n    \"@mui/material\": \"^5.14.18\",\n    \"@reduxjs/toolkit\": \"^1.9.7\",\n    \"axios\": \"^1.6.2\",\n    \"date-fns\": \"^2.30.0\",\n    \"lodash\": \"^4.17.21\",\n    \"react\": \"^18.2.0\",\n    \"react-dom\": \"^18.2.0\",\n    \"react-redux\": \"^8.1.3\",\n    \"react-router-dom\": \"^6.20.0\",\n    \"typescript\": \"^5.2.2\",\n    \"vis-network\": \"^9.1.2\",\n    \"vite\": \"^5.0.0\",\n    \"zustand\": \"^4.4.7\"\n  },\n  \"devDependencies\": {\n    \"@types/react\": \"^18.2.43\",\n    \"@types/react-dom\": \"^18.2.17\",\n    \"@types/vis\": \"^4.21.27\",\n    \"@typescript-eslint/eslint-plugin\": \"^6.14.0\",\n    \"@typescript-eslint/parser\": \"^6.14.0\",\n    \"@vitejs/plugin-react\": \"^4.2.1\",\n    \"eslint\": \"^8.55.0\",\n    \"eslint-plugin-react-hooks\": \"^4.6.0\",\n    \"eslint-plugin-react-refresh\": \"^0.4.5\",\n    \"typescript\": \"^5.2.2\",\n    \"vite\": \"^5.0.0\"\n  }\n}\n",
+      "lines": 47,
+      "hash": "a9cf3019"
+    },
+    "frontend/src/App.tsx": {
+      "content": "// src/App.tsx\nimport React from 'react';\nimport { Provider } from 'react-redux';\nimport { store } from './store';\nimport { useAppSelector } from './store';\nimport { TabBar } from './components/layout/TabBar';\nimport { Sidebar } from './components/layout/Sidebar';\nimport { InspectorPanel } from './components/layout/InspectorPanel';\nimport { GraphView } from './components/views/GraphView';\nimport './App.css';\n\nfunction AppContent() {\n  const activeView = useAppSelector((state) => state.ui.activeView);\n\n  const renderActiveView = () => {\n    switch (activeView) {\n      case 'graph':\n        return <GraphView />;\n      case 'map':\n        return <div style={styles.placeholder}>Карта (в разработке)</div>;\n      case 'table':\n        return <div style={styles.placeholder}>Таблица (в разработке)</div>;\n      case 'text':\n        return <div style={styles.placeholder}>Текст (в разработке)</div>;\n      case 'stats':\n        return <div style={styles.placeholder}>Статистика (в разработке)</div>;\n      default:\n        return <GraphView />;\n    }\n  };\n\n  return (\n    <div style={styles.app}>\n      <div style={styles.main}>\n        <Sidebar />\n        <div style={styles.content}>\n          <TabBar />\n          <div style={styles.viewContainer}>\n            {renderActiveView()}\n          </div>\n        </div>\n        <InspectorPanel />\n      </div>\n    </div>\n  );\n}\n\nfunction App() {\n  return (\n    <Provider store={store}>\n      <AppContent />\n    </Provider>\n  );\n}\n\nconst styles = {\n  app: {\n    width: '100vw',\n    height: '100vh',\n    overflow: 'hidden' as const,\n    backgroundColor: 'var(--bg-primary)',\n  },\n  main: {\n    display: 'flex',\n    width: '100%',\n    height: '100%',\n  },\n  content: {\n    flex: 1,\n    display: 'flex',\n    flexDirection: 'column' as const,\n    overflow: 'hidden' as const,\n  },\n  viewContainer: {\n    flex: 1,\n    overflow: 'hidden' as const,\n    position: 'relative' as const,\n  },\n  placeholder: {\n    display: 'flex',\n    justifyContent: 'center',\n    alignItems: 'center',\n    height: '100%',\n    fontSize: '18px',\n    color: 'var(--text-disabled)',\n    backgroundColor: 'var(--bg-primary)',\n  },\n} as const;\n\nexport default App;\n",
+      "lines": 91,
+      "hash": "07896c29"
+    },
+    "frontend/src/components/views/GraphView.tsx": {
+      "content": "// src/components/views/GraphView.tsx\nimport React, { useEffect, useRef, useCallback, useState } from 'react';\nimport { Network, DataSet } from 'vis-network/standalone';\nimport { FontAwesomeIcon } from '@fortawesome/react-fontawesome';\nimport { \n  faSpinner,\n  faPlus,\n  faMinus,\n  faExpand\n} from '@fortawesome/free-solid-svg-icons';\nimport { useAppDispatch, useAppSelector } from '../../store';\nimport { setGraphData, setNetworkInstance } from '../../store/slices/graphSlice';\nimport { setSelectedNode, setSelectedEdge } from '../../store/slices/uiSlice';\n\ninterface GraphViewProps {\n  graphId?: number;\n}\n\nexport const GraphView: React.FC<GraphViewProps> = ({ graphId }) => {\n  const dispatch = useAppDispatch();\n  \n  const [isReady, setIsReady] = useState(false);\n  \n  const nodes = useAppSelector((state) => state.graph.nodes);\n  const edges = useAppSelector((state) => state.graph.edges);\n  const isLoading = useAppSelector((state) => state.graph.isLoading);\n  const selectedNodeId = useAppSelector((state) => state.ui.selectedNodeId);\n  const selectedEdgeId = useAppSelector((state) => state.ui.selectedEdgeId);\n\n  const containerRef = useRef<HTMLDivElement>(null);\n  const networkRef = useRef<Network | null>(null);\n  const viewStateRef = useRef({ scale: 1, offset: { x: 0, y: 0 } });\n  const nodesRef = useRef(nodes);\n  const edgesRef = useRef(edges);\n  const isUpdatingRef = useRef(false);\n  const isDraggingNodeRef = useRef(false);\n  const isDraggingViewRef = useRef(false);\n  const viewportBeforeDragRef = useRef<{ scale: number; position: { x: number; y: number } } | null>(null);\n\n  // Обновляем рефы при изменении данных\n  useEffect(() => {\n    nodesRef.current = nodes;\n    edgesRef.current = edges;\n  }, [nodes, edges]);\n\n  // Загрузка тестовых данных\n  useEffect(() => {\n    const mockNodes = [\n      { id: '1', type: 'person', attributes: { full_name: 'Иван Петров', age: 35, city: 'Москва' } },\n      { id: '2', type: 'person', attributes: { full_name: 'Мария Сидорова', age: 32, city: 'СПб' } },\n      { id: '3', type: 'phone', attributes: { number: '+79161234567', operator: 'МТС' } },\n      { id: '4', type: 'location', attributes: { address: 'ул. Тверская, 1', city: 'Москва' } },\n    ];\n    const mockEdges = [\n      { id: 'e1', from: '1', to: '2', type: 'knows', attributes: { since: '2020' } },\n      { id: 'e2', from: '1', to: '3', type: 'uses', attributes: { frequency: 'daily' } },\n      { id: 'e3', from: '2', to: '3', type: 'uses', attributes: { frequency: 'weekly' } },\n      { id: 'e4', from: '1', to: '4', type: 'visited', attributes: { last: '2024-01-15' } },\n    ];\n    dispatch(setGraphData({ nodes: mockNodes, edges: mockEdges }));\n  }, []);\n\n  // Функции для кастомных кнопок навигации\n  const handleZoomIn = () => {\n    if (networkRef.current) {\n      const scale = networkRef.current.getScale();\n      networkRef.current.moveTo({\n        scale: scale * 1.2,\n        animation: {\n          duration: 200,\n          easingFunction: 'easeInOutQuad'\n        }\n      });\n      // Обновляем сохраненное состояние после анимации\n      setTimeout(() => {\n        if (networkRef.current) {\n          viewStateRef.current = {\n            scale: networkRef.current.getScale(),\n            offset: networkRef.current.getViewPosition()\n          };\n        }\n      }, 200);\n    }\n  };\n\n  const handleZoomOut = () => {\n    if (networkRef.current) {\n      const scale = networkRef.current.getScale();\n      networkRef.current.moveTo({\n        scale: scale * 0.8,\n        animation: {\n          duration: 200,\n          easingFunction: 'easeInOutQuad'\n        }\n      });\n      setTimeout(() => {\n        if (networkRef.current) {\n          viewStateRef.current = {\n            scale: networkRef.current.getScale(),\n            offset: networkRef.current.getViewPosition()\n          };\n        }\n      }, 200);\n    }\n  };\n\n  const handleFit = () => {\n    if (networkRef.current) {\n      networkRef.current.fit({\n        animation: {\n          duration: 500,\n          easingFunction: 'easeInOutQuad'\n        }\n      });\n      setTimeout(() => {\n        if (networkRef.current) {\n          viewStateRef.current = {\n            scale: networkRef.current.getScale(),\n            offset: networkRef.current.getViewPosition()\n          };\n        }\n      }, 500);\n    }\n  };\n\n  // Функция для обновления данных сети\n  const updateNetworkData = useCallback(() => {\n    if (!networkRef.current || isUpdatingRef.current || nodesRef.current.length === 0) return;\n    \n    isUpdatingRef.current = true;\n\n    const getNodeColor = (type: string) => {\n      const colors: Record<string, any> = {\n        person: {\n          border: '#4F46E5',\n          background: '#1E293B',\n          highlight: { border: '#7C3AED', background: '#2D3A4F' },\n          hover: { border: '#4F46E5', background: '#2D3A4F' }\n        },\n        phone: {\n          border: '#10B981',\n          background: '#1E293B',\n          highlight: { border: '#34D399', background: '#2D3A4F' },\n          hover: { border: '#10B981', background: '#2D3A4F' }\n        },\n        location: {\n          border: '#EF4444',\n          background: '#1E293B',\n          highlight: { border: '#F87171', background: '#2D3A4F' },\n          hover: { border: '#EF4444', background: '#2D3A4F' }\n        },\n        message: {\n          border: '#F59E0B',\n          background: '#1E293B',\n          highlight: { border: '#FBBF24', background: '#2D3A4F' },\n          hover: { border: '#F59E0B', background: '#2D3A4F' }\n        },\n        default: {\n          border: '#4F46E5',\n          background: '#1E293B',\n          highlight: { border: '#7C3AED', background: '#2D3A4F' },\n          hover: { border: '#4F46E5', background: '#2D3A4F' }\n        }\n      };\n      return colors[type] || colors.default;\n    };\n\n    let existingPositions = {};\n    try {\n      existingPositions = networkRef.current.getPositions() || {};\n    } catch (e) {\n      console.warn('Could not get positions', e);\n    }\n\n    const nodesDataSet = new DataSet();\n    nodesRef.current.forEach((node) => {\n      const existingPos = existingPositions[node.id];\n      const x = existingPos?.x ?? node.x ?? 100 + Math.random() * 800;\n      const y = existingPos?.y ?? node.y ?? 100 + Math.random() * 400;\n      \n      nodesDataSet.add({\n        id: node.id,\n        label: node.attributes?.full_name || node.attributes?.name || node.id,\n        title: `Type: ${node.type}`,\n        color: getNodeColor(node.type),\n        x: x,\n        y: y,\n        shape: 'dot',\n        size: 25,\n        borderWidth: 2,\n        borderWidthSelected: 3,\n        font: {\n          color: '#F1F5F9',\n          size: 14,\n          face: 'Inter, system-ui, sans-serif',\n          strokeWidth: 2,\n          strokeColor: '#0B1120'\n        },\n        shadow: {\n          enabled: true,\n          color: 'rgba(0,0,0,0.5)',\n          size: 10,\n          x: 0,\n          y: 4\n        },\n        fixed: false\n      });\n    });\n\n    const edgesDataSet = new DataSet();\n    edgesRef.current.forEach((edge) => {\n      edgesDataSet.add({\n        id: edge.id,\n        from: edge.from,\n        to: edge.to,\n        label: edge.type,\n        title: `Type: ${edge.type}`,\n        color: {\n          color: '#4F46E5',\n          highlight: '#7C3AED',\n          hover: '#4F46E5',\n          opacity: 0.8\n        },\n        font: {\n          color: '#94A3B8',\n          size: 11,\n          face: 'Inter, system-ui, sans-serif',\n          background: '#1E293B',\n          strokeWidth: 0\n        },\n        width: 2,\n        smooth: {\n          type: 'continuous',\n          forceDirection: 'none',\n          roundness: 0.5\n        },\n        arrows: {\n          to: {\n            enabled: true,\n            scaleFactor: 1,\n            type: 'arrow'\n          }\n        }\n      });\n    });\n\n    networkRef.current.setData({ nodes: nodesDataSet, edges: edgesDataSet });\n    \n    networkRef.current.moveTo({\n      scale: viewStateRef.current.scale,\n      position: viewStateRef.current.offset,\n      animation: false\n    });\n\n    setTimeout(() => {\n      if (networkRef.current) {\n        const newPositions = networkRef.current.getPositions();\n        const updatedNodes = nodesRef.current.map(node => {\n          if (newPositions[node.id]) {\n            return {\n              ...node,\n              x: newPositions[node.id].x,\n              y: newPositions[node.id].y\n            };\n          }\n          return node;\n        });\n        \n        const hasChanges = updatedNodes.some((node, index) => {\n          const oldNode = nodesRef.current[index];\n          return oldNode && (oldNode.x !== node.x || oldNode.y !== node.y);\n        });\n        \n        if (hasChanges) {\n          dispatch(setGraphData({\n            nodes: updatedNodes,\n            edges: edgesRef.current\n          }));\n        }\n      }\n      isUpdatingRef.current = false;\n    }, 100);\n\n  }, [dispatch]);\n\n  // Инициализация vis-network\n  useEffect(() => {\n    if (!containerRef.current) return;\n\n    const options = {\n      nodes: {\n        shape: 'dot',\n        size: 25,\n        borderWidth: 2,\n        borderWidthSelected: 3,\n        font: {\n          color: '#F1F5F9',\n          size: 14,\n          face: 'Inter, system-ui, sans-serif',\n          strokeWidth: 2,\n          strokeColor: '#0B1120'\n        },\n        shadow: {\n          enabled: true,\n          color: 'rgba(0,0,0,0.5)',\n          size: 10,\n          x: 0,\n          y: 4\n        }\n      },\n      edges: {\n        width: 2,\n        smooth: {\n          type: 'continuous',\n          forceDirection: 'none',\n          roundness: 0.5\n        },\n        font: {\n          color: '#94A3B8',\n          size: 11,\n          face: 'Inter, system-ui, sans-serif',\n          background: '#1E293B',\n          strokeWidth: 0\n        },\n        arrows: {\n          to: {\n            enabled: true,\n            scaleFactor: 1,\n            type: 'arrow'\n          }\n        }\n      },\n      physics: {\n        enabled: false,\n        stabilization: false\n      },\n      interaction: {\n        hover: true,\n        tooltipDelay: 200,\n        hideEdgesOnDrag: false,\n        hideEdgesOnZoom: false,\n        navigationButtons: false,\n        keyboard: true,\n        zoomView: true,\n        dragNodes: true,\n        dragView: true,\n      },\n      layout: {\n        improvedLayout: true,\n        randomSeed: 42,\n      },\n    };\n\n    const network = new Network(\n      containerRef.current,\n      { nodes: new DataSet(), edges: new DataSet() },\n      options\n    );\n\n    networkRef.current = network;\n    dispatch(setNetworkInstance(network));\n\n    // Сохраняем состояние просмотра\n    network.on('zoom', (params) => {\n      viewStateRef.current.scale = params.scale;\n      viewStateRef.current.offset = network.getViewPosition();\n    });\n\n    // Сохраняем состояние просмотра при начале любого перетаскивания\n    network.on('dragStart', (params) => {\n      // Сохраняем текущий viewport перед любым перетаскиванием\n      viewportBeforeDragRef.current = {\n        scale: network.getScale(),\n        position: network.getViewPosition()\n      };\n      \n      if (params.nodes.length > 0) {\n        // Перетаскивание узла\n        isDraggingNodeRef.current = true;\n        isDraggingViewRef.current = false;\n      } else {\n        // Перетаскивание вида (фона)\n        isDraggingViewRef.current = true;\n        isDraggingNodeRef.current = false;\n      }\n    });\n\n    // Отслеживаем окончание перетаскивания\n    network.on('dragEnd', (params) => {\n      if (isDraggingNodeRef.current && params.nodes.length > 0 && !isUpdatingRef.current) {\n        // Перетаскивали узел - обновляем его позицию\n        const nodeId = params.nodes[0];\n        const newPos = network.getPosition(nodeId);\n        \n        const updatedNodes = nodesRef.current.map(node => {\n          if (node.id === nodeId) {\n            return {\n              ...node,\n              x: newPos.x,\n              y: newPos.y\n            };\n          }\n          return node;\n        });\n        \n        dispatch(setGraphData({\n          nodes: updatedNodes,\n          edges: edgesRef.current\n        }));\n        \n        // ТОЛЬКО для перетаскивания узла - восстанавливаем viewport\n        if (viewportBeforeDragRef.current) {\n          network.moveTo({\n            scale: viewportBeforeDragRef.current.scale,\n            position: viewportBeforeDragRef.current.position,\n            animation: false\n          });\n        }\n      } else {\n        // Перетаскивали граф - сохраняем новую позицию viewport\n        viewStateRef.current = {\n          scale: network.getScale(),\n          offset: network.getViewPosition()\n        };\n      }\n      \n      // Сбрасываем флаги\n      isDraggingNodeRef.current = false;\n      isDraggingViewRef.current = false;\n      viewportBeforeDragRef.current = null;\n    });\n\n    // Обработчик кликов\n    network.on('click', (params) => {\n      if (params.nodes.length > 0) {\n        dispatch(setSelectedNode(params.nodes[0]));\n      } else if (params.edges.length > 0) {\n        dispatch(setSelectedEdge(params.edges[0]));\n      } else {\n        dispatch(setSelectedNode(null));\n        dispatch(setSelectedEdge(null));\n      }\n    });\n\n    return () => {\n      network.destroy();\n      networkRef.current = null;\n    };\n  }, []);\n\n  // Обновляем данные при изменении nodes/edges\n  useEffect(() => {\n    if (networkRef.current && nodes.length > 0 && !isUpdatingRef.current) {\n      updateNetworkData();\n    }\n  }, [nodes, edges, updateNetworkData]);\n\n  // Центрируем граф при первой загрузке\n  useEffect(() => {\n    if (networkRef.current && nodes.length > 0 && !isReady) {\n      setTimeout(() => {\n        if (networkRef.current) {\n          networkRef.current.fit({\n            animation: {\n              duration: 500,\n              easingFunction: 'easeInOutQuad'\n            }\n          });\n          viewStateRef.current.scale = networkRef.current.getScale();\n          viewStateRef.current.offset = networkRef.current.getViewPosition();\n          setIsReady(true);\n        }\n      }, 200);\n    }\n  }, [nodes.length, isReady]);\n\n  // Выделение узла/ребра из store\n  useEffect(() => {\n    if (!networkRef.current || isUpdatingRef.current) return;\n\n    if (selectedNodeId) {\n      networkRef.current.selectNodes([selectedNodeId]);\n    } else if (selectedEdgeId) {\n      networkRef.current.selectEdges([selectedEdgeId]);\n    } else {\n      networkRef.current.unselectAll();\n    }\n  }, [selectedNodeId, selectedEdgeId]);\n\n  return (\n    <div style={styles.container}>\n      {isLoading && (\n        <div style={styles.loadingOverlay}>\n          <div style={styles.spinner}>\n            <FontAwesomeIcon icon={faSpinner} spin size=\"2x\" />\n          </div>\n          <div style={styles.loadingText}>Загрузка графа...</div>\n        </div>\n      )}\n      <div ref={containerRef} style={styles.graph} />\n      \n      {isReady && (\n        <div style={styles.navigationButtons}>\n          <button \n            style={styles.navButton} \n            onClick={handleZoomIn}\n            title=\"Приблизить\"\n            className=\"nav-button\"\n          >\n            <FontAwesomeIcon icon={faPlus} />\n          </button>\n          <button \n            style={styles.navButton} \n            onClick={handleZoomOut}\n            title=\"Отдалить\"\n            className=\"nav-button\"\n          >\n            <FontAwesomeIcon icon={faMinus} />\n          </button>\n          <button \n            style={styles.navButton} \n            onClick={handleFit}\n            title=\"По размеру экрана\"\n            className=\"nav-button\"\n          >\n            <FontAwesomeIcon icon={faExpand} />\n          </button>\n        </div>\n      )}\n    </div>\n  );\n};\n\nconst styles = {\n  container: {\n    width: '100%',\n    height: '100%',\n    position: 'relative' as const,\n    backgroundColor: 'var(--bg-primary)',\n  },\n  graph: {\n    width: '100%',\n    height: '100%',\n    backgroundColor: 'var(--bg-primary)',\n  },\n  loadingOverlay: {\n    position: 'absolute' as const,\n    top: 0,\n    left: 0,\n    right: 0,\n    bottom: 0,\n    backgroundColor: 'rgba(11, 18, 32, 0.9)',\n    backdropFilter: 'blur(8px)',\n    display: 'flex',\n    flexDirection: 'column' as const,\n    justifyContent: 'center',\n    alignItems: 'center',\n    zIndex: 1000,\n    gap: '16px',\n  },\n  spinner: {\n    color: 'var(--accent-primary)',\n  },\n  loadingText: {\n    color: 'var(--text-primary)',\n    fontSize: '16px',\n    fontWeight: 500,\n  },\n  navigationButtons: {\n    position: 'absolute' as const,\n    bottom: '24px',\n    right: '24px',\n    display: 'flex',\n    flexDirection: 'column' as const,\n    gap: '8px',\n    zIndex: 100,\n  },\n  navButton: {\n    width: '40px',\n    height: '40px',\n    backgroundColor: 'rgba(11, 18, 32, 0.6)',\n    border: '1px solid #4F46E5',\n    borderRadius: '8px',\n    color: '#4F46E5',\n    fontSize: '16px',\n    cursor: 'pointer',\n    display: 'flex',\n    alignItems: 'center',\n    justifyContent: 'center',\n    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',\n    backdropFilter: 'blur(5px)',\n    WebkitBackdropFilter: 'blur(5px)',\n    boxShadow: '0 0 10px rgba(79, 70, 229, 0.2)',\n    outline: 'none',\n    ':hover': {\n      backgroundColor: '#4F46E5',\n      color: 'white',\n      boxShadow: '0 0 25px rgba(79, 70, 229, 0.6)',\n      transform: 'scale(1.1)',\n      borderColor: '#4F46E5',\n    },\n    ':active': {\n      transform: 'scale(0.95)',\n      boxShadow: '0 0 15px rgba(79, 70, 229, 0.4)',\n    },\n  },\n} as const;\n\nconst style = document.createElement('style');\nstyle.textContent = `\n  @keyframes navButtonPulse {\n    0% {\n      box-shadow: 0 0 10px rgba(79, 70, 229, 0.2);\n    }\n    50% {\n      box-shadow: 0 0 20px rgba(79, 70, 229, 0.4);\n    }\n    100% {\n      box-shadow: 0 0 10px rgba(79, 70, 229, 0.2);\n    }\n  }\n\n  .nav-button {\n    animation: navButtonPulse 3s infinite ease-in-out;\n  }\n\n  .nav-button:hover {\n    animation: none;\n  }\n`;\ndocument.head.appendChild(style);\n",
+      "lines": 632,
+      "hash": "4795b43f"
+    },
+    "frontend/src/store/index.ts": {
+      "content": "// src/store/index.ts\nimport { configureStore } from '@reduxjs/toolkit';\nimport { useDispatch, useSelector, TypedUseSelectorHook } from 'react-redux';\nimport uiReducer from './slices/uiSlice';\nimport graphReducer from './slices/graphSlice';\nimport projectsReducer from './slices/projectsSlice';\n\nexport const store = configureStore({\n  reducer: {\n    ui: uiReducer,\n    graph: graphReducer,\n    projects: projectsReducer,\n  },\n  middleware: (getDefaultMiddleware) =>\n    getDefaultMiddleware({\n      serializableCheck: {\n        // Игнорируем non-serializable значения в graph (vis-network instance)\n        ignoredActions: ['graph/setNetworkInstance'],\n        ignoredPaths: ['graph.networkInstance'],\n      },\n    }),\n  devTools: process.env.NODE_ENV !== 'production',\n});\n\nexport type RootState = ReturnType<typeof store.getState>;\nexport type AppDispatch = typeof store.dispatch;\nexport const useAppDispatch: () => AppDispatch = useDispatch;\nexport const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;\n",
+      "lines": 29,
+      "hash": "a3f67dbf"
+    },
+    "frontend/src/store/slices/graphSlice.ts": {
+      "content": "// src/store/slices/graphSlice.ts\nimport { createSlice, PayloadAction } from '@reduxjs/toolkit';\n\nexport interface Node {\n  id: string;\n  label?: string;\n  type: string;\n  attributes: Record<string, any>;\n  x?: number;\n  y?: number;\n}\n\nexport interface Edge {\n  id: string;\n  from: string;\n  to: string;\n  type: string;\n  attributes: Record<string, any>;\n}\n\ninterface GraphState {\n  nodes: Node[];\n  edges: Edge[];\n  isLoading: boolean;\n  error: string | null;\n  networkInstance: any | null;\n  lastSaved: Date | null;\n}\n\nconst initialState: GraphState = {\n  nodes: [],\n  edges: [],\n  isLoading: false,\n  error: null,\n  networkInstance: null,\n  lastSaved: null,\n};\n\nconst graphSlice = createSlice({\n  name: 'graph',\n  initialState,\n  reducers: {\n    setGraphData: (state, action: PayloadAction<{ nodes: Node[]; edges: Edge[] }>) => {\n      state.nodes = action.payload.nodes;\n      state.edges = action.payload.edges;\n    },\n    addNode: (state, action: PayloadAction<Node>) => {\n      state.nodes.push(action.payload);\n    },\n    updateNode: (state, action: PayloadAction<{ id: string; updates: Partial<Node> }>) => {\n      const index = state.nodes.findIndex(n => n.id === action.payload.id);\n      if (index !== -1) {\n        state.nodes[index] = { ...state.nodes[index], ...action.payload.updates };\n      }\n    },\n    deleteNode: (state, action: PayloadAction<string>) => {\n      state.nodes = state.nodes.filter(n => n.id !== action.payload);\n      state.edges = state.edges.filter(e => e.from !== action.payload && e.to !== action.payload);\n    },\n    addEdge: (state, action: PayloadAction<Edge>) => {\n      state.edges.push(action.payload);\n    },\n    deleteEdge: (state, action: PayloadAction<string>) => {\n      state.edges = state.edges.filter(e => e.id !== action.payload);\n    },\n    setLoading: (state, action: PayloadAction<boolean>) => {\n      state.isLoading = action.payload;\n    },\n    setError: (state, action: PayloadAction<string | null>) => {\n      state.error = action.payload;\n    },\n    setNetworkInstance: (state, action: PayloadAction<any>) => {\n      state.networkInstance = action.payload;\n    },\n    setLastSaved: (state, action: PayloadAction<Date>) => {\n      state.lastSaved = action.payload;\n    },\n    clearGraph: (state) => {\n      state.nodes = [];\n      state.edges = [];\n      state.error = null;\n    },\n  },\n});\n\nexport const {\n  setGraphData,\n  addNode,\n  updateNode,\n  deleteNode,\n  addEdge,\n  deleteEdge,\n  setLoading,\n  setError,\n  setNetworkInstance,\n  setLastSaved,\n  clearGraph,\n} = graphSlice.actions;\nexport default graphSlice.reducer;\n",
+      "lines": 100,
+      "hash": "680fdb80"
+    },
+    "frontend/src/store/slices/projectsSlice.ts": {
+      "content": "import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';\nimport { api } from '../../services/api';\n\ninterface Project {\n  id: number;\n  name: string;\n  description?: string;\n  created_at: string;\n  updated_at: string;\n}\n\ninterface Graph {\n  id: number;\n  project_id: number;\n  name: string;\n  description?: string;\n  version: number;\n  created_at: string;\n  updated_at: string;\n}\n\ninterface ProjectsState {\n  projects: Project[];\n  graphs: Record<number, Graph[]>;\n  currentProject: Project | null;\n  currentGraph: Graph | null;\n  isLoading: boolean;\n  error: string | null;\n}\n\nconst initialState: ProjectsState = {\n  projects: [],\n  graphs: {},\n  currentProject: null,\n  currentGraph: null,\n  isLoading: false,\n  error: null,\n};\n\n// Async thunks\nexport const fetchProjects = createAsyncThunk('projects/fetchAll', async () => {\n  const response = await api.get('/api/v1/projects');\n  return response;\n});\n\nexport const fetchGraphs = createAsyncThunk(\n  'projects/fetchGraphs',\n  async (projectId: number) => {\n    const response = await api.get(`/api/v1/projects/${projectId}/graphs`);\n    return { projectId, graphs: response };\n  }\n);\n\nexport const createProject = createAsyncThunk(\n  'projects/create',\n  async (name: string) => {\n    const response = await api.post('/api/v1/projects', { name });\n    return response;\n  }\n);\n\nexport const createGraph = createAsyncThunk(\n  'projects/createGraph',\n  async ({ projectId, name }: { projectId: number; name: string }) => {\n    const response = await api.post(`/api/v1/projects/${projectId}/graphs`, { name });\n    return { projectId, graph: response };\n  }\n);\n\nconst projectsSlice = createSlice({\n  name: 'projects',\n  initialState,\n  reducers: {\n    setCurrentProject: (state, action: PayloadAction<Project | null>) => {\n      state.currentProject = action.payload;\n    },\n    setCurrentGraph: (state, action: PayloadAction<Graph | null>) => {\n      state.currentGraph = action.payload;\n    },\n  },\n  extraReducers: (builder) => {\n    builder\n      // fetchProjects\n      .addCase(fetchProjects.pending, (state) => {\n        state.isLoading = true;\n      })\n      .addCase(fetchProjects.fulfilled, (state, action) => {\n        state.isLoading = false;\n        state.projects = action.payload;\n      })\n      .addCase(fetchProjects.rejected, (state, action) => {\n        state.isLoading = false;\n        state.error = action.error.message || 'Failed to fetch projects';\n      })\n      // fetchGraphs\n      .addCase(fetchGraphs.fulfilled, (state, action) => {\n        state.graphs[action.payload.projectId] = action.payload.graphs;\n      })\n      // createProject\n      .addCase(createProject.fulfilled, (state, action) => {\n        state.projects.push(action.payload);\n      })\n      // createGraph\n      .addCase(createGraph.fulfilled, (state, action) => {\n        const { projectId, graph } = action.payload;\n        if (!state.graphs[projectId]) {\n          state.graphs[projectId] = [];\n        }\n        state.graphs[projectId].push(graph);\n      });\n  },\n});\n\nexport const { setCurrentProject, setCurrentGraph } = projectsSlice.actions;\nexport default projectsSlice.reducer;\n",
+      "lines": 116,
+      "hash": "e0d0eaaf"
+    },
+    "frontend/src/store/slices/uiSlice.ts": {
+      "content": "// src/store/slices/uiSlice.ts\nimport { createSlice, PayloadAction } from '@reduxjs/toolkit';\n\nexport type ViewType = 'graph' | 'map' | 'table' | 'text' | 'stats';\n\ninterface UIState {\n  activeView: ViewType;\n  selectedNodeId: string | null;\n  selectedEdgeId: string | null;\n  selectedProjectId: number | null;\n  selectedGraphId: number | null;\n  inspectorExpanded: boolean;\n  sidebarExpanded: boolean;\n}\n\nconst initialState: UIState = {\n  activeView: 'graph',\n  selectedNodeId: null,\n  selectedEdgeId: null,\n  selectedProjectId: null,\n  selectedGraphId: null,\n  inspectorExpanded: true,\n  sidebarExpanded: true,\n};\n\nconst uiSlice = createSlice({\n  name: 'ui',\n  initialState,\n  reducers: {\n    setActiveView: (state, action: PayloadAction<ViewType>) => {\n      state.activeView = action.payload;\n    },\n    setSelectedNode: (state, action: PayloadAction<string | null>) => {\n      state.selectedNodeId = action.payload;\n      state.selectedEdgeId = null;\n    },\n    setSelectedEdge: (state, action: PayloadAction<string | null>) => {\n      state.selectedEdgeId = action.payload;\n      state.selectedNodeId = null;\n    },\n    setSelectedProject: (state, action: PayloadAction<number | null>) => {\n      state.selectedProjectId = action.payload;\n      if (action.payload === null) {\n        state.selectedGraphId = null;\n      }\n    },\n    setSelectedGraph: (state, action: PayloadAction<number | null>) => {\n      state.selectedGraphId = action.payload;\n    },\n    toggleInspector: (state) => {\n      state.inspectorExpanded = !state.inspectorExpanded;\n    },\n    toggleSidebar: (state) => {\n      state.sidebarExpanded = !state.sidebarExpanded;\n    },\n  },\n});\n\nexport const {\n  setActiveView,\n  setSelectedNode,\n  setSelectedEdge,\n  setSelectedProject,\n  setSelectedGraph,\n  toggleInspector,\n  toggleSidebar,\n} = uiSlice.actions;\nexport default uiSlice.reducer;\n",
+      "lines": 69,
+      "hash": "8b4943be"
+    }
+  },
+  "architecture": {
+    "tech_stack": {
+      "backend": [],
+      "frontend": [],
+      "database": [],
+      "infrastructure": [
+        "Docker"
+      ]
+    }
+  },
+  "decisions": [
+    {
+      "decision": "Гибкая мета-модель через JSONB",
+      "reason": "Пользователь должен определять типы узлов без изменения кода",
+      "location": "app/models/schema.py, app/services/schema_service.py"
+    },
+    {
+      "decision": "JSONB для атрибутов узлов и ребер",
+      "reason": "Разные типы имеют разные атрибуты",
+      "location": "app/models/node.py, app/models/edge.py"
+    },
+    {
+      "decision": "Batch операции для производительности",
+      "reason": "Вставка 1000 узлов должна быть <2 секунд",
+      "location": "app/api/routes/nodes.py (/batch)"
+    },
+    {
+      "decision": "Кэширование типов в отдельных таблицах",
+      "reason": "Быстрый доступ без парсинга JSON",
+      "location": "app/models/schema.py (NodeType, EdgeType)"
+    }
+  ],
+  "status": {
+    "backend_models": "100% - полностью функционально",
+    "api_endpoints": "100% - все CRUD операции",
+    "validation": "100% - проверка типов, обязательных полей",
+    "docker": "100% - работает docker-compose up",
+    "frontend_layout": "100% - вкладки, сайдбар, инспектор",
+    "visualization": "100% - vis-network, перетаскивание",
+    "redux": "100% - все слайсы работают"
+  },
+  "next_steps": [
+    {
+      "phase": "2.1",
+      "name": "Модель артефактов",
+      "description": "Создать таблицы artifacts, relations, history",
+      "status": "0%"
+    },
+    {
+      "phase": "2.2",
+      "name": "API артефактов",
+      "description": "Универсальные CRUD для артефактов",
+      "status": "0%"
+    },
+    {
+      "phase": "2.3",
+      "name": "Рефакторинг фронтенда",
+      "description": "artifactsSlice вместо graphSlice",
+      "status": "0%"
+    },
+    {
+      "phase": "2.4",
+      "name": "Новые типы",
+      "description": "Таблицы, карты, диаграммы",
+      "status": "0%"
+    },
+    {
+      "phase": "2.5",
+      "name": "Интеграция плагинов",
+      "description": "Плагины создают артефакты",
+      "status": "0%"
+    }
+  ],
+  "open_questions": [
+    "Как организовать версионирование артефактов? Полное копирование или дельты?",
+    "Нужен ли Celery для плагинов >10 секунд?",
+    "Нужен ли полнотекстовый поиск по JSONB?",
+    "Как визуализировать историю изменений?"
+  ],
+  "api_endpoints": [
+    {
+      "file": "edges.py",
+      "signature": "@router.post(\"\")"
+    },
+    {
+      "file": "edges.py",
+      "signature": "@router.post(\"/batch\")"
+    },
+    {
+      "file": "edges.py",
+      "signature": "@router.get(\"\")"
+    },
+    {
+      "file": "edges.py",
+      "signature": "@router.get(\"/{edge_id}\")"
+    },
+    {
+      "file": "edges.py",
+      "signature": "@router.patch(\"/{edge_id}\")"
+    },
+    {
+      "file": "edges.py",
+      "signature": "@router.delete(\"/{edge_id}\")"
+    },
+    {
+      "file": "nodes.py",
+      "signature": "@router.post(\"\")"
+    },
+    {
+      "file": "nodes.py",
+      "signature": "@router.post(\"/batch\")"
+    },
+    {
+      "file": "nodes.py",
+      "signature": "@router.get(\"\")"
+    },
+    {
+      "file": "nodes.py",
+      "signature": "@router.get(\"/{node_id}\")"
+    },
+    {
+      "file": "nodes.py",
+      "signature": "@router.patch(\"/{node_id}\")"
+    },
+    {
+      "file": "nodes.py",
+      "signature": "@router.delete(\"/{node_id}\")"
+    },
+    {
+      "file": "projects.py",
+      "signature": "@router.post(\"\")"
+    },
+    {
+      "file": "projects.py",
+      "signature": "@router.get(\"\")"
+    },
+    {
+      "file": "projects.py",
+      "signature": "@router.get(\"/{project_id}\")"
+    },
+    {
+      "file": "projects.py",
+      "signature": "@router.post(\"/{project_id}/graphs\")"
+    },
+    {
+      "file": "projects.py",
+      "signature": "@router.get(\"/{project_id}/graphs\")"
+    },
+    {
+      "file": "projects.py",
+      "signature": "@router.put(\"/{project_id}\")"
+    },
+    {
+      "file": "projects.py",
+      "signature": "@router.delete(\"/{project_id}\")"
+    },
+    {
+      "file": "graphs.py",
+      "signature": "@router.get(\"\")"
+    },
+    {
+      "file": "graphs.py",
+      "signature": "@router.get(\"/{graph_id}\")"
+    },
+    {
+      "file": "graphs.py",
+      "signature": "@router.delete(\"/{graph_id}\")"
+    },
+    {
+      "file": "schema.py",
+      "signature": "@router.put(\"\")"
+    },
+    {
+      "file": "schema.py",
+      "signature": "@router.get(\"\")"
+    },
+    {
+      "file": "schema.py",
+      "signature": "@router.get(\"/node-types\")"
+    },
+    {
+      "file": "schema.py",
+      "signature": "@router.get(\"/edge-types\")"
+    }
+  ],
+  "database_schema": [
+    {
+      "file": "edge.py",
+      "class": "Edge(Base):"
+    },
+    {
+      "file": "graph.py",
+      "class": "Graph(Base):"
+    },
+    {
+      "file": "node.py",
+      "class": "Node(Base):"
+    },
+    {
+      "file": "project.py",
+      "class": "Project(Base):"
+    },
+    {
+      "file": "schema.py",
+      "class": "ProjectSchema(Base):"
+    },
+    {
+      "file": "schema.py",
+      "class": "NodeType(Base):"
+    },
+    {
+      "file": "schema.py",
+      "class": "EdgeType(Base):"
+    }
+  ],
+  "dependencies": {
+    "python": [
+      "fastapi==0.104.1",
+      "uvicorn[standard]==0.24.0",
+      "sqlalchemy==2.0.23",
+      "asyncpg==0.29.0",
+      "redis==5.0.1",
+      "networkx==3.2.1",
+      "python-dotenv==1.0.0",
+      "pydantic-settings==2.1.0",
+      "pydantic==2.7.0",
+      "python-multipart==0.0.6",
+      "celery==5.3.4",
+      "alembic==1.12.1",
+      "psycopg2-binary==2.9.9",
+      "python-jose[cryptography]==3.3.0",
+      "passlib[bcrypt]==1.7.4",
+      "python-multipart==0.0.6",
+      "httpx==0.25.1",
+      "tenacity==8.2.3",
+      "structlog==24.1.0",
+      "greenlet==3.3.2"
+    ],
+    "node": {
+      "dependencies": {
+        "@emotion/react": "^11.11.1",
+        "@emotion/styled": "^11.11.0",
+        "@fortawesome/fontawesome-svg-core": "^7.2.0",
+        "@fortawesome/free-regular-svg-icons": "^7.2.0",
+        "@fortawesome/free-solid-svg-icons": "^7.2.0",
+        "@fortawesome/react-fontawesome": "^3.2.0",
+        "@mui/material": "^5.14.18",
+        "@reduxjs/toolkit": "^1.9.7",
+        "axios": "^1.6.2",
+        "date-fns": "^2.30.0",
+        "lodash": "^4.17.21",
+        "react": "^18.2.0",
+        "react-dom": "^18.2.0",
+        "react-redux": "^8.1.3",
+        "react-router-dom": "^6.20.0",
+        "typescript": "^5.2.2",
+        "vis-network": "^9.1.2",
+        "vite": "^5.0.0",
+        "zustand": "^4.4.7"
+      },
+      "devDependencies": {
+        "@types/react": "^18.2.43",
+        "@types/react-dom": "^18.2.17",
+        "@types/vis": "^4.21.27",
+        "@typescript-eslint/eslint-plugin": "^6.14.0",
+        "@typescript-eslint/parser": "^6.14.0",
+        "@vitejs/plugin-react": "^4.2.1",
+        "eslint": "^8.55.0",
+        "eslint-plugin-react-hooks": "^4.6.0",
+        "eslint-plugin-react-refresh": "^0.4.5",
+        "typescript": "^5.2.2",
+        "vite": "^5.0.0"
+      }
+    }
+  }
+}

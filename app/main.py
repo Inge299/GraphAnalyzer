@@ -13,6 +13,7 @@ from app.database import engine, Base
 # Import all routers
 from app.api.routes import projects, schema, nodes, edges, graphs
 from app.routers import plugins, analytics
+from app.api.routes import artifacts
 
 # Configure logging
 logging.basicConfig(
@@ -108,6 +109,7 @@ app.include_router(edges.router, prefix="/api/v1", tags=["edges"])
 app.include_router(graphs.router, prefix="/api/v1", tags=["graphs"])
 app.include_router(plugins.router, prefix="/api/v1/plugins", tags=["plugins"])
 app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["analytics"])
+app.include_router(artifacts.router, prefix="/api/v2", tags=["artifacts"])
 
 @app.exception_handler(404)
 async def custom_404_handler(request, exc):

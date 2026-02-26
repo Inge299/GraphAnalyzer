@@ -5,7 +5,7 @@ services:
     image: postgres:15-alpine
     container_name: osint-postgres
     environment:
-      POSTGRES_USER: osint_user  # Важно! Это создаст пользователя
+      POSTGRES_USER: osint_user      # Оставляем как есть
       POSTGRES_PASSWORD: osint_password
       POSTGRES_DB: osint_db
     ports:
@@ -42,26 +42,39 @@ services:
     container_name: osint-app
     ports:
       - "5000:5000"
-    env_file:
-      - .env
     environment:
-      - DATABASE_URL=postgresql+asyncpg://osint_user:osint_password@postgres:5432/osint_db
-      - REDIS_URL=redis://redis:6379/0
-      - SECRET_KEY=your-secret-key-here-change-in-production
+      # Исправлено: используем osint_user, osint_password, osint_db
+      - DATABASE_URL=postgresql+asyncpg://osint_user:osint_password@osint-postgres:5432/osint_db
+      - REDIS_URL=redis://osint-redis:6379/0
+      - SECRET_KEY=dev-secret-key-for-development
       - ENVIRONMENT=development
-      - LOG_LEVEL=INFO
+      # Добавляем для совместимости
+      - POSTGRES_USER=osint_user
+      - POSTGRES_PASSWORD=osint_password
+      - POSTGRES_DB=osint_db
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-    volumes:
-      - ./app:/app/app
-      - ./plugins:/app/plugins
-      - ./data:/app/data
     networks:
       - osint-network
-    command: uvicorn app.main:app --host 0.0.0.0 --port 5000 --reload
+    volumes:
+      - ./plugins:/app/plugins
+      - ./data:/app/data
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: osint-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - osint-network
 
 networks:
   osint-network:
