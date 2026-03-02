@@ -8,7 +8,7 @@ interface Tab {
   type: string;
 }
 
-interface SelectedElement {
+export interface SelectedElement {
   type: 'node' | 'edge';
   id: string;
   data: any;
@@ -21,6 +21,7 @@ interface UIState {
   tabs: Tab[];
   activeTabId: string | null;
   selectedElement: SelectedElement | null;
+  selectedElements: SelectedElement[];
   notifications: Array<{
     id: string;
     type: 'info' | 'success' | 'warning' | 'error';
@@ -36,6 +37,7 @@ const initialState: UIState = {
   tabs: [],
   activeTabId: null,
   selectedElement: null,
+  selectedElements: [],
   notifications: [],
 };
 
@@ -67,6 +69,12 @@ const uiSlice = createSlice({
     setSelectedElement: (state, action: PayloadAction<SelectedElement | null>) => {
       console.log('[uiSlice] Setting selected element:', action.payload);
       state.selectedElement = action.payload;
+      state.selectedElements = action.payload ? [action.payload] : [];
+    },
+    setSelectedElements: (state, action: PayloadAction<SelectedElement[]>) => {
+      console.log('[uiSlice] Setting selected elements:', action.payload);
+      state.selectedElements = action.payload;
+      state.selectedElement = action.payload.length === 1 ? action.payload[0] : null;
     },
     addNotification: (state, action: PayloadAction<Omit<UIState['notifications'][0], 'id'>>) => {
       const id = `notification-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -89,6 +97,7 @@ export const {
   removeTab,
   setActiveTab,
   setSelectedElement,
+  setSelectedElements,
   addNotification,
   removeNotification,
   clearNotifications,

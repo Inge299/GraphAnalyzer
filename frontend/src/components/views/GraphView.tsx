@@ -4,7 +4,7 @@ import { Network } from 'vis-network/standalone';
 import { DataSet } from 'vis-data/standalone';
 import { useDispatch } from 'react-redux';
 import { Artifact } from '../../store/slices/artifactsSlice';
-import { setSelectedElement } from '../../store/slices/uiSlice';
+import { setSelectedElement, setSelectedElements } from '../../store/slices/uiSlice';
 
 interface GraphViewProps {
   artifact: Artifact;
@@ -15,7 +15,11 @@ const GraphView: React.FC<GraphViewProps> = memo(({ artifact, onNodeMove }) => {
   const dispatch = useDispatch();
   const networkRef = useRef<HTMLDivElement>(null);
   const networkInstanceRef = useRef<Network | null>(null);
+  const nodesRef = useRef<DataSet<any> | null>(null);
+  const edgesRef = useRef<DataSet<any> | null>(null);
+  const nodeMapRef = useRef<Map<string, string>>(new Map());
   const isInitializedRef = useRef<boolean>(false);
+  const shiftKeyRef = useRef<boolean>(false);
   
   const fitToScreen = useCallback(() => {
     if (networkInstanceRef.current) {
@@ -37,11 +41,39 @@ const GraphView: React.FC<GraphViewProps> = memo(({ artifact, onNodeMove }) => {
     }
   }, []);
 
+  // Отслеживаем Shift
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Shift') {
+        shiftKeyRef.current = true;
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'Shift') {
+        shiftKeyRef.current = false;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, []);
+
   useEffect(() => {
     if (!networkRef.current || isInitializedRef.current) return;
 
     console.log('[GraphView] INITIALIZING GRAPH');
     isInitializedRef.current = true;
+
+    // Отключаем контекстное меню
+    networkRef.current.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+    });
 
     const nodesData = artifact.data?.nodes ? JSON.parse(JSON.stringify(artifact.data.nodes)) : [];
     const edgesData = artifact.data?.edges ? JSON.parse(JSON.stringify(artifact.data.edges)) : [];
@@ -62,7 +94,9 @@ const GraphView: React.FC<GraphViewProps> = memo(({ artifact, onNodeMove }) => {
         size: 20,
         borderWidth: 2,
         shadow: true,
-        title: node.attributes ? JSON.stringify(node.attributes, null, 2) : ''
+        title: node.attributes ? JSON.stringify(node.attributes, null, 2) : '',
+        type: node.type,
+        attributes: node.attributes || {}
       };
     });
 
@@ -81,15 +115,23 @@ const GraphView: React.FC<GraphViewProps> = memo(({ artifact, onNodeMove }) => {
         width: 2,
         dashes: false,
         title: `${nodeMap.get(fromId) || fromId} → ${nodeMap.get(toId) || toId}${edge.label ? ': ' + edge.label : ''}`,
+        type: edge.type,
+        attributes: edge.attributes || {}
       };
     });
 
     const nodes = new DataSet(visNodes);
+    nodesRef.current = nodes;
     const edges = new DataSet(visEdges);
+    edgesRef.current = edges;
+    nodeMapRef.current = nodeMap;
 
     const options = {
       physics: false,
-      layout: { improvedLayout: false, hierarchical: false },
+      layout: { 
+        improvedLayout: false, 
+        hierarchical: false 
+      },
       nodes: {
         shape: 'dot',
         size: 20,
@@ -101,8 +143,7 @@ const GraphView: React.FC<GraphViewProps> = memo(({ artifact, onNodeMove }) => {
           background: '#6b7280',
           highlight: { border: '#3b82f6', background: '#60a5fa' },
           hover: { border: '#60a5fa', background: '#3b82f6' }
-        },
-        margin: 10
+        }
       },
       edges: {
         width: 2,
@@ -110,8 +151,7 @@ const GraphView: React.FC<GraphViewProps> = memo(({ artifact, onNodeMove }) => {
         smooth: { type: 'continuous', forceDirection: 'none' },
         arrows: { to: { enabled: true, type: 'arrow', scaleFactor: 1 } },
         font: { color: '#ffffff', size: 12, align: 'middle', strokeWidth: 0 },
-        dashes: false,
-        margin: 5
+        dashes: false
       },
       interaction: {
         hover: true,
@@ -120,19 +160,28 @@ const GraphView: React.FC<GraphViewProps> = memo(({ artifact, onNodeMove }) => {
         keyboard: true,
         zoomView: true,
         dragView: true,
-        multiselect: false
+        multiselect: true, // Включаем множественное выделение
+        dragNodes: true
       }
     };
 
     const network = new Network(networkRef.current, { nodes, edges }, options);
     networkInstanceRef.current = network;
 
-    network.on('click', (params) => {
+    // Используем стандартное событие select
+    network.on('select', (params) => {
+      console.log('[GraphView] Select event:', params);
+      
       if (params.nodes.length > 0) {
-        const nodeId = params.nodes[0];
-        const node = nodes.get(nodeId);
-        dispatch(setSelectedElement({ type: 'node', id: nodeId, data: node }));
+        // Выделены узлы
+        const selectedNodesData = params.nodes.map(id => nodes.get(id));
+        dispatch(setSelectedElements(selectedNodesData.map(data => ({ 
+          type: 'node', 
+          id: data.id, 
+          data 
+        }))));
       } else if (params.edges.length > 0) {
+        // Выделены ребра
         const edgeId = params.edges[0];
         const edge = edges.get(edgeId);
         if (edge) {
@@ -144,36 +193,18 @@ const GraphView: React.FC<GraphViewProps> = memo(({ artifact, onNodeMove }) => {
           dispatch(setSelectedElement({ type: 'edge', id: edgeId, data: enrichedEdge }));
         }
       } else {
+        // Ничего не выделено
         dispatch(setSelectedElement(null));
+        dispatch(setSelectedElements([]));
       }
     });
 
-    // ВАЖНО: обработчик перемещения узла
+    // Перемещение узлов
     network.on('dragEnd', (params) => {
-      console.log('[GraphView] dragEnd event:', params);
-      if (params.nodes.length > 0) {
+      if (params.nodes.length > 0 && onNodeMove) {
         const nodeId = params.nodes[0];
         const position = network.getPosition(nodeId);
-        console.log('[GraphView] Node moved:', nodeId, position);
-        
-        if (onNodeMove) {
-          console.log('[GraphView] Calling onNodeMove');
-          onNodeMove(nodeId, position.x, position.y);
-        } else {
-          console.log('[GraphView] onNodeMove is undefined');
-        }
-      }
-    });
-
-    network.on('dragStart', (params) => {
-      if (params.nodes.length > 0) {
-        network.setOptions({ interaction: { dragView: false } });
-      }
-    });
-
-    network.on('dragEnd', (params) => {
-      if (params.nodes.length > 0) {
-        network.setOptions({ interaction: { dragView: true } });
+        onNodeMove(nodeId, position.x, position.y);
       }
     });
 
