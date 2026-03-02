@@ -1,68 +1,97 @@
-// src/store/slices/uiSlice.ts
+// frontend/src/store/slices/uiSlice.ts
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-export type ViewType = 'graph' | 'map' | 'table' | 'text' | 'stats';
+interface Tab {
+  id: string;
+  artifactId: number;
+  title: string;
+  type: string;
+}
+
+interface SelectedElement {
+  type: 'node' | 'edge';
+  id: string;
+  data: any;
+}
 
 interface UIState {
-  activeView: ViewType;
-  selectedNodeId: string | null;
-  selectedEdgeId: string | null;
-  selectedProjectId: number | null;
-  selectedGraphId: number | null;
-  inspectorExpanded: boolean;
-  sidebarExpanded: boolean;
+  darkMode: boolean;
+  sidebarCollapsed: boolean;
+  inspectorWidth: number;
+  tabs: Tab[];
+  activeTabId: string | null;
+  selectedElement: SelectedElement | null;
+  notifications: Array<{
+    id: string;
+    type: 'info' | 'success' | 'warning' | 'error';
+    message: string;
+    timeout?: number;
+  }>;
 }
 
 const initialState: UIState = {
-  activeView: 'graph',
-  selectedNodeId: null,
-  selectedEdgeId: null,
-  selectedProjectId: null,
-  selectedGraphId: null,
-  inspectorExpanded: true,
-  sidebarExpanded: true,
+  darkMode: true,
+  sidebarCollapsed: false,
+  inspectorWidth: 300,
+  tabs: [],
+  activeTabId: null,
+  selectedElement: null,
+  notifications: [],
 };
 
 const uiSlice = createSlice({
   name: 'ui',
   initialState,
   reducers: {
-    setActiveView: (state, action: PayloadAction<ViewType>) => {
-      state.activeView = action.payload;
+    toggleDarkMode: (state) => {
+      state.darkMode = !state.darkMode;
     },
-    setSelectedNode: (state, action: PayloadAction<string | null>) => {
-      state.selectedNodeId = action.payload;
-      state.selectedEdgeId = null;
+    setSidebarCollapsed: (state, action: PayloadAction<boolean>) => {
+      state.sidebarCollapsed = action.payload;
     },
-    setSelectedEdge: (state, action: PayloadAction<string | null>) => {
-      state.selectedEdgeId = action.payload;
-      state.selectedNodeId = null;
+    setInspectorWidth: (state, action: PayloadAction<number>) => {
+      state.inspectorWidth = action.payload;
     },
-    setSelectedProject: (state, action: PayloadAction<number | null>) => {
-      state.selectedProjectId = action.payload;
-      if (action.payload === null) {
-        state.selectedGraphId = null;
+    addTab: (state, action: PayloadAction<Tab>) => {
+      state.tabs.push(action.payload);
+    },
+    removeTab: (state, action: PayloadAction<string>) => {
+      state.tabs = state.tabs.filter(tab => tab.id !== action.payload);
+      if (state.activeTabId === action.payload) {
+        state.activeTabId = state.tabs[state.tabs.length - 1]?.id || null;
       }
     },
-    setSelectedGraph: (state, action: PayloadAction<number | null>) => {
-      state.selectedGraphId = action.payload;
+    setActiveTab: (state, action: PayloadAction<string | null>) => {
+      state.activeTabId = action.payload;
     },
-    toggleInspector: (state) => {
-      state.inspectorExpanded = !state.inspectorExpanded;
+    setSelectedElement: (state, action: PayloadAction<SelectedElement | null>) => {
+      console.log('[uiSlice] Setting selected element:', action.payload);
+      state.selectedElement = action.payload;
     },
-    toggleSidebar: (state) => {
-      state.sidebarExpanded = !state.sidebarExpanded;
+    addNotification: (state, action: PayloadAction<Omit<UIState['notifications'][0], 'id'>>) => {
+      const id = `notification-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      state.notifications.push({ id, ...action.payload });
+    },
+    removeNotification: (state, action: PayloadAction<string>) => {
+      state.notifications = state.notifications.filter(n => n.id !== action.payload);
+    },
+    clearNotifications: (state) => {
+      state.notifications = [];
     },
   },
 });
 
 export const {
-  setActiveView,
-  setSelectedNode,
-  setSelectedEdge,
-  setSelectedProject,
-  setSelectedGraph,
-  toggleInspector,
-  toggleSidebar,
+  toggleDarkMode,
+  setSidebarCollapsed,
+  setInspectorWidth,
+  addTab,
+  removeTab,
+  setActiveTab,
+  setSelectedElement,
+  addNotification,
+  removeNotification,
+  clearNotifications,
 } = uiSlice.actions;
+
 export default uiSlice.reducer;

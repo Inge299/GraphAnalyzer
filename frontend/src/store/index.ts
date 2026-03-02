@@ -1,28 +1,26 @@
-// src/store/index.ts
+// frontend/src/store/index.ts
 import { configureStore } from '@reduxjs/toolkit';
-import { useDispatch, useSelector, TypedUseSelectorHook } from 'react-redux';
 import uiReducer from './slices/uiSlice';
-import graphReducer from './slices/graphSlice';
 import projectsReducer from './slices/projectsSlice';
+import artifactsReducer from './slices/artifactsSlice';
+// Старый graphSlice пока оставляем для обратной совместимости
+import graphReducer from './slices/graphSlice';
 
 export const store = configureStore({
   reducer: {
     ui: uiReducer,
-    graph: graphReducer,
     projects: projectsReducer,
+    artifacts: artifactsReducer,
+    graph: graphReducer, // пока оставляем, постепенно заменится на artifacts
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: {
-        // Игнорируем non-serializable значения в graph (vis-network instance)
-        ignoredActions: ['graph/setNetworkInstance'],
-        ignoredPaths: ['graph.networkInstance'],
+        // Игнорируем несериализуемые значения в определенных путях
+        ignoredActions: ['artifacts/setGraphData'],
       },
     }),
-  devTools: process.env.NODE_ENV !== 'production',
 });
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
-export const useAppDispatch: () => AppDispatch = useDispatch;
-export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;

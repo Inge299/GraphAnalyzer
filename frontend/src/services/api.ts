@@ -1,100 +1,76 @@
-// src/services/api.ts
-import { ApiProject, ApiGraph, ApiNode, ApiEdge } from '../types/api';
+// frontend/src/services/api.ts
+import axios from 'axios';
 
-class ApiClient {
-  private baseURL: string;
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-  constructor() {
-    // Используем правильный порт 8000 для бэкенда
-    this.baseURL = 'http://localhost:8000';
+export const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Request interceptor for logging
+api.interceptors.request.use((config) => {
+  console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`, config.data || config.params);
+  return config;
+});
+
+// Response interceptor for logging and error handling
+api.interceptors.response.use(
+  (response) => {
+    console.log(`[API] Response from ${response.config.url}:`, response.status);
+    return response.data;
+  },
+  (error) => {
+    console.error('[API] Error:', error.response?.data || error.message);
+    return Promise.reject(error.response?.data || error.message);
   }
+);
 
-  async get(endpoint: string): Promise<any> {
-    try {
-      const response = await fetch(`${this.baseURL}${endpoint}`);
-      if (!response.ok) {
-        throw new Error(`API Error: ${response.statusText}`);
-      }
-      return response.json();
-    } catch (error) {
-      console.warn(`API call failed: ${endpoint}`, error);
-      // Возвращаем моковые данные для разработки
-      return this.getMockData(endpoint);
-    }
-  }
+// Artifact API methods
+export const artifactApi = {
+  // Базовые CRUD
+  getByProject: (projectId: number) => 
+    api.get(`/api/v2/projects/${projectId}/artifacts`),
+  
+  get: (projectId: number, id: number) =>
+    api.get(`/api/v2/projects/${projectId}/artifacts/${id}`),
+  
+  create: (projectId: number, artifact: any) =>
+    api.post(`/api/v2/projects/${projectId}/artifacts`, artifact),
+  
+  update: (projectId: number, id: number, updates: any) =>
+    api.put(`/api/v2/projects/${projectId}/artifacts/${id}`, updates),
+  
+  delete: (projectId: number, id: number) =>
+    api.delete(`/api/v2/projects/${projectId}/artifacts/${id}`),
+  
+  // Специализированные
+  getVersions: (projectId: number, id: number) =>
+    api.get(`/api/v2/projects/${projectId}/artifacts/${id}/versions`),
+  
+  derive: (projectId: number, id: number, derivation: any) =>
+    api.post(`/api/v2/projects/${projectId}/artifacts/${id}/derive`, derivation),
+  
+  getRelations: (projectId: number, id: number) =>
+    api.get(`/api/v2/projects/${projectId}/artifacts/${id}/relations`),
+};
 
-  async post(endpoint: string, data: any): Promise<any> {
-    try {
-      const response = await fetch(`${this.baseURL}${endpoint}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        throw new Error(`API Error: ${response.statusText}`);
-      }
-      return response.json();
-    } catch (error) {
-      console.warn(`API post failed: ${endpoint}`, error);
-      return { id: Date.now(), ...data };
-    }
-  }
+// Legacy APIs (для обратной совместимости)
+export const graphApi = {
+  getNodes: (graphId: number) => api.get(`/api/v1/graphs/${graphId}/nodes`),
+  getEdges: (graphId: number) => api.get(`/api/v1/graphs/${graphId}/edges`),
+  // ... остальные методы
+};
 
-  async patch(endpoint: string, data: any): Promise<any> {
-    try {
-      const response = await fetch(`${this.baseURL}${endpoint}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        throw new Error(`API Error: ${response.statusText}`);
-      }
-      return response.json();
-    } catch (error) {
-      console.warn(`API patch failed: ${endpoint}`, error);
-      return data;
-    }
-  }
+export const projectApi = {
+  getAll: () => api.get('/api/v1/projects'),
+  get: (id: number) => api.get(`/api/v1/projects/${id}`),
+  create: (data: any) => api.post('/api/v1/projects', data),
+  update: (id: number, data: any) => api.put(`/api/v1/projects/${id}`, data),
+  delete: (id: number) => api.delete(`/api/v1/projects/${id}`),
+  getGraphs: (projectId: number) => api.get(`/api/v1/projects/${projectId}/graphs`),
+};
 
-  // Моковые данные для разработки
-  private getMockData(endpoint: string): any {
-    if (endpoint === '/api/v1/projects') {
-      return [
-        { id: 1, name: 'Тестовый проект 1', description: 'Описание проекта', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-        { id: 2, name: 'Тестовый проект 2', description: 'Описание проекта', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-      ];
-    }
-    if (endpoint.includes('/graphs')) {
-      const projectId = parseInt(endpoint.split('/')[3]);
-      return [
-        { id: 1, project_id: projectId, name: 'Граф 1', version: 1, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-        { id: 2, project_id: projectId, name: 'Граф 2', version: 1, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-      ];
-    }
-    return [];
-  }
-
-  // Graph methods
-  async getGraphNodes(graphId: number): Promise<ApiNode[]> {
-    return this.get(`/api/v1/graphs/${graphId}/nodes`);
-  }
-
-  async getGraphEdges(graphId: number): Promise<ApiEdge[]> {
-    return this.get(`/api/v1/graphs/${graphId}/edges`);
-  }
-
-  async createNode(graphId: number, node: Partial<ApiNode>): Promise<ApiNode> {
-    return this.post(`/api/v1/graphs/${graphId}/nodes`, node);
-  }
-
-  async updateNodePosition(graphId: number, nodeId: string, x: number, y: number): Promise<void> {
-    return this.patch(`/api/v1/graphs/${graphId}/nodes/${nodeId}`, { position_x: x, position_y: y });
-  }
-}
-
-export const api = new ApiClient();
+export default api;

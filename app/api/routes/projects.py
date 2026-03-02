@@ -1,7 +1,3 @@
-"""
-Project management endpoints.
-"""
-
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -10,12 +6,28 @@ import logging
 
 from app.database import get_db
 from app.models.project import Project
-from app.models.graph import Graph
 
+# 👇 Важно: префикс только "/projects", без "/api/v1"
 router = APIRouter(prefix="/projects", tags=["projects"])
 logger = logging.getLogger(__name__)
 
-@router.post("")
+# GET /projects (полный путь: /api/v1/projects)
+@router.get("")  # 👈 пустая строка после префикса
+async def list_projects(
+    skip: int = 0,
+    limit: int = 100,
+    db: AsyncSession = Depends(get_db)
+):
+    """List all projects."""
+    logger.info("GET /api/v1/projects called")
+    result = await db.execute(
+        select(Project).offset(skip).limit(limit)
+    )
+    projects = result.scalars().all()
+    return projects
+
+# POST /projects (полный путь: /api/v1/projects)
+@router.post("")  # 👈 тоже пустая строка
 async def create_project(
     name: str,
     description: Optional[str] = None,
@@ -28,18 +40,7 @@ async def create_project(
     await db.refresh(project)
     return project
 
-@router.get("")
-async def list_projects(
-    skip: int = 0,
-    limit: int = 100,
-    db: AsyncSession = Depends(get_db)
-):
-    """List all projects."""
-    result = await db.execute(
-        select(Project).offset(skip).limit(limit)
-    )
-    return result.scalars().all()
-
+# GET /projects/{project_id} (полный путь: /api/v1/projects/{id})
 @router.get("/{project_id}")
 async def get_project(
     project_id: int,
@@ -54,6 +55,7 @@ async def get_project(
         raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
     return project
 
+# POST /projects/{project_id}/graphs (полный путь: /api/v1/projects/{id}/graphs)
 @router.post("/{project_id}/graphs")
 async def create_graph(
     project_id: int,
@@ -76,6 +78,7 @@ async def create_graph(
     await db.refresh(graph)
     return graph
 
+# GET /projects/{project_id}/graphs (полный путь: /api/v1/projects/{id}/graphs)
 @router.get("/{project_id}/graphs")
 async def list_project_graphs(
     project_id: int,
@@ -95,6 +98,7 @@ async def list_project_graphs(
     )
     return graphs_result.scalars().all()
 
+# PUT /projects/{project_id} (полный путь: /api/v1/projects/{id})
 @router.put("/{project_id}")
 async def update_project(
     project_id: int,
@@ -119,6 +123,7 @@ async def update_project(
     await db.refresh(project)
     return project
 
+# DELETE /projects/{project_id} (полный путь: /api/v1/projects/{id})
 @router.delete("/{project_id}")
 async def delete_project(
     project_id: int,

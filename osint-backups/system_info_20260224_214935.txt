@@ -1,0 +1,5 @@
+Дата: вторник, 24 февраля 2026 г. 21:55:04 (PST)
+Git commit: 4f345ceb2a8c27d7b452d831bf94f00d65482292
+Docker version: Docker version 29.2.1, build a5c7197
+Docker Compose version: Docker Compose version v5.0.2
+graphanalyzer-app:latest                                                                                3f0af5c58378        436MB         93.3MB   U    
