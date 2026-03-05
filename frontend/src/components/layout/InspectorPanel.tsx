@@ -1,7 +1,7 @@
 // frontend/src/components/layout/InspectorPanel.tsx
 import React from 'react';
 import { useSelector } from 'react-redux';
-import { RootState, SelectedElement } from '../../store/slices/uiSlice';
+import { RootState } from '../../store';
 
 interface InspectorPanelProps {
   width: number;
@@ -10,8 +10,6 @@ interface InspectorPanelProps {
 const InspectorPanel: React.FC<InspectorPanelProps> = ({ width }) => {
   const selectedElements = useSelector((state: RootState) => state.ui.selectedElements);
   const currentArtifact = useSelector((state: RootState) => state.artifacts.currentArtifact);
-
-  console.log('[InspectorPanel] Selected elements:', selectedElements);
 
   const formatValue = (value: any): string => {
     if (value === null || value === undefined) return '—';
@@ -44,34 +42,28 @@ const InspectorPanel: React.FC<InspectorPanelProps> = ({ width }) => {
 
   const getNodeTypeColor = (type: string) => {
     const colors: Record<string, string> = {
-      person: '#3B82F6',
-      phone: '#10B981',
-      location: '#EF4444',
-      message: '#F59E0B',
-      organization: '#8B5CF6',
-      email: '#EC4899',
-      social: '#06B6D4',
-      document: '#6B7280'
+      person: '#97c2fc',
+      phone: '#7be141',
+      message: '#ffb752',
+      location: '#ff7b7b',
+      organization: '#d9b4ff',
+      device: '#ffb3ba',
+      email: '#b0e57c',
+      social: '#f7cac9',
+      document: '#c0c0c0',
+      default: '#cccccc'
     };
-    return colors[type] || '#6B7280';
+    return colors[type] || colors.default;
   };
 
-  // Функция для получения общих атрибутов
   const getCommonAttributes = () => {
     if (selectedElements.length < 2) return null;
     
-    console.log('[InspectorPanel] Computing common attributes for', selectedElements.length, 'elements');
-    
-    // Собираем все атрибуты из всех выделенных элементов
     const allAttributes: Record<string, Set<any>> = {};
     const attributeValues: Record<string, Set<any>> = {};
     
     selectedElements.forEach(element => {
-      console.log('[InspectorPanel] Element data:', element.data);
-      
-      // Проверяем attributes в данных
       const attributes = element.data?.attributes || {};
-      
       Object.entries(attributes).forEach(([key, value]) => {
         if (!allAttributes[key]) {
           allAttributes[key] = new Set();
@@ -82,10 +74,6 @@ const InspectorPanel: React.FC<InspectorPanelProps> = ({ width }) => {
       });
     });
     
-    console.log('[InspectorPanel] All attributes:', allAttributes);
-    console.log('[InspectorPanel] Attribute values:', attributeValues);
-    
-    // Возвращаем только те атрибуты, которые есть у всех элементов
     const commonAttrs: Record<string, { values: Set<any>, isCommon: boolean }> = {};
     Object.keys(allAttributes).forEach(key => {
       if (allAttributes[key].size === selectedElements.length) {
@@ -96,7 +84,6 @@ const InspectorPanel: React.FC<InspectorPanelProps> = ({ width }) => {
       }
     });
     
-    console.log('[InspectorPanel] Common attributes:', commonAttrs);
     return commonAttrs;
   };
 
@@ -114,18 +101,19 @@ const InspectorPanel: React.FC<InspectorPanelProps> = ({ width }) => {
       fontFamily: 'system-ui, -apple-system, sans-serif'
     }}>
       
+      {/* Компактный заголовок */}
       <div style={{
-        padding: '20px 20px 12px 20px',
+        padding: '12px 12px 8px 12px',
         borderBottom: '1px solid #374151'
       }}>
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '8px',
+          gap: '6px',
           color: '#9ca3af',
-          fontSize: '12px',
+          fontSize: '11px',
           textTransform: 'uppercase',
-          letterSpacing: '0.5px',
+          letterSpacing: '0.3px',
           marginBottom: '4px'
         }}>
           <span>⚡</span>
@@ -133,12 +121,12 @@ const InspectorPanel: React.FC<InspectorPanelProps> = ({ width }) => {
           {selectedElements.length > 1 && (
             <span style={{
               backgroundColor: '#374151',
-              padding: '2px 6px',
-              borderRadius: '4px',
-              fontSize: '10px',
+              padding: '2px 4px',
+              borderRadius: '3px',
+              fontSize: '9px',
               marginLeft: 'auto'
             }}>
-              {selectedElements.length} элементов
+              {selectedElements.length}
             </span>
           )}
         </div>
@@ -146,22 +134,22 @@ const InspectorPanel: React.FC<InspectorPanelProps> = ({ width }) => {
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
-            marginTop: '8px'
+            gap: '6px',
+            marginTop: '4px'
           }}>
-            <span style={{ fontSize: '20px' }}>{getTypeIcon(currentArtifact.type)}</span>
+            <span style={{ fontSize: '16px' }}>{getTypeIcon(currentArtifact.type)}</span>
             <div style={{ flex: 1 }}>
               <div style={{
                 color: '#ffffff',
                 fontWeight: 500,
-                fontSize: '14px',
+                fontSize: '12px',
                 marginBottom: '2px'
               }}>
                 {currentArtifact.name}
               </div>
               <div style={{
                 color: '#6b7280',
-                fontSize: '11px'
+                fontSize: '10px'
               }}>
                 v{currentArtifact.version} • {formatDate(currentArtifact.updated_at)}
               </div>
@@ -170,10 +158,11 @@ const InspectorPanel: React.FC<InspectorPanelProps> = ({ width }) => {
         )}
       </div>
 
+      {/* Компактный контент */}
       <div style={{
         flex: 1,
         overflowY: 'auto',
-        padding: '20px'
+        padding: '12px'
       }}>
         {selectedElements.length === 0 ? (
           <div style={{
@@ -184,36 +173,37 @@ const InspectorPanel: React.FC<InspectorPanelProps> = ({ width }) => {
             height: '100%',
             color: '#6b7280',
             textAlign: 'center',
-            gap: '12px'
+            gap: '8px',
+            fontSize: '11px'
           }}>
-            <span style={{ fontSize: '32px', opacity: 0.5 }}>👆</span>
-            <div style={{ fontSize: '13px', lineHeight: '1.5' }}>
-              Кликните на узел или связь,<br />чтобы увидеть свойства
+            <span style={{ fontSize: '24px', opacity: 0.5 }}>👆</span>
+            <div>
+              Кликните на узел или связь
             </div>
           </div>
         ) : (
           <div>
-            {/* Информация о выделении */}
+            {/* Тип выделения */}
             <div style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '8px',
-              marginBottom: '16px',
-              paddingBottom: '12px',
+              gap: '6px',
+              marginBottom: '12px',
+              paddingBottom: '8px',
               borderBottom: '1px solid #374151'
             }}>
-              <span style={{ fontSize: '20px' }}>
+              <span style={{ fontSize: '16px' }}>
                 {selectedElements.length === 1 ? getTypeIcon(selectedElements[0].type) : '🔲'}
               </span>
               <span style={{
                 color: '#9ca3af',
-                fontSize: '12px',
+                fontSize: '11px',
                 textTransform: 'uppercase',
-                letterSpacing: '0.5px'
+                letterSpacing: '0.3px'
               }}>
                 {selectedElements.length === 1 
                   ? (selectedElements[0].type === 'node' ? 'Узел' : 'Связь')
-                  : `Выделено ${selectedElements.length} элементов`
+                  : `${selectedElements.length} элементов`
                 }
               </span>
             </div>
@@ -222,22 +212,21 @@ const InspectorPanel: React.FC<InspectorPanelProps> = ({ width }) => {
             {selectedElements.length === 1 && (
               <div style={{
                 backgroundColor: '#111827',
-                borderRadius: '8px',
-                padding: '12px',
-                marginBottom: '16px'
+                borderRadius: '4px',
+                padding: '8px',
+                marginBottom: '12px'
               }}>
                 <div style={{
                   color: '#9ca3af',
-                  fontSize: '11px',
+                  fontSize: '9px',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                  marginBottom: '4px'
+                  marginBottom: '2px'
                 }}>
                   ID
                 </div>
                 <div style={{
                   color: '#3b82f6',
-                  fontSize: '13px',
+                  fontSize: '11px',
                   fontFamily: 'monospace',
                   wordBreak: 'break-all'
                 }}>
@@ -246,93 +235,77 @@ const InspectorPanel: React.FC<InspectorPanelProps> = ({ width }) => {
               </div>
             )}
 
-            {/* Общие атрибуты для множественного выделения */}
+            {/* Общие атрибуты */}
             {selectedElements.length > 1 && commonAttributes && Object.keys(commonAttributes).length > 0 && (
-              <div style={{ marginBottom: '16px' }}>
+              <div style={{ marginBottom: '12px' }}>
                 <div style={{
                   color: '#9ca3af',
-                  fontSize: '11px',
+                  fontSize: '10px',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                  marginBottom: '12px',
+                  marginBottom: '8px',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '4px'
                 }}>
                   <span>📋</span>
-                  <span>Общие атрибуты</span>
+                  <span>Общие</span>
                 </div>
                 {Object.entries(commonAttributes).map(([key, { values, isCommon }]) => (
-                  <div key={key} style={{ marginBottom: '12px' }}>
+                  <div key={key} style={{ marginBottom: '8px' }}>
                     <div style={{
                       color: '#9ca3af',
-                      fontSize: '11px',
+                      fontSize: '9px',
                       textTransform: 'uppercase',
-                      letterSpacing: '0.5px',
-                      marginBottom: '4px'
+                      marginBottom: '2px'
                     }}>
                       {key}
                     </div>
                     <div style={{
                       color: '#ffffff',
-                      fontSize: '12px',
+                      fontSize: '11px',
                       wordBreak: 'break-word',
                       backgroundColor: '#111827',
-                      padding: '8px',
+                      padding: '6px',
                       borderRadius: '4px',
                       fontFamily: 'monospace',
                       border: isCommon ? '1px solid #3b82f6' : '1px solid #374151'
                     }}>
-                      {isCommon ? formatValue(Array.from(values)[0]) : '(разные значения)'}
+                      {isCommon ? formatValue(Array.from(values)[0]) : '(разные)'}
                     </div>
                   </div>
                 ))}
               </div>
             )}
 
-            {/* Если есть выделенные элементы, но нет общих атрибутов */}
-            {selectedElements.length > 1 && (!commonAttributes || Object.keys(commonAttributes).length === 0) && (
-              <div style={{
-                backgroundColor: '#111827',
-                borderRadius: '8px',
-                padding: '16px',
-                textAlign: 'center',
-                color: '#6b7280'
-              }}>
-                Нет общих атрибутов
-              </div>
-            )}
-
-            {/* Индивидуальные свойства для одиночного выделения */}
+            {/* Индивидуальные свойства */}
             {selectedElements.length === 1 && selectedElements[0].data && 
              Object.entries(selectedElements[0].data).map(([key, value]) => {
               if (key === 'id' || key === 'attributes') return null;
               
               if (key === 'color') {
                 return (
-                  <div key={key} style={{ marginBottom: '12px' }}>
+                  <div key={key} style={{ marginBottom: '8px' }}>
                     <div style={{
                       color: '#9ca3af',
-                      fontSize: '11px',
+                      fontSize: '9px',
                       textTransform: 'uppercase',
-                      letterSpacing: '0.5px',
-                      marginBottom: '4px'
+                      marginBottom: '2px'
                     }}>
                       {key}
                     </div>
                     <div style={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '8px'
+                      gap: '6px'
                     }}>
                       <div style={{
-                        width: '20px',
-                        height: '20px',
+                        width: '16px',
+                        height: '16px',
                         backgroundColor: String(value),
-                        borderRadius: '6px',
+                        borderRadius: '4px',
                         border: '1px solid #374151'
                       }} />
-                      <span style={{ color: '#ffffff', fontSize: '12px' }}>{String(value)}</span>
+                      <span style={{ color: '#ffffff', fontSize: '11px' }}>{String(value)}</span>
                     </div>
                   </div>
                 );
@@ -340,52 +313,49 @@ const InspectorPanel: React.FC<InspectorPanelProps> = ({ width }) => {
 
               if (key === 'type' && selectedElements[0].type === 'node') {
                 return (
-                  <div key={key} style={{ marginBottom: '12px' }}>
+                  <div key={key} style={{ marginBottom: '8px' }}>
                     <div style={{
                       color: '#9ca3af',
-                      fontSize: '11px',
+                      fontSize: '9px',
                       textTransform: 'uppercase',
-                      letterSpacing: '0.5px',
-                      marginBottom: '4px'
+                      marginBottom: '2px'
                     }}>
                       {key}
                     </div>
                     <div style={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '8px'
+                      gap: '6px'
                     }}>
                       <div style={{
-                        width: '12px',
-                        height: '12px',
+                        width: '10px',
+                        height: '10px',
                         backgroundColor: getNodeTypeColor(String(value)),
-                        borderRadius: '4px'
+                        borderRadius: '3px'
                       }} />
-                      <span style={{ color: '#ffffff', fontSize: '12px' }}>{String(value)}</span>
+                      <span style={{ color: '#ffffff', fontSize: '11px' }}>{String(value)}</span>
                     </div>
                   </div>
                 );
               }
 
               return (
-                <div key={key} style={{ marginBottom: '12px' }}>
+                <div key={key} style={{ marginBottom: '8px' }}>
                   <div style={{
                     color: '#9ca3af',
-                    fontSize: '11px',
+                    fontSize: '9px',
                     textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    marginBottom: '4px'
+                    marginBottom: '2px'
                   }}>
                     {key}
                   </div>
                   <div style={{
                     color: '#ffffff',
-                    fontSize: '12px',
+                    fontSize: '11px',
                     wordBreak: 'break-word',
-                    backgroundColor: value !== null && typeof value === 'object' ? '#111827' : 'transparent',
-                    padding: value !== null && typeof value === 'object' ? '8px' : '0',
-                    borderRadius: '4px',
-                    fontFamily: value !== null && typeof value === 'object' ? 'monospace' : 'inherit'
+                    backgroundColor: '#111827',
+                    padding: '6px',
+                    borderRadius: '4px'
                   }}>
                     {formatValue(value)}
                   </div>
@@ -393,21 +363,20 @@ const InspectorPanel: React.FC<InspectorPanelProps> = ({ width }) => {
               );
             })}
 
-            {/* Атрибуты для одиночного выделения */}
+            {/* Атрибуты */}
             {selectedElements.length === 1 && 
              selectedElements[0].data?.attributes && 
              Object.keys(selectedElements[0].data.attributes).length > 0 && (
               <div style={{
-                marginTop: '20px',
-                paddingTop: '16px',
+                marginTop: '16px',
+                paddingTop: '12px',
                 borderTop: '1px solid #374151'
               }}>
                 <div style={{
                   color: '#9ca3af',
-                  fontSize: '11px',
+                  fontSize: '10px',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                  marginBottom: '12px',
+                  marginBottom: '8px',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '4px'
@@ -416,22 +385,21 @@ const InspectorPanel: React.FC<InspectorPanelProps> = ({ width }) => {
                   <span>Атрибуты</span>
                 </div>
                 {Object.entries(selectedElements[0].data.attributes).map(([key, value]) => (
-                  <div key={key} style={{ marginBottom: '12px' }}>
+                  <div key={key} style={{ marginBottom: '8px' }}>
                     <div style={{
                       color: '#9ca3af',
-                      fontSize: '11px',
+                      fontSize: '9px',
                       textTransform: 'uppercase',
-                      letterSpacing: '0.5px',
-                      marginBottom: '4px'
+                      marginBottom: '2px'
                     }}>
                       {key}
                     </div>
                     <div style={{
                       color: '#ffffff',
-                      fontSize: '12px',
+                      fontSize: '11px',
                       wordBreak: 'break-word',
                       backgroundColor: '#111827',
-                      padding: '8px',
+                      padding: '6px',
                       borderRadius: '4px',
                       fontFamily: 'monospace'
                     }}>

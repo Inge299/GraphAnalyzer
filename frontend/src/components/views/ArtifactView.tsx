@@ -3,10 +3,6 @@ import React, { Suspense, lazy, memo } from 'react';
 import { Artifact } from '../../store/slices/artifactsSlice';
 
 const GraphView = lazy(() => import('./GraphView'));
-const TableView = lazy(() => import('./TableView'));
-const MapView = lazy(() => import('./MapView'));
-const ChartView = lazy(() => import('./ChartView'));
-const DocumentView = lazy(() => import('./DocumentView'));
 
 interface ArtifactViewProps {
   artifact: Artifact;
@@ -17,7 +13,16 @@ interface ArtifactViewProps {
 
 const LoadingFallback = () => (
   <div className="flex items-center justify-center h-full">
-    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
+    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500" />
+  </div>
+);
+
+const PlaceholderView = ({ icon, text }: { icon: string; text: string }) => (
+  <div className="flex items-center justify-center h-full text-gray-400">
+    <div className="text-center">
+      <div className="text-3xl mb-3">{icon}</div>
+      <div className="text-sm opacity-75">{text}</div>
+    </div>
   </div>
 );
 
@@ -41,60 +46,62 @@ const ArtifactView: React.FC<ArtifactViewProps> = memo(({
           </Suspense>
         );
       case 'table':
-        return (
-          <Suspense fallback={<LoadingFallback />}>
-            <TableView artifact={artifact} onUpdate={onUpdate} />
-          </Suspense>
-        );
+        return <PlaceholderView icon="📋" text="Таблицы будут в Этапе 2.5" />;
       case 'map':
-        return (
-          <Suspense fallback={<LoadingFallback />}>
-            <MapView artifact={artifact} onUpdate={onUpdate} />
-          </Suspense>
-        );
+        return <PlaceholderView icon="🗺️" text="Карты будут в Этапе 2.5" />;
       case 'chart':
-        return (
-          <Suspense fallback={<LoadingFallback />}>
-            <ChartView artifact={artifact} onUpdate={onUpdate} />
-          </Suspense>
-        );
+        return <PlaceholderView icon="📈" text="Диаграммы будут в Этапе 2.5" />;
       case 'document':
-        return (
-          <Suspense fallback={<LoadingFallback />}>
-            <DocumentView artifact={artifact} onUpdate={onUpdate} />
-          </Suspense>
-        );
+        return <PlaceholderView icon="📄" text="Документы будут в Этапе 2.5" />;
       default:
-        return <div>Unknown artifact type: {artifact.type}</div>;
+        return <PlaceholderView icon="❓" text="Неизвестный тип артефакта" />;
     }
   };
 
   return (
-    <div className="artifact-view">
-      <div className="artifact-view-header">
-        <div className="flex items-center space-x-4">
-          <span className="text-lg font-medium text-white">{artifact.name}</span>
-          <span className="text-sm text-gray-400">
-            v{artifact.version} • {new Date(artifact.updated_at).toLocaleString()}
+    <div className="artifact-view" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      {/* Компактный заголовок */}
+      <div style={{
+        padding: '8px 12px',
+        borderBottom: '1px solid #374151',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        backgroundColor: '#1f2937',
+        flexShrink: 0
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '16px' }}>
+            {artifact.type === 'graph' && '📊'}
+            {artifact.type === 'table' && '📋'}
+            {artifact.type === 'map' && '🗺️'}
+            {artifact.type === 'chart' && '📈'}
+            {artifact.type === 'document' && '📄'}
           </span>
-          {artifact.source_artifact_id && (
-            <span className="text-xs bg-blue-900 text-blue-200 px-2 py-1 rounded">
-              Derived
-            </span>
-          )}
+          <span style={{ color: '#ffffff', fontSize: '13px', fontWeight: 500 }}>
+            {artifact.name}
+          </span>
+          <span style={{ color: '#6b7280', fontSize: '11px' }}>
+            v{artifact.version}
+          </span>
         </div>
         <button
           onClick={onClose}
-          className="text-gray-400 hover:text-white transition-colors"
-          title="Close"
+          style={{
+            background: 'none',
+            border: 'none',
+            color: '#9ca3af',
+            cursor: 'pointer',
+            fontSize: '16px',
+            padding: '4px'
+          }}
+          title="Закрыть"
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
+          ✕
         </button>
       </div>
       
-      <div className="artifact-view-content">
+      <div style={{ flex: 1, overflow: 'hidden' }}>
         {renderView()}
       </div>
     </div>

@@ -16,8 +16,6 @@ const GraphView: React.FC<GraphViewProps> = memo(({ artifact, onNodeMove }) => {
   const networkRef = useRef<HTMLDivElement>(null);
   const networkInstanceRef = useRef<Network | null>(null);
   const nodesRef = useRef<DataSet<any> | null>(null);
-  const edgesRef = useRef<DataSet<any> | null>(null);
-  const nodeMapRef = useRef<Map<string, string>>(new Map());
   const isInitializedRef = useRef<boolean>(false);
   const shiftKeyRef = useRef<boolean>(false);
   
@@ -40,6 +38,32 @@ const GraphView: React.FC<GraphViewProps> = memo(({ artifact, onNodeMove }) => {
       networkInstanceRef.current.moveTo({ scale: scale * 0.8, animation: true });
     }
   }, []);
+
+  // Функция для получения цвета узла по типу
+  const getNodeColor = (type: string = 'default'): string => {
+    const colors: Record<string, string> = {
+      person: '#97c2fc',      // синий
+      phone: '#7be141',       // зеленый
+      message: '#ffb752',     // оранжевый
+      location: '#ff7b7b',    // красный
+      organization: '#d9b4ff', // фиолетовый
+      device: '#ffb3ba',      // розовый
+      email: '#b0e57c',       // светло-зеленый
+      social: '#f7cac9',      // персиковый
+      document: '#c0c0c0',    // серебряный
+      default: '#cccccc'      // серый по умолчанию
+    };
+    return colors[type] || colors.default;
+  };
+
+  const getEdgeColor = (type: string = 'default'): string => {
+    const colors: Record<string, string> = {
+      follows: '#3B82F6',
+      subscribed: '#10B981',
+      default: '#6B7280'
+    };
+    return colors[type] || colors.default;
+  };
 
   // Отслеживаем Shift
   useEffect(() => {
@@ -123,15 +147,10 @@ const GraphView: React.FC<GraphViewProps> = memo(({ artifact, onNodeMove }) => {
     const nodes = new DataSet(visNodes);
     nodesRef.current = nodes;
     const edges = new DataSet(visEdges);
-    edgesRef.current = edges;
-    nodeMapRef.current = nodeMap;
 
     const options = {
       physics: false,
-      layout: { 
-        improvedLayout: false, 
-        hierarchical: false 
-      },
+      layout: { improvedLayout: false, hierarchical: false },
       nodes: {
         shape: 'dot',
         size: 20,
@@ -160,7 +179,7 @@ const GraphView: React.FC<GraphViewProps> = memo(({ artifact, onNodeMove }) => {
         keyboard: true,
         zoomView: true,
         dragView: true,
-        multiselect: true, // Включаем множественное выделение
+        multiselect: true,
         dragNodes: true
       }
     };
@@ -168,12 +187,10 @@ const GraphView: React.FC<GraphViewProps> = memo(({ artifact, onNodeMove }) => {
     const network = new Network(networkRef.current, { nodes, edges }, options);
     networkInstanceRef.current = network;
 
-    // Используем стандартное событие select
     network.on('select', (params) => {
       console.log('[GraphView] Select event:', params);
       
       if (params.nodes.length > 0) {
-        // Выделены узлы
         const selectedNodesData = params.nodes.map(id => nodes.get(id));
         dispatch(setSelectedElements(selectedNodesData.map(data => ({ 
           type: 'node', 
@@ -181,7 +198,6 @@ const GraphView: React.FC<GraphViewProps> = memo(({ artifact, onNodeMove }) => {
           data 
         }))));
       } else if (params.edges.length > 0) {
-        // Выделены ребра
         const edgeId = params.edges[0];
         const edge = edges.get(edgeId);
         if (edge) {
@@ -193,13 +209,11 @@ const GraphView: React.FC<GraphViewProps> = memo(({ artifact, onNodeMove }) => {
           dispatch(setSelectedElement({ type: 'edge', id: edgeId, data: enrichedEdge }));
         }
       } else {
-        // Ничего не выделено
         dispatch(setSelectedElement(null));
         dispatch(setSelectedElements([]));
       }
     });
 
-    // Перемещение узлов
     network.on('dragEnd', (params) => {
       if (params.nodes.length > 0 && onNodeMove) {
         const nodeId = params.nodes[0];
@@ -217,61 +231,39 @@ const GraphView: React.FC<GraphViewProps> = memo(({ artifact, onNodeMove }) => {
     };
   }, [artifact.id]);
 
-  const getNodeColor = (type: string = 'default'): string => {
-    const colors: Record<string, string> = {
-      person: '#3B82F6',
-      phone: '#10B981',
-      location: '#EF4444',
-      message: '#F59E0B',
-      organization: '#8B5CF6',
-      email: '#EC4899',
-      social: '#06B6D4',
-      document: '#6B7280',
-      default: '#6B7280'
-    };
-    return colors[type] || colors.default;
-  };
-
-  const getEdgeColor = (type: string = 'default'): string => {
-    const colors: Record<string, string> = {
-      follows: '#3B82F6',
-      subscribed: '#10B981',
-      default: '#6B7280'
-    };
-    return colors[type] || colors.default;
-  };
-
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative', background: '#111827' }}>
       <div ref={networkRef} style={{ width: '100%', height: '100%' }} />
       
+      {/* Компактная панель навигации */}
       <div style={{
         position: 'absolute',
-        bottom: '24px',
-        right: '24px',
+        bottom: '16px',
+        right: '16px',
         display: 'flex',
         flexDirection: 'column',
-        gap: '8px',
+        gap: '6px',
         zIndex: 1000
       }}>
-        <button onClick={fitToScreen} style={buttonStyle}>⤢</button>
-        <button onClick={zoomIn} style={buttonStyle}>+</button>
-        <button onClick={zoomOut} style={buttonStyle}>−</button>
+        <button onClick={fitToScreen} style={compactButtonStyle}>⤢</button>
+        <button onClick={zoomIn} style={compactButtonStyle}>+</button>
+        <button onClick={zoomOut} style={compactButtonStyle}>−</button>
       </div>
 
-      <div style={infoStyle}>
-        <div style={{ fontWeight: 600, marginBottom: '8px', color: '#9ca3af', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+      {/* Компактная информационная панель */}
+      <div style={compactInfoStyle}>
+        <div style={{ fontWeight: 600, marginBottom: '4px', color: '#9ca3af', fontSize: '10px', textTransform: 'uppercase' }}>
           Граф
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px', fontSize: '11px' }}>
           <span style={{ color: '#9ca3af' }}>Узлы:</span>
           <span style={{ fontWeight: 500 }}>{artifact.data?.nodes?.length || 0}</span>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px', fontSize: '11px' }}>
           <span style={{ color: '#9ca3af' }}>Связи:</span>
           <span style={{ fontWeight: 500 }}>{artifact.data?.edges?.length || 0}</span>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
           <span style={{ color: '#9ca3af' }}>Версия:</span>
           <span style={{ fontWeight: 500 }}>{artifact.version}</span>
         </div>
@@ -280,37 +272,38 @@ const GraphView: React.FC<GraphViewProps> = memo(({ artifact, onNodeMove }) => {
   );
 });
 
-const buttonStyle = {
-  width: '44px',
-  height: '44px',
+// Компактные стили для кнопок
+const compactButtonStyle = {
+  width: '32px',
+  height: '32px',
   backgroundColor: '#1f2937',
   border: '1px solid #374151',
-  borderRadius: '12px',
+  borderRadius: '6px',
   color: '#9ca3af',
   cursor: 'pointer',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  fontSize: '20px',
-  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
+  fontSize: '16px',
+  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
   transition: 'all 0.2s ease',
-  backdropFilter: 'blur(8px)',
 };
 
-const infoStyle = {
+// Компактная информационная панель
+const compactInfoStyle = {
   position: 'absolute' as const,
-  top: '24px',
-  right: '24px',
-  backgroundColor: 'rgba(31, 41, 55, 0.9)',
+  top: '16px',
+  right: '16px',
+  backgroundColor: 'rgba(31, 41, 55, 0.95)',
   backdropFilter: 'blur(8px)',
   color: 'white',
-  padding: '12px 16px',
-  borderRadius: '12px',
-  fontSize: '13px',
+  padding: '8px 12px',
+  borderRadius: '6px',
+  fontSize: '11px',
   zIndex: 1000,
   border: '1px solid #374151',
-  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
-  minWidth: '160px'
+  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+  minWidth: '120px'
 };
 
 export default GraphView;
