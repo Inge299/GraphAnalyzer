@@ -1,4 +1,4 @@
-Metadata-Version: 2.1
+Metadata-Version: 2.4
 Name: bcrypt
 Version: 5.0.0
 Summary: Modern password hashing for your software and your servers
@@ -26,6 +26,7 @@ Provides-Extra: tests
 Requires-Dist: pytest!=3.3.0,>=3.2.1; extra == "tests"
 Provides-Extra: typecheck
 Requires-Dist: mypy; extra == "typecheck"
+Dynamic: license-file
 
 bcrypt
 ======

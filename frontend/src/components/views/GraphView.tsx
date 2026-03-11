@@ -1,10 +1,14 @@
 // frontend/src/components/views/GraphView.tsx
-import React, { useEffect, useRef, useCallback, memo } from 'react';
+import React, { useEffect, useRef, useCallback, memo, useState } from 'react';
 import { Network } from 'vis-network/standalone';
 import { DataSet } from 'vis-data/standalone';
 import { useDispatch } from 'react-redux';
 import { Artifact } from '../../store/slices/artifactsSlice';
 import { setSelectedElement, setSelectedElements } from '../../store/slices/uiSlice';
+import { useActionWithUndo } from '../../hooks/useActionWithUndo';
+import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
+import { HistoryPanel } from '../history/HistoryPanel';
+import { setGraphData } from '../../store/slices/graphSlice';
 
 interface GraphViewProps {
   artifact: Artifact;
@@ -18,6 +22,14 @@ const GraphView: React.FC<GraphViewProps> = memo(({ artifact, onNodeMove }) => {
   const nodesRef = useRef<DataSet<any> | null>(null);
   const isInitializedRef = useRef<boolean>(false);
   const shiftKeyRef = useRef<boolean>(false);
+  
+  // Хуки для undo/redo
+  const { executeAction } = useActionWithUndo(artifact.id);
+  useKeyboardShortcuts(artifact.id);
+  
+  // Состояние для группировки перемещений
+  const [pendingMoves, setPendingMoves] = useState<Record<string, {x: number, y: number}>>({});
+  const moveTimeoutRef = useRef<NodeJS.Timeout>();
   
   const fitToScreen = useCallback(() => {
     if (networkInstanceRef.current) {
@@ -65,6 +77,159 @@ const GraphView: React.FC<GraphViewProps> = memo(({ artifact, onNodeMove }) => {
     return colors[type] || colors.default;
   };
 
+  // Функция для получения текущего состояния графа
+  const getCurrentGraphState = useCallback(() => {
+    if (!nodesRef.current || !networkInstanceRef.current) return null;
+    
+    const nodes = nodesRef.current.get();
+    const edges = networkInstanceRef.current.body.data.edges.get();
+    
+    return {
+      nodes: nodes.map((node: any) => ({
+        id: node.id,
+        node_id: node.id,
+        type: node.type || 'default',
+        label: node.label,
+        position_x: node.x,
+        position_y: node.y,
+        attributes: node.attributes || {}
+      })),
+      edges: edges.map((edge: any) => ({
+        id: edge.id,
+        edge_id: edge.id,
+        source: edge.from,
+        target: edge.to,
+        source_node: edge.from,
+        target_node: edge.to,
+        type: edge.type || '',
+        label: edge.label,
+        attributes: edge.attributes || {}
+      }))
+    };
+  }, []);
+
+  // Обработчик перемещения узлов с группировкой
+  const handleNodeDragEnd = useCallback((params: any) => {
+    const nodeId = params.nodes[0];
+    if (!nodeId || !networkInstanceRef.current) return;
+    
+    const position = networkInstanceRef.current.getPosition(nodeId);
+    
+    // Вызываем внешний обработчик если есть
+    if (onNodeMove) {
+      onNodeMove(nodeId, position.x, position.y);
+    }
+    
+    // Добавляем в ожидающие перемещения
+    setPendingMoves(prev => ({
+      ...prev,
+      [nodeId]: { x: position.x, y: position.y }
+    }));
+    
+    // Группируем перемещения за 500ms
+    if (moveTimeoutRef.current) {
+      clearTimeout(moveTimeoutRef.current);
+    }
+    
+    moveTimeoutRef.current = setTimeout(() => {
+      const moves = { ...pendingMoves };
+      if (Object.keys(moves).length === 0) return;
+      
+      executeAction(
+        'batch_move',
+        () => {
+          // Здесь можно обновить состояние в Redux если нужно
+          console.log(`Batch move of ${Object.keys(moves).length} nodes`);
+        },
+        `Перемещение ${Object.keys(moves).length} узл${Object.keys(moves).length === 1 ? 'а' : 'ов'}`
+      );
+      
+      setPendingMoves({});
+    }, 500);
+  }, [onNodeMove, executeAction, pendingMoves]);
+
+  // Обработчик добавления узла (пример)
+  const handleAddNode = useCallback((position: {x: number, y: number}, type: string = 'default') => {
+    executeAction(
+      'add_node',
+      () => {
+        // Здесь логика добавления узла через API или Redux
+        const newNode = {
+          id: `node_${Date.now()}`,
+          type,
+          label: `Новый узел`,
+          position_x: position.x,
+          position_y: position.y,
+          attributes: {}
+        };
+        
+        if (nodesRef.current) {
+          nodesRef.current.add({
+            ...newNode,
+            x: position.x,
+            y: position.y,
+            color: getNodeColor(type),
+            font: { color: '#ffffff', size: 14, strokeWidth: 0 }
+          });
+        }
+      },
+      'Добавление узла'
+    );
+  }, [executeAction]);
+
+  // Обработчик удаления узла
+  const handleDeleteNode = useCallback((nodeId: string) => {
+    executeAction(
+      'delete_node',
+      () => {
+        if (nodesRef.current) {
+          nodesRef.current.remove(nodeId);
+        }
+      },
+      `Удаление узла`
+    );
+  }, [executeAction]);
+
+  // Обработчик прыжка по истории
+  const handleHistoryJump = useCallback((state: any) => {
+    if (!state || !nodesRef.current || !networkInstanceRef.current) return;
+    
+    // Обновляем данные в vis-network
+    nodesRef.current.clear();
+    nodesRef.current.add(state.nodes.map((node: any) => ({
+      id: node.id || node.node_id,
+      label: node.label || node.name || 'Узел',
+      x: node.position_x,
+      y: node.position_y,
+      color: getNodeColor(node.type),
+      font: { color: '#ffffff', size: 14, strokeWidth: 0 },
+      shape: 'dot',
+      size: 20,
+      borderWidth: 2,
+      shadow: true,
+      type: node.type,
+      attributes: node.attributes || {}
+    })));
+    
+    networkInstanceRef.current.body.data.edges.clear();
+    networkInstanceRef.current.body.data.edges.add(state.edges.map((edge: any) => ({
+      id: edge.id || edge.edge_id,
+      from: edge.source || edge.from || edge.source_node,
+      to: edge.target || edge.to || edge.target_node,
+      label: edge.label || edge.type || '',
+      color: getEdgeColor(edge.type),
+      font: { color: '#ffffff', size: 12, align: 'middle', strokeWidth: 0 },
+      arrows: { to: { enabled: true, type: 'arrow', scaleFactor: 1 } },
+      smooth: { type: 'continuous', forceDirection: 'none' },
+      width: 2,
+      type: edge.type,
+      attributes: edge.attributes || {}
+    })));
+    
+    // Обновляем Redux состояние
+    dispatch(setGraphData(state));
+  }, [dispatch]);
+
   // Отслеживаем Shift
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -88,6 +253,16 @@ const GraphView: React.FC<GraphViewProps> = memo(({ artifact, onNodeMove }) => {
     };
   }, []);
 
+  // Cleanup timeout при размонтировании
+  useEffect(() => {
+    return () => {
+      if (moveTimeoutRef.current) {
+        clearTimeout(moveTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Инициализация графа
   useEffect(() => {
     if (!networkRef.current || isInitializedRef.current) return;
 
@@ -214,13 +389,7 @@ const GraphView: React.FC<GraphViewProps> = memo(({ artifact, onNodeMove }) => {
       }
     });
 
-    network.on('dragEnd', (params) => {
-      if (params.nodes.length > 0 && onNodeMove) {
-        const nodeId = params.nodes[0];
-        const position = network.getPosition(nodeId);
-        onNodeMove(nodeId, position.x, position.y);
-      }
-    });
+    network.on('dragEnd', handleNodeDragEnd);
 
     return () => {
       if (networkInstanceRef.current) {
@@ -229,11 +398,39 @@ const GraphView: React.FC<GraphViewProps> = memo(({ artifact, onNodeMove }) => {
         isInitializedRef.current = false;
       }
     };
-  }, [artifact.id]);
+  }, [artifact.id, artifact.data, dispatch, handleNodeDragEnd]);
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative', background: '#111827' }}>
       <div ref={networkRef} style={{ width: '100%', height: '100%' }} />
+      
+      {/* Панель истории */}
+      <HistoryPanel 
+        graphId={artifact.id} 
+        onJump={handleHistoryJump}
+      />
+      
+      {/* Индикатор группировки перемещений */}
+      {Object.keys(pendingMoves).length > 0 && (
+        <div style={{
+          position: 'fixed',
+          bottom: '80px',
+          right: '20px',
+          background: '#ff9800',
+          color: 'white',
+          padding: '4px 12px',
+          borderRadius: '16px',
+          fontSize: '12px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+          zIndex: 10001,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px'
+        }}>
+          <span>⏳</span>
+          <span>Группировка {Object.keys(pendingMoves).length} перемещений...</span>
+        </div>
+      )}
       
       {/* Компактная панель навигации */}
       <div style={{
@@ -245,9 +442,9 @@ const GraphView: React.FC<GraphViewProps> = memo(({ artifact, onNodeMove }) => {
         gap: '6px',
         zIndex: 1000
       }}>
-        <button onClick={fitToScreen} style={compactButtonStyle}>⤢</button>
-        <button onClick={zoomIn} style={compactButtonStyle}>+</button>
-        <button onClick={zoomOut} style={compactButtonStyle}>−</button>
+        <button onClick={fitToScreen} style={compactButtonStyle} title="По размеру экрана">⤢</button>
+        <button onClick={zoomIn} style={compactButtonStyle} title="Приблизить">+</button>
+        <button onClick={zoomOut} style={compactButtonStyle} title="Отдалить">−</button>
       </div>
 
       {/* Компактная информационная панель */}

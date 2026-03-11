@@ -1,4 +1,4 @@
-#!/Users/sra/projects/GraphAnalyzer/venv/bin/python3.12
+#!/home/sra/projects/GraphAnalyzer/venv/bin/python3
 import sys
 from websockets.cli import main
 if __name__ == '__main__':
