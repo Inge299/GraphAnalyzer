@@ -1,14 +1,18 @@
 // frontend/src/components/views/ArtifactView.tsx
-import React, { Suspense, lazy, memo } from 'react';
-import { Artifact } from '../../store/slices/artifactsSlice';
+import React, { Suspense, memo, useCallback } from 'react';
+import { useAppDispatch } from '../../store';
+import { Artifact, updateArtifact } from '../../store/slices/artifactsSlice';
+import { useActionWithUndo } from '../../hooks/useActionWithUndo';
+import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
+import { setSelectedElement, setSelectedElements } from '../../store/slices/uiSlice';
 
-const GraphView = lazy(() => import('./GraphView'));
+// Импортируем GraphView напрямую (убираем lazy)
+import { GraphView } from './GraphView';  
 
 interface ArtifactViewProps {
   artifact: Artifact;
   onClose: () => void;
   onUpdate: (updates: Partial<Artifact>) => void;
-  onNodeMove?: (nodeId: string, x: number, y: number) => void;
 }
 
 const LoadingFallback = () => (
@@ -30,9 +34,237 @@ const ArtifactView: React.FC<ArtifactViewProps> = memo(({
   artifact,
   onClose,
   onUpdate,
-  onNodeMove,
 }) => {
+  const dispatch = useAppDispatch();
+  
+  // Инициализация хуков для undo/redo
+  const { executeAction } = useActionWithUndo(artifact.id);
+  useKeyboardShortcuts(artifact.id);
+
   console.log('[ArtifactView] Rendering', artifact.type, 'artifact:', artifact.id);
+
+  // Обработчик перемещения узла с поддержкой undo/redo
+  const handleNodeMove = useCallback((nodeId: string, x: number, y: number) => {
+    executeAction(
+      'move_node',
+      () => {
+        // Обновляем позицию узла в данных артефакта
+        const updatedNodes = artifact.data?.nodes?.map((node: any) => {
+          if (node.id === nodeId || node.node_id === nodeId) {
+            return {
+              ...node,
+              position_x: x,
+              position_y: y
+            };
+          }
+          return node;
+        }) || [];
+
+        const updatedArtifact = {
+          ...artifact,
+          data: {
+            ...(artifact.data || {}),
+            nodes: updatedNodes
+          }
+        };
+
+        // Обновляем через onUpdate и dispatch
+        onUpdate({ data: updatedArtifact.data });
+        dispatch(updateArtifact({
+          projectId: artifact.project_id,
+          artifactId: artifact.id,
+          data: updatedArtifact.data
+        }));
+      },
+      `Перемещение узла ${nodeId}`
+    );
+  }, [artifact, executeAction, onUpdate, dispatch]);
+
+  // Обработчик добавления узла
+  const handleAddNode = useCallback((position: { x: number, y: number }, nodeType: string = 'person') => {
+    executeAction(
+      'add_node',
+      () => {
+        const newNodeId = `node_${Date.now()}`;
+        const newNode = {
+          id: newNodeId,
+          node_id: newNodeId,
+          type: nodeType,
+          label: `New ${nodeType}`,
+          position_x: position.x,
+          position_y: position.y,
+          attributes: {
+            name: `New ${nodeType}`,
+            created: new Date().toISOString()
+          }
+        };
+
+        const updatedNodes = [...(artifact.data?.nodes || []), newNode];
+        const updatedArtifact = {
+          ...artifact,
+          data: {
+            ...(artifact.data || {}),
+            nodes: updatedNodes
+          }
+        };
+
+        onUpdate({ data: updatedArtifact.data });
+        dispatch(updateArtifact({
+          projectId: artifact.project_id,
+          artifactId: artifact.id,
+          data: updatedArtifact.data
+        }));
+      },
+      `Добавление узла ${nodeType}`
+    );
+  }, [artifact, executeAction, onUpdate, dispatch]);
+
+  // Обработчик удаления узла
+  const handleDeleteNode = useCallback((nodeId: string) => {
+    executeAction(
+      'delete_node',
+      () => {
+        const updatedNodes = artifact.data?.nodes?.filter((node: any) => 
+          node.id !== nodeId && node.node_id !== nodeId
+        ) || [];
+
+        // Также удаляем связанные ребра
+        const updatedEdges = artifact.data?.edges?.filter((edge: any) => 
+          edge.from !== nodeId && 
+          edge.to !== nodeId && 
+          edge.source_node !== nodeId && 
+          edge.target_node !== nodeId
+        ) || [];
+
+        const updatedArtifact = {
+          ...artifact,
+          data: {
+            ...(artifact.data || {}),
+            nodes: updatedNodes,
+            edges: updatedEdges
+          }
+        };
+
+        onUpdate({ data: updatedArtifact.data });
+        dispatch(updateArtifact({
+          projectId: artifact.project_id,
+          artifactId: artifact.id,
+          data: updatedArtifact.data
+        }));
+        
+        // Сбрасываем выделение
+        dispatch(setSelectedElement(null));
+        dispatch(setSelectedElements([]));
+      },
+      `Удаление узла ${nodeId}`
+    );
+  }, [artifact, executeAction, onUpdate, dispatch]);
+
+  // Обработчик добавления ребра
+  const handleAddEdge = useCallback((sourceId: string, targetId: string, edgeType: string = 'connects') => {
+    executeAction(
+      'add_edge',
+      () => {
+        const newEdgeId = `edge_${Date.now()}`;
+        const newEdge = {
+          id: newEdgeId,
+          edge_id: newEdgeId,
+          from: sourceId,
+          to: targetId,
+          source_node: sourceId,
+          target_node: targetId,
+          type: edgeType,
+          label: edgeType
+        };
+
+        const updatedEdges = [...(artifact.data?.edges || []), newEdge];
+        const updatedArtifact = {
+          ...artifact,
+          data: {
+            ...(artifact.data || {}),
+            edges: updatedEdges
+          }
+        };
+
+        onUpdate({ data: updatedArtifact.data });
+        dispatch(updateArtifact({
+          projectId: artifact.project_id,
+          artifactId: artifact.id,
+          data: updatedArtifact.data
+        }));
+      },
+      `Добавление связи ${sourceId} → ${targetId}`
+    );
+  }, [artifact, executeAction, onUpdate, dispatch]);
+
+  // Обработчик удаления ребра
+  const handleDeleteEdge = useCallback((edgeId: string) => {
+    executeAction(
+      'delete_edge',
+      () => {
+        const updatedEdges = artifact.data?.edges?.filter((edge: any) => 
+          edge.id !== edgeId && edge.edge_id !== edgeId
+        ) || [];
+
+        const updatedArtifact = {
+          ...artifact,
+          data: {
+            ...(artifact.data || {}),
+            edges: updatedEdges
+          }
+        };
+
+        onUpdate({ data: updatedArtifact.data });
+        dispatch(updateArtifact({
+          projectId: artifact.project_id,
+          artifactId: artifact.id,
+          data: updatedArtifact.data
+        }));
+        
+        // Сбрасываем выделение
+        dispatch(setSelectedElement(null));
+        dispatch(setSelectedElements([]));
+      },
+      `Удаление связи ${edgeId}`
+    );
+  }, [artifact, executeAction, onUpdate, dispatch]);
+
+  // Обработчик редактирования атрибутов
+  const handleEditAttributes = useCallback((nodeId: string, attributes: Record<string, any>) => {
+    executeAction(
+      'edit_attribute',
+      () => {
+        const updatedNodes = artifact.data?.nodes?.map((node: any) => {
+          if (node.id === nodeId || node.node_id === nodeId) {
+            return {
+              ...node,
+              attributes: {
+                ...(node.attributes || {}),
+                ...attributes
+              }
+            };
+          }
+          return node;
+        }) || [];
+
+        const updatedArtifact = {
+          ...artifact,
+          data: {
+            ...(artifact.data || {}),
+            nodes: updatedNodes
+          }
+        };
+
+        onUpdate({ data: updatedArtifact.data });
+        dispatch(updateArtifact({
+          projectId: artifact.project_id,
+          artifactId: artifact.id,
+          data: updatedArtifact.data
+        }));
+      },
+      `Редактирование атрибутов узла ${nodeId}`
+    );
+  }, [artifact, executeAction, onUpdate, dispatch]);
 
   const renderView = () => {
     switch (artifact.type) {
@@ -41,7 +273,12 @@ const ArtifactView: React.FC<ArtifactViewProps> = memo(({
           <Suspense fallback={<LoadingFallback />}>
             <GraphView
               artifact={artifact}
-              onNodeMove={onNodeMove}
+              onNodeMove={handleNodeMove}
+              onAddNode={handleAddNode}
+              onDeleteNode={handleDeleteNode}
+              onAddEdge={handleAddEdge}
+              onDeleteEdge={handleDeleteEdge}
+              onEditAttributes={handleEditAttributes}
             />
           </Suspense>
         );
