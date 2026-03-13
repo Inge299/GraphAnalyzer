@@ -4,7 +4,7 @@ import { api } from '../../services/api';
 
 export interface HistoryAction {
   id: string;
-  graphId: number;
+  artifactId: number;
   actionType: string;
   beforeState: any;
   afterState: any;
@@ -40,10 +40,10 @@ const initialState: HistoryState = {
 
 export const fetchHistory = createAsyncThunk(
   'history/fetch',
-  async (graphId: number, { rejectWithValue }) => {
+  async (artifactId: number, { rejectWithValue }) => {
     try {
-      const response = await api.get(`/api/v2/graphs/${graphId}/history?limit=100`);
-      return { graphId, actions: response.data };
+      const response = await api.get(`/api/v2/artifacts/${artifactId}/history?limit=100`);
+      return { artifactId, actions: response.data };
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.detail || 'Failed to fetch history');
     }
@@ -53,14 +53,14 @@ export const fetchHistory = createAsyncThunk(
 export const recordAction = createAsyncThunk(
   'history/record',
   async ({ 
-    graphId, 
+    artifactId, 
     action 
   }: { 
-    graphId: number; 
+    artifactId: number; 
     action: Omit<HistoryAction, 'id' | 'timestamp'>;
   }, { rejectWithValue }) => {
     try {
-      const response = await api.post(`/api/v2/graphs/${graphId}/history/actions`, action);
+      const response = await api.post(`/api/v2/artifacts/${artifactId}/history/actions`, action);
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.detail || 'Failed to record action');
@@ -70,9 +70,9 @@ export const recordAction = createAsyncThunk(
 
 export const undo = createAsyncThunk(
   'history/undo',
-  async (graphId: number, { dispatch, rejectWithValue }) => {
+  async (artifactId: number, { rejectWithValue }) => {
     try {
-      const response = await api.post(`/api/v2/graphs/${graphId}/history/undo`);
+      const response = await api.post(`/api/v2/artifacts/${artifactId}/history/undo`);
       return response.data;
     } catch (error: any) {
       if (error.response?.status === 404) {
@@ -86,9 +86,9 @@ export const undo = createAsyncThunk(
 
 export const redo = createAsyncThunk(
   'history/redo',
-  async (graphId: number, { dispatch, rejectWithValue }) => {
+  async (artifactId: number, { rejectWithValue }) => {
     try {
-      const response = await api.post(`/api/v2/graphs/${graphId}/history/redo`);
+      const response = await api.post(`/api/v2/artifacts/${artifactId}/history/redo`);
       return response.data;
     } catch (error: any) {
       if (error.response?.status === 404) {
@@ -102,10 +102,10 @@ export const redo = createAsyncThunk(
 
 export const clearHistory = createAsyncThunk(
   'history/clear',
-  async (graphId: number, { rejectWithValue }) => {
+  async (artifactId: number, { rejectWithValue }) => {
     try {
-      await api.delete(`/api/v2/graphs/${graphId}/history`);
-      return graphId;
+      await api.delete(`/api/v2/artifacts/${artifactId}/history`);
+      return artifactId;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.detail || 'Failed to clear history');
     }

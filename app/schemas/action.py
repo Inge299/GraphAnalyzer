@@ -21,7 +21,7 @@ class GraphActionCreate(GraphActionBase):
 class GraphActionResponse(GraphActionBase):
     """Schema for action response."""
     id: UUID
-    graph_id: int
+    artifact_id: int
     timestamp: datetime
     
     class Config:
@@ -30,7 +30,7 @@ class GraphActionResponse(GraphActionBase):
 class UndoResponse(BaseModel):
     """Response for undo operation."""
     action_id: UUID
-    graph_id: int
+    artifact_id: int
     state: Dict[str, Any]
     description: str
     timestamp: datetime
@@ -38,7 +38,7 @@ class UndoResponse(BaseModel):
 class RedoResponse(BaseModel):
     """Response for redo operation."""
     action_id: UUID
-    graph_id: int
+    artifact_id: int
     state: Dict[str, Any]
     description: str
     timestamp: datetime

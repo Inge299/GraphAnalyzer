@@ -10,6 +10,7 @@ import { DataSet } from 'vis-data/standalone';
 import 'vis-network/styles/vis-network.css';
 import './GraphView.css';
 
+
 interface GraphViewProps {
   artifact: {
     id: number;
