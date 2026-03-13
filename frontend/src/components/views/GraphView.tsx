@@ -1,139 +1,184 @@
 // frontend/src/components/views/GraphView.tsx
-import React, { useEffect, useRef, useCallback, useState } from 'react';
-import { Network } from 'vis-network/standalone';
-import { DataSet } from 'vis-data/standalone';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store';
-import { setSelectedElement, setSelectedElements } from '../../store/slices/uiSlice';
-import { updateArtifact, fetchArtifactVersions } from '../../store/slices/artifactsSlice';
+import { updateArtifact } from '../../store/slices/artifactsSlice';
 import { HistoryPanel } from '../history/HistoryPanel';
 import { useActionWithUndo } from '../../hooks/useActionWithUndo';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
+import { Network } from 'vis-network/standalone';
+import { DataSet } from 'vis-data/standalone';
+import 'vis-network/styles/vis-network.css';
+import './GraphView.css';
 
 interface GraphViewProps {
-  artifact: any;
-  onNodeMove?: (nodeId: string, x: number, y: number) => void;
-  onAddNode?: (position: { x: number, y: number }, nodeType?: string) => void;
-  onDeleteNode?: (nodeId: string) => void;
-  onAddEdge?: (sourceId: string, targetId: string, edgeType?: string) => void;
-  onDeleteEdge?: (edgeId: string) => void;
-  onEditAttributes?: (nodeId: string, attributes: Record<string, any>) => void;
+  artifact: {
+    id: number;
+    project_id: number;
+    data: {
+      nodes?: Array<{
+        id: string;
+        label: string;
+        type: string;
+        position_x?: number;
+        position_y?: number;
+        [key: string]: any;
+      }>;
+      edges?: Array<{
+        id: string;
+        from: string;
+        to: string;
+        type: string;
+        [key: string]: any;
+      }>;
+    };
+  };
 }
 
-const getNodeColor = (type: string): string => {
-  const colors: Record<string, string> = {
-    person: '#2196f3',
-    organization: '#4caf50',
-    location: '#ff9800',
-    event: '#f44336',
-    document: '#9c27b0',
-    email: '#00bcd4',
-    phone: '#ffeb3b',
-    account: '#795548',
-    ip: '#607d8b'
-  };
-  return colors[type] || '#9e9e9e';
-};
-
-export const GraphView: React.FC<GraphViewProps> = ({ artifact, onNodeMove }) => {
+export const GraphView: React.FC<GraphViewProps> = ({ artifact }) => {
   const dispatch = useAppDispatch();
-  const networkRef = useRef<HTMLDivElement>(null);
-  const networkInstanceRef = useRef<Network | null>(null);
-  const nodesRef = useRef<DataSet | null>(null);
-  const edgesRef = useRef<DataSet | null>(null);
-  const isInitializedRef = useRef(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const networkRef = useRef<Network | null>(null);
+  const nodesDataSetRef = useRef<DataSet<any> | null>(null);
+  const edgesDataSetRef = useRef<DataSet<any> | null>(null);
   
-  // Для группировки перемещений
+  // Текущее состояние графа из артефакта
+  const currentGraphData = artifact.data;
+  
+  // Состояние для группировки перемещений
   const [pendingMoves, setPendingMoves] = useState<Record<string, {x: number, y: number}>>({});
   const moveTimeoutRef = useRef<NodeJS.Timeout>();
+  const batchGroupIdRef = useRef<string | null>(null);
 
-  // ИНИЦИАЛИЗАЦИЯ - ТОЛЬКО ОДИН РАЗ
+  // ==========================================================================
+  // Инициализация хука для undo/redo
+  // ==========================================================================
+  
+  const handleStateChange = useCallback(async (newData: any) => {
+    await dispatch(updateArtifact({
+      projectId: artifact.project_id,
+      id: artifact.id,
+      updates: { data: newData }
+    })).unwrap();
+  }, [artifact.project_id, artifact.id, dispatch]);
+
+  const { 
+    execute, 
+    undo, 
+    redo, 
+    startBatch, 
+    endBatch,
+    canUndo, 
+    canRedo 
+  } = useActionWithUndo(
+    artifact.id,
+    currentGraphData,
+    handleStateChange
+  );
+
+  // Подключаем клавиатурные сокращения
+  useKeyboardShortcuts(artifact.id);
+
+  // ==========================================================================
+  // Инициализация vis-network
+  // ==========================================================================
+  
   useEffect(() => {
-    if (!networkRef.current || isInitializedRef.current) return;
-    
-    console.log('Initializing graph...');
-    isInitializedRef.current = true;
-    
-    nodesRef.current = new DataSet([]);
-    edgesRef.current = new DataSet([]);
+    if (!containerRef.current) return;
 
+    // Создаем DataSet'ы
+    const nodes = new DataSet(currentGraphData.nodes?.map(node => ({
+      id: node.id,
+      label: node.label,
+      title: `${node.type}\n${JSON.stringify(node, null, 2)}`,
+      x: node.position_x,
+      y: node.position_y,
+      group: node.type,
+      // Добавляем все остальные атрибуты
+      ...node
+    })) || []);
+
+    const edges = new DataSet(currentGraphData.edges?.map(edge => ({
+      id: edge.id,
+      from: edge.from,
+      to: edge.to,
+      label: edge.type,
+      title: `${edge.type}\n${JSON.stringify(edge, null, 2)}`,
+      arrows: 'to',
+      ...edge
+    })) || []);
+
+    nodesDataSetRef.current = nodes;
+    edgesDataSetRef.current = edges;
+
+    // Настройки сети
     const options = {
-      physics: false, // ОТКЛЮЧАЕМ ФИЗИКУ
-      layout: { 
-        improvedLayout: false, // ОТКЛЮЧАЕМ АВТО-ЛЕЙАУТ
-        hierarchical: false 
+      physics: {
+        enabled: false, // Отключаем физику для ручного управления
       },
-      interaction: {
-        multiselect: true, // ВКЛЮЧАЕМ МУЛЬТИВЫДЕЛЕНИЕ
-        selectable: true,
-        hover: true,
-        dragNodes: true,
-        dragView: true,
-        zoomView: true
+      layout: {
+        randomSeed: 42, // Для воспроизводимости
       },
       nodes: {
         shape: 'dot',
         size: 20,
-        font: { color: '#ffffff', size: 14 },
+        font: {
+          size: 14,
+          color: '#ffffff',
+        },
         borderWidth: 2,
         shadow: true,
-        scaling: {
-          min: 16,
-          max: 32
-        }
       },
       edges: {
         width: 2,
-        smooth: { type: 'continuous' },
-        arrows: { to: { enabled: true } },
-        font: { size: 12, color: '#cccccc' }
-      }
+        smooth: {
+          type: 'continuous',
+        },
+        font: {
+          size: 12,
+          color: '#ffffff',
+          align: 'middle',
+        },
+      },
+      interaction: {
+        dragNodes: true,
+        dragView: true,
+        zoomView: true,
+        hover: true,
+        tooltipDelay: 300,
+        multiselect: true,
+      },
+      manipulation: {
+        enabled: false,
+      },
     };
 
+    // Создаем сеть
     const network = new Network(
-      networkRef.current, 
-      { nodes: nodesRef.current, edges: edgesRef.current }, 
+      containerRef.current,
+      { nodes, edges },
       options
     );
-    
-    networkInstanceRef.current = network;
 
-    // ОБРАБОТКА ВЫДЕЛЕНИЯ
-    network.on('select', (params) => {
-      if (params.nodes.length > 0) {
-        const selectedNodes = params.nodes.map(id => ({
-          type: 'node',
-          id,
-          data: nodesRef.current?.get(id)
-        }));
-        dispatch(setSelectedElements(selectedNodes));
-        dispatch(setSelectedElement({ type: 'node', id: params.nodes[0] }));
-      } else if (params.edges.length > 0) {
-        const edge = edgesRef.current?.get(params.edges[0]);
-        dispatch(setSelectedElement({ 
-          type: 'edge', 
-          id: params.edges[0], 
-          data: edge 
-        }));
-        dispatch(setSelectedElements([]));
-      } else {
-        dispatch(setSelectedElement(null));
-        dispatch(setSelectedElements([]));
-      }
-    });
+    networkRef.current = network;
 
-    // ОБРАБОТКА КЛИКА
-    network.on('click', (params) => {
-      if (params.nodes.length === 0 && params.edges.length === 0) {
-        dispatch(setSelectedElement(null));
-        dispatch(setSelectedElements([]));
-      }
-    });
+    // ========================================================================
+    // Обработчики событий
+    // ========================================================================
 
-    // ПЕРЕМЕЩЕНИЕ УЗЛОВ С ГРУППИРОВКОЙ
-    network.on('dragEnd', (params) => {
-      if (params.nodes.length === 0) return;
-      
+    // Обработчик перемещения узла (начало)
+    network.on('dragStart', (params) => {
       const nodeId = params.nodes[0];
+      if (nodeId) {
+        // Начинаем новую группу для перемещений
+        batchGroupIdRef.current = startBatch('Перемещение узлов');
+      }
+    });
+
+    // Обработчик перемещения узла (конец) - с группировкой
+    network.on('dragEnd', async (params) => {
+      const nodeId = params.nodes[0];
+      if (!nodeId) return;
+
       const position = network.getPosition(nodeId);
       
       // Добавляем в ожидающие перемещения
@@ -141,195 +186,251 @@ export const GraphView: React.FC<GraphViewProps> = ({ artifact, onNodeMove }) =>
         ...prev,
         [nodeId]: { x: position.x, y: position.y }
       }));
-      
-      // Группируем перемещения за 500ms
+
+      // Сбрасываем предыдущий таймаут
       if (moveTimeoutRef.current) {
         clearTimeout(moveTimeoutRef.current);
       }
-      
-      moveTimeoutRef.current = setTimeout(() => {
-        const moves = { ...pendingMoves };
-        if (Object.keys(moves).length > 0 && onNodeMove) {
-          // Применяем все накопленные перемещения
-          Object.entries(moves).forEach(([id, pos]) => {
-            onNodeMove(id, pos.x, pos.y);
-          });
-          setPendingMoves({});
+
+      // Устанавливаем новый таймаут (500ms группировки)
+      moveTimeoutRef.current = setTimeout(async () => {
+        if (Object.keys(pendingMoves).length === 0 && !nodeId) return;
+
+        const movesToApply = { ...pendingMoves };
+        if (nodeId) {
+          movesToApply[nodeId] = { x: position.x, y: position.y };
+        }
+
+        await execute(
+          async () => {
+            // Обновляем позиции узлов
+            const updatedNodes = currentGraphData.nodes?.map(node => 
+              movesToApply[node.id] 
+                ? { 
+                    ...node, 
+                    position_x: movesToApply[node.id].x, 
+                    position_y: movesToApply[node.id].y 
+                  }
+                : node
+            ) || [];
+
+            const newData = {
+              ...currentGraphData,
+              nodes: updatedNodes
+            };
+
+            await handleStateChange(newData);
+          },
+          {
+            description: `Перемещение ${Object.keys(movesToApply).length} узлов`,
+            actionType: 'batch_move',
+            groupId: batchGroupIdRef.current || undefined,
+            batch: false // Уже сгруппировали
+          }
+        );
+
+        // Очищаем pending moves и завершаем группу
+        setPendingMoves({});
+        if (batchGroupIdRef.current) {
+          await endBatch();
+          batchGroupIdRef.current = null;
         }
       }, 500);
     });
 
+    // Обработчик добавления узла (через контекстное меню)
+    network.on('oncontext', (params) => {
+      params.event.preventDefault();
+      
+      const { pointer } = params;
+      
+      // Показываем кастомное меню для добавления узла
+      // В реальном проекте здесь должно быть модальное окно или дропдаун
+      const nodeType = prompt('Введите тип узла (person, organization, etc):');
+      if (!nodeType) return;
+
+      const nodeLabel = prompt('Введите название узла:');
+      if (!nodeLabel) return;
+
+      const nodeId = `node_${Date.now()}`;
+
+      execute(
+        async () => {
+          const newNode = {
+            id: nodeId,
+            label: nodeLabel,
+            type: nodeType,
+            position_x: pointer.canvas.x,
+            position_y: pointer.canvas.y,
+            attributes: {}
+          };
+
+          const newData = {
+            ...currentGraphData,
+            nodes: [...(currentGraphData.nodes || []), newNode]
+          };
+
+          await handleStateChange(newData);
+        },
+        {
+          description: `Добавление узла: ${nodeLabel}`,
+          actionType: 'add_node'
+        }
+      );
+    });
+
+    // Обработчик удаления узла (клавиша Delete)
+    network.on('selectNode', (params) => {
+      const handleDelete = async () => {
+        const selectedNodes = network.getSelectedNodes();
+        if (selectedNodes.length === 0) return;
+
+        await execute(
+          async () => {
+            const newData = {
+              ...currentGraphData,
+              nodes: currentGraphData.nodes?.filter(node => !selectedNodes.includes(node.id)) || [],
+              edges: currentGraphData.edges?.filter(edge => 
+                !selectedNodes.includes(edge.from) && !selectedNodes.includes(edge.to)
+              ) || []
+            };
+
+            await handleStateChange(newData);
+          },
+          {
+            description: `Удаление ${selectedNodes.length} узлов`,
+            actionType: 'delete_node'
+          }
+        );
+      };
+
+      // Добавляем обработчик клавиши Delete
+      const keyHandler = (e: KeyboardEvent) => {
+        if (e.key === 'Delete' || e.key === 'Del') {
+          e.preventDefault();
+          handleDelete();
+        }
+      };
+
+      window.addEventListener('keydown', keyHandler);
+      return () => window.removeEventListener('keydown', keyHandler);
+    });
+
+    // Cleanup
     return () => {
+      network.destroy();
       if (moveTimeoutRef.current) {
         clearTimeout(moveTimeoutRef.current);
       }
-      network.destroy();
-      networkInstanceRef.current = null;
-      isInitializedRef.current = false;
     };
-  }, []); // ПУСТОЙ МАССИВ - ИНИЦИАЛИЗАЦИЯ ОДИН РАЗ
+  }, [currentGraphData]); // Пересоздаем при изменении данных
 
-  // ОБНОВЛЕНИЕ ДАННЫХ - БЕЗ ПЕРЕСОЗДАНИЯ
+  // ==========================================================================
+  // Обновление данных при изменении currentGraphData
+  // ==========================================================================
+  
   useEffect(() => {
-    if (!networkInstanceRef.current || !artifact?.data) return;
+    if (!networkRef.current || !nodesDataSetRef.current || !edgesDataSetRef.current) return;
 
-    console.log('Updating graph data...');
-    
-    const nodes = artifact.data.nodes?.map((n: any) => ({
-      id: n.id || n.node_id,
-      label: n.label || n.attributes?.name || n.id,
-      x: n.position_x,
-      y: n.position_y,
-      color: getNodeColor(n.type)
+    // Обновляем узлы
+    const nodesData = currentGraphData.nodes?.map(node => ({
+      id: node.id,
+      label: node.label,
+      x: node.position_x,
+      y: node.position_y,
+      group: node.type,
+      ...node
     })) || [];
 
-    const edges = artifact.data.edges?.map((e: any) => ({
-      id: e.id || e.edge_id,
-      from: e.from || e.source_node,
-      to: e.to || e.target_node,
-      label: e.label || e.type,
-      arrows: e.directed !== false ? 'to' : undefined
+    nodesDataSetRef.current.clear();
+    nodesDataSetRef.current.add(nodesData);
+
+    // Обновляем ребра
+    const edgesData = currentGraphData.edges?.map(edge => ({
+      id: edge.id,
+      from: edge.from,
+      to: edge.to,
+      label: edge.type,
+      ...edge
     })) || [];
 
-    nodesRef.current?.clear();
-    edgesRef.current?.clear();
-    nodesRef.current?.add(nodes);
-    edgesRef.current?.add(edges);
+    edgesDataSetRef.current.clear();
+    edgesDataSetRef.current.add(edgesData);
 
-    // НИКАКОГО FIT() ЗДЕСЬ! Только если данные пустые
-    if (nodes.length === 0) {
-      networkInstanceRef.current?.fit();
-    }
-  }, [artifact?.data]);
+  }, [currentGraphData]);
 
-  // ОБРАБОТКА UNDO/REDO ЧЕРЕЗ КЛАВИАТУРУ
-  useEffect(() => {
-    const handleKeyDown = async (e: KeyboardEvent) => {
-      // Игнорируем, если фокус на поле ввода
-      if ((e.target as HTMLElement).tagName === 'INPUT' || 
-          (e.target as HTMLElement).tagName === 'TEXTAREA' ||
-          (e.target as HTMLElement).isContentEditable) {
-        return;
-      }
-
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
-        e.preventDefault();
-        
-        if (!artifact) return;
-        
-        try {
-          // Получаем версии артефакта
-          const versions = await dispatch(
-            fetchArtifactVersions({ 
-              projectId: artifact.project_id, 
-              artifactId: artifact.id 
-            })
-          ).unwrap();
-          
-          if (e.shiftKey) {
-            // Redo: следующая версия (Ctrl+Shift+Z)
-            const currentIndex = versions.findIndex(v => v.version === artifact.version);
-            if (currentIndex < versions.length - 1) {
-              await dispatch(updateArtifact({
-                projectId: artifact.project_id,
-                artifactId: artifact.id,
-                data: versions[currentIndex + 1].data
-              }));
-            }
-          } else {
-            // Undo: предыдущая версия (Ctrl+Z)
-            const currentIndex = versions.findIndex(v => v.version === artifact.version);
-            if (currentIndex > 0) {
-              await dispatch(updateArtifact({
-                projectId: artifact.project_id,
-                artifactId: artifact.id,
-                data: versions[currentIndex - 1].data
-              }));
-            }
-          }
-          
-          // Сбрасываем выделение
-          dispatch(setSelectedElement(null));
-          dispatch(setSelectedElements([]));
-        } catch (error) {
-          console.error('Undo/Redo failed:', error);
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [artifact, dispatch]);
-
-  // ОБРАБОТКА ПРЫЖКА ПО ИСТОРИИ
-  const handleHistoryJump = useCallback(async (state: any) => {
-    if (!artifact) return;
-    
-    try {
-      await dispatch(updateArtifact({
-        projectId: artifact.project_id,
-        artifactId: artifact.id,
-        data: state
-      }));
-      dispatch(setSelectedElement(null));
-      dispatch(setSelectedElements([]));
-    } catch (error) {
-      console.error('Failed to restore state:', error);
-    }
-  }, [artifact, dispatch]);
-
-  // КНОПКА ДЛЯ ЦЕНТРИРОВАНИЯ
-  const handleFit = useCallback(() => {
-    networkInstanceRef.current?.fit();
-  }, []);
+  // ==========================================================================
+  // Render
+  // ==========================================================================
 
   return (
-    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-      <div ref={networkRef} style={{ width: '100%', height: '100%' }} />
-      
-      {/* Кнопка центрирования */}
-      <button
-        onClick={handleFit}
-        style={{
-          position: 'absolute',
-          top: 10,
-          right: 10,
-          padding: '8px 12px',
-          background: '#2196f3',
-          color: 'white',
-          border: 'none',
-          borderRadius: 4,
-          cursor: 'pointer',
-          zIndex: 1000,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
-        }}
-      >
-        🔍 Центрировать
-      </button>
-      
+    <div className="graph-view">
+      {/* Панель инструментов */}
+      <div className="graph-toolbar">
+        <div className="toolbar-group">
+          <button 
+            onClick={undo}
+            disabled={!canUndo}
+            title="Отменить (Ctrl+Z)"
+            className="toolbar-btn"
+          >
+            ↩️ Undo
+          </button>
+          <button 
+            onClick={redo}
+            disabled={!canRedo}
+            title="Повторить (Ctrl+Y / Ctrl+Shift+Z)"
+            className="toolbar-btn"
+          >
+            ↪️ Redo
+          </button>
+        </div>
+        
+        <div className="toolbar-group">
+          <button 
+            onClick={() => {
+              // Сохранить
+            }}
+            title="Сохранить (Ctrl+S)"
+            className="toolbar-btn"
+          >
+            💾 Save
+          </button>
+          <button 
+            onClick={() => {
+              // Экспорт
+            }}
+            title="Экспорт"
+            className="toolbar-btn"
+          >
+            📤 Export
+          </button>
+        </div>
+        
+        <div className="toolbar-status">
+          {pendingMoves && Object.keys(pendingMoves).length > 0 && (
+            <span className="status-badge">
+              Группировка... {Object.keys(pendingMoves).length}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Контейнер для графа */}
+      <div 
+        ref={containerRef} 
+        className="graph-container"
+        style={{ width: '100%', height: 'calc(100vh - 200px)' }}
+      />
+
       {/* Панель истории */}
       <HistoryPanel 
-        graphId={artifact?.id} 
-        onJump={handleHistoryJump}
+        graphId={artifact.id}
+        onJump={(state) => {
+          // При прыжке по истории обновляем состояние
+          handleStateChange(state);
+        }}
       />
-      
-      {/* Индикатор группировки */}
-      {Object.keys(pendingMoves).length > 0 && (
-        <div style={{
-          position: 'absolute',
-          bottom: 80,
-          right: 20,
-          background: '#ff9800',
-          color: 'white',
-          padding: '4px 12px',
-          borderRadius: 16,
-          fontSize: 12,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-          zIndex: 10001
-        }}>
-          ⏳ Группировка {Object.keys(pendingMoves).length}...
-        </div>
-      )}
     </div>
   );
 };

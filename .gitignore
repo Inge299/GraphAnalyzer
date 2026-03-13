@@ -1,32 +1,28 @@
 # Python
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
 .pytest_cache/
 .coverage
 htmlcov/
-
-# Environment
-.env
-.env.local
-.env.*.local
+.tox/
+.mypy_cache/
+.dmypy.json
+dmypy.json
 *.log
 
-# Docker
+# Database
+*.db
+*.sqlite3
 data/
-!data/README.md
-
-# Frontend
-frontend/node_modules/
-frontend/dist/
-frontend/build/
-frontend/.env
-frontend/.env.production
-frontend/.env.development.local
-frontend/npm-debug.log*
-frontend/yarn-debug.log*
-frontend/yarn-error.log*
 
 # IDE
 .vscode/
@@ -34,14 +30,27 @@ frontend/yarn-error.log*
 *.swp
 *.swo
 *~
+
+# OS
 .DS_Store
+Thumbs.db
 
-# Backups
-backups/
-*.tar.gz
-*.sql
-*.sql.gz
+# Docker
+*.pid
+docker-compose.override.yml
+!.dockerignore
 
-# Git
-*.orig
-*.bak
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# Backend
+.env
+*.pyc
+alembic/versions/*.pyc

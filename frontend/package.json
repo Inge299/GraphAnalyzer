@@ -27,7 +27,8 @@
     "react-router-dom": "^6.20.0",
     "typescript": "^5.2.2",
     "uuid": "^8.3.2",
-    "vis-network": "^9.1.2",
+    "vis-data": "^7.1.10",
+    "vis-network": "^9.1.13",
     "vite": "^5.0.0",
     "zustand": "^4.4.7"
   },

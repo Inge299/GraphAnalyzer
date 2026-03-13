@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: osint-postgres
+    environment:
+      POSTGRES_USER: osint_user      # Оставляем как есть
+      POSTGRES_PASSWORD: osint_password
+      POSTGRES_DB: osint_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U osint_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - osint-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: osint-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - osint-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: osint-app
+    ports:
+      - "5000:5000"
+    environment:
+      # Исправлено: используем osint_user, osint_password, osint_db
+      - DATABASE_URL=postgresql+asyncpg://osint_user:osint_password@osint-postgres:5432/osint_db
+      - REDIS_URL=redis://osint-redis:6379/0
+      - SECRET_KEY=dev-secret-key-for-development
+      - ENVIRONMENT=development
+      # Добавляем для совместимости
+      - POSTGRES_USER=osint_user
+      - POSTGRES_PASSWORD=osint_password
+      - POSTGRES_DB=osint_db
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - osint-network
+    volumes:
+      - ./plugins:/app/plugins
+      - ./data:/app/data
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: osint-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - osint-network
+
+networks:
+  osint-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
