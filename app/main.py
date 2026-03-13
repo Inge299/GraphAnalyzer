@@ -117,7 +117,9 @@ app.include_router(graphs.router, prefix="/api/v1", tags=["graphs"])
 app.include_router(plugins.router, prefix="/api/v1/plugins", tags=["plugins"])
 app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["analytics"])
 app.include_router(artifacts.router, prefix="/api/v2", tags=["artifacts"])
-app.include_router(history.router, prefix="/api/v2", tags=["history"])
+app.include_router(history.router)
+
+
 
 @app.exception_handler(404)
 async def custom_404_handler(request, exc):

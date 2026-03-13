@@ -1,6 +1,6 @@
 // frontend/src/components/views/GraphView.tsx
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { useAppDispatch, useAppSelector } from '../../store';
+import { useAppDispatch } from '../../store';
 import { updateArtifact } from '../../store/slices/artifactsSlice';
 import { HistoryPanel } from '../history/HistoryPanel';
 import { useActionWithUndo } from '../../hooks/useActionWithUndo';
@@ -41,25 +41,39 @@ export const GraphView: React.FC<GraphViewProps> = ({ artifact }) => {
   const nodesDataSetRef = useRef<DataSet<any> | null>(null);
   const edgesDataSetRef = useRef<DataSet<any> | null>(null);
   
-  // Текущее состояние графа из артефакта
-  const currentGraphData = artifact.data;
+  // Сохраняем ID артефакта для стабильности
+  const artifactIdRef = useRef(artifact.id);
+  const projectIdRef = useRef(artifact.project_id);
+  
+  // Локальное состояние для позиций узлов (оптимистичные обновления)
+  const [localNodePositions, setLocalNodePositions] = useState<Record<string, {x: number, y: number}>>({});
   
   // Состояние для группировки перемещений
   const [pendingMoves, setPendingMoves] = useState<Record<string, {x: number, y: number}>>({});
   const moveTimeoutRef = useRef<NodeJS.Timeout>();
   const batchGroupIdRef = useRef<string | null>(null);
+  
+  // Флаг для предотвращения повторной инициализации
+  const isInitializedRef = useRef(false);
+  
+  // Флаг для игнорирования обновлений из Redux во время перетаскивания
+  const isDraggingRef = useRef(false);
+  
+  // Последнее примененное состояние из Redux
+  const lastReduxStateRef = useRef<string>(JSON.stringify(artifact.data));
 
   // ==========================================================================
   // Инициализация хука для undo/redo
   // ==========================================================================
   
   const handleStateChange = useCallback(async (newData: any) => {
+    console.log('Updating Redux state:', newData);
     await dispatch(updateArtifact({
-      projectId: artifact.project_id,
-      id: artifact.id,
+      projectId: projectIdRef.current,
+      id: artifactIdRef.current,
       updates: { data: newData }
     })).unwrap();
-  }, [artifact.project_id, artifact.id, dispatch]);
+  }, [dispatch]);
 
   const { 
     execute, 
@@ -71,7 +85,7 @@ export const GraphView: React.FC<GraphViewProps> = ({ artifact }) => {
     canRedo 
   } = useActionWithUndo(
     artifact.id,
-    currentGraphData,
+    artifact.data,
     handleStateChange
   );
 
@@ -79,33 +93,51 @@ export const GraphView: React.FC<GraphViewProps> = ({ artifact }) => {
   useKeyboardShortcuts(artifact.id);
 
   // ==========================================================================
+  // Функция для получения актуальных данных узла (локальные позиции + данные из props)
+  // ==========================================================================
+  
+  const getNodeWithLocalPosition = useCallback((node: any) => {
+    const localPos = localNodePositions[node.id];
+    return {
+      ...node,
+      x: localPos?.x ?? node.position_x,
+      y: localPos?.y ?? node.position_y,
+    };
+  }, [localNodePositions]);
+
+  // ==========================================================================
   // Инициализация vis-network
   // ==========================================================================
   
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!containerRef.current || isInitializedRef.current) return;
 
-    // Создаем DataSet'ы
-    const nodes = new DataSet(currentGraphData.nodes?.map(node => ({
+    console.log('Initializing graph with data:', artifact.data);
+    isInitializedRef.current = true;
+
+    // Создаем DataSet'ы с учетом локальных позиций
+    const initialNodes = (artifact.data.nodes || []).map(node => ({
       id: node.id,
-      label: node.label,
+      label: node.label || node.id,
       title: `${node.type}\n${JSON.stringify(node, null, 2)}`,
       x: node.position_x,
       y: node.position_y,
       group: node.type,
-      // Добавляем все остальные атрибуты
       ...node
-    })) || []);
+    }));
 
-    const edges = new DataSet(currentGraphData.edges?.map(edge => ({
-      id: edge.id,
-      from: edge.from,
-      to: edge.to,
-      label: edge.type,
-      title: `${edge.type}\n${JSON.stringify(edge, null, 2)}`,
-      arrows: 'to',
-      ...edge
-    })) || []);
+    const nodes = new DataSet(initialNodes);
+    const edges = new DataSet(
+      (artifact.data.edges || []).map(edge => ({
+        id: edge.id,
+        from: edge.from,
+        to: edge.to,
+        label: edge.type,
+        title: `${edge.type}\n${JSON.stringify(edge, null, 2)}`,
+        arrows: 'to',
+        ...edge
+      }))
+    );
 
     nodesDataSetRef.current = nodes;
     edgesDataSetRef.current = edges;
@@ -113,10 +145,12 @@ export const GraphView: React.FC<GraphViewProps> = ({ artifact }) => {
     // Настройки сети
     const options = {
       physics: {
-        enabled: false, // Отключаем физику для ручного управления
+        enabled: false,
+        stabilization: false
       },
       layout: {
-        randomSeed: 42, // Для воспроизводимости
+        randomSeed: 42,
+        improvedLayout: false
       },
       nodes: {
         shape: 'dot',
@@ -127,6 +161,7 @@ export const GraphView: React.FC<GraphViewProps> = ({ artifact }) => {
         },
         borderWidth: 2,
         shadow: true,
+        fixed: false
       },
       edges: {
         width: 2,
@@ -165,155 +200,107 @@ export const GraphView: React.FC<GraphViewProps> = ({ artifact }) => {
     // Обработчики событий
     // ========================================================================
 
-    // Обработчик перемещения узла (начало)
+    // Обработчик начала перетаскивания
     network.on('dragStart', (params) => {
       const nodeId = params.nodes[0];
       if (nodeId) {
-        // Начинаем новую группу для перемещений
+        console.log('Drag start for node:', nodeId);
+        isDraggingRef.current = true;
         batchGroupIdRef.current = startBatch('Перемещение узлов');
       }
     });
 
-    // Обработчик перемещения узла (конец) - с группировкой
+    // Обработчик во время перетаскивания - обновляем локальное состояние
+    network.on('dragging', (params) => {
+      const nodeId = params.nodes[0];
+      if (nodeId && params.pointer) {
+        const position = network.getPosition(nodeId);
+        setLocalNodePositions(prev => ({
+          ...prev,
+          [nodeId]: { x: position.x, y: position.y }
+        }));
+      }
+    });
+
+    // Обработчик окончания перетаскивания
     network.on('dragEnd', async (params) => {
       const nodeId = params.nodes[0];
-      if (!nodeId) return;
-
-      const position = network.getPosition(nodeId);
-      
-      // Добавляем в ожидающие перемещения
-      setPendingMoves(prev => ({
-        ...prev,
-        [nodeId]: { x: position.x, y: position.y }
-      }));
-
-      // Сбрасываем предыдущий таймаут
-      if (moveTimeoutRef.current) {
-        clearTimeout(moveTimeoutRef.current);
+      if (!nodeId) {
+        isDraggingRef.current = false;
+        return;
       }
 
-      // Устанавливаем новый таймаут (500ms группировки)
-      moveTimeoutRef.current = setTimeout(async () => {
-        if (Object.keys(pendingMoves).length === 0 && !nodeId) return;
-
-        const movesToApply = { ...pendingMoves };
-        if (nodeId) {
-          movesToApply[nodeId] = { x: position.x, y: position.y };
-        }
-
-        await execute(
-          async () => {
-            // Обновляем позиции узлов
-            const updatedNodes = currentGraphData.nodes?.map(node => 
-              movesToApply[node.id] 
-                ? { 
-                    ...node, 
-                    position_x: movesToApply[node.id].x, 
-                    position_y: movesToApply[node.id].y 
-                  }
-                : node
-            ) || [];
-
-            const newData = {
-              ...currentGraphData,
-              nodes: updatedNodes
-            };
-
-            await handleStateChange(newData);
-          },
-          {
-            description: `Перемещение ${Object.keys(movesToApply).length} узлов`,
-            actionType: 'batch_move',
-            groupId: batchGroupIdRef.current || undefined,
-            batch: false // Уже сгруппировали
-          }
-        );
-
-        // Очищаем pending moves и завершаем группу
-        setPendingMoves({});
-        if (batchGroupIdRef.current) {
-          await endBatch();
-          batchGroupIdRef.current = null;
-        }
-      }, 500);
-    });
-
-    // Обработчик добавления узла (через контекстное меню)
-    network.on('oncontext', (params) => {
-      params.event.preventDefault();
+      const position = network.getPosition(nodeId);
+      console.log('Drag end for node:', nodeId, position);
       
-      const { pointer } = params;
-      
-      // Показываем кастомное меню для добавления узла
-      // В реальном проекте здесь должно быть модальное окно или дропдаун
-      const nodeType = prompt('Введите тип узла (person, organization, etc):');
-      if (!nodeType) return;
-
-      const nodeLabel = prompt('Введите название узла:');
-      if (!nodeLabel) return;
-
-      const nodeId = `node_${Date.now()}`;
-
-      execute(
-        async () => {
-          const newNode = {
-            id: nodeId,
-            label: nodeLabel,
-            type: nodeType,
-            position_x: pointer.canvas.x,
-            position_y: pointer.canvas.y,
-            attributes: {}
-          };
-
-          const newData = {
-            ...currentGraphData,
-            nodes: [...(currentGraphData.nodes || []), newNode]
-          };
-
-          await handleStateChange(newData);
-        },
-        {
-          description: `Добавление узла: ${nodeLabel}`,
-          actionType: 'add_node'
+      // Добавляем в ожидающие перемещения
+      setPendingMoves(prev => {
+        const newMoves = {
+          ...prev,
+          [nodeId]: { x: position.x, y: position.y }
+        };
+        
+        // Сбрасываем предыдущий таймаут
+        if (moveTimeoutRef.current) {
+          clearTimeout(moveTimeoutRef.current);
         }
-      );
-    });
 
-    // Обработчик удаления узла (клавиша Delete)
-    network.on('selectNode', (params) => {
-      const handleDelete = async () => {
-        const selectedNodes = network.getSelectedNodes();
-        if (selectedNodes.length === 0) return;
+        // Устанавливаем новый таймаут
+        moveTimeoutRef.current = setTimeout(async () => {
+          console.log('Applying batch move:', newMoves);
+          
+          // Сохраняем текущие pending moves
+          const movesToApply = { ...newMoves };
+          
+          // Очищаем pending moves
+          setPendingMoves({});
+          
+          // Обновляем локальные позиции финально
+          setLocalNodePositions(prev => ({
+            ...prev,
+            ...movesToApply
+          }));
+          
+          // Выполняем batch обновление в Redux
+          await execute(
+            async () => {
+              const updatedNodes = (artifact.data.nodes || []).map(node => 
+                movesToApply[node.id] 
+                  ? { 
+                      ...node, 
+                      position_x: movesToApply[node.id].x, 
+                      position_y: movesToApply[node.id].y 
+                    }
+                  : node
+              );
 
-        await execute(
-          async () => {
-            const newData = {
-              ...currentGraphData,
-              nodes: currentGraphData.nodes?.filter(node => !selectedNodes.includes(node.id)) || [],
-              edges: currentGraphData.edges?.filter(edge => 
-                !selectedNodes.includes(edge.from) && !selectedNodes.includes(edge.to)
-              ) || []
-            };
+              const newData = {
+                ...artifact.data,
+                nodes: updatedNodes
+              };
 
-            await handleStateChange(newData);
-          },
-          {
-            description: `Удаление ${selectedNodes.length} узлов`,
-            actionType: 'delete_node'
+              await handleStateChange(newData);
+              return newData;
+            },
+            {
+              description: `Перемещение ${Object.keys(movesToApply).length} узлов`,
+              actionType: 'batch_move',
+              groupId: batchGroupIdRef.current || undefined,
+              batch: false
+            }
+          );
+
+          // Завершаем группу
+          if (batchGroupIdRef.current) {
+            await endBatch();
+            batchGroupIdRef.current = null;
           }
-        );
-      };
-
-      // Добавляем обработчик клавиши Delete
-      const keyHandler = (e: KeyboardEvent) => {
-        if (e.key === 'Delete' || e.key === 'Del') {
-          e.preventDefault();
-          handleDelete();
-        }
-      };
-
-      window.addEventListener('keydown', keyHandler);
-      return () => window.removeEventListener('keydown', keyHandler);
+          
+          isDraggingRef.current = false;
+        }, 500);
+        
+        return newMoves;
+      });
     });
 
     // Cleanup
@@ -322,42 +309,88 @@ export const GraphView: React.FC<GraphViewProps> = ({ artifact }) => {
       if (moveTimeoutRef.current) {
         clearTimeout(moveTimeoutRef.current);
       }
+      isInitializedRef.current = false;
     };
-  }, [currentGraphData]); // Пересоздаем при изменении данных
+  }, []); // Пустой массив - инициализация один раз
 
   // ==========================================================================
-  // Обновление данных при изменении currentGraphData
+  // Синхронизация с Redux (только когда не перетаскиваем)
   // ==========================================================================
   
   useEffect(() => {
-    if (!networkRef.current || !nodesDataSetRef.current || !edgesDataSetRef.current) return;
+    if (!networkRef.current || !nodesDataSetRef.current || isDraggingRef.current) {
+      return;
+    }
 
-    // Обновляем узлы
-    const nodesData = currentGraphData.nodes?.map(node => ({
-      id: node.id,
-      label: node.label,
-      x: node.position_x,
-      y: node.position_y,
-      group: node.type,
-      ...node
-    })) || [];
+    const currentReduxState = JSON.stringify(artifact.data);
+    
+    // Если состояние в Redux изменилось (не из-за нашего перетаскивания)
+    if (currentReduxState !== lastReduxStateRef.current) {
+      console.log('Redux state changed externally, updating graph');
+      lastReduxStateRef.current = currentReduxState;
+      
+      // Обновляем узлы
+      const nodesData = (artifact.data.nodes || []).map(node => ({
+        id: node.id,
+        label: node.label || node.id,
+        x: node.position_x,
+        y: node.position_y,
+        group: node.type,
+        ...node
+      }));
 
-    nodesDataSetRef.current.clear();
-    nodesDataSetRef.current.add(nodesData);
+      // Очищаем и добавляем заново
+      nodesDataSetRef.current.clear();
+      nodesDataSetRef.current.add(nodesData);
+      
+      // Очищаем локальные позиции
+      setLocalNodePositions({});
 
-    // Обновляем ребра
-    const edgesData = currentGraphData.edges?.map(edge => ({
-      id: edge.id,
-      from: edge.from,
-      to: edge.to,
-      label: edge.type,
-      ...edge
-    })) || [];
+      // Обновляем ребра
+      const edgesData = (artifact.data.edges || []).map(edge => ({
+        id: edge.id,
+        from: edge.from,
+        to: edge.to,
+        label: edge.type,
+        ...edge
+      }));
 
-    edgesDataSetRef.current.clear();
-    edgesDataSetRef.current.add(edgesData);
+      edgesDataSetRef.current?.clear();
+      if (edgesData.length > 0) {
+        edgesDataSetRef.current?.add(edgesData);
+      }
+    }
+  }, [artifact.data]);
 
-  }, [currentGraphData]);
+  // ==========================================================================
+  // Обработчик клавиш для undo/redo
+  // ==========================================================================
+  
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement).tagName === 'INPUT' || 
+          (e.target as HTMLElement).tagName === 'TEXTAREA') {
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          redo();
+        } else {
+          undo();
+        }
+      }
+      
+      if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+        e.preventDefault();
+        redo();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [undo, redo]);
 
   // ==========================================================================
   // Render
@@ -408,9 +441,14 @@ export const GraphView: React.FC<GraphViewProps> = ({ artifact }) => {
         </div>
         
         <div className="toolbar-status">
-          {pendingMoves && Object.keys(pendingMoves).length > 0 && (
+          {Object.keys(pendingMoves).length > 0 && (
             <span className="status-badge">
               Группировка... {Object.keys(pendingMoves).length}
+            </span>
+          )}
+          {isDraggingRef.current && (
+            <span className="status-badge" style={{background: '#ff9800'}}>
+              Перетаскивание...
             </span>
           )}
         </div>
@@ -421,15 +459,6 @@ export const GraphView: React.FC<GraphViewProps> = ({ artifact }) => {
         ref={containerRef} 
         className="graph-container"
         style={{ width: '100%', height: 'calc(100vh - 200px)' }}
-      />
-
-      {/* Панель истории */}
-      <HistoryPanel 
-        graphId={artifact.id}
-        onJump={(state) => {
-          // При прыжке по истории обновляем состояние
-          handleStateChange(state);
-        }}
       />
     </div>
   );
