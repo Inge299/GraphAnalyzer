@@ -1,13 +1,13 @@
 {
-  "timestamp": "2026-03-13T17:28:33.500320",
+  "timestamp": "2026-03-17T14:16:38.506571",
   "project_name": "OSINT Graph Analyzer",
   "version": "v1.0",
   "files": {
     "alembic/env.py": {
       "path": "alembic/env.py",
-      "size": 2490,
-      "lines": 96,
-      "hash": "240ae0fd",
+      "size": 2649,
+      "lines": 89,
+      "hash": "cd1f3acb",
       "extension": ".py"
     },
     "alembic/versions/001_initial_models.py": {
@@ -24,18 +24,11 @@
       "hash": "ee5c1951",
       "extension": ".py"
     },
-    "alembic/versions/003_add_graph_actions.py": {
-      "path": "alembic/versions/003_add_graph_actions.py",
-      "size": 1798,
-      "lines": 58,
-      "hash": "92145083",
-      "extension": ".py"
-    },
-    "alembic/versions/004_add_graph_actions.py": {
-      "path": "alembic/versions/004_add_graph_actions.py",
-      "size": 1818,
-      "lines": 59,
-      "hash": "4fd73548",
+    "alembic/versions/3e7a730b98c7_initial_state.py": {
+      "path": "alembic/versions/3e7a730b98c7_initial_state.py",
+      "size": 337,
+      "lines": 23,
+      "hash": "d8dbb5eb",
       "extension": ".py"
     },
     "app/api/deps.py": {
@@ -138,9 +131,9 @@
     },
     "app/models/action.py": {
       "path": "app/models/action.py",
-      "size": 2308,
+      "size": 2367,
       "lines": 59,
-      "hash": "ff57be1f",
+      "hash": "065459c4",
       "extension": ".py"
     },
     "app/models/artifact.py": {
@@ -241,6 +234,34 @@
       "hash": "1d4ed122",
       "extension": ".yml"
     },
+    "backups/docker-compose_20260314_020005.yml": {
+      "path": "backups/docker-compose_20260314_020005.yml",
+      "size": 1998,
+      "lines": 86,
+      "hash": "1d4ed122",
+      "extension": ".yml"
+    },
+    "backups/docker-compose_20260315_020005.yml": {
+      "path": "backups/docker-compose_20260315_020005.yml",
+      "size": 1998,
+      "lines": 86,
+      "hash": "1d4ed122",
+      "extension": ".yml"
+    },
+    "backups/docker-compose_20260316_020005.yml": {
+      "path": "backups/docker-compose_20260316_020005.yml",
+      "size": 1998,
+      "lines": 86,
+      "hash": "1d4ed122",
+      "extension": ".yml"
+    },
+    "backups/docker-compose_20260317_020006.yml": {
+      "path": "backups/docker-compose_20260317_020006.yml",
+      "size": 1998,
+      "lines": 86,
+      "hash": "1d4ed122",
+      "extension": ".yml"
+    },
     "docker-compose.override.yml": {
       "path": "docker-compose.override.yml",
       "size": 849,
@@ -278,9 +299,9 @@
     },
     "frontend/src/App.tsx": {
       "path": "frontend/src/App.tsx",
-      "size": 6310,
-      "lines": 179,
-      "hash": "280c8765",
+      "size": 6754,
+      "lines": 191,
+      "hash": "91d38034",
       "extension": ".tsx"
     },
     "frontend/src/components/history/HistoryPanel.css": {
@@ -292,9 +313,9 @@
     },
     "frontend/src/components/history/HistoryPanel.tsx": {
       "path": "frontend/src/components/history/HistoryPanel.tsx",
-      "size": 7365,
-      "lines": 237,
-      "hash": "96c508f0",
+      "size": 5323,
+      "lines": 178,
+      "hash": "715662ce",
       "extension": ".tsx"
     },
     "frontend/src/components/layout/InspectorPanel.tsx": {
@@ -304,11 +325,18 @@
       "hash": "7a7253b2",
       "extension": ".tsx"
     },
+    "frontend/src/components/layout/Sidebar.css": {
+      "path": "frontend/src/components/layout/Sidebar.css",
+      "size": 3192,
+      "lines": 207,
+      "hash": "3311e719",
+      "extension": ".css"
+    },
     "frontend/src/components/layout/Sidebar.tsx": {
       "path": "frontend/src/components/layout/Sidebar.tsx",
-      "size": 8523,
-      "lines": 274,
-      "hash": "5adee56d",
+      "size": 5190,
+      "lines": 170,
+      "hash": "a62907d0",
       "extension": ".tsx"
     },
     "frontend/src/components/layout/Sidebar_new.tsx": {
@@ -348,16 +376,16 @@
     },
     "frontend/src/components/views/GraphView.css": {
       "path": "frontend/src/components/views/GraphView.css",
-      "size": 2100,
-      "lines": 112,
-      "hash": "84494442",
+      "size": 4233,
+      "lines": 225,
+      "hash": "89909284",
       "extension": ".css"
     },
     "frontend/src/components/views/GraphView.tsx": {
       "path": "frontend/src/components/views/GraphView.tsx",
-      "size": 14618,
-      "lines": 466,
-      "hash": "36b5c411",
+      "size": 17613,
+      "lines": 558,
+      "hash": "1fc4ecb8",
       "extension": ".tsx"
     },
     "frontend/src/components/views/MapView.tsx": {
@@ -376,9 +404,16 @@
     },
     "frontend/src/hooks/useActionWithUndo.ts": {
       "path": "frontend/src/hooks/useActionWithUndo.ts",
-      "size": 6390,
-      "lines": 225,
-      "hash": "b44b840d",
+      "size": 5868,
+      "lines": 192,
+      "hash": "bfdcd813",
+      "extension": ".ts"
+    },
+    "frontend/src/hooks/useActionWithUndo_bkp.ts": {
+      "path": "frontend/src/hooks/useActionWithUndo_bkp.ts",
+      "size": 7005,
+      "lines": 232,
+      "hash": "a8096c8b",
       "extension": ".ts"
     },
     "frontend/src/hooks/useKeyboardShortcuts.ts": {
@@ -418,9 +453,9 @@
     },
     "frontend/src/store/slices/artifactsSlice.ts": {
       "path": "frontend/src/store/slices/artifactsSlice.ts",
-      "size": 13071,
-      "lines": 371,
-      "hash": "266f597f",
+      "size": 5913,
+      "lines": 174,
+      "hash": "bcdd6370",
       "extension": ".ts"
     },
     "frontend/src/store/slices/graphSlice.ts": {
@@ -432,9 +467,9 @@
     },
     "frontend/src/store/slices/historySlice.ts": {
       "path": "frontend/src/store/slices/historySlice.ts",
-      "size": 4740,
-      "lines": 165,
-      "hash": "cc30440a",
+      "size": 4524,
+      "lines": 144,
+      "hash": "bd840bf3",
       "extension": ".ts"
     },
     "frontend/src/store/slices/projectsSlice.ts": {
@@ -453,9 +488,9 @@
     },
     "frontend/src/types/api.ts": {
       "path": "frontend/src/types/api.ts",
-      "size": 612,
-      "lines": 35,
-      "hash": "1a34867d",
+      "size": 2218,
+      "lines": 106,
+      "hash": "9bc3ce12",
       "extension": ".ts"
     },
     "frontend/src/utils/formatters.ts": {
@@ -509,16 +544,16 @@
     },
     "handoff_latest.md": {
       "path": "handoff_latest.md",
-      "size": 523680,
-      "lines": 12152,
-      "hash": "8cbe6e3a",
+      "size": 531631,
+      "lines": 12322,
+      "hash": "f2d7dd16",
       "extension": ".md"
     },
     "handoff_quick.md": {
       "path": "handoff_quick.md",
-      "size": 776,
+      "size": 778,
       "lines": 21,
-      "hash": "56e4b581",
+      "hash": "d25eaec5",
       "extension": ".md"
     },
     "osint-backups/docker-compose_20260224_214935.yml": {
@@ -617,6 +652,13 @@
       "size": 13405,
       "lines": 357,
       "hash": "59b91921",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/_black_version.py": {
+      "path": "venv/lib/python3.12/site-packages/_black_version.py",
+      "size": 19,
+      "lines": 2,
+      "hash": "9432fcb9",
       "extension": ".py"
     },
     "venv/lib/python3.12/site-packages/_yaml/__init__.py": {
@@ -1814,6 +1856,300 @@
       "size": 6260,
       "lines": 238,
       "hash": "d0d85c96",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/black/__init__.py": {
+      "path": "venv/lib/python3.12/site-packages/black/__init__.py",
+      "size": 54780,
+      "lines": 1680,
+      "hash": "bd54aac2",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/black/__main__.py": {
+      "path": "venv/lib/python3.12/site-packages/black/__main__.py",
+      "size": 47,
+      "lines": 4,
+      "hash": "f1578674",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/black/_width_table.py": {
+      "path": "venv/lib/python3.12/site-packages/black/_width_table.py",
+      "size": 3096,
+      "lines": 133,
+      "hash": "3720f49d",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/black/brackets.py": {
+      "path": "venv/lib/python3.12/site-packages/black/brackets.py",
+      "size": 12410,
+      "lines": 384,
+      "hash": "b17b37a5",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/black/cache.py": {
+      "path": "venv/lib/python3.12/site-packages/black/cache.py",
+      "size": 4754,
+      "lines": 151,
+      "hash": "30ebc766",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/black/comments.py": {
+      "path": "venv/lib/python3.12/site-packages/black/comments.py",
+      "size": 29753,
+      "lines": 828,
+      "hash": "86ba9feb",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/black/concurrency.py": {
+      "path": "venv/lib/python3.12/site-packages/black/concurrency.py",
+      "size": 7573,
+      "lines": 222,
+      "hash": "0f4121a5",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/black/const.py": {
+      "path": "venv/lib/python3.12/site-packages/black/const.py",
+      "size": 321,
+      "lines": 5,
+      "hash": "473d87b1",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/black/debug.py": {
+      "path": "venv/lib/python3.12/site-packages/black/debug.py",
+      "size": 1922,
+      "lines": 56,
+      "hash": "c0da9127",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/black/files.py": {
+      "path": "venv/lib/python3.12/site-packages/black/files.py",
+      "size": 14664,
+      "lines": 427,
+      "hash": "327a8ca9",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/black/handle_ipynb_magics.py": {
+      "path": "venv/lib/python3.12/site-packages/black/handle_ipynb_magics.py",
+      "size": 15901,
+      "lines": 516,
+      "hash": "5d9855f8",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/black/linegen.py": {
+      "path": "venv/lib/python3.12/site-packages/black/linegen.py",
+      "size": 78915,
+      "lines": 2049,
+      "hash": "27face72",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/black/lines.py": {
+      "path": "venv/lib/python3.12/site-packages/black/lines.py",
+      "size": 41887,
+      "lines": 1122,
+      "hash": "e142719e",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/black/mode.py": {
+      "path": "venv/lib/python3.12/site-packages/black/mode.py",
+      "size": 10242,
+      "lines": 322,
+      "hash": "f425b54c",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/black/nodes.py": {
+      "path": "venv/lib/python3.12/site-packages/black/nodes.py",
+      "size": 32177,
+      "lines": 1109,
+      "hash": "51398873",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/black/numerics.py": {
+      "path": "venv/lib/python3.12/site-packages/black/numerics.py",
+      "size": 1655,
+      "lines": 62,
+      "hash": "cdc12caf",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/black/output.py": {
+      "path": "venv/lib/python3.12/site-packages/black/output.py",
+      "size": 3911,
+      "lines": 123,
+      "hash": "fdb46070",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/black/parsing.py": {
+      "path": "venv/lib/python3.12/site-packages/black/parsing.py",
+      "size": 8427,
+      "lines": 245,
+      "hash": "898ef7a4",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/black/ranges.py": {
+      "path": "venv/lib/python3.12/site-packages/black/ranges.py",
+      "size": 20594,
+      "lines": 535,
+      "hash": "80f27c6b",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/black/report.py": {
+      "path": "venv/lib/python3.12/site-packages/black/report.py",
+      "size": 3452,
+      "lines": 108,
+      "hash": "1670deda",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/black/resources/__init__.py": {
+      "path": "venv/lib/python3.12/site-packages/black/resources/__init__.py",
+      "size": 0,
+      "lines": 1,
+      "hash": "d41d8cd9",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/black/resources/black.schema.json": {
+      "path": "venv/lib/python3.12/site-packages/black/resources/black.schema.json",
+      "size": 7385,
+      "lines": 155,
+      "hash": "95344d43",
+      "extension": ".json"
+    },
+    "venv/lib/python3.12/site-packages/black/rusty.py": {
+      "path": "venv/lib/python3.12/site-packages/black/rusty.py",
+      "size": 557,
+      "lines": 29,
+      "hash": "6f0fc4ae",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/black/schema.py": {
+      "path": "venv/lib/python3.12/site-packages/black/schema.py",
+      "size": 431,
+      "lines": 16,
+      "hash": "37cbd9aa",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/black/strings.py": {
+      "path": "venv/lib/python3.12/site-packages/black/strings.py",
+      "size": 13304,
+      "lines": 392,
+      "hash": "d176af56",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/black/trans.py": {
+      "path": "venv/lib/python3.12/site-packages/black/trans.py",
+      "size": 97078,
+      "lines": 2561,
+      "hash": "6f14b972",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/blackd/__init__.py": {
+      "path": "venv/lib/python3.12/site-packages/blackd/__init__.py",
+      "size": 10330,
+      "lines": 335,
+      "hash": "0845a987",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/blackd/__main__.py": {
+      "path": "venv/lib/python3.12/site-packages/blackd/__main__.py",
+      "size": 37,
+      "lines": 4,
+      "hash": "ec1f725f",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/blackd/client.py": {
+      "path": "venv/lib/python3.12/site-packages/blackd/client.py",
+      "size": 3986,
+      "lines": 93,
+      "hash": "7467cf3d",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/blackd/middlewares.py": {
+      "path": "venv/lib/python3.12/site-packages/blackd/middlewares.py",
+      "size": 1487,
+      "lines": 46,
+      "hash": "676dfc59",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/blib2to3/__init__.py": {
+      "path": "venv/lib/python3.12/site-packages/blib2to3/__init__.py",
+      "size": 8,
+      "lines": 2,
+      "hash": "d5b0eaf0",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/blib2to3/pgen2/__init__.py": {
+      "path": "venv/lib/python3.12/site-packages/blib2to3/pgen2/__init__.py",
+      "size": 143,
+      "lines": 5,
+      "hash": "5cb6bc9b",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/blib2to3/pgen2/conv.py": {
+      "path": "venv/lib/python3.12/site-packages/blib2to3/pgen2/conv.py",
+      "size": 9596,
+      "lines": 257,
+      "hash": "6a6944a9",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/blib2to3/pgen2/driver.py": {
+      "path": "venv/lib/python3.12/site-packages/blib2to3/pgen2/driver.py",
+      "size": 10443,
+      "lines": 314,
+      "hash": "5a877f21",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/blib2to3/pgen2/grammar.py": {
+      "path": "venv/lib/python3.12/site-packages/blib2to3/pgen2/grammar.py",
+      "size": 6846,
+      "lines": 229,
+      "hash": "41cc8a74",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/blib2to3/pgen2/literals.py": {
+      "path": "venv/lib/python3.12/site-packages/blib2to3/pgen2/literals.py",
+      "size": 1580,
+      "lines": 66,
+      "hash": "0191935b",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/blib2to3/pgen2/parse.py": {
+      "path": "venv/lib/python3.12/site-packages/blib2to3/pgen2/parse.py",
+      "size": 15480,
+      "lines": 396,
+      "hash": "50efc3cd",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/blib2to3/pgen2/pgen.py": {
+      "path": "venv/lib/python3.12/site-packages/blib2to3/pgen2/pgen.py",
+      "size": 15078,
+      "lines": 412,
+      "hash": "10b9ece9",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/blib2to3/pgen2/token.py": {
+      "path": "venv/lib/python3.12/site-packages/blib2to3/pgen2/token.py",
+      "size": 1970,
+      "lines": 96,
+      "hash": "49f25dea",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/blib2to3/pgen2/tokenize.py": {
+      "path": "venv/lib/python3.12/site-packages/blib2to3/pgen2/tokenize.py",
+      "size": 7378,
+      "lines": 227,
+      "hash": "46c72b31",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/blib2to3/pygram.py": {
+      "path": "venv/lib/python3.12/site-packages/blib2to3/pygram.py",
+      "size": 5020,
+      "lines": 209,
+      "hash": "5be677e2",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/blib2to3/pytree.py": {
+      "path": "venv/lib/python3.12/site-packages/blib2to3/pytree.py",
+      "size": 32416,
+      "lines": 972,
+      "hash": "f1a96489",
       "extension": ".py"
     },
     "venv/lib/python3.12/site-packages/celery/__init__.py": {
@@ -6273,6 +6609,13 @@
       "size": 38988,
       "lines": 1306,
       "hash": "c8cb0de0",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/mypy_extensions.py": {
+      "path": "venv/lib/python3.12/site-packages/mypy_extensions.py",
+      "size": 7754,
+      "lines": 252,
+      "hash": "50927a8d",
       "extension": ".py"
     },
     "venv/lib/python3.12/site-packages/networkx/__init__.py": {
@@ -10944,6 +11287,223 @@
       "hash": "5238353d",
       "extension": ".py"
     },
+    "venv/lib/python3.12/site-packages/pathspec/__init__.py": {
+      "path": "venv/lib/python3.12/site-packages/pathspec/__init__.py",
+      "size": 1408,
+      "lines": 69,
+      "hash": "c7099bff",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/pathspec/_backends/__init__.py": {
+      "path": "venv/lib/python3.12/site-packages/pathspec/_backends/__init__.py",
+      "size": 130,
+      "lines": 5,
+      "hash": "2aee83bc",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/pathspec/_backends/_utils.py": {
+      "path": "venv/lib/python3.12/site-packages/pathspec/_backends/_utils.py",
+      "size": 1066,
+      "lines": 46,
+      "hash": "af8488f5",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/pathspec/_backends/agg.py": {
+      "path": "venv/lib/python3.12/site-packages/pathspec/_backends/agg.py",
+      "size": 2505,
+      "lines": 105,
+      "hash": "c5168069",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/pathspec/_backends/hyperscan/__init__.py": {
+      "path": "venv/lib/python3.12/site-packages/pathspec/_backends/hyperscan/__init__.py",
+      "size": 0,
+      "lines": 1,
+      "hash": "d41d8cd9",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/pathspec/_backends/hyperscan/_base.py": {
+      "path": "venv/lib/python3.12/site-packages/pathspec/_backends/hyperscan/_base.py",
+      "size": 1719,
+      "lines": 79,
+      "hash": "4bd7a7ab",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/pathspec/_backends/hyperscan/base.py": {
+      "path": "venv/lib/python3.12/site-packages/pathspec/_backends/hyperscan/base.py",
+      "size": 563,
+      "lines": 25,
+      "hash": "4d7bbb67",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/pathspec/_backends/hyperscan/gitignore.py": {
+      "path": "venv/lib/python3.12/site-packages/pathspec/_backends/hyperscan/gitignore.py",
+      "size": 6761,
+      "lines": 246,
+      "hash": "8bae4a02",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/pathspec/_backends/hyperscan/pathspec.py": {
+      "path": "venv/lib/python3.12/site-packages/pathspec/_backends/hyperscan/pathspec.py",
+      "size": 6500,
+      "lines": 252,
+      "hash": "20a3bfe4",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/pathspec/_backends/re2/__init__.py": {
+      "path": "venv/lib/python3.12/site-packages/pathspec/_backends/re2/__init__.py",
+      "size": 0,
+      "lines": 1,
+      "hash": "d41d8cd9",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/pathspec/_backends/re2/_base.py": {
+      "path": "venv/lib/python3.12/site-packages/pathspec/_backends/re2/_base.py",
+      "size": 2149,
+      "lines": 96,
+      "hash": "bb278107",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/pathspec/_backends/re2/base.py": {
+      "path": "venv/lib/python3.12/site-packages/pathspec/_backends/re2/base.py",
+      "size": 462,
+      "lines": 19,
+      "hash": "ec4e9d1a",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/pathspec/_backends/re2/gitignore.py": {
+      "path": "venv/lib/python3.12/site-packages/pathspec/_backends/re2/gitignore.py",
+      "size": 5094,
+      "lines": 180,
+      "hash": "4ff410a5",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/pathspec/_backends/re2/pathspec.py": {
+      "path": "venv/lib/python3.12/site-packages/pathspec/_backends/re2/pathspec.py",
+      "size": 4871,
+      "lines": 188,
+      "hash": "ad210737",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/pathspec/_backends/simple/__init__.py": {
+      "path": "venv/lib/python3.12/site-packages/pathspec/_backends/simple/__init__.py",
+      "size": 0,
+      "lines": 1,
+      "hash": "d41d8cd9",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/pathspec/_backends/simple/gitignore.py": {
+      "path": "venv/lib/python3.12/site-packages/pathspec/_backends/simple/gitignore.py",
+      "size": 2865,
+      "lines": 105,
+      "hash": "199e07e0",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/pathspec/_backends/simple/pathspec.py": {
+      "path": "venv/lib/python3.12/site-packages/pathspec/_backends/simple/pathspec.py",
+      "size": 2095,
+      "lines": 77,
+      "hash": "3289367e",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/pathspec/_meta.py": {
+      "path": "venv/lib/python3.12/site-packages/pathspec/_meta.py",
+      "size": 2937,
+      "lines": 68,
+      "hash": "b63dab21",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/pathspec/_typing.py": {
+      "path": "venv/lib/python3.12/site-packages/pathspec/_typing.py",
+      "size": 1642,
+      "lines": 65,
+      "hash": "2d5ec303",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/pathspec/_version.py": {
+      "path": "venv/lib/python3.12/site-packages/pathspec/_version.py",
+      "size": 64,
+      "lines": 6,
+      "hash": "1877890e",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/pathspec/backend.py": {
+      "path": "venv/lib/python3.12/site-packages/pathspec/backend.py",
+      "size": 1161,
+      "lines": 41,
+      "hash": "d360f0ad",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/pathspec/gitignore.py": {
+      "path": "venv/lib/python3.12/site-packages/pathspec/gitignore.py",
+      "size": 5263,
+      "lines": 166,
+      "hash": "47ba0a49",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/pathspec/pathspec.py": {
+      "path": "venv/lib/python3.12/site-packages/pathspec/pathspec.py",
+      "size": 15151,
+      "lines": 461,
+      "hash": "f3a0c173",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/pathspec/pattern.py": {
+      "path": "venv/lib/python3.12/site-packages/pathspec/pattern.py",
+      "size": 6695,
+      "lines": 242,
+      "hash": "94c3a9ef",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/pathspec/patterns/__init__.py": {
+      "path": "venv/lib/python3.12/site-packages/pathspec/patterns/__init__.py",
+      "size": 404,
+      "lines": 13,
+      "hash": "48c8f6b3",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/pathspec/patterns/gitignore/__init__.py": {
+      "path": "venv/lib/python3.12/site-packages/pathspec/patterns/gitignore/__init__.py",
+      "size": 422,
+      "lines": 18,
+      "hash": "ee1fbeb8",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/pathspec/patterns/gitignore/base.py": {
+      "path": "venv/lib/python3.12/site-packages/pathspec/patterns/gitignore/base.py",
+      "size": 4688,
+      "lines": 177,
+      "hash": "cb02245a",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/pathspec/patterns/gitignore/basic.py": {
+      "path": "venv/lib/python3.12/site-packages/pathspec/patterns/gitignore/basic.py",
+      "size": 9924,
+      "lines": 318,
+      "hash": "dc896082",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/pathspec/patterns/gitignore/spec.py": {
+      "path": "venv/lib/python3.12/site-packages/pathspec/patterns/gitignore/spec.py",
+      "size": 10186,
+      "lines": 336,
+      "hash": "9774c9bb",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/pathspec/patterns/gitwildmatch.py": {
+      "path": "venv/lib/python3.12/site-packages/pathspec/patterns/gitwildmatch.py",
+      "size": 1463,
+      "lines": 53,
+      "hash": "c32e1a2d",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/pathspec/util.py": {
+      "path": "venv/lib/python3.12/site-packages/pathspec/util.py",
+      "size": 24728,
+      "lines": 848,
+      "hash": "f6ba6ef8",
+      "extension": ".py"
+    },
     "venv/lib/python3.12/site-packages/pip/__init__.py": {
       "path": "venv/lib/python3.12/site-packages/pip/__init__.py",
       "size": 355,
@@ -13625,6 +14185,69 @@
       "hash": "18a4795c",
       "extension": ".md"
     },
+    "venv/lib/python3.12/site-packages/platformdirs/__init__.py": {
+      "path": "venv/lib/python3.12/site-packages/platformdirs/__init__.py",
+      "size": 30718,
+      "lines": 858,
+      "hash": "c46e4647",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/platformdirs/__main__.py": {
+      "path": "venv/lib/python3.12/site-packages/platformdirs/__main__.py",
+      "size": 1633,
+      "lines": 62,
+      "hash": "24900b32",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/platformdirs/_xdg.py": {
+      "path": "venv/lib/python3.12/site-packages/platformdirs/_xdg.py",
+      "size": 6457,
+      "lines": 144,
+      "hash": "b8c1d37d",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/platformdirs/android.py": {
+      "path": "venv/lib/python3.12/site-packages/platformdirs/android.py",
+      "size": 10591,
+      "lines": 276,
+      "hash": "00ec9ded",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/platformdirs/api.py": {
+      "path": "venv/lib/python3.12/site-packages/platformdirs/api.py",
+      "size": 12734,
+      "lines": 395,
+      "hash": "f403b6a2",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/platformdirs/macos.py": {
+      "path": "venv/lib/python3.12/site-packages/platformdirs/macos.py",
+      "size": 7869,
+      "lines": 188,
+      "hash": "2430a7cd",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/platformdirs/unix.py": {
+      "path": "venv/lib/python3.12/site-packages/platformdirs/unix.py",
+      "size": 12189,
+      "lines": 295,
+      "hash": "c8fb6da9",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/platformdirs/version.py": {
+      "path": "venv/lib/python3.12/site-packages/platformdirs/version.py",
+      "size": 704,
+      "lines": 35,
+      "hash": "1f1a659e",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/platformdirs/windows.py": {
+      "path": "venv/lib/python3.12/site-packages/platformdirs/windows.py",
+      "size": 14564,
+      "lines": 370,
+      "hash": "d0b483bb",
+      "extension": ".py"
+    },
     "venv/lib/python3.12/site-packages/prompt_toolkit/__init__.py": {
       "path": "venv/lib/python3.12/site-packages/prompt_toolkit/__init__.py",
       "size": 1376,
@@ -15730,6 +16353,34 @@
       "size": 18,
       "lines": 2,
       "hash": "2ad9ad61",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/pytokens/__init__.py": {
+      "path": "venv/lib/python3.12/site-packages/pytokens/__init__.py",
+      "size": 39870,
+      "lines": 1175,
+      "hash": "1d119f31",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/pytokens/__main__.py": {
+      "path": "venv/lib/python3.12/site-packages/pytokens/__main__.py",
+      "size": 184,
+      "lines": 8,
+      "hash": "fb2f628b",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/pytokens/_mypyc_dummy.py": {
+      "path": "venv/lib/python3.12/site-packages/pytokens/_mypyc_dummy.py",
+      "size": 0,
+      "lines": 1,
+      "hash": "d41d8cd9",
+      "extension": ".py"
+    },
+    "venv/lib/python3.12/site-packages/pytokens/cli.py": {
+      "path": "venv/lib/python3.12/site-packages/pytokens/cli.py",
+      "size": 7978,
+      "lines": 259,
+      "hash": "2f73f114",
       "extension": ".py"
     },
     "venv/lib/python3.12/site-packages/redis/__init__.py": {
@@ -19743,6 +20394,13 @@
       "hash": "33423c7f",
       "extension": ".py"
     },
+    "venv/lib64/python3.12/site-packages/_black_version.py": {
+      "path": "venv/lib64/python3.12/site-packages/_black_version.py",
+      "size": 19,
+      "lines": 2,
+      "hash": "9432fcb9",
+      "extension": ".py"
+    },
     "venv/lib64/python3.12/site-packages/_yaml/__init__.py": {
       "path": "venv/lib64/python3.12/site-packages/_yaml/__init__.py",
       "size": 1402,
@@ -20938,6 +21596,300 @@
       "size": 6260,
       "lines": 238,
       "hash": "d0d85c96",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/black/__init__.py": {
+      "path": "venv/lib64/python3.12/site-packages/black/__init__.py",
+      "size": 54780,
+      "lines": 1680,
+      "hash": "bd54aac2",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/black/__main__.py": {
+      "path": "venv/lib64/python3.12/site-packages/black/__main__.py",
+      "size": 47,
+      "lines": 4,
+      "hash": "f1578674",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/black/_width_table.py": {
+      "path": "venv/lib64/python3.12/site-packages/black/_width_table.py",
+      "size": 3096,
+      "lines": 133,
+      "hash": "3720f49d",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/black/brackets.py": {
+      "path": "venv/lib64/python3.12/site-packages/black/brackets.py",
+      "size": 12410,
+      "lines": 384,
+      "hash": "b17b37a5",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/black/cache.py": {
+      "path": "venv/lib64/python3.12/site-packages/black/cache.py",
+      "size": 4754,
+      "lines": 151,
+      "hash": "30ebc766",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/black/comments.py": {
+      "path": "venv/lib64/python3.12/site-packages/black/comments.py",
+      "size": 29753,
+      "lines": 828,
+      "hash": "86ba9feb",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/black/concurrency.py": {
+      "path": "venv/lib64/python3.12/site-packages/black/concurrency.py",
+      "size": 7573,
+      "lines": 222,
+      "hash": "0f4121a5",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/black/const.py": {
+      "path": "venv/lib64/python3.12/site-packages/black/const.py",
+      "size": 321,
+      "lines": 5,
+      "hash": "473d87b1",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/black/debug.py": {
+      "path": "venv/lib64/python3.12/site-packages/black/debug.py",
+      "size": 1922,
+      "lines": 56,
+      "hash": "c0da9127",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/black/files.py": {
+      "path": "venv/lib64/python3.12/site-packages/black/files.py",
+      "size": 14664,
+      "lines": 427,
+      "hash": "327a8ca9",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/black/handle_ipynb_magics.py": {
+      "path": "venv/lib64/python3.12/site-packages/black/handle_ipynb_magics.py",
+      "size": 15901,
+      "lines": 516,
+      "hash": "5d9855f8",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/black/linegen.py": {
+      "path": "venv/lib64/python3.12/site-packages/black/linegen.py",
+      "size": 78915,
+      "lines": 2049,
+      "hash": "27face72",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/black/lines.py": {
+      "path": "venv/lib64/python3.12/site-packages/black/lines.py",
+      "size": 41887,
+      "lines": 1122,
+      "hash": "e142719e",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/black/mode.py": {
+      "path": "venv/lib64/python3.12/site-packages/black/mode.py",
+      "size": 10242,
+      "lines": 322,
+      "hash": "f425b54c",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/black/nodes.py": {
+      "path": "venv/lib64/python3.12/site-packages/black/nodes.py",
+      "size": 32177,
+      "lines": 1109,
+      "hash": "51398873",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/black/numerics.py": {
+      "path": "venv/lib64/python3.12/site-packages/black/numerics.py",
+      "size": 1655,
+      "lines": 62,
+      "hash": "cdc12caf",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/black/output.py": {
+      "path": "venv/lib64/python3.12/site-packages/black/output.py",
+      "size": 3911,
+      "lines": 123,
+      "hash": "fdb46070",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/black/parsing.py": {
+      "path": "venv/lib64/python3.12/site-packages/black/parsing.py",
+      "size": 8427,
+      "lines": 245,
+      "hash": "898ef7a4",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/black/ranges.py": {
+      "path": "venv/lib64/python3.12/site-packages/black/ranges.py",
+      "size": 20594,
+      "lines": 535,
+      "hash": "80f27c6b",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/black/report.py": {
+      "path": "venv/lib64/python3.12/site-packages/black/report.py",
+      "size": 3452,
+      "lines": 108,
+      "hash": "1670deda",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/black/resources/__init__.py": {
+      "path": "venv/lib64/python3.12/site-packages/black/resources/__init__.py",
+      "size": 0,
+      "lines": 1,
+      "hash": "d41d8cd9",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/black/resources/black.schema.json": {
+      "path": "venv/lib64/python3.12/site-packages/black/resources/black.schema.json",
+      "size": 7385,
+      "lines": 155,
+      "hash": "95344d43",
+      "extension": ".json"
+    },
+    "venv/lib64/python3.12/site-packages/black/rusty.py": {
+      "path": "venv/lib64/python3.12/site-packages/black/rusty.py",
+      "size": 557,
+      "lines": 29,
+      "hash": "6f0fc4ae",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/black/schema.py": {
+      "path": "venv/lib64/python3.12/site-packages/black/schema.py",
+      "size": 431,
+      "lines": 16,
+      "hash": "37cbd9aa",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/black/strings.py": {
+      "path": "venv/lib64/python3.12/site-packages/black/strings.py",
+      "size": 13304,
+      "lines": 392,
+      "hash": "d176af56",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/black/trans.py": {
+      "path": "venv/lib64/python3.12/site-packages/black/trans.py",
+      "size": 97078,
+      "lines": 2561,
+      "hash": "6f14b972",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/blackd/__init__.py": {
+      "path": "venv/lib64/python3.12/site-packages/blackd/__init__.py",
+      "size": 10330,
+      "lines": 335,
+      "hash": "0845a987",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/blackd/__main__.py": {
+      "path": "venv/lib64/python3.12/site-packages/blackd/__main__.py",
+      "size": 37,
+      "lines": 4,
+      "hash": "ec1f725f",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/blackd/client.py": {
+      "path": "venv/lib64/python3.12/site-packages/blackd/client.py",
+      "size": 3986,
+      "lines": 93,
+      "hash": "7467cf3d",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/blackd/middlewares.py": {
+      "path": "venv/lib64/python3.12/site-packages/blackd/middlewares.py",
+      "size": 1487,
+      "lines": 46,
+      "hash": "676dfc59",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/blib2to3/__init__.py": {
+      "path": "venv/lib64/python3.12/site-packages/blib2to3/__init__.py",
+      "size": 8,
+      "lines": 2,
+      "hash": "d5b0eaf0",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/blib2to3/pgen2/__init__.py": {
+      "path": "venv/lib64/python3.12/site-packages/blib2to3/pgen2/__init__.py",
+      "size": 143,
+      "lines": 5,
+      "hash": "5cb6bc9b",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/blib2to3/pgen2/conv.py": {
+      "path": "venv/lib64/python3.12/site-packages/blib2to3/pgen2/conv.py",
+      "size": 9596,
+      "lines": 257,
+      "hash": "6a6944a9",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/blib2to3/pgen2/driver.py": {
+      "path": "venv/lib64/python3.12/site-packages/blib2to3/pgen2/driver.py",
+      "size": 10443,
+      "lines": 314,
+      "hash": "5a877f21",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/blib2to3/pgen2/grammar.py": {
+      "path": "venv/lib64/python3.12/site-packages/blib2to3/pgen2/grammar.py",
+      "size": 6846,
+      "lines": 229,
+      "hash": "41cc8a74",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/blib2to3/pgen2/literals.py": {
+      "path": "venv/lib64/python3.12/site-packages/blib2to3/pgen2/literals.py",
+      "size": 1580,
+      "lines": 66,
+      "hash": "0191935b",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/blib2to3/pgen2/parse.py": {
+      "path": "venv/lib64/python3.12/site-packages/blib2to3/pgen2/parse.py",
+      "size": 15480,
+      "lines": 396,
+      "hash": "50efc3cd",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/blib2to3/pgen2/pgen.py": {
+      "path": "venv/lib64/python3.12/site-packages/blib2to3/pgen2/pgen.py",
+      "size": 15078,
+      "lines": 412,
+      "hash": "10b9ece9",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/blib2to3/pgen2/token.py": {
+      "path": "venv/lib64/python3.12/site-packages/blib2to3/pgen2/token.py",
+      "size": 1970,
+      "lines": 96,
+      "hash": "49f25dea",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/blib2to3/pgen2/tokenize.py": {
+      "path": "venv/lib64/python3.12/site-packages/blib2to3/pgen2/tokenize.py",
+      "size": 7378,
+      "lines": 227,
+      "hash": "46c72b31",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/blib2to3/pygram.py": {
+      "path": "venv/lib64/python3.12/site-packages/blib2to3/pygram.py",
+      "size": 5020,
+      "lines": 209,
+      "hash": "5be677e2",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/blib2to3/pytree.py": {
+      "path": "venv/lib64/python3.12/site-packages/blib2to3/pytree.py",
+      "size": 32416,
+      "lines": 972,
+      "hash": "f1a96489",
       "extension": ".py"
     },
     "venv/lib64/python3.12/site-packages/celery/__init__.py": {
@@ -25397,6 +26349,13 @@
       "size": 38988,
       "lines": 1306,
       "hash": "c8cb0de0",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/mypy_extensions.py": {
+      "path": "venv/lib64/python3.12/site-packages/mypy_extensions.py",
+      "size": 7754,
+      "lines": 252,
+      "hash": "50927a8d",
       "extension": ".py"
     },
     "venv/lib64/python3.12/site-packages/networkx/__init__.py": {
@@ -30068,6 +31027,223 @@
       "hash": "5238353d",
       "extension": ".py"
     },
+    "venv/lib64/python3.12/site-packages/pathspec/__init__.py": {
+      "path": "venv/lib64/python3.12/site-packages/pathspec/__init__.py",
+      "size": 1408,
+      "lines": 69,
+      "hash": "c7099bff",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/pathspec/_backends/__init__.py": {
+      "path": "venv/lib64/python3.12/site-packages/pathspec/_backends/__init__.py",
+      "size": 130,
+      "lines": 5,
+      "hash": "2aee83bc",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/pathspec/_backends/_utils.py": {
+      "path": "venv/lib64/python3.12/site-packages/pathspec/_backends/_utils.py",
+      "size": 1066,
+      "lines": 46,
+      "hash": "af8488f5",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/pathspec/_backends/agg.py": {
+      "path": "venv/lib64/python3.12/site-packages/pathspec/_backends/agg.py",
+      "size": 2505,
+      "lines": 105,
+      "hash": "c5168069",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/pathspec/_backends/hyperscan/__init__.py": {
+      "path": "venv/lib64/python3.12/site-packages/pathspec/_backends/hyperscan/__init__.py",
+      "size": 0,
+      "lines": 1,
+      "hash": "d41d8cd9",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/pathspec/_backends/hyperscan/_base.py": {
+      "path": "venv/lib64/python3.12/site-packages/pathspec/_backends/hyperscan/_base.py",
+      "size": 1719,
+      "lines": 79,
+      "hash": "4bd7a7ab",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/pathspec/_backends/hyperscan/base.py": {
+      "path": "venv/lib64/python3.12/site-packages/pathspec/_backends/hyperscan/base.py",
+      "size": 563,
+      "lines": 25,
+      "hash": "4d7bbb67",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/pathspec/_backends/hyperscan/gitignore.py": {
+      "path": "venv/lib64/python3.12/site-packages/pathspec/_backends/hyperscan/gitignore.py",
+      "size": 6761,
+      "lines": 246,
+      "hash": "8bae4a02",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/pathspec/_backends/hyperscan/pathspec.py": {
+      "path": "venv/lib64/python3.12/site-packages/pathspec/_backends/hyperscan/pathspec.py",
+      "size": 6500,
+      "lines": 252,
+      "hash": "20a3bfe4",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/pathspec/_backends/re2/__init__.py": {
+      "path": "venv/lib64/python3.12/site-packages/pathspec/_backends/re2/__init__.py",
+      "size": 0,
+      "lines": 1,
+      "hash": "d41d8cd9",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/pathspec/_backends/re2/_base.py": {
+      "path": "venv/lib64/python3.12/site-packages/pathspec/_backends/re2/_base.py",
+      "size": 2149,
+      "lines": 96,
+      "hash": "bb278107",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/pathspec/_backends/re2/base.py": {
+      "path": "venv/lib64/python3.12/site-packages/pathspec/_backends/re2/base.py",
+      "size": 462,
+      "lines": 19,
+      "hash": "ec4e9d1a",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/pathspec/_backends/re2/gitignore.py": {
+      "path": "venv/lib64/python3.12/site-packages/pathspec/_backends/re2/gitignore.py",
+      "size": 5094,
+      "lines": 180,
+      "hash": "4ff410a5",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/pathspec/_backends/re2/pathspec.py": {
+      "path": "venv/lib64/python3.12/site-packages/pathspec/_backends/re2/pathspec.py",
+      "size": 4871,
+      "lines": 188,
+      "hash": "ad210737",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/pathspec/_backends/simple/__init__.py": {
+      "path": "venv/lib64/python3.12/site-packages/pathspec/_backends/simple/__init__.py",
+      "size": 0,
+      "lines": 1,
+      "hash": "d41d8cd9",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/pathspec/_backends/simple/gitignore.py": {
+      "path": "venv/lib64/python3.12/site-packages/pathspec/_backends/simple/gitignore.py",
+      "size": 2865,
+      "lines": 105,
+      "hash": "199e07e0",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/pathspec/_backends/simple/pathspec.py": {
+      "path": "venv/lib64/python3.12/site-packages/pathspec/_backends/simple/pathspec.py",
+      "size": 2095,
+      "lines": 77,
+      "hash": "3289367e",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/pathspec/_meta.py": {
+      "path": "venv/lib64/python3.12/site-packages/pathspec/_meta.py",
+      "size": 2937,
+      "lines": 68,
+      "hash": "b63dab21",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/pathspec/_typing.py": {
+      "path": "venv/lib64/python3.12/site-packages/pathspec/_typing.py",
+      "size": 1642,
+      "lines": 65,
+      "hash": "2d5ec303",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/pathspec/_version.py": {
+      "path": "venv/lib64/python3.12/site-packages/pathspec/_version.py",
+      "size": 64,
+      "lines": 6,
+      "hash": "1877890e",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/pathspec/backend.py": {
+      "path": "venv/lib64/python3.12/site-packages/pathspec/backend.py",
+      "size": 1161,
+      "lines": 41,
+      "hash": "d360f0ad",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/pathspec/gitignore.py": {
+      "path": "venv/lib64/python3.12/site-packages/pathspec/gitignore.py",
+      "size": 5263,
+      "lines": 166,
+      "hash": "47ba0a49",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/pathspec/pathspec.py": {
+      "path": "venv/lib64/python3.12/site-packages/pathspec/pathspec.py",
+      "size": 15151,
+      "lines": 461,
+      "hash": "f3a0c173",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/pathspec/pattern.py": {
+      "path": "venv/lib64/python3.12/site-packages/pathspec/pattern.py",
+      "size": 6695,
+      "lines": 242,
+      "hash": "94c3a9ef",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/pathspec/patterns/__init__.py": {
+      "path": "venv/lib64/python3.12/site-packages/pathspec/patterns/__init__.py",
+      "size": 404,
+      "lines": 13,
+      "hash": "48c8f6b3",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/pathspec/patterns/gitignore/__init__.py": {
+      "path": "venv/lib64/python3.12/site-packages/pathspec/patterns/gitignore/__init__.py",
+      "size": 422,
+      "lines": 18,
+      "hash": "ee1fbeb8",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/pathspec/patterns/gitignore/base.py": {
+      "path": "venv/lib64/python3.12/site-packages/pathspec/patterns/gitignore/base.py",
+      "size": 4688,
+      "lines": 177,
+      "hash": "cb02245a",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/pathspec/patterns/gitignore/basic.py": {
+      "path": "venv/lib64/python3.12/site-packages/pathspec/patterns/gitignore/basic.py",
+      "size": 9924,
+      "lines": 318,
+      "hash": "dc896082",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/pathspec/patterns/gitignore/spec.py": {
+      "path": "venv/lib64/python3.12/site-packages/pathspec/patterns/gitignore/spec.py",
+      "size": 10186,
+      "lines": 336,
+      "hash": "9774c9bb",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/pathspec/patterns/gitwildmatch.py": {
+      "path": "venv/lib64/python3.12/site-packages/pathspec/patterns/gitwildmatch.py",
+      "size": 1463,
+      "lines": 53,
+      "hash": "c32e1a2d",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/pathspec/util.py": {
+      "path": "venv/lib64/python3.12/site-packages/pathspec/util.py",
+      "size": 24728,
+      "lines": 848,
+      "hash": "f6ba6ef8",
+      "extension": ".py"
+    },
     "venv/lib64/python3.12/site-packages/pip/__init__.py": {
       "path": "venv/lib64/python3.12/site-packages/pip/__init__.py",
       "size": 355,
@@ -32749,6 +33925,69 @@
       "hash": "18a4795c",
       "extension": ".md"
     },
+    "venv/lib64/python3.12/site-packages/platformdirs/__init__.py": {
+      "path": "venv/lib64/python3.12/site-packages/platformdirs/__init__.py",
+      "size": 30718,
+      "lines": 858,
+      "hash": "c46e4647",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/platformdirs/__main__.py": {
+      "path": "venv/lib64/python3.12/site-packages/platformdirs/__main__.py",
+      "size": 1633,
+      "lines": 62,
+      "hash": "24900b32",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/platformdirs/_xdg.py": {
+      "path": "venv/lib64/python3.12/site-packages/platformdirs/_xdg.py",
+      "size": 6457,
+      "lines": 144,
+      "hash": "b8c1d37d",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/platformdirs/android.py": {
+      "path": "venv/lib64/python3.12/site-packages/platformdirs/android.py",
+      "size": 10591,
+      "lines": 276,
+      "hash": "00ec9ded",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/platformdirs/api.py": {
+      "path": "venv/lib64/python3.12/site-packages/platformdirs/api.py",
+      "size": 12734,
+      "lines": 395,
+      "hash": "f403b6a2",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/platformdirs/macos.py": {
+      "path": "venv/lib64/python3.12/site-packages/platformdirs/macos.py",
+      "size": 7869,
+      "lines": 188,
+      "hash": "2430a7cd",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/platformdirs/unix.py": {
+      "path": "venv/lib64/python3.12/site-packages/platformdirs/unix.py",
+      "size": 12189,
+      "lines": 295,
+      "hash": "c8fb6da9",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/platformdirs/version.py": {
+      "path": "venv/lib64/python3.12/site-packages/platformdirs/version.py",
+      "size": 704,
+      "lines": 35,
+      "hash": "1f1a659e",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/platformdirs/windows.py": {
+      "path": "venv/lib64/python3.12/site-packages/platformdirs/windows.py",
+      "size": 14564,
+      "lines": 370,
+      "hash": "d0b483bb",
+      "extension": ".py"
+    },
     "venv/lib64/python3.12/site-packages/prompt_toolkit/__init__.py": {
       "path": "venv/lib64/python3.12/site-packages/prompt_toolkit/__init__.py",
       "size": 1376,
@@ -34854,6 +36093,34 @@
       "size": 18,
       "lines": 2,
       "hash": "2ad9ad61",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/pytokens/__init__.py": {
+      "path": "venv/lib64/python3.12/site-packages/pytokens/__init__.py",
+      "size": 39870,
+      "lines": 1175,
+      "hash": "1d119f31",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/pytokens/__main__.py": {
+      "path": "venv/lib64/python3.12/site-packages/pytokens/__main__.py",
+      "size": 184,
+      "lines": 8,
+      "hash": "fb2f628b",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/pytokens/_mypyc_dummy.py": {
+      "path": "venv/lib64/python3.12/site-packages/pytokens/_mypyc_dummy.py",
+      "size": 0,
+      "lines": 1,
+      "hash": "d41d8cd9",
+      "extension": ".py"
+    },
+    "venv/lib64/python3.12/site-packages/pytokens/cli.py": {
+      "path": "venv/lib64/python3.12/site-packages/pytokens/cli.py",
+      "size": 7978,
+      "lines": 259,
+      "hash": "2f73f114",
       "extension": ".py"
     },
     "venv/lib64/python3.12/site-packages/redis/__init__.py": {
@@ -38871,12 +40138,17 @@
   "structure": {
     "Dockerfile": "[BINARY] 1276 bytes",
     "alembic": {
-      "env.py": "[FILE] 96 lines",
+      "env.py": "[FILE] 89 lines",
+      "script.py.mako": "[BINARY] 492 bytes",
+      "templates": {
+        "generic": {
+          "script.py.mako": "[BINARY] 494 bytes"
+        }
+      },
       "versions": {
         "001_initial_models.py": "[FILE] 128 lines",
         "002_add_artifacts_tables.py": "[FILE] 140 lines",
-        "003_add_graph_actions.py": "[FILE] 58 lines",
-        "004_add_graph_actions.py": "[FILE] 59 lines"
+        "3e7a730b98c7_initial_state.py": "[FILE] 23 lines"
       }
     },
     "alembic.ini": "[BINARY] 1734 bytes",
@@ -38928,15 +40200,46 @@
     "backup.sh": "[BINARY] 2331 bytes",
     "backups": {
       "checksums_20260313_020005.txt": "[BINARY] 954 bytes",
-      "data_20260313_020005.tar.gz": "[BINARY] 143 bytes",
+      "checksums_20260314_020005.txt": "[BINARY] 1827 bytes",
+      "checksums_20260315_020005.txt": "[BINARY] 2498 bytes",
+      "checksums_20260316_020005.txt": "[BINARY] 3172 bytes",
+      "checksums_20260317_020006.txt": "[BINARY] 3846 bytes",
+      "cron.log": "[BINARY] 12888 bytes",
+      "data_20260316_020005.tar.gz": "[BINARY] 145 bytes",
+      "data_20260317_020006.tar.gz": "[BINARY] 145 bytes",
       "db_20260313_020005.sql.gz": "[BINARY] 2410 bytes",
+      "db_20260314_020005.sql.gz": "[BINARY] 19383 bytes",
+      "db_20260315_020005.sql.gz": "[BINARY] 19382 bytes",
+      "db_20260316_020005.sql.gz": "[BINARY] 19379 bytes",
+      "db_20260317_020006.sql.gz": "[BINARY] 19716 bytes",
       "docker-compose_20260313_020005.yml": "[FILE] 86 lines",
+      "docker-compose_20260314_020005.yml": "[FILE] 86 lines",
+      "docker-compose_20260315_020005.yml": "[FILE] 86 lines",
+      "docker-compose_20260316_020005.yml": "[FILE] 86 lines",
+      "docker-compose_20260317_020006.yml": "[FILE] 86 lines",
       "env_20260313_020005.backup": "[BINARY] 609 bytes",
+      "env_20260314_020005.backup": "[BINARY] 609 bytes",
+      "env_20260315_020005.backup": "[BINARY] 609 bytes",
+      "env_20260316_020005.backup": "[BINARY] 609 bytes",
+      "env_20260317_020006.backup": "[BINARY] 609 bytes",
       "npm-deps_20260313_020005.txt": "[BINARY] 52 bytes",
+      "npm-deps_20260314_020005.txt": "[BINARY] 52 bytes",
+      "npm-deps_20260315_020005.txt": "[BINARY] 52 bytes",
+      "npm-deps_20260316_020005.txt": "[BINARY] 52 bytes",
+      "npm-deps_20260317_020006.txt": "[BINARY] 52 bytes",
       "requirements_20260313_020005.txt": "[BINARY] 1215 bytes",
+      "requirements_20260314_020005.txt": "[BINARY] 1215 bytes",
+      "requirements_20260315_020005.txt": "[BINARY] 1215 bytes",
+      "requirements_20260316_020005.txt": "[BINARY] 1215 bytes",
+      "requirements_20260317_020006.txt": "[BINARY] 1215 bytes",
       "system_info_20260313_020005.txt": "[BINARY] 352 bytes",
-      "volume_postgres_20260313_020005.tar.gz": "[BINARY] 87 bytes",
-      "volume_redis_20260313_020005.tar.gz": "[BINARY] 87 bytes"
+      "system_info_20260314_020005.txt": "[BINARY] 352 bytes",
+      "system_info_20260315_020005.txt": "[BINARY] 352 bytes",
+      "system_info_20260316_020005.txt": "[BINARY] 352 bytes",
+      "system_info_20260317_020006.txt": "[BINARY] 352 bytes",
+      "volume_postgres_20260317_020006.tar.gz": "[BINARY] 87 bytes",
+      "volume_redis_20260316_020005.tar.gz": "[BINARY] 87 bytes",
+      "volume_redis_20260317_020006.tar.gz": "[BINARY] 87 bytes"
     },
     "clean-database.sh": "[BINARY] 7117 bytes",
     "clean-database.sh:Zone.Identifier": "[BINARY] 0 bytes",
@@ -38952,15 +40255,16 @@
       "package.json": "[FILE] 50 lines",
       "src": {
         "App.css": "[FILE] 777 lines",
-        "App.tsx": "[FILE] 179 lines",
+        "App.tsx": "[FILE] 191 lines",
         "components": {
           "history": {
             "HistoryPanel.css": "[FILE] 266 lines",
-            "HistoryPanel.tsx": "[FILE] 237 lines"
+            "HistoryPanel.tsx": "[FILE] 178 lines"
           },
           "layout": {
             "InspectorPanel.tsx": "[FILE] 419 lines",
-            "Sidebar.tsx": "[FILE] 274 lines",
+            "Sidebar.css": "[FILE] 207 lines",
+            "Sidebar.tsx": "[FILE] 170 lines",
             "Sidebar_new.tsx": "[FILE] 966 lines",
             "TabBar.tsx": "[FILE] 68 lines"
           },
@@ -38968,14 +40272,15 @@
             "ArtifactView.tsx": "[FILE] 348 lines",
             "ChartView.tsx": "[FILE] 27 lines",
             "DocumentView.tsx": "[FILE] 34 lines",
-            "GraphView.css": "[FILE] 112 lines",
-            "GraphView.tsx": "[FILE] 466 lines",
+            "GraphView.css": "[FILE] 225 lines",
+            "GraphView.tsx": "[FILE] 558 lines",
             "MapView.tsx": "[FILE] 27 lines",
             "TableView.tsx": "[FILE] 51 lines"
           }
         },
         "hooks": {
-          "useActionWithUndo.ts": "[FILE] 225 lines",
+          "useActionWithUndo.ts": "[FILE] 192 lines",
+          "useActionWithUndo_bkp.ts": "[FILE] 232 lines",
           "useKeyboardShortcuts.ts": "[FILE] 34 lines"
         },
         "index.css": "[FILE] 14 lines",
@@ -38986,16 +40291,16 @@
         "store": {
           "index.ts": "[FILE] 38 lines",
           "slices": {
-            "artifactsSlice.ts": "[FILE] 371 lines",
+            "artifactsSlice.ts": "[FILE] 174 lines",
             "graphSlice.ts": "[FILE] 100 lines",
-            "historySlice.ts": "[FILE] 165 lines",
+            "historySlice.ts": "[FILE] 144 lines",
             "historySlice.ts]": "[BINARY] 1590 bytes",
             "projectsSlice.ts": "[FILE] 68 lines",
             "uiSlice.ts": "[FILE] 106 lines"
           }
         },
         "types": {
-          "api.ts": "[FILE] 35 lines"
+          "api.ts": "[FILE] 106 lines"
         },
         "utils": {
           "formatters.ts": "[FILE] 52 lines"
@@ -39009,8 +40314,8 @@
     },
     "get-docker.sh": "[BINARY] 22405 bytes",
     "get_structure.py": "[FILE] 493 lines",
-    "handoff_latest.json": "[FILE] 2045521 bytes (skipped, too large)",
-    "handoff_latest.md": "[FILE] 12152 lines",
+    "handoff_latest.json": "[FILE] 2074840 bytes (skipped, too large)",
+    "handoff_latest.md": "[FILE] 12322 lines",
     "handoff_quick.md": "[FILE] 21 lines",
     "osint-backups": {
       "checksums_20260224_214935.txt": "[BINARY] 879 bytes",
@@ -39062,6 +40367,8 @@
         "activate.csh": "[BINARY] 933 bytes",
         "activate.fish": "[BINARY] 2208 bytes",
         "alembic": "[BINARY] 194 bytes",
+        "black": "[BINARY] 201 bytes",
+        "blackd": "[BINARY] 202 bytes",
         "celery": "[BINARY] 195 bytes",
         "dotenv": "[BINARY] 193 bytes",
         "httpx": "[BINARY] 185 bytes",
@@ -39094,6 +40401,7 @@
       "lib": {
         "python3.12": {
           "site-packages": {
+            "30fcd23745efe32ce681__mypyc.cpython-312-x86_64-linux-gnu.so": "[BINARY] 4496288 bytes",
             "SQLAlchemy-2.0.23.dist-info": {
               "INSTALLER": "[BINARY] 4 bytes",
               "LICENSE": "[BINARY] 1100 bytes",
@@ -39103,6 +40411,8 @@
               "WHEEL": "[BINARY] 152 bytes",
               "top_level.txt": "[BINARY] 11 bytes"
             },
+            "_black_version.py": "[FILE] 2 lines",
+            "_black_version.pyi": "[BINARY] 13 bytes",
             "_cffi_backend.cpython-312-x86_64-linux-gnu.so": "[BINARY] 348808 bytes",
             "_yaml": {
               "__init__.py": "[FILE] 34 lines"
@@ -39476,6 +40786,103 @@
               "RECORD": "[BINARY] 4127 bytes",
               "WHEEL": "[BINARY] 91 bytes",
               "top_level.txt": "[BINARY] 9 bytes"
+            },
+            "black": {
+              "__init__.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+              "__init__.py": "[FILE] 1680 lines",
+              "__main__.py": "[FILE] 4 lines",
+              "_width_table.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15992 bytes",
+              "_width_table.py": "[FILE] 133 lines",
+              "brackets.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+              "brackets.py": "[FILE] 384 lines",
+              "cache.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+              "cache.py": "[FILE] 151 lines",
+              "comments.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+              "comments.py": "[FILE] 828 lines",
+              "concurrency.py": "[FILE] 222 lines",
+              "const.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+              "const.py": "[FILE] 5 lines",
+              "debug.py": "[FILE] 56 lines",
+              "files.py": "[FILE] 427 lines",
+              "handle_ipynb_magics.cpython-312-x86_64-linux-gnu.so": "[BINARY] 16008 bytes",
+              "handle_ipynb_magics.py": "[FILE] 516 lines",
+              "linegen.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+              "linegen.py": "[FILE] 2049 lines",
+              "lines.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+              "lines.py": "[FILE] 1122 lines",
+              "mode.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+              "mode.py": "[FILE] 322 lines",
+              "nodes.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+              "nodes.py": "[FILE] 1109 lines",
+              "numerics.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+              "numerics.py": "[FILE] 62 lines",
+              "output.py": "[FILE] 123 lines",
+              "parsing.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+              "parsing.py": "[FILE] 245 lines",
+              "py.typed": "[BINARY] 0 bytes",
+              "ranges.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+              "ranges.py": "[FILE] 535 lines",
+              "report.py": "[FILE] 108 lines",
+              "resources": {
+                "__init__.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+                "__init__.py": "[FILE] 1 lines",
+                "black.schema.json": "[FILE] 155 lines"
+              },
+              "rusty.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+              "rusty.py": "[FILE] 29 lines",
+              "schema.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+              "schema.py": "[FILE] 16 lines",
+              "strings.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+              "strings.py": "[FILE] 392 lines",
+              "trans.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+              "trans.py": "[FILE] 2561 lines"
+            },
+            "black-26.3.1.dist-info": {
+              "INSTALLER": "[BINARY] 4 bytes",
+              "METADATA": "[BINARY] 91891 bytes",
+              "RECORD": "[BINARY] 9698 bytes",
+              "REQUESTED": "[BINARY] 0 bytes",
+              "WHEEL": "[BINARY] 187 bytes",
+              "entry_points.txt": "[BINARY] 144 bytes",
+              "licenses": {
+                "LICENSE": "[BINARY] 1080 bytes"
+              }
+            },
+            "blackd": {
+              "__init__.py": "[FILE] 335 lines",
+              "__main__.py": "[FILE] 4 lines",
+              "client.py": "[FILE] 93 lines",
+              "middlewares.py": "[FILE] 46 lines"
+            },
+            "blib2to3": {
+              "Grammar.txt": "[BINARY] 12024 bytes",
+              "LICENSE": "[BINARY] 12762 bytes",
+              "PatternGrammar.txt": "[BINARY] 807 bytes",
+              "README": "[BINARY] 1074 bytes",
+              "__init__.py": "[FILE] 2 lines",
+              "pgen2": {
+                "__init__.py": "[FILE] 5 lines",
+                "conv.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+                "conv.py": "[FILE] 257 lines",
+                "driver.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+                "driver.py": "[FILE] 314 lines",
+                "grammar.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+                "grammar.py": "[FILE] 229 lines",
+                "literals.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+                "literals.py": "[FILE] 66 lines",
+                "parse.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+                "parse.py": "[FILE] 396 lines",
+                "pgen.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+                "pgen.py": "[FILE] 412 lines",
+                "token.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+                "token.py": "[FILE] 96 lines",
+                "tokenize.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+                "tokenize.py": "[FILE] 227 lines"
+              },
+              "pygram.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+              "pygram.py": "[FILE] 209 lines",
+              "pytree.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+              "pytree.py": "[FILE] 972 lines"
             },
             "celery": {
               "__init__.py": "[FILE] 173 lines",
@@ -40092,6 +41499,7 @@
                 "LICENSE": "[BINARY] 1086 bytes"
               }
             },
+            "fd7dcdb10166ebd4db98__mypyc.cpython-312-x86_64-linux-gnu.so": "[BINARY] 720656 bytes",
             "greenlet": {
               "CObjects.cpp": "[BINARY] 3508 bytes",
               "PyGreenlet.cpp": "[BINARY] 26311 bytes",
@@ -40610,6 +42018,16 @@
                 "test_multipart.py": "[FILE] 1306 lines"
               }
             },
+            "mypy_extensions-1.1.0.dist-info": {
+              "INSTALLER": "[BINARY] 4 bytes",
+              "METADATA": "[BINARY] 1100 bytes",
+              "RECORD": "[BINARY] 558 bytes",
+              "WHEEL": "[BINARY] 82 bytes",
+              "licenses": {
+                "LICENSE": "[BINARY] 1204 bytes"
+              }
+            },
+            "mypy_extensions.py": "[FILE] 252 lines",
             "networkx": {
               "__init__.py": "[FILE] 50 lines",
               "algorithms": {
@@ -41457,6 +42875,61 @@
               "top_level.txt": "[BINARY] 8 bytes",
               "zip-safe": "[BINARY] 1 bytes"
             },
+            "pathspec": {
+              "__init__.py": "[FILE] 69 lines",
+              "_backends": {
+                "__init__.py": "[FILE] 5 lines",
+                "_utils.py": "[FILE] 46 lines",
+                "agg.py": "[FILE] 105 lines",
+                "hyperscan": {
+                  "__init__.py": "[FILE] 1 lines",
+                  "_base.py": "[FILE] 79 lines",
+                  "base.py": "[FILE] 25 lines",
+                  "gitignore.py": "[FILE] 246 lines",
+                  "pathspec.py": "[FILE] 252 lines"
+                },
+                "re2": {
+                  "__init__.py": "[FILE] 1 lines",
+                  "_base.py": "[FILE] 96 lines",
+                  "base.py": "[FILE] 19 lines",
+                  "gitignore.py": "[FILE] 180 lines",
+                  "pathspec.py": "[FILE] 188 lines"
+                },
+                "simple": {
+                  "__init__.py": "[FILE] 1 lines",
+                  "gitignore.py": "[FILE] 105 lines",
+                  "pathspec.py": "[FILE] 77 lines"
+                }
+              },
+              "_meta.py": "[FILE] 68 lines",
+              "_typing.py": "[FILE] 65 lines",
+              "_version.py": "[FILE] 6 lines",
+              "backend.py": "[FILE] 41 lines",
+              "gitignore.py": "[FILE] 166 lines",
+              "pathspec.py": "[FILE] 461 lines",
+              "pattern.py": "[FILE] 242 lines",
+              "patterns": {
+                "__init__.py": "[FILE] 13 lines",
+                "gitignore": {
+                  "__init__.py": "[FILE] 18 lines",
+                  "base.py": "[FILE] 177 lines",
+                  "basic.py": "[FILE] 318 lines",
+                  "spec.py": "[FILE] 336 lines"
+                },
+                "gitwildmatch.py": "[FILE] 53 lines"
+              },
+              "py.typed": "[BINARY] 68 bytes",
+              "util.py": "[FILE] 848 lines"
+            },
+            "pathspec-1.0.4.dist-info": {
+              "INSTALLER": "[BINARY] 4 bytes",
+              "METADATA": "[BINARY] 13755 bytes",
+              "RECORD": "[BINARY] 5021 bytes",
+              "WHEEL": "[BINARY] 82 bytes",
+              "licenses": {
+                "LICENSE": "[BINARY] 16726 bytes"
+              }
+            },
             "pip": {
               "__init__.py": "[FILE] 14 lines",
               "__main__.py": "[FILE] 25 lines",
@@ -42042,6 +43515,27 @@
                 }
               }
             },
+            "platformdirs": {
+              "__init__.py": "[FILE] 858 lines",
+              "__main__.py": "[FILE] 62 lines",
+              "_xdg.py": "[FILE] 144 lines",
+              "android.py": "[FILE] 276 lines",
+              "api.py": "[FILE] 395 lines",
+              "macos.py": "[FILE] 188 lines",
+              "py.typed": "[BINARY] 0 bytes",
+              "unix.py": "[FILE] 295 lines",
+              "version.py": "[FILE] 35 lines",
+              "windows.py": "[FILE] 370 lines"
+            },
+            "platformdirs-4.9.4.dist-info": {
+              "INSTALLER": "[BINARY] 4 bytes",
+              "METADATA": "[BINARY] 4683 bytes",
+              "RECORD": "[BINARY] 1677 bytes",
+              "WHEEL": "[BINARY] 87 bytes",
+              "licenses": {
+                "LICENSE": "[BINARY] 1089 bytes"
+              }
+            },
             "prompt_toolkit": {
               "__init__.py": "[FILE] 55 lines",
               "application": {
@@ -42553,6 +44047,25 @@
               "licenses": {
                 "LICENSE.txt": "[BINARY] 556 bytes"
               }
+            },
+            "pytokens": {
+              "__init__.cpython-312-x86_64-linux-gnu.so": "[BINARY] 17528 bytes",
+              "__init__.py": "[FILE] 1175 lines",
+              "__main__.py": "[FILE] 8 lines",
+              "_mypyc_dummy.cpython-312-x86_64-linux-gnu.so": "[BINARY] 17568 bytes",
+              "_mypyc_dummy.py": "[FILE] 1 lines",
+              "cli.py": "[FILE] 259 lines",
+              "py.typed": "[BINARY] 59 bytes"
+            },
+            "pytokens-0.4.1.dist-info": {
+              "INSTALLER": "[BINARY] 4 bytes",
+              "METADATA": "[BINARY] 3788 bytes",
+              "RECORD": "[BINARY] 1410 bytes",
+              "WHEEL": "[BINARY] 191 bytes",
+              "licenses": {
+                "LICENSE": "[BINARY] 1072 bytes"
+              },
+              "top_level.txt": "[BINARY] 37 bytes"
             },
             "pyyaml-6.0.3.dist-info": {
               "INSTALLER": "[BINARY] 4 bytes",
@@ -44138,6 +45651,7 @@
       "lib64": {
         "python3.12": {
           "site-packages": {
+            "30fcd23745efe32ce681__mypyc.cpython-312-x86_64-linux-gnu.so": "[BINARY] 4496288 bytes",
             "SQLAlchemy-2.0.23.dist-info": {
               "INSTALLER": "[BINARY] 4 bytes",
               "LICENSE": "[BINARY] 1100 bytes",
@@ -44147,6 +45661,8 @@
               "WHEEL": "[BINARY] 152 bytes",
               "top_level.txt": "[BINARY] 11 bytes"
             },
+            "_black_version.py": "[FILE] 2 lines",
+            "_black_version.pyi": "[BINARY] 13 bytes",
             "_cffi_backend.cpython-312-x86_64-linux-gnu.so": "[BINARY] 348808 bytes",
             "_yaml": {
               "__init__.py": "[FILE] 34 lines"
@@ -44520,6 +46036,103 @@
               "RECORD": "[BINARY] 4127 bytes",
               "WHEEL": "[BINARY] 91 bytes",
               "top_level.txt": "[BINARY] 9 bytes"
+            },
+            "black": {
+              "__init__.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+              "__init__.py": "[FILE] 1680 lines",
+              "__main__.py": "[FILE] 4 lines",
+              "_width_table.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15992 bytes",
+              "_width_table.py": "[FILE] 133 lines",
+              "brackets.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+              "brackets.py": "[FILE] 384 lines",
+              "cache.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+              "cache.py": "[FILE] 151 lines",
+              "comments.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+              "comments.py": "[FILE] 828 lines",
+              "concurrency.py": "[FILE] 222 lines",
+              "const.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+              "const.py": "[FILE] 5 lines",
+              "debug.py": "[FILE] 56 lines",
+              "files.py": "[FILE] 427 lines",
+              "handle_ipynb_magics.cpython-312-x86_64-linux-gnu.so": "[BINARY] 16008 bytes",
+              "handle_ipynb_magics.py": "[FILE] 516 lines",
+              "linegen.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+              "linegen.py": "[FILE] 2049 lines",
+              "lines.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+              "lines.py": "[FILE] 1122 lines",
+              "mode.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+              "mode.py": "[FILE] 322 lines",
+              "nodes.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+              "nodes.py": "[FILE] 1109 lines",
+              "numerics.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+              "numerics.py": "[FILE] 62 lines",
+              "output.py": "[FILE] 123 lines",
+              "parsing.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+              "parsing.py": "[FILE] 245 lines",
+              "py.typed": "[BINARY] 0 bytes",
+              "ranges.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+              "ranges.py": "[FILE] 535 lines",
+              "report.py": "[FILE] 108 lines",
+              "resources": {
+                "__init__.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+                "__init__.py": "[FILE] 1 lines",
+                "black.schema.json": "[FILE] 155 lines"
+              },
+              "rusty.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+              "rusty.py": "[FILE] 29 lines",
+              "schema.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+              "schema.py": "[FILE] 16 lines",
+              "strings.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+              "strings.py": "[FILE] 392 lines",
+              "trans.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+              "trans.py": "[FILE] 2561 lines"
+            },
+            "black-26.3.1.dist-info": {
+              "INSTALLER": "[BINARY] 4 bytes",
+              "METADATA": "[BINARY] 91891 bytes",
+              "RECORD": "[BINARY] 9698 bytes",
+              "REQUESTED": "[BINARY] 0 bytes",
+              "WHEEL": "[BINARY] 187 bytes",
+              "entry_points.txt": "[BINARY] 144 bytes",
+              "licenses": {
+                "LICENSE": "[BINARY] 1080 bytes"
+              }
+            },
+            "blackd": {
+              "__init__.py": "[FILE] 335 lines",
+              "__main__.py": "[FILE] 4 lines",
+              "client.py": "[FILE] 93 lines",
+              "middlewares.py": "[FILE] 46 lines"
+            },
+            "blib2to3": {
+              "Grammar.txt": "[BINARY] 12024 bytes",
+              "LICENSE": "[BINARY] 12762 bytes",
+              "PatternGrammar.txt": "[BINARY] 807 bytes",
+              "README": "[BINARY] 1074 bytes",
+              "__init__.py": "[FILE] 2 lines",
+              "pgen2": {
+                "__init__.py": "[FILE] 5 lines",
+                "conv.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+                "conv.py": "[FILE] 257 lines",
+                "driver.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+                "driver.py": "[FILE] 314 lines",
+                "grammar.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+                "grammar.py": "[FILE] 229 lines",
+                "literals.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+                "literals.py": "[FILE] 66 lines",
+                "parse.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+                "parse.py": "[FILE] 396 lines",
+                "pgen.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+                "pgen.py": "[FILE] 412 lines",
+                "token.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+                "token.py": "[FILE] 96 lines",
+                "tokenize.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+                "tokenize.py": "[FILE] 227 lines"
+              },
+              "pygram.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+              "pygram.py": "[FILE] 209 lines",
+              "pytree.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+              "pytree.py": "[FILE] 972 lines"
             },
             "celery": {
               "__init__.py": "[FILE] 173 lines",
@@ -45136,6 +46749,7 @@
                 "LICENSE": "[BINARY] 1086 bytes"
               }
             },
+            "fd7dcdb10166ebd4db98__mypyc.cpython-312-x86_64-linux-gnu.so": "[BINARY] 720656 bytes",
             "greenlet": {
               "CObjects.cpp": "[BINARY] 3508 bytes",
               "PyGreenlet.cpp": "[BINARY] 26311 bytes",
@@ -45654,6 +47268,16 @@
                 "test_multipart.py": "[FILE] 1306 lines"
               }
             },
+            "mypy_extensions-1.1.0.dist-info": {
+              "INSTALLER": "[BINARY] 4 bytes",
+              "METADATA": "[BINARY] 1100 bytes",
+              "RECORD": "[BINARY] 558 bytes",
+              "WHEEL": "[BINARY] 82 bytes",
+              "licenses": {
+                "LICENSE": "[BINARY] 1204 bytes"
+              }
+            },
+            "mypy_extensions.py": "[FILE] 252 lines",
             "networkx": {
               "__init__.py": "[FILE] 50 lines",
               "algorithms": {
@@ -46501,6 +48125,61 @@
               "top_level.txt": "[BINARY] 8 bytes",
               "zip-safe": "[BINARY] 1 bytes"
             },
+            "pathspec": {
+              "__init__.py": "[FILE] 69 lines",
+              "_backends": {
+                "__init__.py": "[FILE] 5 lines",
+                "_utils.py": "[FILE] 46 lines",
+                "agg.py": "[FILE] 105 lines",
+                "hyperscan": {
+                  "__init__.py": "[FILE] 1 lines",
+                  "_base.py": "[FILE] 79 lines",
+                  "base.py": "[FILE] 25 lines",
+                  "gitignore.py": "[FILE] 246 lines",
+                  "pathspec.py": "[FILE] 252 lines"
+                },
+                "re2": {
+                  "__init__.py": "[FILE] 1 lines",
+                  "_base.py": "[FILE] 96 lines",
+                  "base.py": "[FILE] 19 lines",
+                  "gitignore.py": "[FILE] 180 lines",
+                  "pathspec.py": "[FILE] 188 lines"
+                },
+                "simple": {
+                  "__init__.py": "[FILE] 1 lines",
+                  "gitignore.py": "[FILE] 105 lines",
+                  "pathspec.py": "[FILE] 77 lines"
+                }
+              },
+              "_meta.py": "[FILE] 68 lines",
+              "_typing.py": "[FILE] 65 lines",
+              "_version.py": "[FILE] 6 lines",
+              "backend.py": "[FILE] 41 lines",
+              "gitignore.py": "[FILE] 166 lines",
+              "pathspec.py": "[FILE] 461 lines",
+              "pattern.py": "[FILE] 242 lines",
+              "patterns": {
+                "__init__.py": "[FILE] 13 lines",
+                "gitignore": {
+                  "__init__.py": "[FILE] 18 lines",
+                  "base.py": "[FILE] 177 lines",
+                  "basic.py": "[FILE] 318 lines",
+                  "spec.py": "[FILE] 336 lines"
+                },
+                "gitwildmatch.py": "[FILE] 53 lines"
+              },
+              "py.typed": "[BINARY] 68 bytes",
+              "util.py": "[FILE] 848 lines"
+            },
+            "pathspec-1.0.4.dist-info": {
+              "INSTALLER": "[BINARY] 4 bytes",
+              "METADATA": "[BINARY] 13755 bytes",
+              "RECORD": "[BINARY] 5021 bytes",
+              "WHEEL": "[BINARY] 82 bytes",
+              "licenses": {
+                "LICENSE": "[BINARY] 16726 bytes"
+              }
+            },
             "pip": {
               "__init__.py": "[FILE] 14 lines",
               "__main__.py": "[FILE] 25 lines",
@@ -47086,6 +48765,27 @@
                 }
               }
             },
+            "platformdirs": {
+              "__init__.py": "[FILE] 858 lines",
+              "__main__.py": "[FILE] 62 lines",
+              "_xdg.py": "[FILE] 144 lines",
+              "android.py": "[FILE] 276 lines",
+              "api.py": "[FILE] 395 lines",
+              "macos.py": "[FILE] 188 lines",
+              "py.typed": "[BINARY] 0 bytes",
+              "unix.py": "[FILE] 295 lines",
+              "version.py": "[FILE] 35 lines",
+              "windows.py": "[FILE] 370 lines"
+            },
+            "platformdirs-4.9.4.dist-info": {
+              "INSTALLER": "[BINARY] 4 bytes",
+              "METADATA": "[BINARY] 4683 bytes",
+              "RECORD": "[BINARY] 1677 bytes",
+              "WHEEL": "[BINARY] 87 bytes",
+              "licenses": {
+                "LICENSE": "[BINARY] 1089 bytes"
+              }
+            },
             "prompt_toolkit": {
               "__init__.py": "[FILE] 55 lines",
               "application": {
@@ -47597,6 +49297,25 @@
               "licenses": {
                 "LICENSE.txt": "[BINARY] 556 bytes"
               }
+            },
+            "pytokens": {
+              "__init__.cpython-312-x86_64-linux-gnu.so": "[BINARY] 17528 bytes",
+              "__init__.py": "[FILE] 1175 lines",
+              "__main__.py": "[FILE] 8 lines",
+              "_mypyc_dummy.cpython-312-x86_64-linux-gnu.so": "[BINARY] 17568 bytes",
+              "_mypyc_dummy.py": "[FILE] 1 lines",
+              "cli.py": "[FILE] 259 lines",
+              "py.typed": "[BINARY] 59 bytes"
+            },
+            "pytokens-0.4.1.dist-info": {
+              "INSTALLER": "[BINARY] 4 bytes",
+              "METADATA": "[BINARY] 3788 bytes",
+              "RECORD": "[BINARY] 1410 bytes",
+              "WHEEL": "[BINARY] 191 bytes",
+              "licenses": {
+                "LICENSE": "[BINARY] 1072 bytes"
+              },
+              "top_level.txt": "[BINARY] 37 bytes"
             },
             "pyyaml-6.0.3.dist-info": {
               "INSTALLER": "[BINARY] 4 bytes",
@@ -49183,15 +50902,15 @@
     }
   },
   "statistics": {
-    "total_files": 5552,
-    "total_lines": 2082288,
+    "total_files": 5733,
+    "total_lines": 2134064,
     "by_type": {
-      ".py": 5452,
-      ".yml": 6,
-      ".json": 6,
-      ".css": 4,
+      ".py": 5625,
+      ".yml": 10,
+      ".json": 8,
+      ".css": 5,
       ".tsx": 13,
-      ".ts": 13,
+      ".ts": 14,
       ".md": 16,
       ".yaml": 42
     }
@@ -49258,9 +50977,9 @@
       "hash": "5bba91aa"
     },
     "app/models/action.py": {
-      "content": "# app/models/action.py\n\"\"\"\nAction model for undo/redo functionality.\nStores all user and plugin actions for graph artifacts.\n\"\"\"\nfrom sqlalchemy import Column, Integer, String, JSON, DateTime, ForeignKey, Index\nfrom sqlalchemy.dialects.postgresql import UUID\nfrom datetime import datetime\nimport uuid\n\nfrom app.database import Base\n\nclass GraphAction(Base):\n    __tablename__ = \"graph_actions\"\n\n    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)\n    artifact_id = Column(Integer, ForeignKey(\"artifacts.id\", ondelete=\"CASCADE\"), nullable=False)\n\n    # Тип действия\n    action_type = Column(String(50), nullable=False)  # 'add_node', 'delete_edge', 'move_node', etc.\n\n    # Состояния (полное состояние графа ДО и ПОСЛЕ)\n    before_state = Column(JSON, nullable=False)\n    after_state = Column(JSON, nullable=False)\n\n    # Метаданные\n    timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)\n    user_type = Column(String(20), default='user')  # 'user' или 'plugin'\n    description = Column(String(200))\n    plugin_id = Column(String(100), nullable=True)\n\n    # Для группировки последовательных действий\n    group_id = Column(UUID(as_uuid=True), nullable=True)\n\n    # Индексы для быстрого поиска\n    __table_args__ = (\n        Index(\"ix_graph_actions_artifact_timestamp\", \"artifact_id\", \"timestamp\"),\n        Index(\"ix_graph_actions_group\", \"group_id\"),\n        Index(\"ix_graph_actions_artifact_id\", \"artifact_id\"),\n    )\n\n    def __repr__(self):\n        return f\"<GraphAction id={self.id} type={self.action_type} artifact={self.artifact_id}>\"\n\n    def to_dict(self):\n        \"\"\"Convert action to dictionary for API responses.\"\"\"\n        return {\n            \"id\": str(self.id),\n            \"artifact_id\": self.artifact_id,\n            \"action_type\": self.action_type,\n            \"before_state\": self.before_state,\n            \"after_state\": self.after_state,\n            \"timestamp\": self.timestamp.isoformat() if self.timestamp else None,\n            \"user_type\": self.user_type,\n            \"description\": self.description,\n            \"plugin_id\": self.plugin_id,\n            \"group_id\": str(self.group_id) if self.group_id else None\n        }\n",
+      "content": "# app/models/action.py\n\"\"\"\nAction model for undo/redo functionality.\nStores all user and plugin actions for graph artifacts.\n\"\"\"\nfrom sqlalchemy import Column, Integer, String, JSON, DateTime, ForeignKey, Index\nfrom sqlalchemy.dialects.postgresql import UUID\nfrom datetime import datetime\nimport uuid\n\nfrom app.database import Base\n\nclass GraphAction(Base):\n    __tablename__ = \"graph_actions\"\n\n    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)\n    artifact_id = Column(Integer, ForeignKey(\"artifacts.id\", ondelete=\"CASCADE\"), nullable=False)  # ИСПРАВЛЕНО: было graph_id\n\n    # Тип действия\n    action_type = Column(String(50), nullable=False)  # 'add_node', 'delete_edge', 'move_node', etc.\n\n    # Состояния (полное состояние графа ДО и ПОСЛЕ)\n    before_state = Column(JSON, nullable=False)\n    after_state = Column(JSON, nullable=False)\n\n    # Метаданные\n    timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)\n    user_type = Column(String(20), default='user', nullable=False)  # 'user' или 'plugin'\n    description = Column(String(200))\n    plugin_id = Column(String(100), nullable=True)\n\n    # Для группировки последовательных действий\n    group_id = Column(UUID(as_uuid=True), nullable=True)\n\n    # Индексы для быстрого поиска\n    __table_args__ = (\n        Index(\"ix_graph_actions_artifact_timestamp\", \"artifact_id\", \"timestamp\"),\n        Index(\"ix_graph_actions_group\", \"group_id\"),\n        Index(\"ix_graph_actions_artifact_id\", \"artifact_id\"),\n    )\n\n    def __repr__(self):\n        return f\"<GraphAction id={self.id} type={self.action_type} artifact={self.artifact_id}>\"\n\n    def to_dict(self):\n        \"\"\"Convert action to dictionary for API responses.\"\"\"\n        return {\n            \"id\": str(self.id),\n            \"artifact_id\": self.artifact_id,\n            \"action_type\": self.action_type,\n            \"before_state\": self.before_state,\n            \"after_state\": self.after_state,\n            \"timestamp\": self.timestamp.isoformat() if self.timestamp else None,\n            \"user_type\": self.user_type,\n            \"description\": self.description,\n            \"plugin_id\": self.plugin_id,\n            \"group_id\": str(self.group_id) if self.group_id else None\n        }\n",
       "lines": 59,
-      "hash": "ff57be1f"
+      "hash": "065459c4"
     },
     "app/models/artifact.py": {
       "content": "# app/models/artifact.py\n\"\"\"\nArtifact models for OSINT Graph Analyzer.\nSupports multiple artifact types: graph, table, map, chart, document.\n\"\"\"\nfrom sqlalchemy import Column, Integer, String, Text, ForeignKey, UniqueConstraint, DateTime\nfrom sqlalchemy.dialects.postgresql import JSONB\nfrom sqlalchemy.orm import relationship\nfrom sqlalchemy.sql import func\nfrom datetime import datetime\n\nfrom app.database import Base\n\nclass Artifact(Base):\n    \"\"\"Unified artifact model for all data types.\"\"\"\n    \n    __tablename__ = \"artifacts\"\n    \n    id = Column(Integer, primary_key=True, index=True)\n    project_id = Column(Integer, ForeignKey(\"projects.id\", ondelete=\"CASCADE\"), nullable=False)\n    type = Column(String(50), nullable=False)  # 'graph', 'table', 'map', 'chart', 'document'\n    name = Column(String(200), nullable=False)\n    description = Column(Text, nullable=True)\n    \n    # JSONB fields for flexible data storage\n    data = Column(JSONB, nullable=False)  # Full artifact data\n    artifact_metadata = Column(JSONB, nullable=True)  # Переименовано с metadata на artifact_metadata\n    \n    # Timestamps\n    created_at = Column(DateTime, server_default=func.now(), nullable=False)\n    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)\n    \n    # Relationships\n    project = relationship(\"Project\", back_populates=\"artifacts\")\n    source_relations = relationship(\n        \"ArtifactRelation\",\n        foreign_keys=\"ArtifactRelation.source_id\",\n        back_populates=\"source\",\n        cascade=\"all, delete-orphan\"\n    )\n    target_relations = relationship(\n        \"ArtifactRelation\",\n        foreign_keys=\"ArtifactRelation.target_id\",\n        back_populates=\"target\",\n        cascade=\"all, delete-orphan\"\n    )\n    versions = relationship(\n        \"ArtifactVersion\",\n        back_populates=\"artifact\",\n        cascade=\"all, delete-orphan\",\n        order_by=\"ArtifactVersion.version.desc()\"\n    )\n    \n    def __repr__(self):\n        return f\"<Artifact id={self.id} type={self.type} name={self.name}>\"\n\n\nclass ArtifactRelation(Base):\n    \"\"\"Relationships between artifacts.\"\"\"\n    \n    __tablename__ = \"artifact_relations\"\n    \n    source_id = Column(Integer, ForeignKey(\"artifacts.id\", ondelete=\"CASCADE\"), primary_key=True)\n    target_id = Column(Integer, ForeignKey(\"artifacts.id\", ondelete=\"CASCADE\"), primary_key=True)\n    relation_type = Column(String(50), primary_key=True)  # 'derived_from', 'attached_to', 'references'\n    created_at = Column(DateTime, server_default=func.now(), nullable=False)\n    \n    # Relationships\n    source = relationship(\"Artifact\", foreign_keys=[source_id], back_populates=\"source_relations\")\n    target = relationship(\"Artifact\", foreign_keys=[target_id], back_populates=\"target_relations\")\n    \n    def __repr__(self):\n        return f\"<ArtifactRelation {self.source_id} {self.relation_type} {self.target_id}>\"\n\n\nclass ArtifactVersion(Base):\n    \"\"\"Version history for artifacts.\"\"\"\n    \n    __tablename__ = \"artifact_versions\"\n    \n    id = Column(Integer, primary_key=True, index=True)\n    artifact_id = Column(Integer, ForeignKey(\"artifacts.id\", ondelete=\"CASCADE\"), nullable=False)\n    version = Column(Integer, nullable=False)\n    data = Column(JSONB, nullable=False)  # Snapshot of artifact data\n    changed_at = Column(DateTime, server_default=func.now(), nullable=False)\n    changed_by = Column(String(50), nullable=True)  # 'user' or plugin name\n    \n    # Relationships\n    artifact = relationship(\"Artifact\", back_populates=\"versions\")\n    \n    __table_args__ = (\n        UniqueConstraint('artifact_id', 'version', name='uq_artifact_version'),\n    )\n    \n    def __repr__(self):\n        return f\"<ArtifactVersion artifact={self.artifact_id} version={self.version}>\"",
@@ -49308,14 +51027,14 @@
       "hash": "f35f38fb"
     },
     "frontend/src/App.tsx": {
-      "content": "// frontend/src/App.tsx\nimport React, { useEffect, useState } from 'react';\nimport { useDispatch, useSelector } from 'react-redux';\nimport { RootState, AppDispatch } from './store';\nimport Sidebar from './components/layout/Sidebar';\nimport TabBar from './components/layout/TabBar';\nimport InspectorPanel from './components/layout/InspectorPanel';\nimport ArtifactView from './components/views/ArtifactView';\nimport { fetchProjects, setCurrentProject } from './store/slices/projectsSlice';\nimport { fetchArtifacts, Artifact, updateArtifact } from './store/slices/artifactsSlice';\nimport { addTab, removeTab, setActiveTab } from './store/slices/uiSlice';\nimport './App.css';\n\ninterface Tab {\n  id: string;\n  artifactId: number;\n  title: string;\n  type: string;\n}\n\nconst App: React.FC = () => {\n  const dispatch = useDispatch<AppDispatch>();\n  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);\n  const [hasInitialized, setHasInitialized] = useState(false);\n  \n  const { projects, currentProject } = useSelector((state: RootState) => state.projects);\n  const { artifacts } = useSelector((state: RootState) => state.artifacts);\n  const { tabs, activeTabId, darkMode, inspectorWidth } = useSelector((state: RootState) => state.ui);\n\n  useEffect(() => {\n    console.log('[App] Initializing app, fetching projects');\n    dispatch(fetchProjects());\n  }, [dispatch]);\n\n  useEffect(() => {\n    console.log('[App] projects or currentProject changed:', { \n      projectsCount: projects.length, \n      currentProject: currentProject?.id \n    });\n    \n    if (projects.length > 0 && !currentProject && !hasInitialized) {\n      console.log('[App] Setting first project as current:', projects[0].id);\n      dispatch(setCurrentProject(projects[0].id));\n      setHasInitialized(true);\n    }\n    \n    if (currentProject?.id) {\n      console.log(`[App] Current project ID: ${currentProject.id}, fetching artifacts`);\n      dispatch(fetchArtifacts(currentProject.id));\n    }\n  }, [projects, currentProject, dispatch, hasInitialized]);\n\n  const handleArtifactSelect = (artifact: Artifact) => {\n    console.log('[App] Artifact selected:', artifact.id, artifact.name);\n    \n    const existingTab = tabs.find(tab => tab.artifactId === artifact.id);\n    \n    if (existingTab) {\n      dispatch(setActiveTab(existingTab.id));\n    } else {\n      const tabId = `tab-${Date.now()}-${artifact.id}`;\n      const icon = getArtifactIcon(artifact.type);\n      \n      dispatch(addTab({\n        id: tabId,\n        artifactId: artifact.id,\n        title: `${icon} ${artifact.name}`,\n        type: artifact.type,\n      }));\n      \n      dispatch(setActiveTab(tabId));\n    }\n  };\n\n  const handleTabClose = (tabId: string) => {\n    console.log('[App] Closing tab:', tabId);\n    dispatch(removeTab(tabId));\n  };\n\n  const handleArtifactUpdate = async (artifactId: number, updates: Partial<Artifact>) => {\n    if (!currentProject) return;\n    \n    console.log(`[App] Updating artifact ${artifactId}:`, updates);\n    \n    try {\n      await dispatch(updateArtifact({\n        projectId: currentProject.id,\n        id: artifactId,\n        updates,\n      }));\n    } catch (error) {\n      console.error('[App] Failed to update artifact:', error);\n    }\n  };\n\n  const handleNodeMove = (artifactId: number, nodeId: string, x: number, y: number) => {\n    console.log(`[App] Node ${nodeId} moved to (${x}, ${y}) in artifact ${artifactId}`);\n    \n    const artifact = artifacts.find(a => a.id === artifactId);\n    if (!artifact || artifact.type !== 'graph') return;\n    \n    const updatedNodes = artifact.data.nodes?.map((node: any) =>\n      node.id === nodeId || node.node_id === nodeId\n        ? { ...node, position_x: x, position_y: y }\n        : node\n    );\n    \n    handleArtifactUpdate(artifactId, {\n      data: {\n        ...artifact.data,\n        nodes: updatedNodes,\n      },\n    });\n  };\n\n  const getArtifactIcon = (type: string): string => {\n    switch (type) {\n      case 'graph': return '📊';\n      case 'table': return '📋';\n      case 'map': return '🗺️';\n      case 'chart': return '📈';\n      case 'document': return '📄';\n      default: return '📁';\n    }\n  };\n\n  const activeArtifact = activeTabId\n    ? artifacts.find(a => a.id === tabs.find(t => t.id === activeTabId)?.artifactId)\n    : null;\n\n  return (\n    <div className={`app ${darkMode ? 'dark' : 'light'}`}>\n      <Sidebar\n        isCollapsed={isSidebarCollapsed}\n        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}\n        onArtifactSelect={handleArtifactSelect}\n      />\n\n      <div className=\"main-content\">\n        <TabBar\n          tabs={tabs}\n          activeTabId={activeTabId}\n          onTabClick={(tabId) => dispatch(setActiveTab(tabId))}\n          onTabClose={handleTabClose}\n        />\n\n        <div className=\"content-area\">\n          <div className=\"view-container\">\n            {activeArtifact ? (\n              <ArtifactView\n                key={activeArtifact.id}\n                artifact={activeArtifact}\n                onClose={() => activeTabId && handleTabClose(activeTabId)}\n                onUpdate={(updates) => handleArtifactUpdate(activeArtifact.id, updates)}\n                onNodeMove={(nodeId, x, y) => handleNodeMove(activeArtifact.id, nodeId, x, y)}\n              />\n            ) : (\n              <div className=\"empty-state\">\n                <div className=\"text-center\">\n                  <svg className=\"mx-auto h-12 w-12 text-gray-400\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\">\n                    <path strokeLinecap=\"round\" strokeLinejoin=\"round\" strokeWidth={1} d=\"M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z\" />\n                  </svg>\n                  <h3 className=\"mt-2 text-sm font-medium text-gray-900 dark:text-gray-100\">No artifact selected</h3>\n                  <p className=\"mt-1 text-sm text-gray-500 dark:text-gray-400\">\n                    Select an artifact from the sidebar to start working\n                  </p>\n                </div>\n              </div>\n            )}\n          </div>\n\n          <InspectorPanel width={inspectorWidth} />\n        </div>\n      </div>\n    </div>\n  );\n};\n\nexport default App;",
-      "lines": 179,
-      "hash": "280c8765"
+      "content": "// frontend/src/App.tsx - полностью исправленная версия\nimport React, { useEffect, useState } from 'react';\nimport { useDispatch, useSelector } from 'react-redux';\nimport { RootState, AppDispatch } from './store';\nimport Sidebar from './components/layout/Sidebar';\nimport TabBar from './components/layout/TabBar';\nimport InspectorPanel from './components/layout/InspectorPanel';\nimport ArtifactView from './components/views/ArtifactView';\nimport { fetchProjects, setCurrentProject } from './store/slices/projectsSlice';\nimport { fetchArtifacts, Artifact, updateArtifact } from './store/slices/artifactsSlice';\nimport { addTab, removeTab, setActiveTab } from './store/slices/uiSlice';\nimport './App.css';\n\ninterface Tab {\n  id: string;\n  artifactId: number;\n  title: string;\n  type: string;\n}\n\nconst App: React.FC = () => {\n  const dispatch = useDispatch<AppDispatch>();\n  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);\n  const [hasInitialized, setHasInitialized] = useState(false);\n\n  const { projects, currentProject } = useSelector((state: RootState) => state.projects);\n  const { items: artifacts } = useSelector((state: RootState) => state.artifacts);\n  const { tabs, activeTabId, darkMode, inspectorWidth } = useSelector((state: RootState) => state.ui);\n\n  // Преобразуем объект items в массив для удобства\n  const artifactsList = Object.values(artifacts || {});\n\n  useEffect(() => {\n    console.log('[App] Initializing app, fetching projects');\n    dispatch(fetchProjects());\n  }, [dispatch]);\n\n  useEffect(() => {\n    console.log('[App] projects or currentProject changed:', {\n      projectsCount: projects.length,\n      currentProject: currentProject?.id\n    });\n\n    if (projects.length > 0 && !currentProject && !hasInitialized) {\n      console.log('[App] Setting first project as current:', projects[0].id);\n      dispatch(setCurrentProject(projects[0].id));\n      setHasInitialized(true);\n    }\n\n    if (currentProject?.id) {\n      console.log(`[App] Current project ID: ${currentProject.id}, fetching artifacts`);\n      dispatch(fetchArtifacts(currentProject.id));\n    }\n  }, [projects, currentProject, dispatch, hasInitialized]);\n\n  const handleArtifactSelect = (artifact: Artifact) => {\n    console.log('[App] Artifact selected:', artifact.id, artifact.name);\n\n    const existingTab = tabs.find(tab => tab.artifactId === artifact.id);\n\n    if (existingTab) {\n      dispatch(setActiveTab(existingTab.id));\n    } else {\n      const tabId = `tab-${Date.now()}-${artifact.id}`;\n      const icon = getArtifactIcon(artifact.type);\n\n      dispatch(addTab({\n        id: tabId,\n        artifactId: artifact.id,\n        title: `${icon} ${artifact.name}`,\n        type: artifact.type,\n      }));\n\n      dispatch(setActiveTab(tabId));\n    }\n  };\n\n  const handleTabClose = (tabId: string) => {\n    console.log('[App] Closing tab:', tabId);\n    dispatch(removeTab(tabId));\n  };\n\n  const handleArtifactUpdate = async (artifactId: number, updates: Partial<Artifact>) => {\n    if (!currentProject) return;\n\n    console.log(`[App] Updating artifact ${artifactId}:`, updates);\n\n    try {\n      await dispatch(updateArtifact({\n        projectId: currentProject.id,\n        id: artifactId,\n        updates,\n      }));\n    } catch (error) {\n      console.error('[App] Failed to update artifact:', error);\n    }\n  };\n\n  const handleNodeMove = (artifactId: number, nodeId: string, x: number, y: number) => {\n    console.log(`[App] Node ${nodeId} moved to (${x}, ${y}) in artifact ${artifactId}`);\n\n    const artifact = artifactsList.find(a => a.id === artifactId);\n    if (!artifact || artifact.type !== 'graph') return;\n\n    const updatedNodes = artifact.data.nodes?.map((node: any) =>\n      node.id === nodeId || node.node_id === nodeId\n        ? { ...node, position_x: x, position_y: y }\n        : node\n    );\n\n    handleArtifactUpdate(artifactId, {\n      data: {\n        ...artifact.data,\n        nodes: updatedNodes,\n      },\n    });\n  };\n\n  const getArtifactIcon = (type: string): string => {\n    switch (type) {\n      case 'graph': return '📊';\n      case 'table': return '📋';\n      case 'map': return '🗺️';\n      case 'chart': return '📈';\n      case 'document': return '📄';\n      default: return '📁';\n    }\n  };\n\n  // Безопасное вычисление активного артефакта\n  const getActiveArtifact = () => {\n    if (!activeTabId || !tabs || tabs.length === 0) return null;\n    \n    const activeTab = tabs.find(t => t.id === activeTabId);\n    if (!activeTab) return null;\n    \n    return artifactsList.find(a => a.id === activeTab.artifactId) || null;\n  };\n\n  const activeArtifact = getActiveArtifact();\n\n  return (\n    <div className={`app ${darkMode ? 'dark' : 'light'}`}>\n      <Sidebar\n        isCollapsed={isSidebarCollapsed}\n        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}\n        onArtifactSelect={handleArtifactSelect}\n      />\n\n      <div className=\"main-content\">\n        <TabBar\n          tabs={tabs}\n          activeTabId={activeTabId}\n          onTabClick={(tabId) => dispatch(setActiveTab(tabId))}\n          onTabClose={handleTabClose}\n        />\n\n        <div className=\"content-area\">\n          <div className=\"view-container\">\n            {activeArtifact ? (\n              <ArtifactView\n                key={activeArtifact.id}\n                artifact={activeArtifact}\n                onClose={() => activeTabId && handleTabClose(activeTabId)}\n                onUpdate={(updates) => handleArtifactUpdate(activeArtifact.id, updates)}\n                onNodeMove={(nodeId, x, y) => handleNodeMove(activeArtifact.id, nodeId, x, y)}\n              />\n            ) : (\n              <div className=\"empty-state\">\n                <div className=\"text-center\">\n                  <svg className=\"mx-auto h-12 w-12 text-gray-400\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\">\n                    <path strokeLinecap=\"round\" strokeLinejoin=\"round\" strokeWidth={1} d=\"M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z\" />\n                  </svg>\n                  <h3 className=\"mt-2 text-sm font-medium text-gray-900 dark:text-gray-100\">No artifact selected</h3>\n                  <p className=\"mt-1 text-sm text-gray-500 dark:text-gray-400\">\n                    Select an artifact from the sidebar to start working\n                  </p>\n                </div>\n              </div>\n            )}\n          </div>\n\n          <InspectorPanel width={inspectorWidth} />\n        </div>\n      </div>\n    </div>\n  );\n};\n\nexport default App;\n",
+      "lines": 191,
+      "hash": "91d38034"
     },
     "frontend/src/components/views/GraphView.tsx": {
-      "content": "// frontend/src/components/views/GraphView.tsx\nimport React, { useEffect, useRef, useState, useCallback } from 'react';\nimport { useAppDispatch } from '../../store';\nimport { updateArtifact } from '../../store/slices/artifactsSlice';\nimport { HistoryPanel } from '../history/HistoryPanel';\nimport { useActionWithUndo } from '../../hooks/useActionWithUndo';\nimport { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';\nimport { Network } from 'vis-network/standalone';\nimport { DataSet } from 'vis-data/standalone';\nimport 'vis-network/styles/vis-network.css';\nimport './GraphView.css';\n\n\ninterface GraphViewProps {\n  artifact: {\n    id: number;\n    project_id: number;\n    data: {\n      nodes?: Array<{\n        id: string;\n        label: string;\n        type: string;\n        position_x?: number;\n        position_y?: number;\n        [key: string]: any;\n      }>;\n      edges?: Array<{\n        id: string;\n        from: string;\n        to: string;\n        type: string;\n        [key: string]: any;\n      }>;\n    };\n  };\n}\n\nexport const GraphView: React.FC<GraphViewProps> = ({ artifact }) => {\n  const dispatch = useAppDispatch();\n  const containerRef = useRef<HTMLDivElement>(null);\n  const networkRef = useRef<Network | null>(null);\n  const nodesDataSetRef = useRef<DataSet<any> | null>(null);\n  const edgesDataSetRef = useRef<DataSet<any> | null>(null);\n  \n  // Сохраняем ID артефакта для стабильности\n  const artifactIdRef = useRef(artifact.id);\n  const projectIdRef = useRef(artifact.project_id);\n  \n  // Локальное состояние для позиций узлов (оптимистичные обновления)\n  const [localNodePositions, setLocalNodePositions] = useState<Record<string, {x: number, y: number}>>({});\n  \n  // Состояние для группировки перемещений\n  const [pendingMoves, setPendingMoves] = useState<Record<string, {x: number, y: number}>>({});\n  const moveTimeoutRef = useRef<NodeJS.Timeout>();\n  const batchGroupIdRef = useRef<string | null>(null);\n  \n  // Флаг для предотвращения повторной инициализации\n  const isInitializedRef = useRef(false);\n  \n  // Флаг для игнорирования обновлений из Redux во время перетаскивания\n  const isDraggingRef = useRef(false);\n  \n  // Последнее примененное состояние из Redux\n  const lastReduxStateRef = useRef<string>(JSON.stringify(artifact.data));\n\n  // ==========================================================================\n  // Инициализация хука для undo/redo\n  // ==========================================================================\n  \n  const handleStateChange = useCallback(async (newData: any) => {\n    console.log('Updating Redux state:', newData);\n    await dispatch(updateArtifact({\n      projectId: projectIdRef.current,\n      id: artifactIdRef.current,\n      updates: { data: newData }\n    })).unwrap();\n  }, [dispatch]);\n\n  const { \n    execute, \n    undo, \n    redo, \n    startBatch, \n    endBatch,\n    canUndo, \n    canRedo \n  } = useActionWithUndo(\n    artifact.id,\n    artifact.data,\n    handleStateChange\n  );\n\n  // Подключаем клавиатурные сокращения\n  useKeyboardShortcuts(artifact.id);\n\n  // ==========================================================================\n  // Функция для получения актуальных данных узла (локальные позиции + данные из props)\n  // ==========================================================================\n  \n  const getNodeWithLocalPosition = useCallback((node: any) => {\n    const localPos = localNodePositions[node.id];\n    return {\n      ...node,\n      x: localPos?.x ?? node.position_x,\n      y: localPos?.y ?? node.position_y,\n    };\n  }, [localNodePositions]);\n\n  // ==========================================================================\n  // Инициализация vis-network\n  // ==========================================================================\n  \n  useEffect(() => {\n    if (!containerRef.current || isInitializedRef.current) return;\n\n    console.log('Initializing graph with data:', artifact.data);\n    isInitializedRef.current = true;\n\n    // Создаем DataSet'ы с учетом локальных позиций\n    const initialNodes = (artifact.data.nodes || []).map(node => ({\n      id: node.id,\n      label: node.label || node.id,\n      title: `${node.type}\\n${JSON.stringify(node, null, 2)}`,\n      x: node.position_x,\n      y: node.position_y,\n      group: node.type,\n      ...node\n    }));\n\n    const nodes = new DataSet(initialNodes);\n    const edges = new DataSet(\n      (artifact.data.edges || []).map(edge => ({\n        id: edge.id,\n        from: edge.from,\n        to: edge.to,\n        label: edge.type,\n        title: `${edge.type}\\n${JSON.stringify(edge, null, 2)}`,\n        arrows: 'to',\n        ...edge\n      }))\n    );\n\n    nodesDataSetRef.current = nodes;\n    edgesDataSetRef.current = edges;\n\n    // Настройки сети\n    const options = {\n      physics: {\n        enabled: false,\n        stabilization: false\n      },\n      layout: {\n        randomSeed: 42,\n        improvedLayout: false\n      },\n      nodes: {\n        shape: 'dot',\n        size: 20,\n        font: {\n          size: 14,\n          color: '#ffffff',\n        },\n        borderWidth: 2,\n        shadow: true,\n        fixed: false\n      },\n      edges: {\n        width: 2,\n        smooth: {\n          type: 'continuous',\n        },\n        font: {\n          size: 12,\n          color: '#ffffff',\n          align: 'middle',\n        },\n      },\n      interaction: {\n        dragNodes: true,\n        dragView: true,\n        zoomView: true,\n        hover: true,\n        tooltipDelay: 300,\n        multiselect: true,\n      },\n      manipulation: {\n        enabled: false,\n      },\n    };\n\n    // Создаем сеть\n    const network = new Network(\n      containerRef.current,\n      { nodes, edges },\n      options\n    );\n\n    networkRef.current = network;\n\n    // ========================================================================\n    // Обработчики событий\n    // ========================================================================\n\n    // Обработчик начала перетаскивания\n    network.on('dragStart', (params) => {\n      const nodeId = params.nodes[0];\n      if (nodeId) {\n        console.log('Drag start for node:', nodeId);\n        isDraggingRef.current = true;\n        batchGroupIdRef.current = startBatch('Перемещение узлов');\n      }\n    });\n\n    // Обработчик во время перетаскивания - обновляем локальное состояние\n    network.on('dragging', (params) => {\n      const nodeId = params.nodes[0];\n      if (nodeId && params.pointer) {\n        const position = network.getPosition(nodeId);\n        setLocalNodePositions(prev => ({\n          ...prev,\n          [nodeId]: { x: position.x, y: position.y }\n        }));\n      }\n    });\n\n    // Обработчик окончания перетаскивания\n    network.on('dragEnd', async (params) => {\n      const nodeId = params.nodes[0];\n      if (!nodeId) {\n        isDraggingRef.current = false;\n        return;\n      }\n\n      const position = network.getPosition(nodeId);\n      console.log('Drag end for node:', nodeId, position);\n      \n      // Добавляем в ожидающие перемещения\n      setPendingMoves(prev => {\n        const newMoves = {\n          ...prev,\n          [nodeId]: { x: position.x, y: position.y }\n        };\n        \n        // Сбрасываем предыдущий таймаут\n        if (moveTimeoutRef.current) {\n          clearTimeout(moveTimeoutRef.current);\n        }\n\n        // Устанавливаем новый таймаут\n        moveTimeoutRef.current = setTimeout(async () => {\n          console.log('Applying batch move:', newMoves);\n          \n          // Сохраняем текущие pending moves\n          const movesToApply = { ...newMoves };\n          \n          // Очищаем pending moves\n          setPendingMoves({});\n          \n          // Обновляем локальные позиции финально\n          setLocalNodePositions(prev => ({\n            ...prev,\n            ...movesToApply\n          }));\n          \n          // Выполняем batch обновление в Redux\n          await execute(\n            async () => {\n              const updatedNodes = (artifact.data.nodes || []).map(node => \n                movesToApply[node.id] \n                  ? { \n                      ...node, \n                      position_x: movesToApply[node.id].x, \n                      position_y: movesToApply[node.id].y \n                    }\n                  : node\n              );\n\n              const newData = {\n                ...artifact.data,\n                nodes: updatedNodes\n              };\n\n              await handleStateChange(newData);\n              return newData;\n            },\n            {\n              description: `Перемещение ${Object.keys(movesToApply).length} узлов`,\n              actionType: 'batch_move',\n              groupId: batchGroupIdRef.current || undefined,\n              batch: false\n            }\n          );\n\n          // Завершаем группу\n          if (batchGroupIdRef.current) {\n            await endBatch();\n            batchGroupIdRef.current = null;\n          }\n          \n          isDraggingRef.current = false;\n        }, 500);\n        \n        return newMoves;\n      });\n    });\n\n    // Cleanup\n    return () => {\n      network.destroy();\n      if (moveTimeoutRef.current) {\n        clearTimeout(moveTimeoutRef.current);\n      }\n      isInitializedRef.current = false;\n    };\n  }, []); // Пустой массив - инициализация один раз\n\n  // ==========================================================================\n  // Синхронизация с Redux (только когда не перетаскиваем)\n  // ==========================================================================\n  \n  useEffect(() => {\n    if (!networkRef.current || !nodesDataSetRef.current || isDraggingRef.current) {\n      return;\n    }\n\n    const currentReduxState = JSON.stringify(artifact.data);\n    \n    // Если состояние в Redux изменилось (не из-за нашего перетаскивания)\n    if (currentReduxState !== lastReduxStateRef.current) {\n      console.log('Redux state changed externally, updating graph');\n      lastReduxStateRef.current = currentReduxState;\n      \n      // Обновляем узлы\n      const nodesData = (artifact.data.nodes || []).map(node => ({\n        id: node.id,\n        label: node.label || node.id,\n        x: node.position_x,\n        y: node.position_y,\n        group: node.type,\n        ...node\n      }));\n\n      // Очищаем и добавляем заново\n      nodesDataSetRef.current.clear();\n      nodesDataSetRef.current.add(nodesData);\n      \n      // Очищаем локальные позиции\n      setLocalNodePositions({});\n\n      // Обновляем ребра\n      const edgesData = (artifact.data.edges || []).map(edge => ({\n        id: edge.id,\n        from: edge.from,\n        to: edge.to,\n        label: edge.type,\n        ...edge\n      }));\n\n      edgesDataSetRef.current?.clear();\n      if (edgesData.length > 0) {\n        edgesDataSetRef.current?.add(edgesData);\n      }\n    }\n  }, [artifact.data]);\n\n  // ==========================================================================\n  // Обработчик клавиш для undo/redo\n  // ==========================================================================\n  \n  useEffect(() => {\n    const handleKeyDown = (e: KeyboardEvent) => {\n      if ((e.target as HTMLElement).tagName === 'INPUT' || \n          (e.target as HTMLElement).tagName === 'TEXTAREA') {\n        return;\n      }\n\n      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {\n        e.preventDefault();\n        if (e.shiftKey) {\n          redo();\n        } else {\n          undo();\n        }\n      }\n      \n      if ((e.ctrlKey || e.metaKey) && e.key === 'y') {\n        e.preventDefault();\n        redo();\n      }\n    };\n\n    window.addEventListener('keydown', handleKeyDown);\n    return () => window.removeEventListener('keydown', handleKeyDown);\n  }, [undo, redo]);\n\n  // ==========================================================================\n  // Render\n  // ==========================================================================\n\n  return (\n    <div className=\"graph-view\">\n      {/* Панель инструментов */}\n      <div className=\"graph-toolbar\">\n        <div className=\"toolbar-group\">\n          <button \n            onClick={undo}\n            disabled={!canUndo}\n            title=\"Отменить (Ctrl+Z)\"\n            className=\"toolbar-btn\"\n          >\n            ↩️ Undo\n          </button>\n          <button \n            onClick={redo}\n            disabled={!canRedo}\n            title=\"Повторить (Ctrl+Y / Ctrl+Shift+Z)\"\n            className=\"toolbar-btn\"\n          >\n            ↪️ Redo\n          </button>\n        </div>\n        \n        <div className=\"toolbar-group\">\n          <button \n            onClick={() => {\n              // Сохранить\n            }}\n            title=\"Сохранить (Ctrl+S)\"\n            className=\"toolbar-btn\"\n          >\n            💾 Save\n          </button>\n          <button \n            onClick={() => {\n              // Экспорт\n            }}\n            title=\"Экспорт\"\n            className=\"toolbar-btn\"\n          >\n            📤 Export\n          </button>\n        </div>\n        \n        <div className=\"toolbar-status\">\n          {Object.keys(pendingMoves).length > 0 && (\n            <span className=\"status-badge\">\n              Группировка... {Object.keys(pendingMoves).length}\n            </span>\n          )}\n          {isDraggingRef.current && (\n            <span className=\"status-badge\" style={{background: '#ff9800'}}>\n              Перетаскивание...\n            </span>\n          )}\n        </div>\n      </div>\n\n      {/* Контейнер для графа */}\n      <div \n        ref={containerRef} \n        className=\"graph-container\"\n        style={{ width: '100%', height: 'calc(100vh - 200px)' }}\n      />\n    </div>\n  );\n};",
-      "lines": 466,
-      "hash": "36b5c411"
+      "content": "// frontend/src/components/views/GraphView.tsx\nimport React, { useEffect, useRef, useState, useCallback } from 'react';\nimport { useAppDispatch } from '../../store';\nimport { updateArtifact } from '../../store/slices/artifactsSlice';\nimport { HistoryPanel } from '../history/HistoryPanel';\nimport { useActionWithUndo } from '../../hooks/useActionWithUndo';\nimport { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';\nimport { Network } from 'vis-network/standalone';\nimport { DataSet } from 'vis-data/standalone';\nimport 'vis-network/styles/vis-network.css';\nimport './GraphView.css';\n\ninterface GraphViewProps {\n  artifact: {\n    id: number;\n    project_id: number;\n    data: {\n      nodes?: Array<{\n        id: string;\n        label: string;\n        type: string;\n        position_x?: number;\n        position_y?: number;\n        [key: string]: any;\n      }>;\n      edges?: Array<{\n        id: string;\n        from: string;\n        to: string;\n        type: string;\n        [key: string]: any;\n      }>;\n    };\n  };\n}\n\nexport const GraphView: React.FC<GraphViewProps> = ({ artifact }) => {\n  const dispatch = useAppDispatch();\n  const containerRef = useRef<HTMLDivElement>(null);\n  const networkRef = useRef<Network | null>(null);\n  const nodesDataSetRef = useRef<DataSet<any> | null>(null);\n  const edgesDataSetRef = useRef<DataSet<any> | null>(null);\n\n  // Сохраняем ID артефакта для стабильности\n  const artifactIdRef = useRef(artifact.id);\n  const projectIdRef = useRef(artifact.project_id);\n\n  // Локальное состояние для позиций узлов (оптимистичные обновления)\n  const [localNodePositions, setLocalNodePositions] = useState<Record<string, {x: number, y: number}>>({});\n\n  // Состояние для группировки перемещений\n  const [pendingMoves, setPendingMoves] = useState<Record<string, {x: number, y: number}>>({});\n  const moveTimeoutRef = useRef<NodeJS.Timeout>();\n  const batchGroupIdRef = useRef<string | null>(null);\n\n  // Флаг для предотвращения повторной инициализации\n  const isInitializedRef = useRef(false);\n\n  // Флаг для игнорирования обновлений из Redux во время перетаскивания\n  const isDraggingRef = useRef(false);\n\n  // Последнее примененное состояние из Redux\n  const lastReduxStateRef = useRef<string>(JSON.stringify(artifact.data));\n\n  // Флаг для пропуска fit() при внешних обновлениях\n  const skipFitRef = useRef(false);\n\n  // ==========================================================================\n  // Инициализация хука для undo/redo\n  // ==========================================================================\n\n  const handleStateChange = useCallback(async (newData: any) => {\n    console.log('Updating Redux state:', newData);\n    await dispatch(updateArtifact({\n      projectId: projectIdRef.current,\n      id: artifactIdRef.current,\n      updates: { data: newData }\n    })).unwrap();\n  }, [dispatch]);\n\n  const {\n    execute,\n    undo,\n    redo,\n    canUndo,\n    canRedo\n  } = useActionWithUndo(\n    artifact.id,\n    artifact.data,\n    handleStateChange\n  );\n\n  // Подключаем клавиатурные сокращения\n  useKeyboardShortcuts(artifact.id);\n\n  // ==========================================================================\n  // Инициализация vis-network\n  // ==========================================================================\n\n  useEffect(() => {\n    if (!containerRef.current || isInitializedRef.current) return;\n\n    console.log('Initializing graph with data:', artifact.data);\n    isInitializedRef.current = true;\n\n    // Создаем DataSet'ы с учетом локальных позиций\n    const initialNodes = (artifact.data.nodes || []).map(node => ({\n      id: node.id,\n      label: node.label || node.id,\n      title: `${node.type}\\n${JSON.stringify(node, null, 2)}`,\n      x: node.position_x,\n      y: node.position_y,\n      group: node.type,\n      ...node\n    }));\n\n    const nodes = new DataSet(initialNodes);\n    const edges = new DataSet(\n      (artifact.data.edges || []).map(edge => ({\n        id: edge.id,\n        from: edge.from,\n        to: edge.to,\n        label: edge.type,\n        title: `${edge.type}\\n${JSON.stringify(edge, null, 2)}`,\n        arrows: 'to',\n        ...edge\n      }))\n    );\n\n    nodesDataSetRef.current = nodes;\n    edgesDataSetRef.current = edges;\n\n    // Настройки сети\n    const options = {\n      physics: {\n        enabled: false,\n        stabilization: false\n      },\n      layout: {\n        randomSeed: 42,\n        improvedLayout: false\n      },\n      nodes: {\n        shape: 'dot',\n        size: 20,\n        font: {\n          size: 14,\n          color: '#ffffff',\n        },\n        borderWidth: 2,\n        shadow: true,\n        fixed: false\n      },\n      edges: {\n        width: 2,\n        smooth: {\n          enabled: false,\n          type: 'continuous'\n        },\n        font: {\n          size: 12,\n          color: '#ffffff',\n          align: 'middle',\n          strokeWidth: 2,\n          strokeColor: '#2d2d2d'\n        },\n        arrows: {\n          to: {\n            enabled: true,\n            scaleFactor: 0.8\n          }\n        },\n        color: {\n          color: '#848484',\n          highlight: '#2196f3',\n          hover: '#2196f3'\n        }\n      },\n      interaction: {\n        dragNodes: true,\n        dragView: true,\n        zoomView: true,\n        hover: true,\n        tooltipDelay: 300,\n        multiselect: true,\n        navigationButtons: true,\n        keyboard: false\n      },\n      manipulation: {\n        enabled: false,\n      },\n    };\n\n    // Создаем сеть\n    const network = new Network(\n      containerRef.current,\n      { nodes, edges },\n      options\n    );\n\n    networkRef.current = network;\n\n    // Отключаем автоматическое масштабирование при старте\n    network.once('afterDrawing', () => {\n      console.log('Network initialized, skipping fit');\n    });\n\n    // ========================================================================\n    // Обработчики событий\n    // ========================================================================\n\n    // Обработчик начала перетаскивания\n    network.on('dragStart', (params) => {\n      const nodeId = params.nodes[0];\n      if (nodeId) {\n        console.log('Drag start for node:', nodeId);\n        isDraggingRef.current = true;\n        // Создаем группу для batch операций\n        batchGroupIdRef.current = `move_${Date.now()}`;\n      }\n    });\n\n    // Обработчик во время перетаскивания - обновляем локальное состояние\n    network.on('dragging', (params) => {\n      const nodeId = params.nodes[0];\n      if (nodeId) {\n        const position = network.getPosition(nodeId);\n        setLocalNodePositions(prev => ({\n          ...prev,\n          [nodeId]: { x: position.x, y: position.y }\n        }));\n      }\n    });\n\n\n\n    // Обработчик окончания перетаскивания\n    network.on('dragEnd', async (params) => {\n      const nodeId = params.nodes[0];\n      if (!nodeId) {\n        isDraggingRef.current = false;\n        return;\n      }\n\n      const position = network.getPosition(nodeId);\n      console.log('Drag end for node:', nodeId, position);\n\n      // Добавляем в ожидающие перемещения\n      setPendingMoves(prev => {\n        const newMoves = {\n          ...prev,\n          [nodeId]: { x: position.x, y: position.y }\n        };\n\n        // Сбрасываем предыдущий таймаут\n        if (moveTimeoutRef.current) {\n          clearTimeout(moveTimeoutRef.current);\n        }\n\n        // Устанавливаем новый таймаут\n        moveTimeoutRef.current = setTimeout(async () => {\n          const movesToApply = { ...newMoves };\n      \n          // Очищаем pending moves\n          setPendingMoves({});\n      \n          // Создаем функцию для обновления данных\n          const updateData = () => {\n            const updatedNodes = (artifact.data.nodes || []).map(node =>\n              movesToApply[node.id]\n                ? {\n                    ...node,\n                    position_x: movesToApply[node.id].x,\n                    position_y: movesToApply[node.id].y\n                  }\n                : node\n            );\n\n            return {\n              ...artifact.data,\n              nodes: updatedNodes\n            };\n          };\n\n          // Выполняем действие через execute\n          await execute(\n            async () => {\n              const newData = updateData();\n              // НЕ вызываем handleStateChange здесь!\n              // execute сам вызовет onStateChange\n              return newData; // Возвращаем новое состояние\n            },\n            {\n              description: Object.keys(movesToApply).length === 1 \n                ? `Перемещение узла` \n                : `Перемещение ${Object.keys(movesToApply).length} узлов`,\n              actionType: 'batch_move',\n              groupId: batchGroupIdRef.current || undefined\n            }\n          );\n\n          batchGroupIdRef.current = null;\n          isDraggingRef.current = false;\n        }, 500);\n\n        return newMoves;\n      });\n    });\n    \n\n\n    // Обработчик клика на узле\n    network.on('click', (params) => {\n      if (params.nodes.length > 0) {\n        console.log('Clicked node:', params.nodes[0]);\n      }\n    });\n\n    // Cleanup\n    return () => {\n      if (moveTimeoutRef.current) {\n        clearTimeout(moveTimeoutRef.current);\n      }\n      network.destroy();\n      isInitializedRef.current = false;\n    };\n  }, []); // Пустой массив - инициализация только один раз\n\n  // ==========================================================================\n  // Синхронизация с Redux (только когда не перетаскиваем)\n  // ==========================================================================\n\n  useEffect(() => {\n    if (!networkRef.current || !nodesDataSetRef.current || isDraggingRef.current) {\n      return;\n    }\n\n    const currentReduxState = JSON.stringify(artifact.data);\n\n    // Если состояние в Redux изменилось (не из-за нашего перетаскивания)\n    if (currentReduxState !== lastReduxStateRef.current) {\n      console.log('Redux state changed externally, updating graph');\n      lastReduxStateRef.current = currentReduxState;\n\n      // Обновляем узлы\n      const nodesData = (artifact.data.nodes || []).map(node => ({\n        id: node.id,\n        label: node.label || node.id,\n        x: node.position_x,\n        y: node.position_y,\n        group: node.type,\n        ...node\n      }));\n\n      // Очищаем и добавляем заново\n      nodesDataSetRef.current.clear();\n      if (nodesData.length > 0) {\n        nodesDataSetRef.current.add(nodesData);\n      }\n\n      // Очищаем локальные позиции\n      setLocalNodePositions({});\n\n      // Обновляем ребра\n      const edgesData = (artifact.data.edges || []).map(edge => ({\n        id: edge.id,\n        from: edge.from,\n        to: edge.to,\n        label: edge.type,\n        ...edge\n      }));\n\n      edgesDataSetRef.current?.clear();\n      if (edgesData.length > 0) {\n        edgesDataSetRef.current?.add(edgesData);\n      }\n\n      // НЕ делаем fit() - сохраняем текущий масштаб и позицию\n      skipFitRef.current = false;\n    }\n  }, [artifact.data]);\n\n  // ==========================================================================\n  // Обработчик клавиш для undo/redo\n  // ==========================================================================\n\n  useEffect(() => {\n    const handleKeyDown = (e: KeyboardEvent) => {\n      if ((e.target as HTMLElement).tagName === 'INPUT' ||\n          (e.target as HTMLElement).tagName === 'TEXTAREA') {\n        return;\n      }\n\n      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {\n        e.preventDefault();\n        console.log('Undo keyboard shortcut');\n        undo();\n      }\n\n      if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {\n        e.preventDefault();\n        console.log('Redo keyboard shortcut');\n        redo();\n      }\n    };\n\n    window.addEventListener('keydown', handleKeyDown);\n    return () => window.removeEventListener('keydown', handleKeyDown);\n  }, [undo, redo]);\n\n  // ==========================================================================\n  // Render\n  // ==========================================================================\n\n  return (\n    <div className=\"graph-view\">\n      {/* Панель инструментов */}\n      <div className=\"graph-toolbar\">\n        <div className=\"toolbar-group\">\n          <button\n            onClick={undo}\n            disabled={!canUndo}\n            title=\"Отменить (Ctrl+Z)\"\n            className=\"toolbar-btn\"\n          >\n            ↩️ Undo {canUndo ? '(доступно)' : ''}\n          </button>\n          <button\n            onClick={redo}\n            disabled={!canRedo}\n            title=\"Повторить (Ctrl+Y / Ctrl+Shift+Z)\"\n            className=\"toolbar-btn\"\n          >\n            ↪️ Redo {canRedo ? '(доступно)' : ''}\n          </button>\n        </div>\n\n        <div className=\"toolbar-group\">\n          <button\n            onClick={() => {\n              // Сохранить\n              dispatch(updateArtifact({\n                projectId: projectIdRef.current,\n                id: artifactIdRef.current,\n                updates: { data: artifact.data }\n              }));\n            }}\n            title=\"Сохранить (Ctrl+S)\"\n            className=\"toolbar-btn\"\n          >\n            💾 Save\n          </button>\n          <button\n            onClick={() => {\n              // Экспорт\n              const dataStr = JSON.stringify(artifact.data, null, 2);\n              const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);\n              const exportFileDefaultName = `graph-${artifact.id}.json`;\n              const linkElement = document.createElement('a');\n              linkElement.setAttribute('href', dataUri);\n              linkElement.setAttribute('download', exportFileDefaultName);\n              linkElement.click();\n            }}\n            title=\"Экспорт в JSON\"\n            className=\"toolbar-btn\"\n          >\n            📤 Export\n          </button>\n        </div>\n\n        <div className=\"toolbar-group\">\n          <button\n            onClick={() => {\n              if (networkRef.current) {\n                networkRef.current.fit();\n              }\n            }}\n            title=\"Подогнать под экран\"\n            className=\"toolbar-btn\"\n          >\n            🔍 Fit\n          </button>\n          <button\n            onClick={() => {\n              if (networkRef.current) {\n                networkRef.current.moveTo({\n                  scale: 1,\n                  position: { x: 0, y: 0 }\n                });\n              }\n            }}\n            title=\"Сбросить масштаб\"\n            className=\"toolbar-btn\"\n          >\n            🔄 Reset\n          </button>\n        </div>\n\n        <div className=\"toolbar-status\">\n          {Object.keys(pendingMoves).length > 0 && (\n            <span className=\"status-badge\">\n              Группировка... {Object.keys(pendingMoves).length}\n            </span>\n          )}\n          {isDraggingRef.current && (\n            <span className=\"status-badge\" style={{background: '#ff9800'}}>\n              Перетаскивание...\n            </span>\n          )}\n        </div>\n      </div>\n\n      {/* Контейнер для графа */}\n      <div\n        ref={containerRef}\n        className=\"graph-container\"\n        style={{ width: '100%', height: 'calc(100vh - 200px)' }}\n      />\n\n      {/* Панель истории */}\n      <HistoryPanel \n        artifactId={artifact.id}\n        onJump={(state) => {\n          // Обновляем граф из истории\n          if (networkRef.current && nodesDataSetRef.current) {\n            skipFitRef.current = true;\n            \n            const nodesData = (state.nodes || []).map((node: any) => ({\n              id: node.id,\n              label: node.label || node.id,\n              x: node.position_x,\n              y: node.position_y,\n              group: node.type,\n              ...node\n            }));\n\n            nodesDataSetRef.current.clear();\n            nodesDataSetRef.current.add(nodesData);\n\n            const edgesData = (state.edges || []).map((edge: any) => ({\n              id: edge.id,\n              from: edge.from,\n              to: edge.to,\n              label: edge.type,\n              ...edge\n            }));\n\n            edgesDataSetRef.current?.clear();\n            if (edgesData.length > 0) {\n              edgesDataSetRef.current?.add(edgesData);\n            }\n          }\n        }}\n      />\n    </div>\n  );\n};\n",
+      "lines": 558,
+      "hash": "1fc4ecb8"
     },
     "frontend/src/store/index.ts": {
       "content": "// frontend/src/store/index.ts\nimport { configureStore } from '@reduxjs/toolkit';\nimport { useDispatch, useSelector } from 'react-redux';\nimport type { TypedUseSelectorHook } from 'react-redux';\n\n// Импорт всех слайсов\nimport projectsReducer from './slices/projectsSlice';\nimport artifactsReducer from './slices/artifactsSlice';\nimport graphReducer from './slices/graphSlice';\nimport uiReducer from './slices/uiSlice';\nimport historyReducer from './slices/historySlice';  // 👈 новый импорт\n\nexport const store = configureStore({\n  reducer: {\n    projects: projectsReducer,\n    artifacts: artifactsReducer,\n    graph: graphReducer,\n    ui: uiReducer,\n    history: historyReducer,  // 👈 добавляем в store\n  },\n  middleware: (getDefaultMiddleware) =>\n    getDefaultMiddleware({\n      serializableCheck: {\n        // Игнорируем несериализуемые значения в определенных путях\n        ignoredActions: ['history/recordAction/fulfilled'],\n        ignoredPaths: ['history.actions.*.beforeState', 'history.actions.*.afterState'],\n      },\n    }),\n});\n\n// Infer the `RootState` and `AppDispatch` types from the store itself\nexport type RootState = ReturnType<typeof store.getState>;\nexport type AppDispatch = typeof store.dispatch;\n\n// Use throughout your app instead of plain `useDispatch` and `useSelector`\nexport const useAppDispatch: () => AppDispatch = useDispatch;\nexport const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;\n",
@@ -49323,9 +51042,9 @@
       "hash": "309e464c"
     },
     "frontend/src/store/slices/artifactsSlice.ts": {
-      "content": "// frontend/src/store/slices/artifactsSlice.ts\nimport { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';\nimport { api } from '../../services/api';\n\nexport interface ArtifactData {\n  nodes?: Array<{\n    id: string;\n    type: string;\n    label?: string;\n    attributes?: Record<string, any>;\n    position_x?: number;\n    position_y?: number;\n  }>;\n  edges?: Array<{\n    id: string;\n    source: string;\n    target: string;\n    type: string;\n    attributes?: Record<string, any>;\n  }>;\n  columns?: Array<{ key: string; label: string; type?: string }>;\n  rows?: Array<Record<string, any>>;\n  layers?: Array<any>;\n  points?: Array<{ lat: number; lng: number; properties?: any }>;\n  series?: Array<{ name: string; data: number[] }>;\n  content?: string;\n  [key: string]: any;\n}\n\nexport interface Artifact {\n  id: number;\n  project_id: number;\n  type: 'graph' | 'table' | 'map' | 'chart' | 'document';\n  name: string;\n  description?: string;\n  data: ArtifactData;\n  metadata: Record<string, any>;\n  created_at: string;\n  updated_at: string;\n  version: number;\n  created_by?: string;\n  updated_by?: string;\n  source_artifact_id?: number;\n  derivation_type?: string;\n}\n\nexport interface ArtifactVersion {\n  id: number;\n  artifact_id: number;\n  version: number;\n  data: ArtifactData;\n  metadata: Record<string, any>;\n  created_at: string;\n  created_by?: string;\n  comment?: string;\n}\n\nexport interface ArtifactRelation {\n  id: number;\n  source_artifact_id: number;\n  target_artifact_id: number;\n  relation_type: string;\n  metadata: Record<string, any>;\n  created_at: string;\n}\n\ninterface ArtifactsState {\n  artifacts: Artifact[];\n  currentArtifact: Artifact | null;\n  currentArtifactVersions: ArtifactVersion[];\n  currentArtifactRelations: ArtifactRelation[];\n  isLoading: boolean;\n  isLoadingVersions: boolean;\n  isLoadingRelations: boolean;\n  error: string | null;\n  lastFetched: number | null;\n}\n\nconst initialState: ArtifactsState = {\n  artifacts: [],\n  currentArtifact: null,\n  currentArtifactVersions: [],\n  currentArtifactRelations: [],\n  isLoading: false,\n  isLoadingVersions: false,\n  isLoadingRelations: false,\n  error: null,\n  lastFetched: null,\n};\n\n// Async thunks\nexport const fetchArtifacts = createAsyncThunk(\n  'artifacts/fetchAll',\n  async (projectId: number, { rejectWithValue }) => {\n    console.log(`[Artifacts] fetchArtifacts called with projectId: ${projectId}`);\n    try {\n      console.log(`[Artifacts] Fetching artifacts for project ${projectId}`);\n      const response = await api.get(`/api/v2/projects/${projectId}/artifacts`);\n      console.log(`[Artifacts] Fetched ${response.length} artifacts`);\n      return response;\n    } catch (error: any) {\n      console.error('[Artifacts] Error fetching artifacts:', error);\n      return rejectWithValue(error.message || 'Failed to fetch artifacts');\n    }\n  }\n);\n\nexport const fetchArtifact = createAsyncThunk(\n  'artifacts/fetchOne',\n  async ({ projectId, id }: { projectId: number; id: number }, { rejectWithValue }) => {\n    try {\n      console.log(`[Artifacts] Fetching artifact ${id} for project ${projectId}`);\n      const response = await api.get(`/api/v2/projects/${projectId}/artifacts/${id}`);\n      return response;\n    } catch (error: any) {\n      console.error('[Artifacts] Error fetching artifact:', error);\n      return rejectWithValue(error.message || 'Failed to fetch artifact');\n    }\n  }\n);\n\nexport const createArtifact = createAsyncThunk(\n  'artifacts/create',\n  async ({ projectId, artifact }: { projectId: number; artifact: Partial<Artifact> }, { rejectWithValue }) => {\n    try {\n      console.log(`[Artifacts] Creating artifact in project ${projectId}:`, artifact.name);\n      const response = await api.post(`/api/v2/projects/${projectId}/artifacts`, artifact);\n      console.log(`[Artifacts] Created artifact with id ${response.id}`);\n      return response;\n    } catch (error: any) {\n      console.error('[Artifacts] Error creating artifact:', error);\n      return rejectWithValue(error.message || 'Failed to create artifact');\n    }\n  }\n);\n\nexport const updateArtifact = createAsyncThunk(\n  'artifacts/update',\n  async ({ projectId, id, updates }: { projectId: number; id: number; updates: Partial<Artifact> }, { rejectWithValue }) => {\n    try {\n      console.log(`[Artifacts] Updating artifact ${id} in project ${projectId}`);\n      const response = await api.put(`/api/v2/projects/${projectId}/artifacts/${id}`, updates);\n      console.log(`[Artifacts] Updated artifact ${id} to version ${response.version}`);\n      return response;\n    } catch (error: any) {\n      console.error('[Artifacts] Error updating artifact:', error);\n      return rejectWithValue(error.message || 'Failed to update artifact');\n    }\n  }\n);\n\nexport const deleteArtifact = createAsyncThunk(\n  'artifacts/delete',\n  async ({ projectId, id }: { projectId: number; id: number }, { rejectWithValue }) => {\n    try {\n      console.log(`[Artifacts] Deleting artifact ${id} from project ${projectId}`);\n      await api.delete(`/api/v2/projects/${projectId}/artifacts/${id}`);\n      console.log(`[Artifacts] Deleted artifact ${id}`);\n      return id;\n    } catch (error: any) {\n      console.error('[Artifacts] Error deleting artifact:', error);\n      return rejectWithValue(error.message || 'Failed to delete artifact');\n    }\n  }\n);\n\nexport const deriveArtifact = createAsyncThunk(\n  'artifacts/derive',\n  async ({ projectId, id, derivation }: { projectId: number; id: number; derivation: Partial<Artifact> }, { rejectWithValue }) => {\n    try {\n      console.log(`[Artifacts] Deriving new artifact from ${id} in project ${projectId}`);\n      const response = await api.post(`/api/v2/projects/${projectId}/artifacts/${id}/derive`, derivation);\n      console.log(`[Artifacts] Derived artifact ${response.id} from ${id}`);\n      return response;\n    } catch (error: any) {\n      console.error('[Artifacts] Error deriving artifact:', error);\n      return rejectWithValue(error.message || 'Failed to derive artifact');\n    }\n  }\n);\n\nexport const fetchArtifactVersions = createAsyncThunk(\n  'artifacts/fetchVersions',\n  async ({ projectId, id }: { projectId: number; id: number }, { rejectWithValue }) => {\n    try {\n      console.log(`[Artifacts] Fetching versions for artifact ${id}`);\n      const response = await api.get(`/api/v2/projects/${projectId}/artifacts/${id}/versions`);\n      console.log(`[Artifacts] Fetched ${response.length} versions`);\n      return response;\n    } catch (error: any) {\n      console.error('[Artifacts] Error fetching versions:', error);\n      return rejectWithValue(error.message || 'Failed to fetch versions');\n    }\n  }\n);\n\nexport const fetchArtifactRelations = createAsyncThunk(\n  'artifacts/fetchRelations',\n  async ({ projectId, id }: { projectId: number; id: number }, { rejectWithValue }) => {\n    try {\n      console.log(`[Artifacts] Fetching relations for artifact ${id}`);\n      const response = await api.get(`/api/v2/projects/${projectId}/artifacts/${id}/relations`);\n      console.log(`[Artifacts] Fetched ${response.length} relations`);\n      return response;\n    } catch (error: any) {\n      console.error('[Artifacts] Error fetching relations:', error);\n      return rejectWithValue(error.message || 'Failed to fetch relations');\n    }\n  }\n);\n\n// Helper function to migrate legacy graph to artifact format\nexport const migrateLegacyGraph = (graph: any): Artifact => {\n  console.log('[Artifacts] Migrating legacy graph to artifact format:', graph.id);\n  return {\n    id: graph.id,\n    project_id: graph.project_id,\n    type: 'graph',\n    name: graph.name || 'Imported Graph',\n    description: graph.description,\n    data: {\n      nodes: graph.nodes || [],\n      edges: graph.edges || [],\n    },\n    metadata: {\n      legacy: true,\n      original_id: graph.id,\n      migrated_at: new Date().toISOString(),\n    },\n    created_at: graph.created_at || new Date().toISOString(),\n    updated_at: graph.updated_at || new Date().toISOString(),\n    version: 1,\n  };\n};\n\nconst artifactsSlice = createSlice({\n  name: 'artifacts',\n  initialState,\n  reducers: {\n    setCurrentArtifact: (state, action: PayloadAction<Artifact | null>) => {\n      console.log('[Artifacts] Setting current artifact:', action.payload?.id);\n      state.currentArtifact = action.payload;\n    },\n    clearArtifactError: (state) => {\n      state.error = null;\n    },\n    clearCurrentArtifact: (state) => {\n      state.currentArtifact = null;\n      state.currentArtifactVersions = [];\n      state.currentArtifactRelations = [];\n    },\n    updateArtifactData: (state, action: PayloadAction<{ id: number; data: Partial<ArtifactData> }>) => {\n      const artifact = state.artifacts.find(a => a.id === action.payload.id);\n      if (artifact) {\n        artifact.data = { ...artifact.data, ...action.payload.data };\n        artifact.updated_at = new Date().toISOString();\n      }\n      if (state.currentArtifact?.id === action.payload.id) {\n        state.currentArtifact.data = { ...state.currentArtifact.data, ...action.payload.data };\n        state.currentArtifact.updated_at = new Date().toISOString();\n      }\n    },\n    // Для обратной совместимости со старым graphSlice\n    setGraphData: (state, action: PayloadAction<{ nodes: any[]; edges: any[] }>) => {\n      if (state.currentArtifact?.type === 'graph') {\n        state.currentArtifact.data.nodes = action.payload.nodes;\n        state.currentArtifact.data.edges = action.payload.edges;\n      }\n    },\n  },\n  extraReducers: (builder) => {\n    builder\n      // fetchArtifacts\n      .addCase(fetchArtifacts.pending, (state) => {\n        state.isLoading = true;\n        state.error = null;\n      })\n      .addCase(fetchArtifacts.fulfilled, (state, action) => {\n        state.isLoading = false;\n        state.artifacts = action.payload;\n        state.lastFetched = Date.now();\n        console.log(`[Artifacts] Store updated with ${action.payload.length} artifacts`);\n      })\n      .addCase(fetchArtifacts.rejected, (state, action) => {\n        state.isLoading = false;\n        state.error = action.payload as string;\n      })\n      \n      // fetchArtifact\n      .addCase(fetchArtifact.pending, (state) => {\n        state.isLoading = true;\n        state.error = null;\n      })\n      .addCase(fetchArtifact.fulfilled, (state, action) => {\n        state.isLoading = false;\n        state.currentArtifact = action.payload;\n        console.log(`[Artifacts] Current artifact set to ${action.payload.id}`);\n      })\n      .addCase(fetchArtifact.rejected, (state, action) => {\n        state.isLoading = false;\n        state.error = action.payload as string;\n      })\n      \n      // createArtifact\n      .addCase(createArtifact.fulfilled, (state, action) => {\n        state.artifacts.push(action.payload);\n        console.log(`[Artifacts] Artifact ${action.payload.id} added to store`);\n      })\n      \n      // updateArtifact\n      .addCase(updateArtifact.fulfilled, (state, action) => {\n        const index = state.artifacts.findIndex(a => a.id === action.payload.id);\n        if (index !== -1) {\n          state.artifacts[index] = action.payload;\n        }\n        if (state.currentArtifact?.id === action.payload.id) {\n          state.currentArtifact = action.payload;\n        }\n        console.log(`[Artifacts] Artifact ${action.payload.id} updated in store`);\n      })\n      \n      // deleteArtifact\n      .addCase(deleteArtifact.fulfilled, (state, action) => {\n        state.artifacts = state.artifacts.filter(a => a.id !== action.payload);\n        if (state.currentArtifact?.id === action.payload) {\n          state.currentArtifact = null;\n        }\n        console.log(`[Artifacts] Artifact ${action.payload} removed from store`);\n      })\n      \n      // deriveArtifact\n      .addCase(deriveArtifact.fulfilled, (state, action) => {\n        state.artifacts.push(action.payload);\n        console.log(`[Artifacts] Derived artifact ${action.payload.id} added to store`);\n      })\n      \n      // fetchArtifactVersions\n      .addCase(fetchArtifactVersions.pending, (state) => {\n        state.isLoadingVersions = true;\n      })\n      .addCase(fetchArtifactVersions.fulfilled, (state, action) => {\n        state.isLoadingVersions = false;\n        state.currentArtifactVersions = action.payload;\n      })\n      .addCase(fetchArtifactVersions.rejected, (state) => {\n        state.isLoadingVersions = false;\n      })\n      \n      // fetchArtifactRelations\n      .addCase(fetchArtifactRelations.pending, (state) => {\n        state.isLoadingRelations = true;\n      })\n      .addCase(fetchArtifactRelations.fulfilled, (state, action) => {\n        state.isLoadingRelations = false;\n        state.currentArtifactRelations = action.payload;\n      })\n      .addCase(fetchArtifactRelations.rejected, (state) => {\n        state.isLoadingRelations = false;\n      });\n  },\n});\n\nexport const { \n  setCurrentArtifact, \n  clearArtifactError, \n  clearCurrentArtifact,\n  updateArtifactData,\n  setGraphData // для обратной совместимости\n} = artifactsSlice.actions;\n\nexport default artifactsSlice.reducer;",
-      "lines": 371,
-      "hash": "266f597f"
+      "content": "// frontend/src/store/slices/artifactsSlice.ts\nimport { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';\nimport { api } from '../../services/api';\nimport { ApiArtifact, ApiArtifactCreate, ApiArtifactUpdate } from '../../types/api';\n\ninterface ArtifactsState {\n  items: Record<number, ApiArtifact>;  // key: artifactId\n  currentArtifactId: number | null;\n  isLoading: boolean;\n  error: string | null;\n}\n\nconst initialState: ArtifactsState = {\n  items: {},\n  currentArtifactId: null,\n  isLoading: false,\n  error: null\n};\n\n// ============================================================================\n// Async thunks\n// ============================================================================\n\nexport const fetchArtifacts = createAsyncThunk(\n  'artifacts/fetchAll',\n  async (projectId: number, { rejectWithValue }) => {\n    try {\n      console.log(`[Artifacts] Fetching artifacts for project ${projectId}`);\n      const response = await api.get(`/api/v2/projects/${projectId}/artifacts`);\n      return response;\n    } catch (error: any) {\n      console.error('[Artifacts] Error fetching artifacts:', error);\n      return rejectWithValue(error.message || 'Failed to fetch artifacts');\n    }\n  }\n);\n\nexport const fetchArtifact = createAsyncThunk(\n  'artifacts/fetchOne',\n  async ({ projectId, id }: { projectId: number; id: number }, { rejectWithValue }) => {\n    try {\n      console.log(`[Artifacts] Fetching artifact ${id}`);\n      const response = await api.get(`/api/v2/projects/${projectId}/artifacts/${id}`);\n      return response;\n    } catch (error: any) {\n      console.error('[Artifacts] Error fetching artifact:', error);\n      return rejectWithValue(error.message || 'Failed to fetch artifact');\n    }\n  }\n);\n\nexport const createArtifact = createAsyncThunk(\n  'artifacts/create',\n  async ({ projectId, data }: { projectId: number; data: ApiArtifactCreate }, { rejectWithValue }) => {\n    try {\n      console.log(`[Artifacts] Creating artifact in project ${projectId}`);\n      const response = await api.post(`/api/v2/projects/${projectId}/artifacts`, data);\n      return response;\n    } catch (error: any) {\n      console.error('[Artifacts] Error creating artifact:', error);\n      return rejectWithValue(error.message || 'Failed to create artifact');\n    }\n  }\n);\n\nexport const updateArtifact = createAsyncThunk(\n  'artifacts/update',\n  async ({ \n    projectId, \n    id, \n    updates \n  }: { \n    projectId: number; \n    id: number; \n    updates: ApiArtifactUpdate  // Используем правильный тип\n  }, { rejectWithValue }) => {\n    try {\n      console.log(`[Artifacts] Updating artifact ${id} in project ${projectId}`, updates);\n      const response = await api.put(`/api/v2/projects/${projectId}/artifacts/${id}`, updates);\n      console.log(`[Artifacts] Updated artifact ${id} to version ${response.version}`);\n      return response;\n    } catch (error: any) {\n      console.error('[Artifacts] Error updating artifact:', error);\n      return rejectWithValue(error.message || 'Failed to update artifact');\n    }\n  }\n);\n\nexport const deleteArtifact = createAsyncThunk(\n  'artifacts/delete',\n  async ({ projectId, id }: { projectId: number; id: number }, { rejectWithValue }) => {\n    try {\n      console.log(`[Artifacts] Deleting artifact ${id}`);\n      await api.delete(`/api/v2/projects/${projectId}/artifacts/${id}`);\n      return id;\n    } catch (error: any) {\n      console.error('[Artifacts] Error deleting artifact:', error);\n      return rejectWithValue(error.message || 'Failed to delete artifact');\n    }\n  }\n);\n\n// ============================================================================\n// Slice\n// ============================================================================\n\nconst artifactsSlice = createSlice({\n  name: 'artifacts',\n  initialState,\n  reducers: {\n    setCurrentArtifact: (state, action: PayloadAction<number | null>) => {\n      state.currentArtifactId = action.payload;\n    },\n    clearError: (state) => {\n      state.error = null;\n    }\n  },\n  extraReducers: (builder) => {\n    builder\n      // Fetch all artifacts\n      .addCase(fetchArtifacts.pending, (state) => {\n        state.isLoading = true;\n        state.error = null;\n      })\n      .addCase(fetchArtifacts.fulfilled, (state, action) => {\n        state.isLoading = false;\n        const artifacts = action.payload;\n        artifacts.forEach((artifact: ApiArtifact) => {\n          state.items[artifact.id] = artifact;\n        });\n      })\n      .addCase(fetchArtifacts.rejected, (state, action) => {\n        state.isLoading = false;\n        state.error = action.payload as string;\n      })\n\n      // Fetch single artifact\n      .addCase(fetchArtifact.fulfilled, (state, action) => {\n        const artifact = action.payload;\n        state.items[artifact.id] = artifact;\n      })\n\n      // Create artifact\n      .addCase(createArtifact.fulfilled, (state, action) => {\n        const artifact = action.payload;\n        state.items[artifact.id] = artifact;\n        state.currentArtifactId = artifact.id;\n        console.log(`[Artifacts] Artifact ${artifact.id} created in store`);\n      })\n\n      // Update artifact\n      .addCase(updateArtifact.fulfilled, (state, action) => {\n        const artifact = action.payload;\n        state.items[artifact.id] = {\n          ...state.items[artifact.id],\n          ...artifact\n        };\n        console.log(`[Artifacts] Artifact ${artifact.id} updated in store`);\n      })\n\n      // Delete artifact\n      .addCase(deleteArtifact.fulfilled, (state, action) => {\n        const id = action.payload;\n        delete state.items[id];\n        if (state.currentArtifactId === id) {\n          state.currentArtifactId = null;\n        }\n        console.log(`[Artifacts] Artifact ${id} deleted from store`);\n      });\n  }\n});\n\nexport const { setCurrentArtifact, clearError } = artifactsSlice.actions;\nexport default artifactsSlice.reducer;",
+      "lines": 174,
+      "hash": "bcdd6370"
     },
     "frontend/src/store/slices/graphSlice.ts": {
       "content": "// src/store/slices/graphSlice.ts\nimport { createSlice, PayloadAction } from '@reduxjs/toolkit';\n\nexport interface Node {\n  id: string;\n  label?: string;\n  type: string;\n  attributes: Record<string, any>;\n  x?: number;\n  y?: number;\n}\n\nexport interface Edge {\n  id: string;\n  from: string;\n  to: string;\n  type: string;\n  attributes: Record<string, any>;\n}\n\ninterface GraphState {\n  nodes: Node[];\n  edges: Edge[];\n  isLoading: boolean;\n  error: string | null;\n  networkInstance: any | null;\n  lastSaved: Date | null;\n}\n\nconst initialState: GraphState = {\n  nodes: [],\n  edges: [],\n  isLoading: false,\n  error: null,\n  networkInstance: null,\n  lastSaved: null,\n};\n\nconst graphSlice = createSlice({\n  name: 'graph',\n  initialState,\n  reducers: {\n    setGraphData: (state, action: PayloadAction<{ nodes: Node[]; edges: Edge[] }>) => {\n      state.nodes = action.payload.nodes;\n      state.edges = action.payload.edges;\n    },\n    addNode: (state, action: PayloadAction<Node>) => {\n      state.nodes.push(action.payload);\n    },\n    updateNode: (state, action: PayloadAction<{ id: string; updates: Partial<Node> }>) => {\n      const index = state.nodes.findIndex(n => n.id === action.payload.id);\n      if (index !== -1) {\n        state.nodes[index] = { ...state.nodes[index], ...action.payload.updates };\n      }\n    },\n    deleteNode: (state, action: PayloadAction<string>) => {\n      state.nodes = state.nodes.filter(n => n.id !== action.payload);\n      state.edges = state.edges.filter(e => e.from !== action.payload && e.to !== action.payload);\n    },\n    addEdge: (state, action: PayloadAction<Edge>) => {\n      state.edges.push(action.payload);\n    },\n    deleteEdge: (state, action: PayloadAction<string>) => {\n      state.edges = state.edges.filter(e => e.id !== action.payload);\n    },\n    setLoading: (state, action: PayloadAction<boolean>) => {\n      state.isLoading = action.payload;\n    },\n    setError: (state, action: PayloadAction<string | null>) => {\n      state.error = action.payload;\n    },\n    setNetworkInstance: (state, action: PayloadAction<any>) => {\n      state.networkInstance = action.payload;\n    },\n    setLastSaved: (state, action: PayloadAction<Date>) => {\n      state.lastSaved = action.payload;\n    },\n    clearGraph: (state) => {\n      state.nodes = [];\n      state.edges = [];\n      state.error = null;\n    },\n  },\n});\n\nexport const {\n  setGraphData,\n  addNode,\n  updateNode,\n  deleteNode,\n  addEdge,\n  deleteEdge,\n  setLoading,\n  setError,\n  setNetworkInstance,\n  setLastSaved,\n  clearGraph,\n} = graphSlice.actions;\nexport default graphSlice.reducer;\n",
@@ -49333,9 +51052,9 @@
       "hash": "680fdb80"
     },
     "frontend/src/store/slices/historySlice.ts": {
-      "content": "// frontend/src/store/slices/historySlice.ts\nimport { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';\nimport { api } from '../../services/api';\n\nexport interface HistoryAction {\n  id: string;\n  artifactId: number;\n  actionType: string;\n  beforeState: any;\n  afterState: any;\n  timestamp: string;\n  description: string;\n  userType?: 'user' | 'plugin';\n  pluginId?: string;\n  groupId?: string;\n}\n\ninterface HistoryState {\n  actions: HistoryAction[];\n  currentIndex: number;\n  isLoading: boolean;\n  error: string | null;\n}\n\nconst initialState: HistoryState = {\n  actions: [],\n  currentIndex: -1,\n  isLoading: false,\n  error: null\n};\n\n// ============================================================================\n// Async Thunks\n// ============================================================================\n\nexport const fetchHistory = createAsyncThunk(\n  'history/fetch',\n  async (artifactId: number, { rejectWithValue }) => {\n    try {\n      const response = await api.get(`/api/v2/artifacts/${artifactId}/history?limit=100`);\n      return { artifactId, actions: response.data };\n    } catch (error: any) {\n      return rejectWithValue(error.response?.data?.detail || 'Failed to fetch history');\n    }\n  }\n);\n\nexport const recordAction = createAsyncThunk(\n  'history/record',\n  async ({ \n    artifactId, \n    action \n  }: { \n    artifactId: number; \n    action: any;\n  }, { rejectWithValue }) => {\n    try {\n      const response = await api.post(`/api/v2/artifacts/${artifactId}/history/actions`, action);\n      return response.data;\n    } catch (error: any) {\n      return rejectWithValue(error.response?.data?.detail || 'Failed to record action');\n    }\n  }\n);\n\nexport const undo = createAsyncThunk(\n  'history/undo',\n  async (artifactId: number, { rejectWithValue }) => {\n    try {\n      const response = await api.post(`/api/v2/artifacts/${artifactId}/history/undo`);\n      return response.data;\n    } catch (error: any) {\n      if (error.response?.status === 404) {\n        return null;\n      }\n      return rejectWithValue(error.response?.data?.detail || 'Failed to undo');\n    }\n  }\n);\n\nexport const redo = createAsyncThunk(\n  'history/redo',\n  async (artifactId: number, { rejectWithValue }) => {\n    try {\n      const response = await api.post(`/api/v2/artifacts/${artifactId}/history/redo`);\n      return response.data;\n    } catch (error: any) {\n      if (error.response?.status === 404) {\n        return null;\n      }\n      return rejectWithValue(error.response?.data?.detail || 'Failed to redo');\n    }\n  }\n);\n\n// ============================================================================\n// Slice\n// ============================================================================\n\nconst historySlice = createSlice({\n  name: 'history',\n  initialState,\n  reducers: {\n    addLocalAction: (state, action: PayloadAction<HistoryAction>) => {\n      if (state.currentIndex < state.actions.length - 1) {\n        state.actions = state.actions.slice(0, state.currentIndex + 1);\n      }\n      state.actions.push(action.payload);\n      state.currentIndex = state.actions.length - 1;\n    },\n    \n    jumpToAction: (state, action: PayloadAction<number>) => {\n      if (action.payload >= 0 && action.payload < state.actions.length) {\n        state.currentIndex = action.payload;\n      }\n    },\n    \n    resetHistory: (state) => {\n      state.actions = [];\n      state.currentIndex = -1;\n      state.error = null;\n    },\n    \n    clearError: (state) => {\n      state.error = null;\n    }\n  },\n  extraReducers: (builder) => {\n    builder\n      // Fetch History\n      .addCase(fetchHistory.pending, (state) => {\n        state.isLoading = true;\n        state.error = null;\n      })\n      .addCase(fetchHistory.fulfilled, (state, action) => {\n        state.isLoading = false;\n        state.actions = action.payload.actions;\n        state.currentIndex = action.payload.actions.length - 1;\n      })\n      .addCase(fetchHistory.rejected, (state, action) => {\n        state.isLoading = false;\n        state.error = action.payload as string;\n      })\n      \n      // Record Action\n      .addCase(recordAction.fulfilled, (state, action) => {\n        if (state.currentIndex < state.actions.length - 1) {\n          state.actions = state.actions.slice(0, state.currentIndex + 1);\n        }\n        state.actions.push(action.payload);\n        state.currentIndex = state.actions.length - 1;\n      })\n      \n      // Undo\n      .addCase(undo.fulfilled, (state, action) => {\n        if (action.payload) {\n          state.currentIndex = Math.max(-1, state.currentIndex - 1);\n        }\n      });\n  }\n});\n\nexport const { addLocalAction, jumpToAction, resetHistory, clearError } = historySlice.actions;\nexport default historySlice.reducer;\n",
-      "lines": 165,
-      "hash": "cc30440a"
+      "content": "// frontend/src/store/slices/historySlice.ts\nimport { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';\nimport { api } from '../../services/api';\n\nexport interface HistoryAction {\n  id: string;\n  artifactId: number;\n  actionType: string;\n  beforeState: any;\n  afterState: any;\n  timestamp: string;\n  description: string;\n  userType: 'user' | 'plugin';\n  pluginId?: string;\n  groupId?: string;\n}\n\ninterface HistoryState {\n  actions: HistoryAction[];\n  currentActionId: string | null; // ID текущего действия (последнего примененного)\n  isLoading: boolean;\n  error: string | null;\n}\n\nconst initialState: HistoryState = {\n  actions: [],\n  currentActionId: null,\n  isLoading: false,\n  error: null\n};\n\n// Async thunks\nexport const fetchHistory = createAsyncThunk(\n  'history/fetch',\n  async (artifactId: number) => {\n    const response = await api.get(`/api/v2/artifacts/${artifactId}/history?limit=100`);\n    return response;\n  }\n);\n\nexport const undo = createAsyncThunk(\n  'history/undo',\n  async (artifactId: number, { dispatch }) => {\n    const response = await api.post(`/api/v2/artifacts/${artifactId}/history/undo`);\n    return response;\n  }\n);\n\nexport const redo = createAsyncThunk(\n  'history/redo',\n  async (artifactId: number, { dispatch }) => {\n    const response = await api.post(`/api/v2/artifacts/${artifactId}/history/redo`);\n    return response;\n  }\n);\n\nconst historySlice = createSlice({\n  name: 'history',\n  initialState,\n  reducers: {\n    addAction: (state, action: PayloadAction<HistoryAction>) => {\n      // Добавляем действие в конец списка\n      state.actions.push(action.payload);\n      state.currentActionId = action.payload.id;\n      state.error = null;\n    },\n    \n    setCurrentIndex: (state, action: PayloadAction<{ actionId: string; direction: 'undo' | 'redo' }>) => {\n      state.currentActionId = action.payload.actionId;\n      state.error = null;\n    },\n    \n    resetHistory: (state) => {\n      state.actions = [];\n      state.currentActionId = null;\n      state.error = null;\n    },\n    \n    clearError: (state) => {\n      state.error = null;\n    }\n  },\n  extraReducers: (builder) => {\n    builder\n      // Fetch history\n      .addCase(fetchHistory.pending, (state) => {\n        state.isLoading = true;\n        state.error = null;\n      })\n      .addCase(fetchHistory.fulfilled, (state, action) => {\n        state.isLoading = false;\n        state.actions = action.payload;\n        // Последнее действие в списке - текущее\n        if (action.payload.length > 0) {\n          state.currentActionId = action.payload[action.payload.length - 1].id;\n        }\n      })\n      .addCase(fetchHistory.rejected, (state, action) => {\n        state.isLoading = false;\n        state.error = action.error.message || 'Failed to fetch history';\n      })\n      \n      // Undo\n      .addCase(undo.pending, (state) => {\n        state.isLoading = true;\n        state.error = null;\n      })\n      .addCase(undo.fulfilled, (state, action) => {\n        state.isLoading = false;\n        // Сервер вернул action_id отмененного действия\n        // Находим индекс этого действия и устанавливаем предыдущее как текущее\n        const undoneActionId = action.payload.action_id;\n        const index = state.actions.findIndex(a => a.id === undoneActionId);\n        if (index > 0) {\n          state.currentActionId = state.actions[index - 1].id;\n        } else if (index === 0) {\n          state.currentActionId = null; // Отменили первое действие\n        }\n      })\n      .addCase(undo.rejected, (state, action) => {\n        state.isLoading = false;\n        state.error = action.error.message || 'Failed to undo';\n      })\n      \n      // Redo\n      .addCase(redo.pending, (state) => {\n        state.isLoading = true;\n        state.error = null;\n      })\n      .addCase(redo.fulfilled, (state, action) => {\n        state.isLoading = false;\n        // Сервер вернул action_id повторяемого действия\n        state.currentActionId = action.payload.action_id;\n      })\n      .addCase(redo.rejected, (state, action) => {\n        state.isLoading = false;\n        state.error = action.error.message || 'Failed to redo';\n      });\n  }\n});\n\nexport const { addAction, setCurrentIndex, resetHistory, clearError } = historySlice.actions;\nexport default historySlice.reducer;\n",
+      "lines": 144,
+      "hash": "bd840bf3"
     },
     "frontend/src/store/slices/projectsSlice.ts": {
       "content": "// store/slices/projectsSlice.ts\nimport { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';\nimport { api } from '../../services/api';\n\nexport interface Project {\n  id: number;\n  name: string;\n  description?: string;\n  created_at: string;\n  updated_at: string;\n}\n\ninterface ProjectsState {\n  projects: Project[];\n  currentProject: Project | null;\n  isLoading: boolean;\n  error: string | null;\n}\n\nconst initialState: ProjectsState = {\n  projects: [],\n  currentProject: null,\n  isLoading: false,\n  error: null,\n};\n\nexport const fetchProjects = createAsyncThunk(\n  'projects/fetchAll',\n  async () => {\n    console.log('[Projects] Fetching all projects');\n    const response = await api.get('/api/v1/projects');\n    return response;\n  }\n);\n\nconst projectsSlice = createSlice({\n  name: 'projects',\n  initialState,\n  reducers: {\n    setCurrentProject: (state, action: PayloadAction<number>) => {\n      const project = state.projects.find(p => p.id === action.payload);\n      if (project) {\n        state.currentProject = project;\n        console.log('[Projects] Current project set to:', project.id, project.name);\n      } else {\n        console.warn('[Projects] Project not found:', action.payload);\n      }\n    },\n  },\n  extraReducers: (builder) => {\n    builder\n      .addCase(fetchProjects.pending, (state) => {\n        state.isLoading = true;\n      })\n      .addCase(fetchProjects.fulfilled, (state, action) => {\n        state.isLoading = false;\n        state.projects = action.payload;\n        console.log('[Projects] Loaded projects:', action.payload.length);\n      })\n      .addCase(fetchProjects.rejected, (state, action) => {\n        state.isLoading = false;\n        state.error = action.error.message || 'Failed to fetch projects';\n      });\n  },\n});\n\nexport const { setCurrentProject } = projectsSlice.actions;\nexport default projectsSlice.reducer;",

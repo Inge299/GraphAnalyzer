@@ -1,15 +1,15 @@
 =============================================================================
 🎯 ПРОЕКТ: OSINT Graph Analyzer
-📅 Дата: 2026-03-13T17:28:33.500320
+📅 Дата: 2026-03-17T14:16:38.506571
 📌 Версия: v1.0
 =============================================================================
 
 📊 СТАТИСТИКА
 --------------------------------------------------
-- Всего файлов: 5552
-- Строк кода: 2082288
-- Python файлов: 5452
-- TypeScript/JS: 26
+- Всего файлов: 5733
+- Строк кода: 2134064
+- Python файлов: 5625
+- TypeScript/JS: 27
 
 🏗 АРХИТЕКТУРА
 --------------------------------------------------
@@ -74,12 +74,17 @@
 {
   "Dockerfile": "[BINARY] 1276 bytes",
   "alembic": {
-    "env.py": "[FILE] 96 lines",
+    "env.py": "[FILE] 89 lines",
+    "script.py.mako": "[BINARY] 492 bytes",
+    "templates": {
+      "generic": {
+        "script.py.mako": "[BINARY] 494 bytes"
+      }
+    },
     "versions": {
       "001_initial_models.py": "[FILE] 128 lines",
       "002_add_artifacts_tables.py": "[FILE] 140 lines",
-      "003_add_graph_actions.py": "[FILE] 58 lines",
-      "004_add_graph_actions.py": "[FILE] 59 lines"
+      "3e7a730b98c7_initial_state.py": "[FILE] 23 lines"
     }
   },
   "alembic.ini": "[BINARY] 1734 bytes",
@@ -131,15 +136,46 @@
   "backup.sh": "[BINARY] 2331 bytes",
   "backups": {
     "checksums_20260313_020005.txt": "[BINARY] 954 bytes",
-    "data_20260313_020005.tar.gz": "[BINARY] 143 bytes",
+    "checksums_20260314_020005.txt": "[BINARY] 1827 bytes",
+    "checksums_20260315_020005.txt": "[BINARY] 2498 bytes",
+    "checksums_20260316_020005.txt": "[BINARY] 3172 bytes",
+    "checksums_20260317_020006.txt": "[BINARY] 3846 bytes",
+    "cron.log": "[BINARY] 12888 bytes",
+    "data_20260316_020005.tar.gz": "[BINARY] 145 bytes",
+    "data_20260317_020006.tar.gz": "[BINARY] 145 bytes",
     "db_20260313_020005.sql.gz": "[BINARY] 2410 bytes",
+    "db_20260314_020005.sql.gz": "[BINARY] 19383 bytes",
+    "db_20260315_020005.sql.gz": "[BINARY] 19382 bytes",
+    "db_20260316_020005.sql.gz": "[BINARY] 19379 bytes",
+    "db_20260317_020006.sql.gz": "[BINARY] 19716 bytes",
     "docker-compose_20260313_020005.yml": "[FILE] 86 lines",
+    "docker-compose_20260314_020005.yml": "[FILE] 86 lines",
+    "docker-compose_20260315_020005.yml": "[FILE] 86 lines",
+    "docker-compose_20260316_020005.yml": "[FILE] 86 lines",
+    "docker-compose_20260317_020006.yml": "[FILE] 86 lines",
     "env_20260313_020005.backup": "[BINARY] 609 bytes",
+    "env_20260314_020005.backup": "[BINARY] 609 bytes",
+    "env_20260315_020005.backup": "[BINARY] 609 bytes",
+    "env_20260316_020005.backup": "[BINARY] 609 bytes",
+    "env_20260317_020006.backup": "[BINARY] 609 bytes",
     "npm-deps_20260313_020005.txt": "[BINARY] 52 bytes",
+    "npm-deps_20260314_020005.txt": "[BINARY] 52 bytes",
+    "npm-deps_20260315_020005.txt": "[BINARY] 52 bytes",
+    "npm-deps_20260316_020005.txt": "[BINARY] 52 bytes",
+    "npm-deps_20260317_020006.txt": "[BINARY] 52 bytes",
     "requirements_20260313_020005.txt": "[BINARY] 1215 bytes",
+    "requirements_20260314_020005.txt": "[BINARY] 1215 bytes",
+    "requirements_20260315_020005.txt": "[BINARY] 1215 bytes",
+    "requirements_20260316_020005.txt": "[BINARY] 1215 bytes",
+    "requirements_20260317_020006.txt": "[BINARY] 1215 bytes",
     "system_info_20260313_020005.txt": "[BINARY] 352 bytes",
-    "volume_postgres_20260313_020005.tar.gz": "[BINARY] 87 bytes",
-    "volume_redis_20260313_020005.tar.gz": "[BINARY] 87 bytes"
+    "system_info_20260314_020005.txt": "[BINARY] 352 bytes",
+    "system_info_20260315_020005.txt": "[BINARY] 352 bytes",
+    "system_info_20260316_020005.txt": "[BINARY] 352 bytes",
+    "system_info_20260317_020006.txt": "[BINARY] 352 bytes",
+    "volume_postgres_20260317_020006.tar.gz": "[BINARY] 87 bytes",
+    "volume_redis_20260316_020005.tar.gz": "[BINARY] 87 bytes",
+    "volume_redis_20260317_020006.tar.gz": "[BINARY] 87 bytes"
   },
   "clean-database.sh": "[BINARY] 7117 bytes",
   "clean-database.sh:Zone.Identifier": "[BINARY] 0 bytes",
@@ -155,15 +191,16 @@
     "package.json": "[FILE] 50 lines",
     "src": {
       "App.css": "[FILE] 777 lines",
-      "App.tsx": "[FILE] 179 lines",
+      "App.tsx": "[FILE] 191 lines",
       "components": {
         "history": {
           "HistoryPanel.css": "[FILE] 266 lines",
-          "HistoryPanel.tsx": "[FILE] 237 lines"
+          "HistoryPanel.tsx": "[FILE] 178 lines"
         },
         "layout": {
           "InspectorPanel.tsx": "[FILE] 419 lines",
-          "Sidebar.tsx": "[FILE] 274 lines",
+          "Sidebar.css": "[FILE] 207 lines",
+          "Sidebar.tsx": "[FILE] 170 lines",
           "Sidebar_new.tsx": "[FILE] 966 lines",
           "TabBar.tsx": "[FILE] 68 lines"
         },
@@ -171,14 +208,15 @@
           "ArtifactView.tsx": "[FILE] 348 lines",
           "ChartView.tsx": "[FILE] 27 lines",
           "DocumentView.tsx": "[FILE] 34 lines",
-          "GraphView.css": "[FILE] 112 lines",
-          "GraphView.tsx": "[FILE] 466 lines",
+          "GraphView.css": "[FILE] 225 lines",
+          "GraphView.tsx": "[FILE] 558 lines",
           "MapView.tsx": "[FILE] 27 lines",
           "TableView.tsx": "[FILE] 51 lines"
         }
       },
       "hooks": {
-        "useActionWithUndo.ts": "[FILE] 225 lines",
+        "useActionWithUndo.ts": "[FILE] 192 lines",
+        "useActionWithUndo_bkp.ts": "[FILE] 232 lines",
         "useKeyboardShortcuts.ts": "[FILE] 34 lines"
       },
       "index.css": "[FILE] 14 lines",
@@ -189,16 +227,16 @@
       "store": {
         "index.ts": "[FILE] 38 lines",
         "slices": {
-          "artifactsSlice.ts": "[FILE] 371 lines",
+          "artifactsSlice.ts": "[FILE] 174 lines",
           "graphSlice.ts": "[FILE] 100 lines",
-          "historySlice.ts": "[FILE] 165 lines",
+          "historySlice.ts": "[FILE] 144 lines",
           "historySlice.ts]": "[BINARY] 1590 bytes",
           "projectsSlice.ts": "[FILE] 68 lines",
           "uiSlice.ts": "[FILE] 106 lines"
         }
       },
       "types": {
-        "api.ts": "[FILE] 35 lines"
+        "api.ts": "[FILE] 106 lines"
       },
       "utils": {
         "formatters.ts": "[FILE] 52 lines"
@@ -212,8 +250,8 @@
   },
   "get-docker.sh": "[BINARY] 22405 bytes",
   "get_structure.py": "[FILE] 493 lines",
-  "handoff_latest.json": "[FILE] 2045521 bytes (skipped, too large)",
-  "handoff_latest.md": "[FILE] 12152 lines",
+  "handoff_latest.json": "[FILE] 2074840 bytes (skipped, too large)",
+  "handoff_latest.md": "[FILE] 12322 lines",
   "handoff_quick.md": "[FILE] 21 lines",
   "osint-backups": {
     "checksums_20260224_214935.txt": "[BINARY] 879 bytes",
@@ -265,6 +303,8 @@
       "activate.csh": "[BINARY] 933 bytes",
       "activate.fish": "[BINARY] 2208 bytes",
       "alembic": "[BINARY] 194 bytes",
+      "black": "[BINARY] 201 bytes",
+      "blackd": "[BINARY] 202 bytes",
       "celery": "[BINARY] 195 bytes",
       "dotenv": "[BINARY] 193 bytes",
       "httpx": "[BINARY] 185 bytes",
@@ -297,6 +337,7 @@
     "lib": {
       "python3.12": {
         "site-packages": {
+          "30fcd23745efe32ce681__mypyc.cpython-312-x86_64-linux-gnu.so": "[BINARY] 4496288 bytes",
           "SQLAlchemy-2.0.23.dist-info": {
             "INSTALLER": "[BINARY] 4 bytes",
             "LICENSE": "[BINARY] 1100 bytes",
@@ -306,6 +347,8 @@
             "WHEEL": "[BINARY] 152 bytes",
             "top_level.txt": "[BINARY] 11 bytes"
           },
+          "_black_version.py": "[FILE] 2 lines",
+          "_black_version.pyi": "[BINARY] 13 bytes",
           "_cffi_backend.cpython-312-x86_64-linux-gnu.so": "[BINARY] 348808 bytes",
           "_yaml": {
             "__init__.py": "[FILE] 34 lines"
@@ -679,6 +722,103 @@
             "RECORD": "[BINARY] 4127 bytes",
             "WHEEL": "[BINARY] 91 bytes",
             "top_level.txt": "[BINARY] 9 bytes"
+          },
+          "black": {
+            "__init__.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+            "__init__.py": "[FILE] 1680 lines",
+            "__main__.py": "[FILE] 4 lines",
+            "_width_table.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15992 bytes",
+            "_width_table.py": "[FILE] 133 lines",
+            "brackets.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+            "brackets.py": "[FILE] 384 lines",
+            "cache.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+            "cache.py": "[FILE] 151 lines",
+            "comments.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+            "comments.py": "[FILE] 828 lines",
+            "concurrency.py": "[FILE] 222 lines",
+            "const.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+            "const.py": "[FILE] 5 lines",
+            "debug.py": "[FILE] 56 lines",
+            "files.py": "[FILE] 427 lines",
+            "handle_ipynb_magics.cpython-312-x86_64-linux-gnu.so": "[BINARY] 16008 bytes",
+            "handle_ipynb_magics.py": "[FILE] 516 lines",
+            "linegen.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+            "linegen.py": "[FILE] 2049 lines",
+            "lines.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+            "lines.py": "[FILE] 1122 lines",
+            "mode.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+            "mode.py": "[FILE] 322 lines",
+            "nodes.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+            "nodes.py": "[FILE] 1109 lines",
+            "numerics.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+            "numerics.py": "[FILE] 62 lines",
+            "output.py": "[FILE] 123 lines",
+            "parsing.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+            "parsing.py": "[FILE] 245 lines",
+            "py.typed": "[BINARY] 0 bytes",
+            "ranges.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+            "ranges.py": "[FILE] 535 lines",
+            "report.py": "[FILE] 108 lines",
+            "resources": {
+              "__init__.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+              "__init__.py": "[FILE] 1 lines",
+              "black.schema.json": "[FILE] 155 lines"
+            },
+            "rusty.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+            "rusty.py": "[FILE] 29 lines",
+            "schema.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+            "schema.py": "[FILE] 16 lines",
+            "strings.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+            "strings.py": "[FILE] 392 lines",
+            "trans.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+            "trans.py": "[FILE] 2561 lines"
+          },
+          "black-26.3.1.dist-info": {
+            "INSTALLER": "[BINARY] 4 bytes",
+            "METADATA": "[BINARY] 91891 bytes",
+            "RECORD": "[BINARY] 9698 bytes",
+            "REQUESTED": "[BINARY] 0 bytes",
+            "WHEEL": "[BINARY] 187 bytes",
+            "entry_points.txt": "[BINARY] 144 bytes",
+            "licenses": {
+              "LICENSE": "[BINARY] 1080 bytes"
+            }
+          },
+          "blackd": {
+            "__init__.py": "[FILE] 335 lines",
+            "__main__.py": "[FILE] 4 lines",
+            "client.py": "[FILE] 93 lines",
+            "middlewares.py": "[FILE] 46 lines"
+          },
+          "blib2to3": {
+            "Grammar.txt": "[BINARY] 12024 bytes",
+            "LICENSE": "[BINARY] 12762 bytes",
+            "PatternGrammar.txt": "[BINARY] 807 bytes",
+            "README": "[BINARY] 1074 bytes",
+            "__init__.py": "[FILE] 2 lines",
+            "pgen2": {
+              "__init__.py": "[FILE] 5 lines",
+              "conv.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+              "conv.py": "[FILE] 257 lines",
+              "driver.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+              "driver.py": "[FILE] 314 lines",
+              "grammar.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+              "grammar.py": "[FILE] 229 lines",
+              "literals.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+              "literals.py": "[FILE] 66 lines",
+              "parse.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+              "parse.py": "[FILE] 396 lines",
+              "pgen.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+              "pgen.py": "[FILE] 412 lines",
+              "token.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+              "token.py": "[FILE] 96 lines",
+              "tokenize.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+              "tokenize.py": "[FILE] 227 lines"
+            },
+            "pygram.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+            "pygram.py": "[FILE] 209 lines",
+            "pytree.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+            "pytree.py": "[FILE] 972 lines"
           },
           "celery": {
             "__init__.py": "[FILE] 173 lines",
@@ -1295,6 +1435,7 @@
               "LICENSE": "[BINARY] 1086 bytes"
             }
           },
+          "fd7dcdb10166ebd4db98__mypyc.cpython-312-x86_64-linux-gnu.so": "[BINARY] 720656 bytes",
           "greenlet": {
             "CObjects.cpp": "[BINARY] 3508 bytes",
             "PyGreenlet.cpp": "[BINARY] 26311 bytes",
@@ -1813,6 +1954,16 @@
               "test_multipart.py": "[FILE] 1306 lines"
             }
           },
+          "mypy_extensions-1.1.0.dist-info": {
+            "INSTALLER": "[BINARY] 4 bytes",
+            "METADATA": "[BINARY] 1100 bytes",
+            "RECORD": "[BINARY] 558 bytes",
+            "WHEEL": "[BINARY] 82 bytes",
+            "licenses": {
+              "LICENSE": "[BINARY] 1204 bytes"
+            }
+          },
+          "mypy_extensions.py": "[FILE] 252 lines",
           "networkx": {
             "__init__.py": "[FILE] 50 lines",
             "algorithms": {
@@ -2660,6 +2811,61 @@
             "top_level.txt": "[BINARY] 8 bytes",
             "zip-safe": "[BINARY] 1 bytes"
           },
+          "pathspec": {
+            "__init__.py": "[FILE] 69 lines",
+            "_backends": {
+              "__init__.py": "[FILE] 5 lines",
+              "_utils.py": "[FILE] 46 lines",
+              "agg.py": "[FILE] 105 lines",
+              "hyperscan": {
+                "__init__.py": "[FILE] 1 lines",
+                "_base.py": "[FILE] 79 lines",
+                "base.py": "[FILE] 25 lines",
+                "gitignore.py": "[FILE] 246 lines",
+                "pathspec.py": "[FILE] 252 lines"
+              },
+              "re2": {
+                "__init__.py": "[FILE] 1 lines",
+                "_base.py": "[FILE] 96 lines",
+                "base.py": "[FILE] 19 lines",
+                "gitignore.py": "[FILE] 180 lines",
+                "pathspec.py": "[FILE] 188 lines"
+              },
+              "simple": {
+                "__init__.py": "[FILE] 1 lines",
+                "gitignore.py": "[FILE] 105 lines",
+                "pathspec.py": "[FILE] 77 lines"
+              }
+            },
+            "_meta.py": "[FILE] 68 lines",
+            "_typing.py": "[FILE] 65 lines",
+            "_version.py": "[FILE] 6 lines",
+            "backend.py": "[FILE] 41 lines",
+            "gitignore.py": "[FILE] 166 lines",
+            "pathspec.py": "[FILE] 461 lines",
+            "pattern.py": "[FILE] 242 lines",
+            "patterns": {
+              "__init__.py": "[FILE] 13 lines",
+              "gitignore": {
+                "__init__.py": "[FILE] 18 lines",
+                "base.py": "[FILE] 177 lines",
+                "basic.py": "[FILE] 318 lines",
+                "spec.py": "[FILE] 336 lines"
+              },
+              "gitwildmatch.py": "[FILE] 53 lines"
+            },
+            "py.typed": "[BINARY] 68 bytes",
+            "util.py": "[FILE] 848 lines"
+          },
+          "pathspec-1.0.4.dist-info": {
+            "INSTALLER": "[BINARY] 4 bytes",
+            "METADATA": "[BINARY] 13755 bytes",
+            "RECORD": "[BINARY] 5021 bytes",
+            "WHEEL": "[BINARY] 82 bytes",
+            "licenses": {
+              "LICENSE": "[BINARY] 16726 bytes"
+            }
+          },
           "pip": {
             "__init__.py": "[FILE] 14 lines",
             "__main__.py": "[FILE] 25 lines",
@@ -3245,6 +3451,27 @@
               }
             }
           },
+          "platformdirs": {
+            "__init__.py": "[FILE] 858 lines",
+            "__main__.py": "[FILE] 62 lines",
+            "_xdg.py": "[FILE] 144 lines",
+            "android.py": "[FILE] 276 lines",
+            "api.py": "[FILE] 395 lines",
+            "macos.py": "[FILE] 188 lines",
+            "py.typed": "[BINARY] 0 bytes",
+            "unix.py": "[FILE] 295 lines",
+            "version.py": "[FILE] 35 lines",
+            "windows.py": "[FILE] 370 lines"
+          },
+          "platformdirs-4.9.4.dist-info": {
+            "INSTALLER": "[BINARY] 4 bytes",
+            "METADATA": "[BINARY] 4683 bytes",
+            "RECORD": "[BINARY] 1677 bytes",
+            "WHEEL": "[BINARY] 87 bytes",
+            "licenses": {
+              "LICENSE": "[BINARY] 1089 bytes"
+            }
+          },
           "prompt_toolkit": {
             "__init__.py": "[FILE] 55 lines",
             "application": {
@@ -3756,6 +3983,25 @@
             "licenses": {
               "LICENSE.txt": "[BINARY] 556 bytes"
             }
+          },
+          "pytokens": {
+            "__init__.cpython-312-x86_64-linux-gnu.so": "[BINARY] 17528 bytes",
+            "__init__.py": "[FILE] 1175 lines",
+            "__main__.py": "[FILE] 8 lines",
+            "_mypyc_dummy.cpython-312-x86_64-linux-gnu.so": "[BINARY] 17568 bytes",
+            "_mypyc_dummy.py": "[FILE] 1 lines",
+            "cli.py": "[FILE] 259 lines",
+            "py.typed": "[BINARY] 59 bytes"
+          },
+          "pytokens-0.4.1.dist-info": {
+            "INSTALLER": "[BINARY] 4 bytes",
+            "METADATA": "[BINARY] 3788 bytes",
+            "RECORD": "[BINARY] 1410 bytes",
+            "WHEEL": "[BINARY] 191 bytes",
+            "licenses": {
+              "LICENSE": "[BINARY] 1072 bytes"
+            },
+            "top_level.txt": "[BINARY] 37 bytes"
           },
           "pyyaml-6.0.3.dist-info": {
             "INSTALLER": "[BINARY] 4 bytes",
@@ -5341,6 +5587,7 @@
     "lib64": {
       "python3.12": {
         "site-packages": {
+          "30fcd23745efe32ce681__mypyc.cpython-312-x86_64-linux-gnu.so": "[BINARY] 4496288 bytes",
           "SQLAlchemy-2.0.23.dist-info": {
             "INSTALLER": "[BINARY] 4 bytes",
             "LICENSE": "[BINARY] 1100 bytes",
@@ -5350,6 +5597,8 @@
             "WHEEL": "[BINARY] 152 bytes",
             "top_level.txt": "[BINARY] 11 bytes"
           },
+          "_black_version.py": "[FILE] 2 lines",
+          "_black_version.pyi": "[BINARY] 13 bytes",
           "_cffi_backend.cpython-312-x86_64-linux-gnu.so": "[BINARY] 348808 bytes",
           "_yaml": {
             "__init__.py": "[FILE] 34 lines"
@@ -5723,6 +5972,103 @@
             "RECORD": "[BINARY] 4127 bytes",
             "WHEEL": "[BINARY] 91 bytes",
             "top_level.txt": "[BINARY] 9 bytes"
+          },
+          "black": {
+            "__init__.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+            "__init__.py": "[FILE] 1680 lines",
+            "__main__.py": "[FILE] 4 lines",
+            "_width_table.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15992 bytes",
+            "_width_table.py": "[FILE] 133 lines",
+            "brackets.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+            "brackets.py": "[FILE] 384 lines",
+            "cache.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+            "cache.py": "[FILE] 151 lines",
+            "comments.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+            "comments.py": "[FILE] 828 lines",
+            "concurrency.py": "[FILE] 222 lines",
+            "const.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+            "const.py": "[FILE] 5 lines",
+            "debug.py": "[FILE] 56 lines",
+            "files.py": "[FILE] 427 lines",
+            "handle_ipynb_magics.cpython-312-x86_64-linux-gnu.so": "[BINARY] 16008 bytes",
+            "handle_ipynb_magics.py": "[FILE] 516 lines",
+            "linegen.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+            "linegen.py": "[FILE] 2049 lines",
+            "lines.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+            "lines.py": "[FILE] 1122 lines",
+            "mode.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+            "mode.py": "[FILE] 322 lines",
+            "nodes.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+            "nodes.py": "[FILE] 1109 lines",
+            "numerics.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+            "numerics.py": "[FILE] 62 lines",
+            "output.py": "[FILE] 123 lines",
+            "parsing.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+            "parsing.py": "[FILE] 245 lines",
+            "py.typed": "[BINARY] 0 bytes",
+            "ranges.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+            "ranges.py": "[FILE] 535 lines",
+            "report.py": "[FILE] 108 lines",
+            "resources": {
+              "__init__.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+              "__init__.py": "[FILE] 1 lines",
+              "black.schema.json": "[FILE] 155 lines"
+            },
+            "rusty.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+            "rusty.py": "[FILE] 29 lines",
+            "schema.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+            "schema.py": "[FILE] 16 lines",
+            "strings.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+            "strings.py": "[FILE] 392 lines",
+            "trans.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+            "trans.py": "[FILE] 2561 lines"
+          },
+          "black-26.3.1.dist-info": {
+            "INSTALLER": "[BINARY] 4 bytes",
+            "METADATA": "[BINARY] 91891 bytes",
+            "RECORD": "[BINARY] 9698 bytes",
+            "REQUESTED": "[BINARY] 0 bytes",
+            "WHEEL": "[BINARY] 187 bytes",
+            "entry_points.txt": "[BINARY] 144 bytes",
+            "licenses": {
+              "LICENSE": "[BINARY] 1080 bytes"
+            }
+          },
+          "blackd": {
+            "__init__.py": "[FILE] 335 lines",
+            "__main__.py": "[FILE] 4 lines",
+            "client.py": "[FILE] 93 lines",
+            "middlewares.py": "[FILE] 46 lines"
+          },
+          "blib2to3": {
+            "Grammar.txt": "[BINARY] 12024 bytes",
+            "LICENSE": "[BINARY] 12762 bytes",
+            "PatternGrammar.txt": "[BINARY] 807 bytes",
+            "README": "[BINARY] 1074 bytes",
+            "__init__.py": "[FILE] 2 lines",
+            "pgen2": {
+              "__init__.py": "[FILE] 5 lines",
+              "conv.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+              "conv.py": "[FILE] 257 lines",
+              "driver.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+              "driver.py": "[FILE] 314 lines",
+              "grammar.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+              "grammar.py": "[FILE] 229 lines",
+              "literals.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+              "literals.py": "[FILE] 66 lines",
+              "parse.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+              "parse.py": "[FILE] 396 lines",
+              "pgen.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+              "pgen.py": "[FILE] 412 lines",
+              "token.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15976 bytes",
+              "token.py": "[FILE] 96 lines",
+              "tokenize.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+              "tokenize.py": "[FILE] 227 lines"
+            },
+            "pygram.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+            "pygram.py": "[FILE] 209 lines",
+            "pytree.cpython-312-x86_64-linux-gnu.so": "[BINARY] 15984 bytes",
+            "pytree.py": "[FILE] 972 lines"
           },
           "celery": {
             "__init__.py": "[FILE] 173 lines",
@@ -6339,6 +6685,7 @@
               "LICENSE": "[BINARY] 1086 bytes"
             }
           },
+          "fd7dcdb10166ebd4db98__mypyc.cpython-312-x86_64-linux-gnu.so": "[BINARY] 720656 bytes",
           "greenlet": {
             "CObjects.cpp": "[BINARY] 3508 bytes",
             "PyGreenlet.cpp": "[BINARY] 26311 bytes",
@@ -6857,6 +7204,16 @@
               "test_multipart.py": "[FILE] 1306 lines"
             }
           },
+          "mypy_extensions-1.1.0.dist-info": {
+            "INSTALLER": "[BINARY] 4 bytes",
+            "METADATA": "[BINARY] 1100 bytes",
+            "RECORD": "[BINARY] 558 bytes",
+            "WHEEL": "[BINARY] 82 bytes",
+            "licenses": {
+              "LICENSE": "[BINARY] 1204 bytes"
+            }
+          },
+          "mypy_extensions.py": "[FILE] 252 lines",
           "networkx": {
             "__init__.py": "[FILE] 50 lines",
             "algorithms": {
@@ -7704,6 +8061,61 @@
             "top_level.txt": "[BINARY] 8 bytes",
             "zip-safe": "[BINARY] 1 bytes"
           },
+          "pathspec": {
+            "__init__.py": "[FILE] 69 lines",
+            "_backends": {
+              "__init__.py": "[FILE] 5 lines",
+              "_utils.py": "[FILE] 46 lines",
+              "agg.py": "[FILE] 105 lines",
+              "hyperscan": {
+                "__init__.py": "[FILE] 1 lines",
+                "_base.py": "[FILE] 79 lines",
+                "base.py": "[FILE] 25 lines",
+                "gitignore.py": "[FILE] 246 lines",
+                "pathspec.py": "[FILE] 252 lines"
+              },
+              "re2": {
+                "__init__.py": "[FILE] 1 lines",
+                "_base.py": "[FILE] 96 lines",
+                "base.py": "[FILE] 19 lines",
+                "gitignore.py": "[FILE] 180 lines",
+                "pathspec.py": "[FILE] 188 lines"
+              },
+              "simple": {
+                "__init__.py": "[FILE] 1 lines",
+                "gitignore.py": "[FILE] 105 lines",
+                "pathspec.py": "[FILE] 77 lines"
+              }
+            },
+            "_meta.py": "[FILE] 68 lines",
+            "_typing.py": "[FILE] 65 lines",
+            "_version.py": "[FILE] 6 lines",
+            "backend.py": "[FILE] 41 lines",
+            "gitignore.py": "[FILE] 166 lines",
+            "pathspec.py": "[FILE] 461 lines",
+            "pattern.py": "[FILE] 242 lines",
+            "patterns": {
+              "__init__.py": "[FILE] 13 lines",
+              "gitignore": {
+                "__init__.py": "[FILE] 18 lines",
+                "base.py": "[FILE] 177 lines",
+                "basic.py": "[FILE] 318 lines",
+                "spec.py": "[FILE] 336 lines"
+              },
+              "gitwildmatch.py": "[FILE] 53 lines"
+            },
+            "py.typed": "[BINARY] 68 bytes",
+            "util.py": "[FILE] 848 lines"
+          },
+          "pathspec-1.0.4.dist-info": {
+            "INSTALLER": "[BINARY] 4 bytes",
+            "METADATA": "[BINARY] 13755 bytes",
+            "RECORD": "[BINARY] 5021 bytes",
+            "WHEEL": "[BINARY] 82 bytes",
+            "licenses": {
+              "LICENSE": "[BINARY] 16726 bytes"
+            }
+          },
           "pip": {
             "__init__.py": "[FILE] 14 lines",
             "__main__.py": "[FILE] 25 lines",
@@ -8289,6 +8701,27 @@
               }
             }
           },
+          "platformdirs": {
+            "__init__.py": "[FILE] 858 lines",
+            "__main__.py": "[FILE] 62 lines",
+            "_xdg.py": "[FILE] 144 lines",
+            "android.py": "[FILE] 276 lines",
+            "api.py": "[FILE] 395 lines",
+            "macos.py": "[FILE] 188 lines",
+            "py.typed": "[BINARY] 0 bytes",
+            "unix.py": "[FILE] 295 lines",
+            "version.py": "[FILE] 35 lines",
+            "windows.py": "[FILE] 370 lines"
+          },
+          "platformdirs-4.9.4.dist-info": {
+            "INSTALLER": "[BINARY] 4 bytes",
+            "METADATA": "[BINARY] 4683 bytes",
+            "RECORD": "[BINARY] 1677 bytes",
+            "WHEEL": "[BINARY] 87 bytes",
+            "licenses": {
+              "LICENSE": "[BINARY] 1089 bytes"
+            }
+          },
           "prompt_toolkit": {
             "__init__.py": "[FILE] 55 lines",
             "application": {
@@ -8800,6 +9233,25 @@
             "licenses": {
               "LICENSE.txt": "[BINARY] 556 bytes"
             }
+          },
+          "pytokens": {
+            "__init__.cpython-312-x86_64-linux-gnu.so": "[BINARY] 17528 bytes",
+            "__init__.py": "[FILE] 1175 lines",
+            "__main__.py": "[FILE] 8 lines",
+            "_mypyc_dummy.cpython-312-x86_64-linux-gnu.so": "[BINARY] 17568 bytes",
+            "_mypyc_dummy.py": "[FILE] 1 lines",
+            "cli.py": "[FILE] 259 lines",
+            "py.typed": "[BINARY] 59 bytes"
+          },
+          "pytokens-0.4.1.dist-info": {
+            "INSTALLER": "[BINARY] 4 bytes",
+            "METADATA": "[BINARY] 3788 bytes",
+            "RECORD": "[BINARY] 1410 bytes",
+            "WHEEL": "[BINARY] 191 bytes",
+            "licenses": {
+              "LICENSE": "[BINARY] 1072 bytes"
+            },
+            "top_level.txt": "[BINARY] 37 bytes"
           },
           "pyyaml-6.0.3.dist-info": {
             "INSTALLER": "[BINARY] 4 bytes",

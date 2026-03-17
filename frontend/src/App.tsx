@@ -1,4 +1,4 @@
-// frontend/src/App.tsx
+// frontend/src/App.tsx - полностью исправленная версия
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from './store';
@@ -22,10 +22,13 @@ const App: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [hasInitialized, setHasInitialized] = useState(false);
-  
+
   const { projects, currentProject } = useSelector((state: RootState) => state.projects);
-  const { artifacts } = useSelector((state: RootState) => state.artifacts);
+  const { items: artifacts } = useSelector((state: RootState) => state.artifacts);
   const { tabs, activeTabId, darkMode, inspectorWidth } = useSelector((state: RootState) => state.ui);
+
+  // Преобразуем объект items в массив для удобства
+  const artifactsList = Object.values(artifacts || {});
 
   useEffect(() => {
     console.log('[App] Initializing app, fetching projects');
@@ -33,17 +36,17 @@ const App: React.FC = () => {
   }, [dispatch]);
 
   useEffect(() => {
-    console.log('[App] projects or currentProject changed:', { 
-      projectsCount: projects.length, 
-      currentProject: currentProject?.id 
+    console.log('[App] projects or currentProject changed:', {
+      projectsCount: projects.length,
+      currentProject: currentProject?.id
     });
-    
+
     if (projects.length > 0 && !currentProject && !hasInitialized) {
       console.log('[App] Setting first project as current:', projects[0].id);
       dispatch(setCurrentProject(projects[0].id));
       setHasInitialized(true);
     }
-    
+
     if (currentProject?.id) {
       console.log(`[App] Current project ID: ${currentProject.id}, fetching artifacts`);
       dispatch(fetchArtifacts(currentProject.id));
@@ -52,22 +55,22 @@ const App: React.FC = () => {
 
   const handleArtifactSelect = (artifact: Artifact) => {
     console.log('[App] Artifact selected:', artifact.id, artifact.name);
-    
+
     const existingTab = tabs.find(tab => tab.artifactId === artifact.id);
-    
+
     if (existingTab) {
       dispatch(setActiveTab(existingTab.id));
     } else {
       const tabId = `tab-${Date.now()}-${artifact.id}`;
       const icon = getArtifactIcon(artifact.type);
-      
+
       dispatch(addTab({
         id: tabId,
         artifactId: artifact.id,
         title: `${icon} ${artifact.name}`,
         type: artifact.type,
       }));
-      
+
       dispatch(setActiveTab(tabId));
     }
   };
@@ -79,9 +82,9 @@ const App: React.FC = () => {
 
   const handleArtifactUpdate = async (artifactId: number, updates: Partial<Artifact>) => {
     if (!currentProject) return;
-    
+
     console.log(`[App] Updating artifact ${artifactId}:`, updates);
-    
+
     try {
       await dispatch(updateArtifact({
         projectId: currentProject.id,
@@ -95,16 +98,16 @@ const App: React.FC = () => {
 
   const handleNodeMove = (artifactId: number, nodeId: string, x: number, y: number) => {
     console.log(`[App] Node ${nodeId} moved to (${x}, ${y}) in artifact ${artifactId}`);
-    
-    const artifact = artifacts.find(a => a.id === artifactId);
+
+    const artifact = artifactsList.find(a => a.id === artifactId);
     if (!artifact || artifact.type !== 'graph') return;
-    
+
     const updatedNodes = artifact.data.nodes?.map((node: any) =>
       node.id === nodeId || node.node_id === nodeId
         ? { ...node, position_x: x, position_y: y }
         : node
     );
-    
+
     handleArtifactUpdate(artifactId, {
       data: {
         ...artifact.data,
@@ -124,9 +127,17 @@ const App: React.FC = () => {
     }
   };
 
-  const activeArtifact = activeTabId
-    ? artifacts.find(a => a.id === tabs.find(t => t.id === activeTabId)?.artifactId)
-    : null;
+  // Безопасное вычисление активного артефакта
+  const getActiveArtifact = () => {
+    if (!activeTabId || !tabs || tabs.length === 0) return null;
+    
+    const activeTab = tabs.find(t => t.id === activeTabId);
+    if (!activeTab) return null;
+    
+    return artifactsList.find(a => a.id === activeTab.artifactId) || null;
+  };
+
+  const activeArtifact = getActiveArtifact();
 
   return (
     <div className={`app ${darkMode ? 'dark' : 'light'}`}>

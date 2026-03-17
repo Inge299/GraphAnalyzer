@@ -14,7 +14,7 @@ class GraphAction(Base):
     __tablename__ = "graph_actions"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    artifact_id = Column(Integer, ForeignKey("artifacts.id", ondelete="CASCADE"), nullable=False)
+    artifact_id = Column(Integer, ForeignKey("artifacts.id", ondelete="CASCADE"), nullable=False)  # ИСПРАВЛЕНО: было graph_id
 
     # Тип действия
     action_type = Column(String(50), nullable=False)  # 'add_node', 'delete_edge', 'move_node', etc.
@@ -25,7 +25,7 @@ class GraphAction(Base):
 
     # Метаданные
     timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
-    user_type = Column(String(20), default='user')  # 'user' или 'plugin'
+    user_type = Column(String(20), default='user', nullable=False)  # 'user' или 'plugin'
     description = Column(String(200))
     plugin_id = Column(String(100), nullable=True)
 

@@ -13,7 +13,7 @@ services:
 
   postgres:
     ports:
-      - "5432:5432"
+      - "5434:5432"
     environment:
       - POSTGRES_USER=osint_user
       - POSTGRES_PASSWORD=osint_password
@@ -21,7 +21,7 @@ services:
 
   redis:
     ports:
-      - "6379:6379"
+      - "6380:6379"
 
   # Optional: Add pgAdmin for database management
   pgadmin:

@@ -232,6 +232,8 @@ export const GraphView: React.FC<GraphViewProps> = ({ artifact }) => {
       }
     });
 
+
+
     // Обработчик окончания перетаскивания
     network.on('dragEnd', async (params) => {
       const nodeId = params.nodes[0];
@@ -258,16 +260,10 @@ export const GraphView: React.FC<GraphViewProps> = ({ artifact }) => {
         // Устанавливаем новый таймаут
         moveTimeoutRef.current = setTimeout(async () => {
           const movesToApply = { ...newMoves };
-          
+      
           // Очищаем pending moves
           setPendingMoves({});
-          
-          // Обновляем локальные позиции финально
-          setLocalNodePositions(prev => ({
-            ...prev,
-            ...movesToApply
-          }));
-
+      
           // Создаем функцию для обновления данных
           const updateData = () => {
             const updatedNodes = (artifact.data.nodes || []).map(node =>
@@ -286,17 +282,13 @@ export const GraphView: React.FC<GraphViewProps> = ({ artifact }) => {
             };
           };
 
-          // Выполняем действие через execute - ОН САМ обновит Redux!
+          // Выполняем действие через execute
           await execute(
             async () => {
-              // Эта функция будет вызвана внутри execute
-              // Она должна обновить данные, но execute сам вызовет handleStateChange
               const newData = updateData();
-              
-              // Обновляем через dispatch напрямую (execute проверит состояние)
-              await handleStateChange(newData);
-              
-              return newData;
+              // НЕ вызываем handleStateChange здесь!
+              // execute сам вызовет onStateChange
+              return newData; // Возвращаем новое состояние
             },
             {
               description: Object.keys(movesToApply).length === 1 
@@ -314,6 +306,8 @@ export const GraphView: React.FC<GraphViewProps> = ({ artifact }) => {
         return newMoves;
       });
     });
+    
+
 
     // Обработчик клика на узле
     network.on('click', (params) => {

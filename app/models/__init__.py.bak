@@ -9,7 +9,6 @@ from app.models.node import Node
 from app.models.edge import Edge
 from app.models.schema import ProjectSchema, NodeType, EdgeType
 from app.models.artifact import Artifact, ArtifactRelation, ArtifactVersion
-from app.models.action import GraphAction
 
 __all__ = [
     "Project",

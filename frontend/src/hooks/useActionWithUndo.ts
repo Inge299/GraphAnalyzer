@@ -12,68 +12,79 @@ interface ActionOptions {
   pluginId?: string;
 }
 
-interface BatchMove {
-  [nodeId: string]: { x: number; y: number };
-}
-
 export function useActionWithUndo<T extends object>(
   artifactId: number,
   currentState: T,
   onStateChange: (newState: T) => Promise<void> | void
 ) {
   const dispatch = useAppDispatch();
-  const pendingBatch = useRef<{ moves: BatchMove; timeout: NodeJS.Timeout | null }>({
-    moves: {},
-    timeout: null
-  });
+  const isRecordingRef = useRef(false);
 
   /**
    * Выполнить действие с записью в историю
    */
   const execute = useCallback(async (
-    actionFn: () => Promise<void> | void,
+    actionFn: () => Promise<T | void> | T | void,
     options: ActionOptions
   ) => {
+    // Предотвращаем повторную запись
+    if (isRecordingRef.current) {
+      console.log('⏭️ Already recording, skipping');
+      return;
+    }
+
+    isRecordingRef.current = true;
+    
     // Сохраняем состояние ДО
     const beforeState = JSON.parse(JSON.stringify(currentState));
-  
+    let afterState: T;
+    
     try {
-      // Выполняем действие
-      await actionFn();
-    
-      // НЕ используем currentState здесь, потому что он мог не обновиться!
-      // Вместо этого получаем состояние через props или вызываем функцию
-    
-      // Даем время на обновление React состояния
-      await new Promise(resolve => setTimeout(resolve, 10));
-    
-      // Получаем актуальное состояние
-      const afterState = JSON.parse(JSON.stringify(currentState));
-    
-      // Всегда записываем в историю, если это не батч или если состояние изменилось
+      // Выполняем действие и получаем новое состояние
+      const result = await actionFn();
+      
+      // Если actionFn вернула новое состояние, используем его
+      if (result) {
+        afterState = result as T;
+        // Обновляем состояние через onStateChange
+        await onStateChange(afterState);
+      } else {
+        // Иначе ждем обновления React состояния
+        await new Promise(resolve => setTimeout(resolve, 100));
+        afterState = JSON.parse(JSON.stringify(currentState));
+      }
+      
+      // Проверяем, изменилось ли состояние
       const stateChanged = JSON.stringify(beforeState) !== JSON.stringify(afterState);
-    
-      if (!stateChanged && options.actionType !== 'batch_move') {
+      
+      if (!stateChanged) {
         console.log('⏭️ State unchanged, skipping history');
+        isRecordingRef.current = false;
         return;
       }
-    
+      
       console.log(`📝 Recording action: ${options.description}`, { beforeState, afterState });
-    
-      // Отправляем на сервер
+      
+      // Отправляем на сервер - ВСЕ ПОЛЯ ОБЯЗАТЕЛЬНЫ!
+      const actionData = {
+        action_type: options.actionType,
+        before_state: beforeState,
+        after_state: afterState,
+        description: options.description,
+        user_type: options.pluginId ? 'plugin' : 'user',  // 'user' по умолчанию
+        plugin_id: options.pluginId || null,  // Явно передаем null если нет
+        group_id: options.groupId || null     // Явно передаем null если нет
+      };
+      
+      console.log('Sending action data:', actionData);
+      
       const response = await api.post(
         `/api/v2/artifacts/${artifactId}/history/actions`,
-        {
-          action_type: options.actionType,
-          before_state: beforeState,
-          after_state: afterState,
-          description: options.description,
-          user_type: options.pluginId ? 'plugin' : 'user',
-          plugin_id: options.pluginId,
-          group_id: options.groupId
-        }
+        actionData
       );
-    
+      
+      console.log('✅ Action recorded, response:', response);
+      
       // Добавляем в Redux
       dispatch(addAction({
         id: response.id,
@@ -87,22 +98,14 @@ export function useActionWithUndo<T extends object>(
         pluginId: options.pluginId,
         groupId: options.groupId
       }));
-    
-      console.log(`✅ Action recorded: ${options.description}`);
+      
     } catch (error) {
       console.error('❌ Action failed:', error);
-      // Пытаемся откатить изменения
-      try {
-        await onStateChange(beforeState);
-      } catch (rollbackError) {
-        console.error('❌ Rollback failed:', rollbackError);
-      }
       throw error;
+    } finally {
+      isRecordingRef.current = false;
     }
   }, [artifactId, currentState, onStateChange, dispatch]);
-
-
-
 
   /**
    * Отменить последнее действие
@@ -132,7 +135,6 @@ export function useActionWithUndo<T extends object>(
     } catch (error: any) {
       console.error('❌ Undo failed:', error);
       
-      // Показываем понятное сообщение
       if (error.status === 404) {
         console.log('ℹ️ No actions to undo');
         return null;
@@ -179,61 +181,11 @@ export function useActionWithUndo<T extends object>(
     }
   }, [artifactId, onStateChange, dispatch]);
 
-  /**
-   * Группировка перемещений (batch)
-   */
-  const queueMove = useCallback((nodeId: string, x: number, y: number) => {
-    // Добавляем в очередь
-    pendingBatch.current.moves[nodeId] = { x, y };
-    
-    // Отменяем предыдущий таймаут
-    if (pendingBatch.current.timeout) {
-      clearTimeout(pendingBatch.current.timeout);
-    }
-    
-    // Устанавливаем новый таймаут
-    pendingBatch.current.timeout = setTimeout(async () => {
-      const movesToApply = { ...pendingBatch.current.moves };
-      const moveCount = Object.keys(movesToApply).length;
-      
-      if (moveCount === 0) return;
-      
-      console.log(`📦 Executing batch move of ${moveCount} nodes`);
-      
-      await execute(
-        async () => {
-          // Применяем все перемещения
-          for (const [nodeId, pos] of Object.entries(movesToApply)) {
-            await onStateChange({
-              ...currentState,
-              nodes: (currentState as any).nodes?.map((node: any) =>
-                node.id === nodeId
-                  ? { ...node, x: pos.x, y: pos.y }
-                  : node
-              )
-            });
-          }
-        },
-        {
-          description: moveCount === 1 
-            ? `Перемещение узла` 
-            : `Перемещение ${moveCount} узлов`,
-          actionType: 'batch_move'
-        }
-      );
-      
-      // Очищаем очередь
-      pendingBatch.current.moves = {};
-      pendingBatch.current.timeout = null;
-    }, 500); // Группируем за 500ms
-  }, [currentState, onStateChange, execute]);
-
   return {
     execute,
     undo,
     redo,
-    queueMove,
-    canUndo: true, // Доверяем серверу, а не локальному стейту
+    canUndo: true,
     canRedo: true
   };
 }
