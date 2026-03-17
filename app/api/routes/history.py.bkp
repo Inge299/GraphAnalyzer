@@ -4,7 +4,7 @@ History management endpoints for undo/redo functionality.
 """
 from fastapi import APIRouter, HTTPException, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc, and_, func
+from sqlalchemy import select, desc, and_
 from typing import List, Optional
 import uuid
 import logging
@@ -34,10 +34,9 @@ async def get_history(
 ):
     """
     Get action history for a graph artifact.
-    Returns actions sorted by timestamp (newest first).
     """
     try:
-        # Сначала пробуем получить из кэша Redis
+        # Пытаемся получить из кэша Redis
         cache = HistoryCache(redis_client)
 
         if offset == 0 and limit <= 100:
@@ -56,7 +55,7 @@ async def get_history(
         )
         actions = result.scalars().all()
 
-        # Кэшируем результат для будущих запросов
+        # Кэшируем результат
         if offset == 0 and actions:
             await cache.push_many(artifact_id, [a.to_dict() for a in actions])
 
@@ -79,7 +78,6 @@ async def record_action(
 ):
     """
     Record a new action in history.
-    All actions are stored permanently for undo/redo functionality.
     """
     try:
         # Создаем запись в БД
@@ -110,7 +108,7 @@ async def record_action(
         raise HTTPException(status_code=500, detail="Failed to record action")
 
 # ============================================================================
-# Undo операция
+# Undo / Redo операции
 # ============================================================================
 
 @router.post("/undo", response_model=UndoResponse)
@@ -122,58 +120,33 @@ async def undo_action(
 ):
     """
     Undo the last action.
-    Returns the state to revert to (before_state of the action that would bring us back one step).
-    Does NOT delete the action - keeps full history.
     """
     try:
-        # Получаем ВСЕ действия для этого артефакта, отсортированные по времени (старые первые)
         result = await db.execute(
             select(GraphAction)
             .where(GraphAction.artifact_id == artifact_id)
-            .order_by(GraphAction.timestamp)  # По возрастанию (старые первые)
+            .order_by(desc(GraphAction.timestamp))
+            .limit(1)
         )
-        all_actions = result.scalars().all()
-        
-        if not all_actions:
+        action = result.scalar_one_or_none()
+
+        if not action:
             raise HTTPException(status_code=404, detail="No actions to undo")
-        
-        # Если есть только одно действие - отменяем его до начального состояния
-        if len(all_actions) == 1:
-            action = all_actions[0]
-            logger.info(f"Undo single action {action.id} for artifact {artifact_id}: {action.description}")
-            return {
-                "action_id": action.id,
-                "artifact_id": artifact_id,
-                "state": action.before_state,
-                "description": f"Undo: {action.description}",
-                "timestamp": action.timestamp
-            }
-        
-        # Если действий больше одного - отменяем последнее действие
-        # Для этого нужно вернуть состояние перед последним действием,
-        # то есть after_state предпоследнего действия
-        second_last_action = all_actions[-2]  # Предпоследнее действие
-        last_action = all_actions[-1]  # Последнее действие
-        
-        logger.info(f"Undo action {last_action.id} for artifact {artifact_id}: {last_action.description}")
-        logger.info(f"Returning to state after action {second_last_action.id}")
-        
+
+        logger.info(f"Undo action {action.id} for artifact {artifact_id}: {action.description}")
+
         return {
-            "action_id": last_action.id,
+            "action_id": action.id,
             "artifact_id": artifact_id,
-            "state": second_last_action.after_state,  # Важно! after_state предпоследнего действия
-            "description": f"Undo: {last_action.description}",
-            "timestamp": last_action.timestamp
+            "state": action.before_state,
+            "description": f"Undo: {action.description}",
+            "timestamp": action.timestamp
         }
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error undoing action for artifact {artifact_id}: {e}")
         raise HTTPException(status_code=500, detail="Failed to undo action")
-
-# ============================================================================
-# Redo операция
-# ============================================================================
 
 @router.post("/redo", response_model=RedoResponse)
 async def redo_action(
@@ -184,31 +157,27 @@ async def redo_action(
 ):
     """
     Redo the last undone action.
-    Returns the state to reapply (after_state of the last action).
     """
     try:
-        # Получаем ВСЕ действия для этого артефакта
         result = await db.execute(
             select(GraphAction)
             .where(GraphAction.artifact_id == artifact_id)
-            .order_by(GraphAction.timestamp)
+            .order_by(desc(GraphAction.timestamp))
+            .limit(1)
         )
-        all_actions = result.scalars().all()
-        
-        if not all_actions:
+        action = result.scalar_one_or_none()
+
+        if not action:
             raise HTTPException(status_code=404, detail="No actions to redo")
-        
-        # Для redo возвращаем after_state последнего действия
-        last_action = all_actions[-1]
-        
-        logger.info(f"Redo action {last_action.id} for artifact {artifact_id}: {last_action.description}")
-        
+
+        logger.info(f"Redo action {action.id} for artifact {artifact_id}: {action.description}")
+
         return {
-            "action_id": last_action.id,
+            "action_id": action.id,
             "artifact_id": artifact_id,
-            "state": last_action.after_state,
-            "description": f"Redo: {last_action.description}",
-            "timestamp": last_action.timestamp
+            "state": action.after_state,
+            "description": f"Redo: {action.description}",
+            "timestamp": action.timestamp
         }
     except HTTPException:
         raise
@@ -245,24 +214,3 @@ async def get_action(
         raise HTTPException(status_code=404, detail="Action not found")
 
     return action.to_dict()
-
-# ============================================================================
-# Получение количества действий
-# ============================================================================
-
-@router.get("/count")
-async def get_actions_count(
-    artifact_id: int,
-    db: AsyncSession = Depends(get_db),
-    artifact: Artifact = Depends(get_artifact)
-):
-    """
-    Get total number of actions for an artifact.
-    """
-    result = await db.execute(
-        select(func.count())
-        .where(GraphAction.artifact_id == artifact_id)
-    )
-    count = result.scalar()
-    
-    return {"artifact_id": artifact_id, "total_actions": count}

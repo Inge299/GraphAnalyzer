@@ -10,7 +10,6 @@ import { DataSet } from 'vis-data/standalone';
 import 'vis-network/styles/vis-network.css';
 import './GraphView.css';
 
-
 interface GraphViewProps {
   artifact: {
     id: number;
@@ -41,32 +40,35 @@ export const GraphView: React.FC<GraphViewProps> = ({ artifact }) => {
   const networkRef = useRef<Network | null>(null);
   const nodesDataSetRef = useRef<DataSet<any> | null>(null);
   const edgesDataSetRef = useRef<DataSet<any> | null>(null);
-  
+
   // Сохраняем ID артефакта для стабильности
   const artifactIdRef = useRef(artifact.id);
   const projectIdRef = useRef(artifact.project_id);
-  
+
   // Локальное состояние для позиций узлов (оптимистичные обновления)
   const [localNodePositions, setLocalNodePositions] = useState<Record<string, {x: number, y: number}>>({});
-  
+
   // Состояние для группировки перемещений
   const [pendingMoves, setPendingMoves] = useState<Record<string, {x: number, y: number}>>({});
   const moveTimeoutRef = useRef<NodeJS.Timeout>();
   const batchGroupIdRef = useRef<string | null>(null);
-  
+
   // Флаг для предотвращения повторной инициализации
   const isInitializedRef = useRef(false);
-  
+
   // Флаг для игнорирования обновлений из Redux во время перетаскивания
   const isDraggingRef = useRef(false);
-  
+
   // Последнее примененное состояние из Redux
   const lastReduxStateRef = useRef<string>(JSON.stringify(artifact.data));
+
+  // Флаг для пропуска fit() при внешних обновлениях
+  const skipFitRef = useRef(false);
 
   // ==========================================================================
   // Инициализация хука для undo/redo
   // ==========================================================================
-  
+
   const handleStateChange = useCallback(async (newData: any) => {
     console.log('Updating Redux state:', newData);
     await dispatch(updateArtifact({
@@ -76,14 +78,12 @@ export const GraphView: React.FC<GraphViewProps> = ({ artifact }) => {
     })).unwrap();
   }, [dispatch]);
 
-  const { 
-    execute, 
-    undo, 
-    redo, 
-    startBatch, 
-    endBatch,
-    canUndo, 
-    canRedo 
+  const {
+    execute,
+    undo,
+    redo,
+    canUndo,
+    canRedo
   } = useActionWithUndo(
     artifact.id,
     artifact.data,
@@ -94,22 +94,9 @@ export const GraphView: React.FC<GraphViewProps> = ({ artifact }) => {
   useKeyboardShortcuts(artifact.id);
 
   // ==========================================================================
-  // Функция для получения актуальных данных узла (локальные позиции + данные из props)
-  // ==========================================================================
-  
-  const getNodeWithLocalPosition = useCallback((node: any) => {
-    const localPos = localNodePositions[node.id];
-    return {
-      ...node,
-      x: localPos?.x ?? node.position_x,
-      y: localPos?.y ?? node.position_y,
-    };
-  }, [localNodePositions]);
-
-  // ==========================================================================
   // Инициализация vis-network
   // ==========================================================================
-  
+
   useEffect(() => {
     if (!containerRef.current || isInitializedRef.current) return;
 
@@ -167,13 +154,27 @@ export const GraphView: React.FC<GraphViewProps> = ({ artifact }) => {
       edges: {
         width: 2,
         smooth: {
-          type: 'continuous',
+          enabled: false,
+          type: 'continuous'
         },
         font: {
           size: 12,
           color: '#ffffff',
           align: 'middle',
+          strokeWidth: 2,
+          strokeColor: '#2d2d2d'
         },
+        arrows: {
+          to: {
+            enabled: true,
+            scaleFactor: 0.8
+          }
+        },
+        color: {
+          color: '#848484',
+          highlight: '#2196f3',
+          hover: '#2196f3'
+        }
       },
       interaction: {
         dragNodes: true,
@@ -182,6 +183,8 @@ export const GraphView: React.FC<GraphViewProps> = ({ artifact }) => {
         hover: true,
         tooltipDelay: 300,
         multiselect: true,
+        navigationButtons: true,
+        keyboard: false
       },
       manipulation: {
         enabled: false,
@@ -197,6 +200,11 @@ export const GraphView: React.FC<GraphViewProps> = ({ artifact }) => {
 
     networkRef.current = network;
 
+    // Отключаем автоматическое масштабирование при старте
+    network.once('afterDrawing', () => {
+      console.log('Network initialized, skipping fit');
+    });
+
     // ========================================================================
     // Обработчики событий
     // ========================================================================
@@ -207,14 +215,15 @@ export const GraphView: React.FC<GraphViewProps> = ({ artifact }) => {
       if (nodeId) {
         console.log('Drag start for node:', nodeId);
         isDraggingRef.current = true;
-        batchGroupIdRef.current = startBatch('Перемещение узлов');
+        // Создаем группу для batch операций
+        batchGroupIdRef.current = `move_${Date.now()}`;
       }
     });
 
     // Обработчик во время перетаскивания - обновляем локальное состояние
     network.on('dragging', (params) => {
       const nodeId = params.nodes[0];
-      if (nodeId && params.pointer) {
+      if (nodeId) {
         const position = network.getPosition(nodeId);
         setLocalNodePositions(prev => ({
           ...prev,
@@ -233,14 +242,14 @@ export const GraphView: React.FC<GraphViewProps> = ({ artifact }) => {
 
       const position = network.getPosition(nodeId);
       console.log('Drag end for node:', nodeId, position);
-      
+
       // Добавляем в ожидающие перемещения
       setPendingMoves(prev => {
         const newMoves = {
           ...prev,
           [nodeId]: { x: position.x, y: position.y }
         };
-        
+
         // Сбрасываем предыдущий таймаут
         if (moveTimeoutRef.current) {
           clearTimeout(moveTimeoutRef.current);
@@ -248,9 +257,6 @@ export const GraphView: React.FC<GraphViewProps> = ({ artifact }) => {
 
         // Устанавливаем новый таймаут
         moveTimeoutRef.current = setTimeout(async () => {
-          console.log('Applying batch move:', newMoves);
-          
-          // Сохраняем текущие pending moves
           const movesToApply = { ...newMoves };
           
           // Очищаем pending moves
@@ -261,75 +267,87 @@ export const GraphView: React.FC<GraphViewProps> = ({ artifact }) => {
             ...prev,
             ...movesToApply
           }));
-          
-          // Выполняем batch обновление в Redux
+
+          // Создаем функцию для обновления данных
+          const updateData = () => {
+            const updatedNodes = (artifact.data.nodes || []).map(node =>
+              movesToApply[node.id]
+                ? {
+                    ...node,
+                    position_x: movesToApply[node.id].x,
+                    position_y: movesToApply[node.id].y
+                  }
+                : node
+            );
+
+            return {
+              ...artifact.data,
+              nodes: updatedNodes
+            };
+          };
+
+          // Выполняем действие через execute - ОН САМ обновит Redux!
           await execute(
             async () => {
-              const updatedNodes = (artifact.data.nodes || []).map(node => 
-                movesToApply[node.id] 
-                  ? { 
-                      ...node, 
-                      position_x: movesToApply[node.id].x, 
-                      position_y: movesToApply[node.id].y 
-                    }
-                  : node
-              );
-
-              const newData = {
-                ...artifact.data,
-                nodes: updatedNodes
-              };
-
+              // Эта функция будет вызвана внутри execute
+              // Она должна обновить данные, но execute сам вызовет handleStateChange
+              const newData = updateData();
+              
+              // Обновляем через dispatch напрямую (execute проверит состояние)
               await handleStateChange(newData);
+              
               return newData;
             },
             {
-              description: `Перемещение ${Object.keys(movesToApply).length} узлов`,
+              description: Object.keys(movesToApply).length === 1 
+                ? `Перемещение узла` 
+                : `Перемещение ${Object.keys(movesToApply).length} узлов`,
               actionType: 'batch_move',
-              groupId: batchGroupIdRef.current || undefined,
-              batch: false
+              groupId: batchGroupIdRef.current || undefined
             }
           );
 
-          // Завершаем группу
-          if (batchGroupIdRef.current) {
-            await endBatch();
-            batchGroupIdRef.current = null;
-          }
-          
+          batchGroupIdRef.current = null;
           isDraggingRef.current = false;
         }, 500);
-        
+
         return newMoves;
       });
     });
 
+    // Обработчик клика на узле
+    network.on('click', (params) => {
+      if (params.nodes.length > 0) {
+        console.log('Clicked node:', params.nodes[0]);
+      }
+    });
+
     // Cleanup
     return () => {
-      network.destroy();
       if (moveTimeoutRef.current) {
         clearTimeout(moveTimeoutRef.current);
       }
+      network.destroy();
       isInitializedRef.current = false;
     };
-  }, []); // Пустой массив - инициализация один раз
+  }, []); // Пустой массив - инициализация только один раз
 
   // ==========================================================================
   // Синхронизация с Redux (только когда не перетаскиваем)
   // ==========================================================================
-  
+
   useEffect(() => {
     if (!networkRef.current || !nodesDataSetRef.current || isDraggingRef.current) {
       return;
     }
 
     const currentReduxState = JSON.stringify(artifact.data);
-    
+
     // Если состояние в Redux изменилось (не из-за нашего перетаскивания)
     if (currentReduxState !== lastReduxStateRef.current) {
       console.log('Redux state changed externally, updating graph');
       lastReduxStateRef.current = currentReduxState;
-      
+
       // Обновляем узлы
       const nodesData = (artifact.data.nodes || []).map(node => ({
         id: node.id,
@@ -342,8 +360,10 @@ export const GraphView: React.FC<GraphViewProps> = ({ artifact }) => {
 
       // Очищаем и добавляем заново
       nodesDataSetRef.current.clear();
-      nodesDataSetRef.current.add(nodesData);
-      
+      if (nodesData.length > 0) {
+        nodesDataSetRef.current.add(nodesData);
+      }
+
       // Очищаем локальные позиции
       setLocalNodePositions({});
 
@@ -360,31 +380,32 @@ export const GraphView: React.FC<GraphViewProps> = ({ artifact }) => {
       if (edgesData.length > 0) {
         edgesDataSetRef.current?.add(edgesData);
       }
+
+      // НЕ делаем fit() - сохраняем текущий масштаб и позицию
+      skipFitRef.current = false;
     }
   }, [artifact.data]);
 
   // ==========================================================================
   // Обработчик клавиш для undo/redo
   // ==========================================================================
-  
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement).tagName === 'INPUT' || 
+      if ((e.target as HTMLElement).tagName === 'INPUT' ||
           (e.target as HTMLElement).tagName === 'TEXTAREA') {
         return;
       }
 
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
         e.preventDefault();
-        if (e.shiftKey) {
-          redo();
-        } else {
-          undo();
-        }
+        console.log('Undo keyboard shortcut');
+        undo();
       }
-      
-      if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
         e.preventDefault();
+        console.log('Redo keyboard shortcut');
         redo();
       }
     };
@@ -402,45 +423,85 @@ export const GraphView: React.FC<GraphViewProps> = ({ artifact }) => {
       {/* Панель инструментов */}
       <div className="graph-toolbar">
         <div className="toolbar-group">
-          <button 
+          <button
             onClick={undo}
             disabled={!canUndo}
             title="Отменить (Ctrl+Z)"
             className="toolbar-btn"
           >
-            ↩️ Undo
+            ↩️ Undo {canUndo ? '(доступно)' : ''}
           </button>
-          <button 
+          <button
             onClick={redo}
             disabled={!canRedo}
             title="Повторить (Ctrl+Y / Ctrl+Shift+Z)"
             className="toolbar-btn"
           >
-            ↪️ Redo
+            ↪️ Redo {canRedo ? '(доступно)' : ''}
           </button>
         </div>
-        
+
         <div className="toolbar-group">
-          <button 
+          <button
             onClick={() => {
               // Сохранить
+              dispatch(updateArtifact({
+                projectId: projectIdRef.current,
+                id: artifactIdRef.current,
+                updates: { data: artifact.data }
+              }));
             }}
             title="Сохранить (Ctrl+S)"
             className="toolbar-btn"
           >
             💾 Save
           </button>
-          <button 
+          <button
             onClick={() => {
               // Экспорт
+              const dataStr = JSON.stringify(artifact.data, null, 2);
+              const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+              const exportFileDefaultName = `graph-${artifact.id}.json`;
+              const linkElement = document.createElement('a');
+              linkElement.setAttribute('href', dataUri);
+              linkElement.setAttribute('download', exportFileDefaultName);
+              linkElement.click();
             }}
-            title="Экспорт"
+            title="Экспорт в JSON"
             className="toolbar-btn"
           >
             📤 Export
           </button>
         </div>
-        
+
+        <div className="toolbar-group">
+          <button
+            onClick={() => {
+              if (networkRef.current) {
+                networkRef.current.fit();
+              }
+            }}
+            title="Подогнать под экран"
+            className="toolbar-btn"
+          >
+            🔍 Fit
+          </button>
+          <button
+            onClick={() => {
+              if (networkRef.current) {
+                networkRef.current.moveTo({
+                  scale: 1,
+                  position: { x: 0, y: 0 }
+                });
+              }
+            }}
+            title="Сбросить масштаб"
+            className="toolbar-btn"
+          >
+            🔄 Reset
+          </button>
+        </div>
+
         <div className="toolbar-status">
           {Object.keys(pendingMoves).length > 0 && (
             <span className="status-badge">
@@ -456,10 +517,46 @@ export const GraphView: React.FC<GraphViewProps> = ({ artifact }) => {
       </div>
 
       {/* Контейнер для графа */}
-      <div 
-        ref={containerRef} 
+      <div
+        ref={containerRef}
         className="graph-container"
         style={{ width: '100%', height: 'calc(100vh - 200px)' }}
+      />
+
+      {/* Панель истории */}
+      <HistoryPanel 
+        artifactId={artifact.id}
+        onJump={(state) => {
+          // Обновляем граф из истории
+          if (networkRef.current && nodesDataSetRef.current) {
+            skipFitRef.current = true;
+            
+            const nodesData = (state.nodes || []).map((node: any) => ({
+              id: node.id,
+              label: node.label || node.id,
+              x: node.position_x,
+              y: node.position_y,
+              group: node.type,
+              ...node
+            }));
+
+            nodesDataSetRef.current.clear();
+            nodesDataSetRef.current.add(nodesData);
+
+            const edgesData = (state.edges || []).map((edge: any) => ({
+              id: edge.id,
+              from: edge.from,
+              to: edge.to,
+              label: edge.type,
+              ...edge
+            }));
+
+            edgesDataSetRef.current?.clear();
+            if (edgesData.length > 0) {
+              edgesDataSetRef.current?.add(edgesData);
+            }
+          }
+        }}
       />
     </div>
   );

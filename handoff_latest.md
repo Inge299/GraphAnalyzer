@@ -1,15 +1,15 @@
 =============================================================================
 🎯 ПРОЕКТ: OSINT Graph Analyzer
-📅 Дата: 2026-03-10T16:43:40.336560
+📅 Дата: 2026-03-13T17:28:33.500320
 📌 Версия: v1.0
 =============================================================================
 
 📊 СТАТИСТИКА
 --------------------------------------------------
-- Всего файлов: 5536
-- Строк кода: 2067853
-- Python файлов: 5446
-- TypeScript/JS: 22
+- Всего файлов: 5552
+- Строк кода: 2082288
+- Python файлов: 5452
+- TypeScript/JS: 26
 
 🏗 АРХИТЕКТУРА
 --------------------------------------------------
@@ -77,18 +77,22 @@
     "env.py": "[FILE] 96 lines",
     "versions": {
       "001_initial_models.py": "[FILE] 128 lines",
-      "002_add_artifacts_tables.py": "[FILE] 140 lines"
+      "002_add_artifacts_tables.py": "[FILE] 140 lines",
+      "003_add_graph_actions.py": "[FILE] 58 lines",
+      "004_add_graph_actions.py": "[FILE] 59 lines"
     }
   },
-  "alembic.ini": "[BINARY] 1740 bytes",
+  "alembic.ini": "[BINARY] 1734 bytes",
   "app": {
     "api": {
-      "deps.py": "[FILE] 45 lines",
+      "deps.py": "[FILE] 50 lines",
       "routes": {
         "__init__.py": "[FILE] 8 lines",
         "artifacts.py": "[FILE] 727 lines",
         "edges.py": "[FILE] 219 lines",
         "graphs.py": "[FILE] 59 lines",
+        "history.py": "[FILE] 269 lines",
+        "history.py.bkp": "[BINARY] 7703 bytes",
         "nodes.py": "[FILE] 249 lines",
         "projects.py": "[FILE] 142 lines",
         "schema.py": "[FILE] 93 lines"
@@ -96,12 +100,13 @@
     },
     "config.py": "[FILE] 64 lines",
     "core": {
-      "exceptions.py": "[FILE] 24 lines"
+      "exceptions.py": "[FILE] 101 lines"
     },
     "database.py": "[FILE] 71 lines",
-    "main.py": "[FILE] 135 lines",
+    "main.py": "[FILE] 140 lines",
     "models": {
       "__init__.py": "[FILE] 24 lines",
+      "action.py": "[FILE] 59 lines",
       "artifact.py": "[FILE] 96 lines",
       "edge.py": "[FILE] 48 lines",
       "graph.py": "[FILE] 37 lines",
@@ -115,24 +120,47 @@
       "graphs.py": "[FILE] 29 lines",
       "plugins.py": "[FILE] 29 lines"
     },
+    "schemas": {
+      "action.py": "[FILE] 50 lines"
+    },
     "services": {
+      "history_cache.py": "[FILE] 140 lines",
       "schema_service.py": "[FILE] 232 lines"
     }
   },
   "backup.sh": "[BINARY] 2331 bytes",
-  "backups": {},
+  "backups": {
+    "checksums_20260313_020005.txt": "[BINARY] 954 bytes",
+    "data_20260313_020005.tar.gz": "[BINARY] 143 bytes",
+    "db_20260313_020005.sql.gz": "[BINARY] 2410 bytes",
+    "docker-compose_20260313_020005.yml": "[FILE] 86 lines",
+    "env_20260313_020005.backup": "[BINARY] 609 bytes",
+    "npm-deps_20260313_020005.txt": "[BINARY] 52 bytes",
+    "requirements_20260313_020005.txt": "[BINARY] 1215 bytes",
+    "system_info_20260313_020005.txt": "[BINARY] 352 bytes",
+    "volume_postgres_20260313_020005.tar.gz": "[BINARY] 87 bytes",
+    "volume_redis_20260313_020005.tar.gz": "[BINARY] 87 bytes"
+  },
+  "clean-database.sh": "[BINARY] 7117 bytes",
+  "clean-database.sh:Zone.Identifier": "[BINARY] 0 bytes",
+  "create-test-data.sh": "[BINARY] 14787 bytes",
+  "create-test-data.sh:Zone.Identifier": "[BINARY] 0 bytes",
   "data": {},
   "docker-compose.override.yml": "[FILE] 39 lines",
   "docker-compose.yml": "[FILE] 86 lines",
   "docker-compose.yml.backup": "[BINARY] 1709 bytes",
   "frontend": {
     "index.html": "[BINARY] 369 bytes",
-    "package-lock.json": "[FILE] 4788 lines",
-    "package.json": "[FILE] 47 lines",
+    "package-lock.json": "[FILE] 4787 lines",
+    "package.json": "[FILE] 50 lines",
     "src": {
       "App.css": "[FILE] 777 lines",
       "App.tsx": "[FILE] 179 lines",
       "components": {
+        "history": {
+          "HistoryPanel.css": "[FILE] 266 lines",
+          "HistoryPanel.tsx": "[FILE] 237 lines"
+        },
         "layout": {
           "InspectorPanel.tsx": "[FILE] 419 lines",
           "Sidebar.tsx": "[FILE] 274 lines",
@@ -140,13 +168,18 @@
           "TabBar.tsx": "[FILE] 68 lines"
         },
         "views": {
-          "ArtifactView.tsx": "[FILE] 111 lines",
+          "ArtifactView.tsx": "[FILE] 348 lines",
           "ChartView.tsx": "[FILE] 27 lines",
           "DocumentView.tsx": "[FILE] 34 lines",
-          "GraphView.tsx": "[FILE] 309 lines",
+          "GraphView.css": "[FILE] 112 lines",
+          "GraphView.tsx": "[FILE] 466 lines",
           "MapView.tsx": "[FILE] 27 lines",
           "TableView.tsx": "[FILE] 51 lines"
         }
+      },
+      "hooks": {
+        "useActionWithUndo.ts": "[FILE] 225 lines",
+        "useKeyboardShortcuts.ts": "[FILE] 34 lines"
       },
       "index.css": "[FILE] 14 lines",
       "main.tsx": "[FILE] 14 lines",
@@ -154,10 +187,12 @@
         "api.ts": "[FILE] 76 lines"
       },
       "store": {
-        "index.ts": "[FILE] 26 lines",
+        "index.ts": "[FILE] 38 lines",
         "slices": {
           "artifactsSlice.ts": "[FILE] 371 lines",
           "graphSlice.ts": "[FILE] 100 lines",
+          "historySlice.ts": "[FILE] 165 lines",
+          "historySlice.ts]": "[BINARY] 1590 bytes",
           "projectsSlice.ts": "[FILE] 68 lines",
           "uiSlice.ts": "[FILE] 106 lines"
         }
@@ -177,6 +212,9 @@
   },
   "get-docker.sh": "[BINARY] 22405 bytes",
   "get_structure.py": "[FILE] 493 lines",
+  "handoff_latest.json": "[FILE] 2045521 bytes (skipped, too large)",
+  "handoff_latest.md": "[FILE] 12152 lines",
+  "handoff_quick.md": "[FILE] 21 lines",
   "osint-backups": {
     "checksums_20260224_214935.txt": "[BINARY] 879 bytes",
     "checksums_20260226_071109.txt": "[BINARY] 1749 bytes",
@@ -197,6 +235,7 @@
     "system_info_20260226_071109.txt": "[BINARY] 381 bytes",
     "system_info_20260301_200321.txt": "[BINARY] 385 bytes"
   },
+  "package-lock.json": "[FILE] 7 lines",
   "plugins": {
     "__init__.py": "[FILE] 56 lines",
     "examples": {
@@ -247,7 +286,6 @@
       "websockets": "[BINARY] 194 bytes"
     },
     "include": {
-      "python3.12": {},
       "site": {
         "python3.12": {
           "greenlet": {
@@ -1139,7 +1177,6 @@
             "utils.py": "[FILE] 72 lines",
             "zoneinfo": {
               "__init__.py": "[FILE] 168 lines",
-              "dateutil-zoneinfo.tar.gz": "[BINARY] 156400 bytes",
               "rebuild.py": "[FILE] 76 lines"
             }
           },
@@ -6184,7 +6221,6 @@
             "utils.py": "[FILE] 72 lines",
             "zoneinfo": {
               "__init__.py": "[FILE] 168 lines",
-              "dateutil-zoneinfo.tar.gz": "[BINARY] 156400 bytes",
               "rebuild.py": "[FILE] 76 lines"
             }
           },
@@ -11379,6 +11415,278 @@ async def delete_graph(
     return {"message": f"Graph {graph_id} deleted"}
 
 
+--- app/api/routes/history.py (hash: cd023a5e) ---
+// размер: 269 строк
+# app/api/routes/history.py
+"""
+History management endpoints for undo/redo functionality.
+"""
+from fastapi import APIRouter, HTTPException, Depends, Query
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, desc, and_, func
+from typing import List, Optional
+import uuid
+import logging
+
+from app.database import get_db
+from app.models.action import GraphAction
+from app.models.artifact import Artifact
+from app.schemas.action import GraphActionCreate, GraphActionResponse, UndoResponse, RedoResponse
+from app.api.deps import get_artifact
+from app.services.history_cache import HistoryCache, get_redis_client
+
+router = APIRouter(prefix="/api/v2/artifacts/{artifact_id}/history", tags=["history"])
+logger = logging.getLogger(__name__)
+
+# ============================================================================
+# Получение истории
+# ============================================================================
+
+@router.get("", response_model=List[GraphActionResponse])
+async def get_history(
+    artifact_id: int,
+    limit: int = Query(50, ge=1, le=200, description="Number of actions to return"),
+    offset: int = Query(0, ge=0, description="Offset for pagination"),
+    db: AsyncSession = Depends(get_db),
+    artifact: Artifact = Depends(get_artifact),
+    redis_client = Depends(get_redis_client)
+):
+    """
+    Get action history for a graph artifact.
+    Returns actions sorted by timestamp (newest first).
+    """
+    try:
+        # Сначала пробуем получить из кэша Redis
+        cache = HistoryCache(redis_client)
+
+        if offset == 0 and limit <= 100:
+            cached_actions = await cache.get_recent(artifact_id, limit)
+            if cached_actions:
+                logger.debug(f"Returning {len(cached_actions)} actions from cache for artifact {artifact_id}")
+                return cached_actions
+
+        # Если нет в кэше или нужна пагинация - идем в БД
+        result = await db.execute(
+            select(GraphAction)
+            .where(GraphAction.artifact_id == artifact_id)
+            .order_by(desc(GraphAction.timestamp))
+            .limit(limit)
+            .offset(offset)
+        )
+        actions = result.scalars().all()
+
+        # Кэшируем результат для будущих запросов
+        if offset == 0 and actions:
+            await cache.push_many(artifact_id, [a.to_dict() for a in actions])
+
+        return [action.to_dict() for action in actions]
+    except Exception as e:
+        logger.error(f"Error getting history for artifact {artifact_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get history")
+
+# ============================================================================
+# Запись действий
+# ============================================================================
+
+@router.post("/actions", response_model=GraphActionResponse, status_code=201)
+async def record_action(
+    artifact_id: int,
+    action_data: GraphActionCreate,
+    db: AsyncSession = Depends(get_db),
+    artifact: Artifact = Depends(get_artifact),
+    redis_client = Depends(get_redis_client)
+):
+    """
+    Record a new action in history.
+    All actions are stored permanently for undo/redo functionality.
+    """
+    try:
+        # Создаем запись в БД
+        db_action = GraphAction(
+            artifact_id=artifact_id,
+            action_type=action_data.action_type,
+            before_state=action_data.before_state,
+            after_state=action_data.after_state,
+            description=action_data.description,
+            user_type=action_data.user_type,
+            plugin_id=action_data.plugin_id,
+            group_id=action_data.group_id or uuid.uuid4()
+        )
+
+        db.add(db_action)
+        await db.commit()
+        await db.refresh(db_action)
+
+        # Обновляем кэш
+        cache = HistoryCache(redis_client)
+        await cache.push_action(artifact_id, db_action.to_dict())
+
+        logger.info(f"Recorded action {db_action.id} for artifact {artifact_id}: {db_action.description}")
+        return db_action.to_dict()
+    except Exception as e:
+        logger.error(f"Error recording action for artifact {artifact_id}: {e}")
+        await db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to record action")
+
+# ============================================================================
+# Undo операция
+# ============================================================================
+
+@router.post("/undo", response_model=UndoResponse)
+async def undo_action(
+    artifact_id: int,
+    db: AsyncSession = Depends(get_db),
+    artifact: Artifact = Depends(get_artifact),
+    redis_client = Depends(get_redis_client)
+):
+    """
+    Undo the last action.
+    Returns the state to revert to (before_state of the action that would bring us back one step).
+    Does NOT delete the action - keeps full history.
+    """
+    try:
+        # Получаем ВСЕ действия для этого артефакта, отсортированные по времени (старые первые)
+        result = await db.execute(
+            select(GraphAction)
+            .where(GraphAction.artifact_id == artifact_id)
+            .order_by(GraphAction.timestamp)  # По возрастанию (старые первые)
+        )
+        all_actions = result.scalars().all()
+        
+        if not all_actions:
+            raise HTTPException(status_code=404, detail="No actions to undo")
+        
+        # Если есть только одно действие - отменяем его до начального состояния
+        if len(all_actions) == 1:
+            action = all_actions[0]
+            logger.info(f"Undo single action {action.id} for artifact {artifact_id}: {action.description}")
+            return {
+                "action_id": action.id,
+                "artifact_id": artifact_id,
+                "state": action.before_state,
+                "description": f"Undo: {action.description}",
+                "timestamp": action.timestamp
+            }
+        
+        # Если действий больше одного - отменяем последнее действие
+        # Для этого нужно вернуть состояние перед последним действием,
+        # то есть after_state предпоследнего действия
+        second_last_action = all_actions[-2]  # Предпоследнее действие
+        last_action = all_actions[-1]  # Последнее действие
+        
+        logger.info(f"Undo action {last_action.id} for artifact {artifact_id}: {last_action.description}")
+        logger.info(f"Returning to state after action {second_last_action.id}")
+        
+        return {
+            "action_id": last_action.id,
+            "artifact_id": artifact_id,
+            "state": second_last_action.after_state,  # Важно! after_state предпоследнего действия
+            "description": f"Undo: {last_action.description}",
+            "timestamp": last_action.timestamp
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error undoing action for artifact {artifact_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to undo action")
+
+# ============================================================================
+# Redo операция
+# ============================================================================
+
+@router.post("/redo", response_model=RedoResponse)
+async def redo_action(
+    artifact_id: int,
+    db: AsyncSession = Depends(get_db),
+    artifact: Artifact = Depends(get_artifact),
+    redis_client = Depends(get_redis_client)
+):
+    """
+    Redo the last undone action.
+    Returns the state to reapply (after_state of the last action).
+    """
+    try:
+        # Получаем ВСЕ действия для этого артефакта
+        result = await db.execute(
+            select(GraphAction)
+            .where(GraphAction.artifact_id == artifact_id)
+            .order_by(GraphAction.timestamp)
+        )
+        all_actions = result.scalars().all()
+        
+        if not all_actions:
+            raise HTTPException(status_code=404, detail="No actions to redo")
+        
+        # Для redo возвращаем after_state последнего действия
+        last_action = all_actions[-1]
+        
+        logger.info(f"Redo action {last_action.id} for artifact {artifact_id}: {last_action.description}")
+        
+        return {
+            "action_id": last_action.id,
+            "artifact_id": artifact_id,
+            "state": last_action.after_state,
+            "description": f"Redo: {last_action.description}",
+            "timestamp": last_action.timestamp
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error redoing action for artifact {artifact_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to redo action")
+
+# ============================================================================
+# Получение конкретного действия
+# ============================================================================
+
+@router.get("/actions/{action_id}", response_model=GraphActionResponse)
+async def get_action(
+    artifact_id: int,
+    action_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    artifact: Artifact = Depends(get_artifact)
+):
+    """
+    Get a specific action by ID.
+    """
+    result = await db.execute(
+        select(GraphAction)
+        .where(
+            and_(
+                GraphAction.artifact_id == artifact_id,
+                GraphAction.id == action_id
+            )
+        )
+    )
+    action = result.scalar_one_or_none()
+
+    if not action:
+        raise HTTPException(status_code=404, detail="Action not found")
+
+    return action.to_dict()
+
+# ============================================================================
+# Получение количества действий
+# ============================================================================
+
+@router.get("/count")
+async def get_actions_count(
+    artifact_id: int,
+    db: AsyncSession = Depends(get_db),
+    artifact: Artifact = Depends(get_artifact)
+):
+    """
+    Get total number of actions for an artifact.
+    """
+    result = await db.execute(
+        select(func.count())
+        .where(GraphAction.artifact_id == artifact_id)
+    )
+    count = result.scalar()
+    
+    return {"artifact_id": artifact_id, "total_actions": count}
+
+
 --- app/api/routes/nodes.py (hash: 4a2846de) ---
 // размер: 249 строк
 """
@@ -12011,142 +12319,3 @@ async def init_db() -> None:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
         logger.info("Database tables created/verified")
-
-
---- app/main.py (hash: 0b09f7fd) ---
-// размер: 135 строк
-"""
-Main FastAPI application module for OSINT Graph Analyzer.
-"""
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-import logging
-from typing import Dict
-
-from app.config import settings
-from app.database import engine, Base
-
-# Import all routers
-from app.api.routes import projects, schema, nodes, edges, graphs
-from app.routers import plugins, analytics
-from app.api.routes import artifacts
-
-# Configure logging
-logging.basicConfig(
-    level=getattr(logging, settings.LOG_LEVEL),
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
-
-# Create FastAPI app
-app = FastAPI(
-    title="OSINT Graph Analyzer",
-    description="Web application for analyzing OSINT data through graph visualization",
-    version="0.1.0",
-    docs_url="/api/docs" if settings.ENVIRONMENT == "development" else None,
-    redoc_url="/api/redoc" if settings.ENVIRONMENT == "development" else None,
-)
-
-# Configure CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "http://localhost:5000",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:5000"
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-@app.on_event("startup")
-async def startup_event():
-    """Initialize application on startup."""
-    logger.info("Starting up OSINT Graph Analyzer...")
-    # Create database tables (in production use Alembic migrations)
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Cleanup on application shutdown."""
-    logger.info("Shutting down OSINT Graph Analyzer...")
-    await engine.dispose()
-
-@app.get("/")
-async def root():
-    """Root endpoint with API information."""
-    return {
-        "name": "OSINT Graph Analyzer API",
-        "version": "0.1.0",
-        "status": "operational",
-        "documentation": "/api/docs",
-        "endpoints": {
-            "health": "/health",
-            "api_status": "/api/v1/status",
-            "projects": "/api/v1/projects",
-            "project_detail": "/api/v1/projects/{project_id}",
-            "project_graphs": "/api/v1/projects/{project_id}/graphs",
-            "schema": "/api/v1/projects/{project_id}/schema",
-            "nodes": "/api/v1/graphs/{graph_id}/nodes",
-            "edges": "/api/v1/graphs/{graph_id}/edges",
-            "graphs": "/api/v1/graphs",
-            "plugins": "/api/v1/plugins",
-            "analytics": "/api/v1/analytics"
-        }
-    }
-
-@app.get("/health", response_model=Dict[str, str])
-async def health_check() -> Dict[str, str]:
-    """
-    Health check endpoint for monitoring.
-
-    Returns:
-        Dict[str, str]: Health status information
-    """
-    return {
-        "status": "healthy",
-        "environment": settings.ENVIRONMENT,
-        "version": "0.1.0"
-    }
-
-@app.get("/api/v1/status")
-async def api_status() -> Dict[str, str]:
-    """
-    API status endpoint.
-
-    Returns:
-        Dict[str, str]: API status information
-    """
-    return {"status": "operational", "message": "API is ready"}
-
-# Include all routers
-app.include_router(projects.router, prefix="/api/v1", tags=["projects"])
-app.include_router(schema.router, prefix="/api/v1", tags=["schema"])
-app.include_router(nodes.router, prefix="/api/v1", tags=["nodes"])
-app.include_router(edges.router, prefix="/api/v1", tags=["edges"])
-app.include_router(graphs.router, prefix="/api/v1", tags=["graphs"])
-app.include_router(plugins.router, prefix="/api/v1/plugins", tags=["plugins"])
-app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["analytics"])
-app.include_router(artifacts.router, prefix="/api/v2", tags=["artifacts"])
-
-@app.exception_handler(404)
-async def custom_404_handler(request, exc):
-    """Custom 404 error handler."""
-    return JSONResponse(
-        status_code=404,
-        content={"message": "Endpoint not found", "detail": str(exc)}
-    )
-
-@app.exception_handler(500)
-async def custom_500_handler(request, exc):
-    """Custom 500 error handler."""
-    logger.error(f"Internal server error: {exc}", exc_info=True)
-    return JSONResponse(
-        status_code=500,
-        content={"message": "Internal server error", "detail": "An unexpected error occurred"}
-    )

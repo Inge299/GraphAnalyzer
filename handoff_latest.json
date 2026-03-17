@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-10T16:43:40.336560",
+  "timestamp": "2026-03-13T17:28:33.500320",
   "project_name": "OSINT Graph Analyzer",
   "version": "v1.0",
   "files": {
@@ -24,11 +24,25 @@
       "hash": "ee5c1951",
       "extension": ".py"
     },
+    "alembic/versions/003_add_graph_actions.py": {
+      "path": "alembic/versions/003_add_graph_actions.py",
+      "size": 1798,
+      "lines": 58,
+      "hash": "92145083",
+      "extension": ".py"
+    },
+    "alembic/versions/004_add_graph_actions.py": {
+      "path": "alembic/versions/004_add_graph_actions.py",
+      "size": 1818,
+      "lines": 59,
+      "hash": "4fd73548",
+      "extension": ".py"
+    },
     "app/api/deps.py": {
       "path": "app/api/deps.py",
-      "size": 1168,
-      "lines": 45,
-      "hash": "157cb1e7",
+      "size": 1585,
+      "lines": 50,
+      "hash": "0932d8fd",
       "extension": ".py"
     },
     "app/api/routes/__init__.py": {
@@ -57,6 +71,13 @@
       "size": 1549,
       "lines": 59,
       "hash": "3c34fc47",
+      "extension": ".py"
+    },
+    "app/api/routes/history.py": {
+      "path": "app/api/routes/history.py",
+      "size": 10719,
+      "lines": 269,
+      "hash": "cd023a5e",
       "extension": ".py"
     },
     "app/api/routes/nodes.py": {
@@ -89,9 +110,9 @@
     },
     "app/core/exceptions.py": {
       "path": "app/core/exceptions.py",
-      "size": 545,
-      "lines": 24,
-      "hash": "d868e32c",
+      "size": 2901,
+      "lines": 101,
+      "hash": "fb091e04",
       "extension": ".py"
     },
     "app/database.py": {
@@ -103,9 +124,9 @@
     },
     "app/main.py": {
       "path": "app/main.py",
-      "size": 4393,
-      "lines": 135,
-      "hash": "0b09f7fd",
+      "size": 4466,
+      "lines": 140,
+      "hash": "675ce8ea",
       "extension": ".py"
     },
     "app/models/__init__.py": {
@@ -113,6 +134,13 @@
       "size": 538,
       "lines": 24,
       "hash": "5bba91aa",
+      "extension": ".py"
+    },
+    "app/models/action.py": {
+      "path": "app/models/action.py",
+      "size": 2308,
+      "lines": 59,
+      "hash": "ff57be1f",
       "extension": ".py"
     },
     "app/models/artifact.py": {
@@ -185,12 +213,33 @@
       "hash": "0481fd76",
       "extension": ".py"
     },
+    "app/schemas/action.py": {
+      "path": "app/schemas/action.py",
+      "size": 1649,
+      "lines": 50,
+      "hash": "62fb09cf",
+      "extension": ".py"
+    },
+    "app/services/history_cache.py": {
+      "path": "app/services/history_cache.py",
+      "size": 4685,
+      "lines": 140,
+      "hash": "c1689f5f",
+      "extension": ".py"
+    },
     "app/services/schema_service.py": {
       "path": "app/services/schema_service.py",
       "size": 9220,
       "lines": 232,
       "hash": "a8f057c5",
       "extension": ".py"
+    },
+    "backups/docker-compose_20260313_020005.yml": {
+      "path": "backups/docker-compose_20260313_020005.yml",
+      "size": 1998,
+      "lines": 86,
+      "hash": "1d4ed122",
+      "extension": ".yml"
     },
     "docker-compose.override.yml": {
       "path": "docker-compose.override.yml",
@@ -208,16 +257,16 @@
     },
     "frontend/package-lock.json": {
       "path": "frontend/package-lock.json",
-      "size": 174647,
-      "lines": 4788,
-      "hash": "56d8d4fd",
+      "size": 174694,
+      "lines": 4787,
+      "hash": "194b7d1e",
       "extension": ".json"
     },
     "frontend/package.json": {
       "path": "frontend/package.json",
-      "size": 1416,
-      "lines": 47,
-      "hash": "a9cf3019",
+      "size": 1498,
+      "lines": 50,
+      "hash": "f35f38fb",
       "extension": ".json"
     },
     "frontend/src/App.css": {
@@ -232,6 +281,20 @@
       "size": 6310,
       "lines": 179,
       "hash": "280c8765",
+      "extension": ".tsx"
+    },
+    "frontend/src/components/history/HistoryPanel.css": {
+      "path": "frontend/src/components/history/HistoryPanel.css",
+      "size": 5065,
+      "lines": 266,
+      "hash": "d410979b",
+      "extension": ".css"
+    },
+    "frontend/src/components/history/HistoryPanel.tsx": {
+      "path": "frontend/src/components/history/HistoryPanel.tsx",
+      "size": 7365,
+      "lines": 237,
+      "hash": "96c508f0",
       "extension": ".tsx"
     },
     "frontend/src/components/layout/InspectorPanel.tsx": {
@@ -264,9 +327,9 @@
     },
     "frontend/src/components/views/ArtifactView.tsx": {
       "path": "frontend/src/components/views/ArtifactView.tsx",
-      "size": 3582,
-      "lines": 111,
-      "hash": "7fbd3ff7",
+      "size": 11145,
+      "lines": 348,
+      "hash": "2ad62fed",
       "extension": ".tsx"
     },
     "frontend/src/components/views/ChartView.tsx": {
@@ -283,11 +346,18 @@
       "hash": "e7356f87",
       "extension": ".tsx"
     },
+    "frontend/src/components/views/GraphView.css": {
+      "path": "frontend/src/components/views/GraphView.css",
+      "size": 2100,
+      "lines": 112,
+      "hash": "84494442",
+      "extension": ".css"
+    },
     "frontend/src/components/views/GraphView.tsx": {
       "path": "frontend/src/components/views/GraphView.tsx",
-      "size": 10595,
-      "lines": 309,
-      "hash": "dd38f095",
+      "size": 14618,
+      "lines": 466,
+      "hash": "36b5c411",
       "extension": ".tsx"
     },
     "frontend/src/components/views/MapView.tsx": {
@@ -303,6 +373,20 @@
       "lines": 51,
       "hash": "f61ca032",
       "extension": ".tsx"
+    },
+    "frontend/src/hooks/useActionWithUndo.ts": {
+      "path": "frontend/src/hooks/useActionWithUndo.ts",
+      "size": 6390,
+      "lines": 225,
+      "hash": "b44b840d",
+      "extension": ".ts"
+    },
+    "frontend/src/hooks/useKeyboardShortcuts.ts": {
+      "path": "frontend/src/hooks/useKeyboardShortcuts.ts",
+      "size": 1146,
+      "lines": 34,
+      "hash": "251b969b",
+      "extension": ".ts"
     },
     "frontend/src/index.css": {
       "path": "frontend/src/index.css",
@@ -327,9 +411,9 @@
     },
     "frontend/src/store/index.ts": {
       "path": "frontend/src/store/index.ts",
-      "size": 1034,
-      "lines": 26,
-      "hash": "69de9414",
+      "size": 1530,
+      "lines": 38,
+      "hash": "309e464c",
       "extension": ".ts"
     },
     "frontend/src/store/slices/artifactsSlice.ts": {
@@ -344,6 +428,13 @@
       "size": 2586,
       "lines": 100,
       "hash": "680fdb80",
+      "extension": ".ts"
+    },
+    "frontend/src/store/slices/historySlice.ts": {
+      "path": "frontend/src/store/slices/historySlice.ts",
+      "size": 4740,
+      "lines": 165,
+      "hash": "cc30440a",
       "extension": ".ts"
     },
     "frontend/src/store/slices/projectsSlice.ts": {
@@ -416,6 +507,20 @@
       "hash": "de571eeb",
       "extension": ".py"
     },
+    "handoff_latest.md": {
+      "path": "handoff_latest.md",
+      "size": 523680,
+      "lines": 12152,
+      "hash": "8cbe6e3a",
+      "extension": ".md"
+    },
+    "handoff_quick.md": {
+      "path": "handoff_quick.md",
+      "size": 776,
+      "lines": 21,
+      "hash": "56e4b581",
+      "extension": ".md"
+    },
     "osint-backups/docker-compose_20260224_214935.yml": {
       "path": "osint-backups/docker-compose_20260224_214935.yml",
       "size": 1710,
@@ -436,6 +541,13 @@
       "lines": 86,
       "hash": "1d4ed122",
       "extension": ".yml"
+    },
+    "package-lock.json": {
+      "path": "package-lock.json",
+      "size": 92,
+      "lines": 7,
+      "hash": "95afc30d",
+      "extension": ".json"
     },
     "plugins/__init__.py": {
       "path": "plugins/__init__.py",
@@ -38762,18 +38874,22 @@
       "env.py": "[FILE] 96 lines",
       "versions": {
         "001_initial_models.py": "[FILE] 128 lines",
-        "002_add_artifacts_tables.py": "[FILE] 140 lines"
+        "002_add_artifacts_tables.py": "[FILE] 140 lines",
+        "003_add_graph_actions.py": "[FILE] 58 lines",
+        "004_add_graph_actions.py": "[FILE] 59 lines"
       }
     },
-    "alembic.ini": "[BINARY] 1740 bytes",
+    "alembic.ini": "[BINARY] 1734 bytes",
     "app": {
       "api": {
-        "deps.py": "[FILE] 45 lines",
+        "deps.py": "[FILE] 50 lines",
         "routes": {
           "__init__.py": "[FILE] 8 lines",
           "artifacts.py": "[FILE] 727 lines",
           "edges.py": "[FILE] 219 lines",
           "graphs.py": "[FILE] 59 lines",
+          "history.py": "[FILE] 269 lines",
+          "history.py.bkp": "[BINARY] 7703 bytes",
           "nodes.py": "[FILE] 249 lines",
           "projects.py": "[FILE] 142 lines",
           "schema.py": "[FILE] 93 lines"
@@ -38781,12 +38897,13 @@
       },
       "config.py": "[FILE] 64 lines",
       "core": {
-        "exceptions.py": "[FILE] 24 lines"
+        "exceptions.py": "[FILE] 101 lines"
       },
       "database.py": "[FILE] 71 lines",
-      "main.py": "[FILE] 135 lines",
+      "main.py": "[FILE] 140 lines",
       "models": {
         "__init__.py": "[FILE] 24 lines",
+        "action.py": "[FILE] 59 lines",
         "artifact.py": "[FILE] 96 lines",
         "edge.py": "[FILE] 48 lines",
         "graph.py": "[FILE] 37 lines",
@@ -38800,24 +38917,47 @@
         "graphs.py": "[FILE] 29 lines",
         "plugins.py": "[FILE] 29 lines"
       },
+      "schemas": {
+        "action.py": "[FILE] 50 lines"
+      },
       "services": {
+        "history_cache.py": "[FILE] 140 lines",
         "schema_service.py": "[FILE] 232 lines"
       }
     },
     "backup.sh": "[BINARY] 2331 bytes",
-    "backups": {},
+    "backups": {
+      "checksums_20260313_020005.txt": "[BINARY] 954 bytes",
+      "data_20260313_020005.tar.gz": "[BINARY] 143 bytes",
+      "db_20260313_020005.sql.gz": "[BINARY] 2410 bytes",
+      "docker-compose_20260313_020005.yml": "[FILE] 86 lines",
+      "env_20260313_020005.backup": "[BINARY] 609 bytes",
+      "npm-deps_20260313_020005.txt": "[BINARY] 52 bytes",
+      "requirements_20260313_020005.txt": "[BINARY] 1215 bytes",
+      "system_info_20260313_020005.txt": "[BINARY] 352 bytes",
+      "volume_postgres_20260313_020005.tar.gz": "[BINARY] 87 bytes",
+      "volume_redis_20260313_020005.tar.gz": "[BINARY] 87 bytes"
+    },
+    "clean-database.sh": "[BINARY] 7117 bytes",
+    "clean-database.sh:Zone.Identifier": "[BINARY] 0 bytes",
+    "create-test-data.sh": "[BINARY] 14787 bytes",
+    "create-test-data.sh:Zone.Identifier": "[BINARY] 0 bytes",
     "data": {},
     "docker-compose.override.yml": "[FILE] 39 lines",
     "docker-compose.yml": "[FILE] 86 lines",
     "docker-compose.yml.backup": "[BINARY] 1709 bytes",
     "frontend": {
       "index.html": "[BINARY] 369 bytes",
-      "package-lock.json": "[FILE] 4788 lines",
-      "package.json": "[FILE] 47 lines",
+      "package-lock.json": "[FILE] 4787 lines",
+      "package.json": "[FILE] 50 lines",
       "src": {
         "App.css": "[FILE] 777 lines",
         "App.tsx": "[FILE] 179 lines",
         "components": {
+          "history": {
+            "HistoryPanel.css": "[FILE] 266 lines",
+            "HistoryPanel.tsx": "[FILE] 237 lines"
+          },
           "layout": {
             "InspectorPanel.tsx": "[FILE] 419 lines",
             "Sidebar.tsx": "[FILE] 274 lines",
@@ -38825,13 +38965,18 @@
             "TabBar.tsx": "[FILE] 68 lines"
           },
           "views": {
-            "ArtifactView.tsx": "[FILE] 111 lines",
+            "ArtifactView.tsx": "[FILE] 348 lines",
             "ChartView.tsx": "[FILE] 27 lines",
             "DocumentView.tsx": "[FILE] 34 lines",
-            "GraphView.tsx": "[FILE] 309 lines",
+            "GraphView.css": "[FILE] 112 lines",
+            "GraphView.tsx": "[FILE] 466 lines",
             "MapView.tsx": "[FILE] 27 lines",
             "TableView.tsx": "[FILE] 51 lines"
           }
+        },
+        "hooks": {
+          "useActionWithUndo.ts": "[FILE] 225 lines",
+          "useKeyboardShortcuts.ts": "[FILE] 34 lines"
         },
         "index.css": "[FILE] 14 lines",
         "main.tsx": "[FILE] 14 lines",
@@ -38839,10 +38984,12 @@
           "api.ts": "[FILE] 76 lines"
         },
         "store": {
-          "index.ts": "[FILE] 26 lines",
+          "index.ts": "[FILE] 38 lines",
           "slices": {
             "artifactsSlice.ts": "[FILE] 371 lines",
             "graphSlice.ts": "[FILE] 100 lines",
+            "historySlice.ts": "[FILE] 165 lines",
+            "historySlice.ts]": "[BINARY] 1590 bytes",
             "projectsSlice.ts": "[FILE] 68 lines",
             "uiSlice.ts": "[FILE] 106 lines"
           }
@@ -38862,6 +39009,9 @@
     },
     "get-docker.sh": "[BINARY] 22405 bytes",
     "get_structure.py": "[FILE] 493 lines",
+    "handoff_latest.json": "[FILE] 2045521 bytes (skipped, too large)",
+    "handoff_latest.md": "[FILE] 12152 lines",
+    "handoff_quick.md": "[FILE] 21 lines",
     "osint-backups": {
       "checksums_20260224_214935.txt": "[BINARY] 879 bytes",
       "checksums_20260226_071109.txt": "[BINARY] 1749 bytes",
@@ -38882,6 +39032,7 @@
       "system_info_20260226_071109.txt": "[BINARY] 381 bytes",
       "system_info_20260301_200321.txt": "[BINARY] 385 bytes"
     },
+    "package-lock.json": "[FILE] 7 lines",
     "plugins": {
       "__init__.py": "[FILE] 56 lines",
       "examples": {
@@ -38932,7 +39083,6 @@
         "websockets": "[BINARY] 194 bytes"
       },
       "include": {
-        "python3.12": {},
         "site": {
           "python3.12": {
             "greenlet": {
@@ -39824,7 +39974,6 @@
               "utils.py": "[FILE] 72 lines",
               "zoneinfo": {
                 "__init__.py": "[FILE] 168 lines",
-                "dateutil-zoneinfo.tar.gz": "[BINARY] 156400 bytes",
                 "rebuild.py": "[FILE] 76 lines"
               }
             },
@@ -44869,7 +45018,6 @@
               "utils.py": "[FILE] 72 lines",
               "zoneinfo": {
                 "__init__.py": "[FILE] 168 lines",
-                "dateutil-zoneinfo.tar.gz": "[BINARY] 156400 bytes",
                 "rebuild.py": "[FILE] 76 lines"
               }
             },
@@ -49035,16 +49183,16 @@
     }
   },
   "statistics": {
-    "total_files": 5536,
-    "total_lines": 2067853,
+    "total_files": 5552,
+    "total_lines": 2082288,
     "by_type": {
-      ".py": 5446,
-      ".yml": 5,
-      ".json": 5,
-      ".css": 2,
-      ".tsx": 12,
-      ".ts": 10,
-      ".md": 14,
+      ".py": 5452,
+      ".yml": 6,
+      ".json": 6,
+      ".css": 4,
+      ".tsx": 13,
+      ".ts": 13,
+      ".md": 16,
       ".yaml": 42
     }
   },
@@ -49068,6 +49216,11 @@
       "content": "\"\"\"\nGraph management endpoints (legacy, use projects/{id}/graphs instead).\n\"\"\"\n\nfrom fastapi import APIRouter, HTTPException, Depends\nfrom sqlalchemy.ext.asyncio import AsyncSession\nfrom sqlalchemy import select\nfrom typing import Optional\nimport logging\n\nfrom app.database import get_db\nfrom app.models.graph import Graph\n\nrouter = APIRouter(prefix=\"/graphs\", tags=[\"graphs\"])\nlogger = logging.getLogger(__name__)\n\n@router.get(\"\")\nasync def get_all_graphs(\n    skip: int = 0,\n    limit: int = 100,\n    db: AsyncSession = Depends(get_db)\n):\n    \"\"\"Get all graphs.\"\"\"\n    result = await db.execute(\n        select(Graph).offset(skip).limit(limit)\n    )\n    return result.scalars().all()\n\n@router.get(\"/{graph_id}\")\nasync def get_graph(\n    graph_id: int,\n    db: AsyncSession = Depends(get_db)\n):\n    \"\"\"Get a specific graph.\"\"\"\n    result = await db.execute(\n        select(Graph).where(Graph.id == graph_id)\n    )\n    graph = result.scalar_one_or_none()\n    if not graph:\n        raise HTTPException(status_code=404, detail=f\"Graph {graph_id} not found\")\n    return graph\n\n@router.delete(\"/{graph_id}\")\nasync def delete_graph(\n    graph_id: int,\n    db: AsyncSession = Depends(get_db)\n):\n    \"\"\"Delete a graph.\"\"\"\n    result = await db.execute(\n        select(Graph).where(Graph.id == graph_id)\n    )\n    graph = result.scalar_one_or_none()\n    if not graph:\n        raise HTTPException(status_code=404, detail=f\"Graph {graph_id} not found\")\n    \n    await db.delete(graph)\n    await db.commit()\n    return {\"message\": f\"Graph {graph_id} deleted\"}\n",
       "lines": 59,
       "hash": "3c34fc47"
+    },
+    "app/api/routes/history.py": {
+      "content": "# app/api/routes/history.py\n\"\"\"\nHistory management endpoints for undo/redo functionality.\n\"\"\"\nfrom fastapi import APIRouter, HTTPException, Depends, Query\nfrom sqlalchemy.ext.asyncio import AsyncSession\nfrom sqlalchemy import select, desc, and_, func\nfrom typing import List, Optional\nimport uuid\nimport logging\n\nfrom app.database import get_db\nfrom app.models.action import GraphAction\nfrom app.models.artifact import Artifact\nfrom app.schemas.action import GraphActionCreate, GraphActionResponse, UndoResponse, RedoResponse\nfrom app.api.deps import get_artifact\nfrom app.services.history_cache import HistoryCache, get_redis_client\n\nrouter = APIRouter(prefix=\"/api/v2/artifacts/{artifact_id}/history\", tags=[\"history\"])\nlogger = logging.getLogger(__name__)\n\n# ============================================================================\n# Получение истории\n# ============================================================================\n\n@router.get(\"\", response_model=List[GraphActionResponse])\nasync def get_history(\n    artifact_id: int,\n    limit: int = Query(50, ge=1, le=200, description=\"Number of actions to return\"),\n    offset: int = Query(0, ge=0, description=\"Offset for pagination\"),\n    db: AsyncSession = Depends(get_db),\n    artifact: Artifact = Depends(get_artifact),\n    redis_client = Depends(get_redis_client)\n):\n    \"\"\"\n    Get action history for a graph artifact.\n    Returns actions sorted by timestamp (newest first).\n    \"\"\"\n    try:\n        # Сначала пробуем получить из кэша Redis\n        cache = HistoryCache(redis_client)\n\n        if offset == 0 and limit <= 100:\n            cached_actions = await cache.get_recent(artifact_id, limit)\n            if cached_actions:\n                logger.debug(f\"Returning {len(cached_actions)} actions from cache for artifact {artifact_id}\")\n                return cached_actions\n\n        # Если нет в кэше или нужна пагинация - идем в БД\n        result = await db.execute(\n            select(GraphAction)\n            .where(GraphAction.artifact_id == artifact_id)\n            .order_by(desc(GraphAction.timestamp))\n            .limit(limit)\n            .offset(offset)\n        )\n        actions = result.scalars().all()\n\n        # Кэшируем результат для будущих запросов\n        if offset == 0 and actions:\n            await cache.push_many(artifact_id, [a.to_dict() for a in actions])\n\n        return [action.to_dict() for action in actions]\n    except Exception as e:\n        logger.error(f\"Error getting history for artifact {artifact_id}: {e}\")\n        raise HTTPException(status_code=500, detail=\"Failed to get history\")\n\n# ============================================================================\n# Запись действий\n# ============================================================================\n\n@router.post(\"/actions\", response_model=GraphActionResponse, status_code=201)\nasync def record_action(\n    artifact_id: int,\n    action_data: GraphActionCreate,\n    db: AsyncSession = Depends(get_db),\n    artifact: Artifact = Depends(get_artifact),\n    redis_client = Depends(get_redis_client)\n):\n    \"\"\"\n    Record a new action in history.\n    All actions are stored permanently for undo/redo functionality.\n    \"\"\"\n    try:\n        # Создаем запись в БД\n        db_action = GraphAction(\n            artifact_id=artifact_id,\n            action_type=action_data.action_type,\n            before_state=action_data.before_state,\n            after_state=action_data.after_state,\n            description=action_data.description,\n            user_type=action_data.user_type,\n            plugin_id=action_data.plugin_id,\n            group_id=action_data.group_id or uuid.uuid4()\n        )\n\n        db.add(db_action)\n        await db.commit()\n        await db.refresh(db_action)\n\n        # Обновляем кэш\n        cache = HistoryCache(redis_client)\n        await cache.push_action(artifact_id, db_action.to_dict())\n\n        logger.info(f\"Recorded action {db_action.id} for artifact {artifact_id}: {db_action.description}\")\n        return db_action.to_dict()\n    except Exception as e:\n        logger.error(f\"Error recording action for artifact {artifact_id}: {e}\")\n        await db.rollback()\n        raise HTTPException(status_code=500, detail=\"Failed to record action\")\n\n# ============================================================================\n# Undo операция\n# ============================================================================\n\n@router.post(\"/undo\", response_model=UndoResponse)\nasync def undo_action(\n    artifact_id: int,\n    db: AsyncSession = Depends(get_db),\n    artifact: Artifact = Depends(get_artifact),\n    redis_client = Depends(get_redis_client)\n):\n    \"\"\"\n    Undo the last action.\n    Returns the state to revert to (before_state of the action that would bring us back one step).\n    Does NOT delete the action - keeps full history.\n    \"\"\"\n    try:\n        # Получаем ВСЕ действия для этого артефакта, отсортированные по времени (старые первые)\n        result = await db.execute(\n            select(GraphAction)\n            .where(GraphAction.artifact_id == artifact_id)\n            .order_by(GraphAction.timestamp)  # По возрастанию (старые первые)\n        )\n        all_actions = result.scalars().all()\n        \n        if not all_actions:\n            raise HTTPException(status_code=404, detail=\"No actions to undo\")\n        \n        # Если есть только одно действие - отменяем его до начального состояния\n        if len(all_actions) == 1:\n            action = all_actions[0]\n            logger.info(f\"Undo single action {action.id} for artifact {artifact_id}: {action.description}\")\n            return {\n                \"action_id\": action.id,\n                \"artifact_id\": artifact_id,\n                \"state\": action.before_state,\n                \"description\": f\"Undo: {action.description}\",\n                \"timestamp\": action.timestamp\n            }\n        \n        # Если действий больше одного - отменяем последнее действие\n        # Для этого нужно вернуть состояние перед последним действием,\n        # то есть after_state предпоследнего действия\n        second_last_action = all_actions[-2]  # Предпоследнее действие\n        last_action = all_actions[-1]  # Последнее действие\n        \n        logger.info(f\"Undo action {last_action.id} for artifact {artifact_id}: {last_action.description}\")\n        logger.info(f\"Returning to state after action {second_last_action.id}\")\n        \n        return {\n            \"action_id\": last_action.id,\n            \"artifact_id\": artifact_id,\n            \"state\": second_last_action.after_state,  # Важно! after_state предпоследнего действия\n            \"description\": f\"Undo: {last_action.description}\",\n            \"timestamp\": last_action.timestamp\n        }\n    except HTTPException:\n        raise\n    except Exception as e:\n        logger.error(f\"Error undoing action for artifact {artifact_id}: {e}\")\n        raise HTTPException(status_code=500, detail=\"Failed to undo action\")\n\n# ============================================================================\n# Redo операция\n# ============================================================================\n\n@router.post(\"/redo\", response_model=RedoResponse)\nasync def redo_action(\n    artifact_id: int,\n    db: AsyncSession = Depends(get_db),\n    artifact: Artifact = Depends(get_artifact),\n    redis_client = Depends(get_redis_client)\n):\n    \"\"\"\n    Redo the last undone action.\n    Returns the state to reapply (after_state of the last action).\n    \"\"\"\n    try:\n        # Получаем ВСЕ действия для этого артефакта\n        result = await db.execute(\n            select(GraphAction)\n            .where(GraphAction.artifact_id == artifact_id)\n            .order_by(GraphAction.timestamp)\n        )\n        all_actions = result.scalars().all()\n        \n        if not all_actions:\n            raise HTTPException(status_code=404, detail=\"No actions to redo\")\n        \n        # Для redo возвращаем after_state последнего действия\n        last_action = all_actions[-1]\n        \n        logger.info(f\"Redo action {last_action.id} for artifact {artifact_id}: {last_action.description}\")\n        \n        return {\n            \"action_id\": last_action.id,\n            \"artifact_id\": artifact_id,\n            \"state\": last_action.after_state,\n            \"description\": f\"Redo: {last_action.description}\",\n            \"timestamp\": last_action.timestamp\n        }\n    except HTTPException:\n        raise\n    except Exception as e:\n        logger.error(f\"Error redoing action for artifact {artifact_id}: {e}\")\n        raise HTTPException(status_code=500, detail=\"Failed to redo action\")\n\n# ============================================================================\n# Получение конкретного действия\n# ============================================================================\n\n@router.get(\"/actions/{action_id}\", response_model=GraphActionResponse)\nasync def get_action(\n    artifact_id: int,\n    action_id: uuid.UUID,\n    db: AsyncSession = Depends(get_db),\n    artifact: Artifact = Depends(get_artifact)\n):\n    \"\"\"\n    Get a specific action by ID.\n    \"\"\"\n    result = await db.execute(\n        select(GraphAction)\n        .where(\n            and_(\n                GraphAction.artifact_id == artifact_id,\n                GraphAction.id == action_id\n            )\n        )\n    )\n    action = result.scalar_one_or_none()\n\n    if not action:\n        raise HTTPException(status_code=404, detail=\"Action not found\")\n\n    return action.to_dict()\n\n# ============================================================================\n# Получение количества действий\n# ============================================================================\n\n@router.get(\"/count\")\nasync def get_actions_count(\n    artifact_id: int,\n    db: AsyncSession = Depends(get_db),\n    artifact: Artifact = Depends(get_artifact)\n):\n    \"\"\"\n    Get total number of actions for an artifact.\n    \"\"\"\n    result = await db.execute(\n        select(func.count())\n        .where(GraphAction.artifact_id == artifact_id)\n    )\n    count = result.scalar()\n    \n    return {\"artifact_id\": artifact_id, \"total_actions\": count}\n",
+      "lines": 269,
+      "hash": "cd023a5e"
     },
     "app/api/routes/nodes.py": {
       "content": "\"\"\"\nNode management endpoints.\n\"\"\"\n\nfrom fastapi import APIRouter, HTTPException, Depends\nfrom sqlalchemy.ext.asyncio import AsyncSession\nfrom sqlalchemy import select, delete\nfrom typing import List, Dict, Any, Optional\nimport logging\nfrom datetime import datetime\nimport uuid\n\nfrom app.database import get_db\nfrom app.models.node import Node\nfrom app.models.edge import Edge\nfrom app.models.graph import Graph\nfrom app.services.schema_service import SchemaService\nfrom app.api.deps import get_graph\nfrom app.core.exceptions import SchemaValidationError\n\nrouter = APIRouter(prefix=\"/graphs/{graph_id}/nodes\", tags=[\"nodes\"])\nlogger = logging.getLogger(__name__)\n\n@router.post(\"\")\nasync def create_node(\n    graph_id: int,\n    node_data: Dict[str, Any],\n    db: AsyncSession = Depends(get_db),\n    graph: Graph = Depends(get_graph)\n):\n    \"\"\"Create a new node.\"\"\"\n    try:\n        # Validate against schema\n        schema_service = SchemaService(db)\n        await schema_service.validate_node(\n            graph.project_id,\n            node_data[\"type\"],\n            node_data.get(\"attributes\", {})\n        )\n        \n        # Generate node_id if not provided\n        if \"node_id\" not in node_data:\n            node_data[\"node_id\"] = str(uuid.uuid4())[:8]\n        \n        # Check if node_id already exists\n        existing = await db.execute(\n            select(Node).where(\n                Node.graph_id == graph_id,\n                Node.node_id == node_data[\"node_id\"]\n            )\n        )\n        if existing.scalar_one_or_none():\n            raise HTTPException(status_code=400, detail=f\"Node with ID {node_data['node_id']} already exists\")\n        \n        # Create node\n        node = Node(\n            graph_id=graph_id,\n            node_id=node_data[\"node_id\"],\n            type=node_data[\"type\"],\n            attributes=node_data.get(\"attributes\", {}),\n            position_x=node_data.get(\"position_x\"),\n            position_y=node_data.get(\"position_y\")\n        )\n        \n        db.add(node)\n        await db.commit()\n        await db.refresh(node)\n        \n        return node\n    except SchemaValidationError as e:\n        raise HTTPException(status_code=400, detail=str(e))\n    except Exception as e:\n        logger.error(f\"Error creating node: {e}\")\n        await db.rollback()\n        raise HTTPException(status_code=500, detail=\"Internal server error\")\n\n@router.post(\"/batch\")\nasync def batch_create_nodes(\n    graph_id: int,\n    nodes_data: List[Dict[str, Any]],\n    db: AsyncSession = Depends(get_db),\n    graph: Graph = Depends(get_graph)\n):\n    \"\"\"Batch create multiple nodes (optimized for large imports).\"\"\"\n    try:\n        schema_service = SchemaService(db)\n        nodes = []\n        node_ids = set()\n        \n        for node_data in nodes_data:\n            # Validate each node\n            await schema_service.validate_node(\n                graph.project_id,\n                node_data[\"type\"],\n                node_data.get(\"attributes\", {})\n            )\n            \n            # Generate node_id if not provided\n            if \"node_id\" not in node_data:\n                node_data[\"node_id\"] = str(uuid.uuid4())[:8]\n            \n            # Check for duplicate IDs in batch\n            if node_data[\"node_id\"] in node_ids:\n                raise HTTPException(\n                    status_code=400, \n                    detail=f\"Duplicate node_id '{node_data['node_id']}' in batch\"\n                )\n            node_ids.add(node_data[\"node_id\"])\n            \n            node = Node(\n                graph_id=graph_id,\n                node_id=node_data[\"node_id\"],\n                type=node_data[\"type\"],\n                attributes=node_data.get(\"attributes\", {}),\n                position_x=node_data.get(\"position_x\"),\n                position_y=node_data.get(\"position_y\")\n            )\n            nodes.append(node)\n        \n        db.add_all(nodes)\n        await db.commit()\n        \n        return {\"status\": \"success\", \"count\": len(nodes), \"nodes\": nodes}\n    except SchemaValidationError as e:\n        raise HTTPException(status_code=400, detail=str(e))\n    except Exception as e:\n        logger.error(f\"Error batch creating nodes: {e}\")\n        await db.rollback()\n        raise HTTPException(status_code=500, detail=\"Internal server error\")\n\n@router.get(\"\")\nasync def get_nodes(\n    graph_id: int,\n    type: Optional[str] = None,\n    limit: int = 1000,\n    offset: int = 0,\n    db: AsyncSession = Depends(get_db),\n    graph: Graph = Depends(get_graph)\n):\n    \"\"\"Get nodes with optional filtering.\"\"\"\n    query = select(Node).where(Node.graph_id == graph_id)\n    \n    if type:\n        query = query.where(Node.type == type)\n    \n    query = query.limit(limit).offset(offset)\n    result = await db.execute(query)\n    nodes = result.scalars().all()\n    return nodes\n\n@router.get(\"/{node_id}\")\nasync def get_node(\n    graph_id: int,\n    node_id: str,\n    db: AsyncSession = Depends(get_db),\n    graph: Graph = Depends(get_graph)\n):\n    \"\"\"Get specific node.\"\"\"\n    result = await db.execute(\n        select(Node).where(\n            Node.graph_id == graph_id,\n            Node.node_id == node_id\n        )\n    )\n    node = result.scalar_one_or_none()\n    if not node:\n        raise HTTPException(status_code=404, detail=\"Node not found\")\n    return node\n\n@router.patch(\"/{node_id}\")\nasync def update_node(\n    graph_id: int,\n    node_id: str,\n    updates: Dict[str, Any],\n    db: AsyncSession = Depends(get_db),\n    graph: Graph = Depends(get_graph)\n):\n    \"\"\"Update node attributes or position.\"\"\"\n    try:\n        # Get current node\n        result = await db.execute(\n            select(Node).where(\n                Node.graph_id == graph_id,\n                Node.node_id == node_id\n            )\n        )\n        node = result.scalar_one_or_none()\n        if not node:\n            raise HTTPException(status_code=404, detail=\"Node not found\")\n        \n        # Update fields\n        if \"attributes\" in updates:\n            # Validate updated attributes against schema\n            schema_service = SchemaService(db)\n            await schema_service.validate_node(\n                graph.project_id,\n                node.type,\n                {**node.attributes, **updates[\"attributes\"]}\n            )\n            node.attributes = {**node.attributes, **updates[\"attributes\"]}\n        \n        if \"position_x\" in updates:\n            node.position_x = updates[\"position_x\"]\n        if \"position_y\" in updates:\n            node.position_y = updates[\"position_y\"]\n        \n        node.updated_at = datetime.utcnow()\n        \n        await db.commit()\n        await db.refresh(node)\n        return node\n    except SchemaValidationError as e:\n        raise HTTPException(status_code=400, detail=str(e))\n    except Exception as e:\n        logger.error(f\"Error updating node: {e}\")\n        await db.rollback()\n        raise HTTPException(status_code=500, detail=\"Internal server error\")\n\n@router.delete(\"/{node_id}\")\nasync def delete_node(\n    graph_id: int,\n    node_id: str,\n    db: AsyncSession = Depends(get_db),\n    graph: Graph = Depends(get_graph)\n):\n    \"\"\"Delete node and all its edges.\"\"\"\n    try:\n        # Delete edges connected to this node\n        await db.execute(\n            delete(Edge).where(\n                Edge.graph_id == graph_id,\n                (Edge.source_node == node_id) | (Edge.target_node == node_id)\n            )\n        )\n        \n        # Delete node\n        await db.execute(\n            delete(Node).where(\n                Node.graph_id == graph_id,\n                Node.node_id == node_id\n            )\n        )\n        \n        await db.commit()\n        return {\"status\": \"success\", \"message\": \"Node deleted\"}\n    except Exception as e:\n        logger.error(f\"Error deleting node: {e}\")\n        await db.rollback()\n        raise HTTPException(status_code=500, detail=\"Internal server error\")",
@@ -49095,14 +49248,19 @@
       "hash": "5ef709dd"
     },
     "app/main.py": {
-      "content": "\"\"\"\nMain FastAPI application module for OSINT Graph Analyzer.\n\"\"\"\nfrom fastapi import FastAPI\nfrom fastapi.middleware.cors import CORSMiddleware\nfrom fastapi.responses import JSONResponse\nimport logging\nfrom typing import Dict\n\nfrom app.config import settings\nfrom app.database import engine, Base\n\n# Import all routers\nfrom app.api.routes import projects, schema, nodes, edges, graphs\nfrom app.routers import plugins, analytics\nfrom app.api.routes import artifacts\n\n# Configure logging\nlogging.basicConfig(\n    level=getattr(logging, settings.LOG_LEVEL),\n    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'\n)\nlogger = logging.getLogger(__name__)\n\n# Create FastAPI app\napp = FastAPI(\n    title=\"OSINT Graph Analyzer\",\n    description=\"Web application for analyzing OSINT data through graph visualization\",\n    version=\"0.1.0\",\n    docs_url=\"/api/docs\" if settings.ENVIRONMENT == \"development\" else None,\n    redoc_url=\"/api/redoc\" if settings.ENVIRONMENT == \"development\" else None,\n)\n\n# Configure CORS\napp.add_middleware(\n    CORSMiddleware,\n    allow_origins=[\n        \"http://localhost:3000\",\n        \"http://localhost:5173\",\n        \"http://localhost:5000\",\n        \"http://127.0.0.1:3000\",\n        \"http://127.0.0.1:5000\"\n    ],\n    allow_credentials=True,\n    allow_methods=[\"*\"],\n    allow_headers=[\"*\"],\n)\n\n@app.on_event(\"startup\")\nasync def startup_event():\n    \"\"\"Initialize application on startup.\"\"\"\n    logger.info(\"Starting up OSINT Graph Analyzer...\")\n    # Create database tables (in production use Alembic migrations)\n    async with engine.begin() as conn:\n        await conn.run_sync(Base.metadata.create_all)\n\n@app.on_event(\"shutdown\")\nasync def shutdown_event():\n    \"\"\"Cleanup on application shutdown.\"\"\"\n    logger.info(\"Shutting down OSINT Graph Analyzer...\")\n    await engine.dispose()\n\n@app.get(\"/\")\nasync def root():\n    \"\"\"Root endpoint with API information.\"\"\"\n    return {\n        \"name\": \"OSINT Graph Analyzer API\",\n        \"version\": \"0.1.0\",\n        \"status\": \"operational\",\n        \"documentation\": \"/api/docs\",\n        \"endpoints\": {\n            \"health\": \"/health\",\n            \"api_status\": \"/api/v1/status\",\n            \"projects\": \"/api/v1/projects\",\n            \"project_detail\": \"/api/v1/projects/{project_id}\",\n            \"project_graphs\": \"/api/v1/projects/{project_id}/graphs\",\n            \"schema\": \"/api/v1/projects/{project_id}/schema\",\n            \"nodes\": \"/api/v1/graphs/{graph_id}/nodes\",\n            \"edges\": \"/api/v1/graphs/{graph_id}/edges\",\n            \"graphs\": \"/api/v1/graphs\",\n            \"plugins\": \"/api/v1/plugins\",\n            \"analytics\": \"/api/v1/analytics\"\n        }\n    }\n\n@app.get(\"/health\", response_model=Dict[str, str])\nasync def health_check() -> Dict[str, str]:\n    \"\"\"\n    Health check endpoint for monitoring.\n\n    Returns:\n        Dict[str, str]: Health status information\n    \"\"\"\n    return {\n        \"status\": \"healthy\",\n        \"environment\": settings.ENVIRONMENT,\n        \"version\": \"0.1.0\"\n    }\n\n@app.get(\"/api/v1/status\")\nasync def api_status() -> Dict[str, str]:\n    \"\"\"\n    API status endpoint.\n\n    Returns:\n        Dict[str, str]: API status information\n    \"\"\"\n    return {\"status\": \"operational\", \"message\": \"API is ready\"}\n\n# Include all routers\napp.include_router(projects.router, prefix=\"/api/v1\", tags=[\"projects\"])\napp.include_router(schema.router, prefix=\"/api/v1\", tags=[\"schema\"])\napp.include_router(nodes.router, prefix=\"/api/v1\", tags=[\"nodes\"])\napp.include_router(edges.router, prefix=\"/api/v1\", tags=[\"edges\"])\napp.include_router(graphs.router, prefix=\"/api/v1\", tags=[\"graphs\"])\napp.include_router(plugins.router, prefix=\"/api/v1/plugins\", tags=[\"plugins\"])\napp.include_router(analytics.router, prefix=\"/api/v1/analytics\", tags=[\"analytics\"])\napp.include_router(artifacts.router, prefix=\"/api/v2\", tags=[\"artifacts\"])\n\n@app.exception_handler(404)\nasync def custom_404_handler(request, exc):\n    \"\"\"Custom 404 error handler.\"\"\"\n    return JSONResponse(\n        status_code=404,\n        content={\"message\": \"Endpoint not found\", \"detail\": str(exc)}\n    )\n\n@app.exception_handler(500)\nasync def custom_500_handler(request, exc):\n    \"\"\"Custom 500 error handler.\"\"\"\n    logger.error(f\"Internal server error: {exc}\", exc_info=True)\n    return JSONResponse(\n        status_code=500,\n        content={\"message\": \"Internal server error\", \"detail\": \"An unexpected error occurred\"}\n    )",
-      "lines": 135,
-      "hash": "0b09f7fd"
+      "content": "\"\"\"\nMain FastAPI application module for OSINT Graph Analyzer.\n\"\"\"\nfrom fastapi import FastAPI\nfrom fastapi.middleware.cors import CORSMiddleware\nfrom fastapi.responses import JSONResponse\nimport logging\nfrom typing import Dict\n\nfrom app.config import settings\nfrom app.database import engine, Base\n\n# Import all routers\nfrom app.api.routes import projects, schema, nodes, edges, graphs\nfrom app.routers import plugins, analytics\nfrom app.api.routes import artifacts\nfrom app.api.routes import history\n\n# Configure logging\nlogging.basicConfig(\n    level=getattr(logging, settings.LOG_LEVEL),\n    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'\n)\nlogger = logging.getLogger(__name__)\n\n# Create FastAPI app\napp = FastAPI(\n    title=\"OSINT Graph Analyzer\",\n    description=\"Web application for analyzing OSINT data through graph visualization\",\n    version=\"0.1.0\",\n    docs_url=\"/api/docs\" if settings.ENVIRONMENT == \"development\" else None,\n    redoc_url=\"/api/redoc\" if settings.ENVIRONMENT == \"development\" else None,\n)\n\n# Configure CORS\napp.add_middleware(\n    CORSMiddleware,\n    allow_origins=[\n        \"http://localhost:3000\",\n        \"http://localhost:5173\",\n        \"http://localhost:5000\",\n        \"http://127.0.0.1:3000\",\n        \"http://127.0.0.1:5000\"\n    ],\n    allow_credentials=True,\n    allow_methods=[\"*\"],\n    allow_headers=[\"*\"],\n)\n\n@app.on_event(\"startup\")\nasync def startup_event():\n    \"\"\"Initialize application on startup.\"\"\"\n    logger.info(\"Starting up OSINT Graph Analyzer...\")\n    # Create database tables (in production use Alembic migrations)\n    async with engine.begin() as conn:\n        await conn.run_sync(Base.metadata.create_all)\n\n@app.on_event(\"shutdown\")\nasync def shutdown_event():\n    \"\"\"Cleanup on application shutdown.\"\"\"\n    logger.info(\"Shutting down OSINT Graph Analyzer...\")\n    await engine.dispose()\n\n@app.get(\"/\")\nasync def root():\n    \"\"\"Root endpoint with API information.\"\"\"\n    return {\n        \"name\": \"OSINT Graph Analyzer API\",\n        \"version\": \"0.1.0\",\n        \"status\": \"operational\",\n        \"documentation\": \"/api/docs\",\n        \"endpoints\": {\n            \"health\": \"/health\",\n            \"api_status\": \"/api/v1/status\",\n            \"projects\": \"/api/v1/projects\",\n            \"project_detail\": \"/api/v1/projects/{project_id}\",\n            \"project_graphs\": \"/api/v1/projects/{project_id}/graphs\",\n            \"schema\": \"/api/v1/projects/{project_id}/schema\",\n            \"nodes\": \"/api/v1/graphs/{graph_id}/nodes\",\n            \"edges\": \"/api/v1/graphs/{graph_id}/edges\",\n            \"graphs\": \"/api/v1/graphs\",\n            \"plugins\": \"/api/v1/plugins\",\n            \"analytics\": \"/api/v1/analytics\"\n        }\n    }\n\n@app.get(\"/health\", response_model=Dict[str, str])\nasync def health_check() -> Dict[str, str]:\n    \"\"\"\n    Health check endpoint for monitoring.\n\n    Returns:\n        Dict[str, str]: Health status information\n    \"\"\"\n    return {\n        \"status\": \"healthy\",\n        \"environment\": settings.ENVIRONMENT,\n        \"version\": \"0.1.0\"\n    }\n\n@app.get(\"/api/v1/status\")\nasync def api_status() -> Dict[str, str]:\n    \"\"\"\n    API status endpoint.\n\n    Returns:\n        Dict[str, str]: API status information\n    \"\"\"\n    return {\"status\": \"operational\", \"message\": \"API is ready\"}\n\n# Include all routers\napp.include_router(projects.router, prefix=\"/api/v1\", tags=[\"projects\"])\napp.include_router(schema.router, prefix=\"/api/v1\", tags=[\"schema\"])\napp.include_router(nodes.router, prefix=\"/api/v1\", tags=[\"nodes\"])\napp.include_router(edges.router, prefix=\"/api/v1\", tags=[\"edges\"])\napp.include_router(graphs.router, prefix=\"/api/v1\", tags=[\"graphs\"])\napp.include_router(plugins.router, prefix=\"/api/v1/plugins\", tags=[\"plugins\"])\napp.include_router(analytics.router, prefix=\"/api/v1/analytics\", tags=[\"analytics\"])\napp.include_router(artifacts.router, prefix=\"/api/v2\", tags=[\"artifacts\"])\napp.include_router(history.router)\n\n\n\n@app.exception_handler(404)\nasync def custom_404_handler(request, exc):\n    \"\"\"Custom 404 error handler.\"\"\"\n    return JSONResponse(\n        status_code=404,\n        content={\"message\": \"Endpoint not found\", \"detail\": str(exc)}\n    )\n\n@app.exception_handler(500)\nasync def custom_500_handler(request, exc):\n    \"\"\"Custom 500 error handler.\"\"\"\n    logger.error(f\"Internal server error: {exc}\", exc_info=True)\n    return JSONResponse(\n        status_code=500,\n        content={\"message\": \"Internal server error\", \"detail\": \"An unexpected error occurred\"}\n    )\n",
+      "lines": 140,
+      "hash": "675ce8ea"
     },
     "app/models/__init__.py": {
       "content": "# app/models/__init__.py\n\"\"\"\nDatabase models for OSINT Graph Analyzer.\n\"\"\"\n\nfrom app.models.project import Project\nfrom app.models.graph import Graph\nfrom app.models.node import Node\nfrom app.models.edge import Edge\nfrom app.models.schema import ProjectSchema, NodeType, EdgeType\nfrom app.models.artifact import Artifact, ArtifactRelation, ArtifactVersion\n\n__all__ = [\n    \"Project\",\n    \"Graph\",\n    \"Node\",\n    \"Edge\",\n    \"ProjectSchema\",\n    \"NodeType\",\n    \"EdgeType\",\n    \"Artifact\",\n    \"ArtifactRelation\",\n    \"ArtifactVersion\",\n]",
       "lines": 24,
       "hash": "5bba91aa"
+    },
+    "app/models/action.py": {
+      "content": "# app/models/action.py\n\"\"\"\nAction model for undo/redo functionality.\nStores all user and plugin actions for graph artifacts.\n\"\"\"\nfrom sqlalchemy import Column, Integer, String, JSON, DateTime, ForeignKey, Index\nfrom sqlalchemy.dialects.postgresql import UUID\nfrom datetime import datetime\nimport uuid\n\nfrom app.database import Base\n\nclass GraphAction(Base):\n    __tablename__ = \"graph_actions\"\n\n    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)\n    artifact_id = Column(Integer, ForeignKey(\"artifacts.id\", ondelete=\"CASCADE\"), nullable=False)\n\n    # Тип действия\n    action_type = Column(String(50), nullable=False)  # 'add_node', 'delete_edge', 'move_node', etc.\n\n    # Состояния (полное состояние графа ДО и ПОСЛЕ)\n    before_state = Column(JSON, nullable=False)\n    after_state = Column(JSON, nullable=False)\n\n    # Метаданные\n    timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)\n    user_type = Column(String(20), default='user')  # 'user' или 'plugin'\n    description = Column(String(200))\n    plugin_id = Column(String(100), nullable=True)\n\n    # Для группировки последовательных действий\n    group_id = Column(UUID(as_uuid=True), nullable=True)\n\n    # Индексы для быстрого поиска\n    __table_args__ = (\n        Index(\"ix_graph_actions_artifact_timestamp\", \"artifact_id\", \"timestamp\"),\n        Index(\"ix_graph_actions_group\", \"group_id\"),\n        Index(\"ix_graph_actions_artifact_id\", \"artifact_id\"),\n    )\n\n    def __repr__(self):\n        return f\"<GraphAction id={self.id} type={self.action_type} artifact={self.artifact_id}>\"\n\n    def to_dict(self):\n        \"\"\"Convert action to dictionary for API responses.\"\"\"\n        return {\n            \"id\": str(self.id),\n            \"artifact_id\": self.artifact_id,\n            \"action_type\": self.action_type,\n            \"before_state\": self.before_state,\n            \"after_state\": self.after_state,\n            \"timestamp\": self.timestamp.isoformat() if self.timestamp else None,\n            \"user_type\": self.user_type,\n            \"description\": self.description,\n            \"plugin_id\": self.plugin_id,\n            \"group_id\": str(self.group_id) if self.group_id else None\n        }\n",
+      "lines": 59,
+      "hash": "ff57be1f"
     },
     "app/models/artifact.py": {
       "content": "# app/models/artifact.py\n\"\"\"\nArtifact models for OSINT Graph Analyzer.\nSupports multiple artifact types: graph, table, map, chart, document.\n\"\"\"\nfrom sqlalchemy import Column, Integer, String, Text, ForeignKey, UniqueConstraint, DateTime\nfrom sqlalchemy.dialects.postgresql import JSONB\nfrom sqlalchemy.orm import relationship\nfrom sqlalchemy.sql import func\nfrom datetime import datetime\n\nfrom app.database import Base\n\nclass Artifact(Base):\n    \"\"\"Unified artifact model for all data types.\"\"\"\n    \n    __tablename__ = \"artifacts\"\n    \n    id = Column(Integer, primary_key=True, index=True)\n    project_id = Column(Integer, ForeignKey(\"projects.id\", ondelete=\"CASCADE\"), nullable=False)\n    type = Column(String(50), nullable=False)  # 'graph', 'table', 'map', 'chart', 'document'\n    name = Column(String(200), nullable=False)\n    description = Column(Text, nullable=True)\n    \n    # JSONB fields for flexible data storage\n    data = Column(JSONB, nullable=False)  # Full artifact data\n    artifact_metadata = Column(JSONB, nullable=True)  # Переименовано с metadata на artifact_metadata\n    \n    # Timestamps\n    created_at = Column(DateTime, server_default=func.now(), nullable=False)\n    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)\n    \n    # Relationships\n    project = relationship(\"Project\", back_populates=\"artifacts\")\n    source_relations = relationship(\n        \"ArtifactRelation\",\n        foreign_keys=\"ArtifactRelation.source_id\",\n        back_populates=\"source\",\n        cascade=\"all, delete-orphan\"\n    )\n    target_relations = relationship(\n        \"ArtifactRelation\",\n        foreign_keys=\"ArtifactRelation.target_id\",\n        back_populates=\"target\",\n        cascade=\"all, delete-orphan\"\n    )\n    versions = relationship(\n        \"ArtifactVersion\",\n        back_populates=\"artifact\",\n        cascade=\"all, delete-orphan\",\n        order_by=\"ArtifactVersion.version.desc()\"\n    )\n    \n    def __repr__(self):\n        return f\"<Artifact id={self.id} type={self.type} name={self.name}>\"\n\n\nclass ArtifactRelation(Base):\n    \"\"\"Relationships between artifacts.\"\"\"\n    \n    __tablename__ = \"artifact_relations\"\n    \n    source_id = Column(Integer, ForeignKey(\"artifacts.id\", ondelete=\"CASCADE\"), primary_key=True)\n    target_id = Column(Integer, ForeignKey(\"artifacts.id\", ondelete=\"CASCADE\"), primary_key=True)\n    relation_type = Column(String(50), primary_key=True)  # 'derived_from', 'attached_to', 'references'\n    created_at = Column(DateTime, server_default=func.now(), nullable=False)\n    \n    # Relationships\n    source = relationship(\"Artifact\", foreign_keys=[source_id], back_populates=\"source_relations\")\n    target = relationship(\"Artifact\", foreign_keys=[target_id], back_populates=\"target_relations\")\n    \n    def __repr__(self):\n        return f\"<ArtifactRelation {self.source_id} {self.relation_type} {self.target_id}>\"\n\n\nclass ArtifactVersion(Base):\n    \"\"\"Version history for artifacts.\"\"\"\n    \n    __tablename__ = \"artifact_versions\"\n    \n    id = Column(Integer, primary_key=True, index=True)\n    artifact_id = Column(Integer, ForeignKey(\"artifacts.id\", ondelete=\"CASCADE\"), nullable=False)\n    version = Column(Integer, nullable=False)\n    data = Column(JSONB, nullable=False)  # Snapshot of artifact data\n    changed_at = Column(DateTime, server_default=func.now(), nullable=False)\n    changed_by = Column(String(50), nullable=True)  # 'user' or plugin name\n    \n    # Relationships\n    artifact = relationship(\"Artifact\", back_populates=\"versions\")\n    \n    __table_args__ = (\n        UniqueConstraint('artifact_id', 'version', name='uq_artifact_version'),\n    )\n    \n    def __repr__(self):\n        return f\"<ArtifactVersion artifact={self.artifact_id} version={self.version}>\"",
@@ -49145,9 +49303,9 @@
       "hash": "1d4ed122"
     },
     "frontend/package.json": {
-      "content": "{\n  \"name\": \"osint-graph-analyzer\",\n  \"private\": true,\n  \"version\": \"0.1.0\",\n  \"type\": \"module\",\n  \"scripts\": {\n    \"dev\": \"vite\",\n    \"build\": \"tsc && vite build\",\n    \"preview\": \"vite preview\",\n    \"lint\": \"eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0\"\n  },\n  \"dependencies\": {\n    \"@emotion/react\": \"^11.11.1\",\n    \"@emotion/styled\": \"^11.11.0\",\n    \"@fortawesome/fontawesome-svg-core\": \"^7.2.0\",\n    \"@fortawesome/free-regular-svg-icons\": \"^7.2.0\",\n    \"@fortawesome/free-solid-svg-icons\": \"^7.2.0\",\n    \"@fortawesome/react-fontawesome\": \"^3.2.0\",\n    \"@mui/material\": \"^5.14.18\",\n    \"@reduxjs/toolkit\": \"^1.9.7\",\n    \"axios\": \"^1.6.2\",\n    \"date-fns\": \"^2.30.0\",\n    \"lodash\": \"^4.17.21\",\n    \"react\": \"^18.2.0\",\n    \"react-dom\": \"^18.2.0\",\n    \"react-redux\": \"^8.1.3\",\n    \"react-router-dom\": \"^6.20.0\",\n    \"typescript\": \"^5.2.2\",\n    \"vis-network\": \"^9.1.2\",\n    \"vite\": \"^5.0.0\",\n    \"zustand\": \"^4.4.7\"\n  },\n  \"devDependencies\": {\n    \"@types/react\": \"^18.2.43\",\n    \"@types/react-dom\": \"^18.2.17\",\n    \"@types/vis\": \"^4.21.27\",\n    \"@typescript-eslint/eslint-plugin\": \"^6.14.0\",\n    \"@typescript-eslint/parser\": \"^6.14.0\",\n    \"@vitejs/plugin-react\": \"^4.2.1\",\n    \"eslint\": \"^8.55.0\",\n    \"eslint-plugin-react-hooks\": \"^4.6.0\",\n    \"eslint-plugin-react-refresh\": \"^0.4.5\",\n    \"typescript\": \"^5.2.2\",\n    \"vite\": \"^5.0.0\"\n  }\n}\n",
-      "lines": 47,
-      "hash": "a9cf3019"
+      "content": "{\n  \"name\": \"osint-graph-analyzer\",\n  \"private\": true,\n  \"version\": \"0.1.0\",\n  \"type\": \"module\",\n  \"scripts\": {\n    \"dev\": \"vite\",\n    \"build\": \"tsc && vite build\",\n    \"preview\": \"vite preview\",\n    \"lint\": \"eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0\"\n  },\n  \"dependencies\": {\n    \"@emotion/react\": \"^11.11.1\",\n    \"@emotion/styled\": \"^11.11.0\",\n    \"@fortawesome/fontawesome-svg-core\": \"^7.2.0\",\n    \"@fortawesome/free-regular-svg-icons\": \"^7.2.0\",\n    \"@fortawesome/free-solid-svg-icons\": \"^7.2.0\",\n    \"@fortawesome/react-fontawesome\": \"^3.2.0\",\n    \"@mui/material\": \"^5.14.18\",\n    \"@reduxjs/toolkit\": \"^1.9.7\",\n    \"axios\": \"^1.6.2\",\n    \"date-fns\": \"^2.30.0\",\n    \"lodash\": \"^4.17.21\",\n    \"react\": \"^18.2.0\",\n    \"react-dom\": \"^18.2.0\",\n    \"react-redux\": \"^8.1.3\",\n    \"react-router-dom\": \"^6.20.0\",\n    \"typescript\": \"^5.2.2\",\n    \"uuid\": \"^8.3.2\",\n    \"vis-data\": \"^7.1.10\",\n    \"vis-network\": \"^9.1.13\",\n    \"vite\": \"^5.0.0\",\n    \"zustand\": \"^4.4.7\"\n  },\n  \"devDependencies\": {\n    \"@types/react\": \"^18.2.43\",\n    \"@types/react-dom\": \"^18.2.17\",\n    \"@types/uuid\": \"^8.3.4\",\n    \"@types/vis\": \"^4.21.27\",\n    \"@typescript-eslint/eslint-plugin\": \"^6.14.0\",\n    \"@typescript-eslint/parser\": \"^6.14.0\",\n    \"@vitejs/plugin-react\": \"^4.2.1\",\n    \"eslint\": \"^8.55.0\",\n    \"eslint-plugin-react-hooks\": \"^4.6.0\",\n    \"eslint-plugin-react-refresh\": \"^0.4.5\",\n    \"typescript\": \"^5.2.2\",\n    \"vite\": \"^5.0.0\"\n  }\n}\n",
+      "lines": 50,
+      "hash": "f35f38fb"
     },
     "frontend/src/App.tsx": {
       "content": "// frontend/src/App.tsx\nimport React, { useEffect, useState } from 'react';\nimport { useDispatch, useSelector } from 'react-redux';\nimport { RootState, AppDispatch } from './store';\nimport Sidebar from './components/layout/Sidebar';\nimport TabBar from './components/layout/TabBar';\nimport InspectorPanel from './components/layout/InspectorPanel';\nimport ArtifactView from './components/views/ArtifactView';\nimport { fetchProjects, setCurrentProject } from './store/slices/projectsSlice';\nimport { fetchArtifacts, Artifact, updateArtifact } from './store/slices/artifactsSlice';\nimport { addTab, removeTab, setActiveTab } from './store/slices/uiSlice';\nimport './App.css';\n\ninterface Tab {\n  id: string;\n  artifactId: number;\n  title: string;\n  type: string;\n}\n\nconst App: React.FC = () => {\n  const dispatch = useDispatch<AppDispatch>();\n  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);\n  const [hasInitialized, setHasInitialized] = useState(false);\n  \n  const { projects, currentProject } = useSelector((state: RootState) => state.projects);\n  const { artifacts } = useSelector((state: RootState) => state.artifacts);\n  const { tabs, activeTabId, darkMode, inspectorWidth } = useSelector((state: RootState) => state.ui);\n\n  useEffect(() => {\n    console.log('[App] Initializing app, fetching projects');\n    dispatch(fetchProjects());\n  }, [dispatch]);\n\n  useEffect(() => {\n    console.log('[App] projects or currentProject changed:', { \n      projectsCount: projects.length, \n      currentProject: currentProject?.id \n    });\n    \n    if (projects.length > 0 && !currentProject && !hasInitialized) {\n      console.log('[App] Setting first project as current:', projects[0].id);\n      dispatch(setCurrentProject(projects[0].id));\n      setHasInitialized(true);\n    }\n    \n    if (currentProject?.id) {\n      console.log(`[App] Current project ID: ${currentProject.id}, fetching artifacts`);\n      dispatch(fetchArtifacts(currentProject.id));\n    }\n  }, [projects, currentProject, dispatch, hasInitialized]);\n\n  const handleArtifactSelect = (artifact: Artifact) => {\n    console.log('[App] Artifact selected:', artifact.id, artifact.name);\n    \n    const existingTab = tabs.find(tab => tab.artifactId === artifact.id);\n    \n    if (existingTab) {\n      dispatch(setActiveTab(existingTab.id));\n    } else {\n      const tabId = `tab-${Date.now()}-${artifact.id}`;\n      const icon = getArtifactIcon(artifact.type);\n      \n      dispatch(addTab({\n        id: tabId,\n        artifactId: artifact.id,\n        title: `${icon} ${artifact.name}`,\n        type: artifact.type,\n      }));\n      \n      dispatch(setActiveTab(tabId));\n    }\n  };\n\n  const handleTabClose = (tabId: string) => {\n    console.log('[App] Closing tab:', tabId);\n    dispatch(removeTab(tabId));\n  };\n\n  const handleArtifactUpdate = async (artifactId: number, updates: Partial<Artifact>) => {\n    if (!currentProject) return;\n    \n    console.log(`[App] Updating artifact ${artifactId}:`, updates);\n    \n    try {\n      await dispatch(updateArtifact({\n        projectId: currentProject.id,\n        id: artifactId,\n        updates,\n      }));\n    } catch (error) {\n      console.error('[App] Failed to update artifact:', error);\n    }\n  };\n\n  const handleNodeMove = (artifactId: number, nodeId: string, x: number, y: number) => {\n    console.log(`[App] Node ${nodeId} moved to (${x}, ${y}) in artifact ${artifactId}`);\n    \n    const artifact = artifacts.find(a => a.id === artifactId);\n    if (!artifact || artifact.type !== 'graph') return;\n    \n    const updatedNodes = artifact.data.nodes?.map((node: any) =>\n      node.id === nodeId || node.node_id === nodeId\n        ? { ...node, position_x: x, position_y: y }\n        : node\n    );\n    \n    handleArtifactUpdate(artifactId, {\n      data: {\n        ...artifact.data,\n        nodes: updatedNodes,\n      },\n    });\n  };\n\n  const getArtifactIcon = (type: string): string => {\n    switch (type) {\n      case 'graph': return '📊';\n      case 'table': return '📋';\n      case 'map': return '🗺️';\n      case 'chart': return '📈';\n      case 'document': return '📄';\n      default: return '📁';\n    }\n  };\n\n  const activeArtifact = activeTabId\n    ? artifacts.find(a => a.id === tabs.find(t => t.id === activeTabId)?.artifactId)\n    : null;\n\n  return (\n    <div className={`app ${darkMode ? 'dark' : 'light'}`}>\n      <Sidebar\n        isCollapsed={isSidebarCollapsed}\n        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}\n        onArtifactSelect={handleArtifactSelect}\n      />\n\n      <div className=\"main-content\">\n        <TabBar\n          tabs={tabs}\n          activeTabId={activeTabId}\n          onTabClick={(tabId) => dispatch(setActiveTab(tabId))}\n          onTabClose={handleTabClose}\n        />\n\n        <div className=\"content-area\">\n          <div className=\"view-container\">\n            {activeArtifact ? (\n              <ArtifactView\n                key={activeArtifact.id}\n                artifact={activeArtifact}\n                onClose={() => activeTabId && handleTabClose(activeTabId)}\n                onUpdate={(updates) => handleArtifactUpdate(activeArtifact.id, updates)}\n                onNodeMove={(nodeId, x, y) => handleNodeMove(activeArtifact.id, nodeId, x, y)}\n              />\n            ) : (\n              <div className=\"empty-state\">\n                <div className=\"text-center\">\n                  <svg className=\"mx-auto h-12 w-12 text-gray-400\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\">\n                    <path strokeLinecap=\"round\" strokeLinejoin=\"round\" strokeWidth={1} d=\"M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z\" />\n                  </svg>\n                  <h3 className=\"mt-2 text-sm font-medium text-gray-900 dark:text-gray-100\">No artifact selected</h3>\n                  <p className=\"mt-1 text-sm text-gray-500 dark:text-gray-400\">\n                    Select an artifact from the sidebar to start working\n                  </p>\n                </div>\n              </div>\n            )}\n          </div>\n\n          <InspectorPanel width={inspectorWidth} />\n        </div>\n      </div>\n    </div>\n  );\n};\n\nexport default App;",
@@ -49155,14 +49313,14 @@
       "hash": "280c8765"
     },
     "frontend/src/components/views/GraphView.tsx": {
-      "content": "// frontend/src/components/views/GraphView.tsx\nimport React, { useEffect, useRef, useCallback, memo } from 'react';\nimport { Network } from 'vis-network/standalone';\nimport { DataSet } from 'vis-data/standalone';\nimport { useDispatch } from 'react-redux';\nimport { Artifact } from '../../store/slices/artifactsSlice';\nimport { setSelectedElement, setSelectedElements } from '../../store/slices/uiSlice';\n\ninterface GraphViewProps {\n  artifact: Artifact;\n  onNodeMove?: (nodeId: string, x: number, y: number) => void;\n}\n\nconst GraphView: React.FC<GraphViewProps> = memo(({ artifact, onNodeMove }) => {\n  const dispatch = useDispatch();\n  const networkRef = useRef<HTMLDivElement>(null);\n  const networkInstanceRef = useRef<Network | null>(null);\n  const nodesRef = useRef<DataSet<any> | null>(null);\n  const isInitializedRef = useRef<boolean>(false);\n  const shiftKeyRef = useRef<boolean>(false);\n  \n  const fitToScreen = useCallback(() => {\n    if (networkInstanceRef.current) {\n      networkInstanceRef.current.fit({ animation: true, duration: 1000 });\n    }\n  }, []);\n\n  const zoomIn = useCallback(() => {\n    if (networkInstanceRef.current) {\n      const scale = networkInstanceRef.current.getScale();\n      networkInstanceRef.current.moveTo({ scale: scale * 1.2, animation: true });\n    }\n  }, []);\n\n  const zoomOut = useCallback(() => {\n    if (networkInstanceRef.current) {\n      const scale = networkInstanceRef.current.getScale();\n      networkInstanceRef.current.moveTo({ scale: scale * 0.8, animation: true });\n    }\n  }, []);\n\n  // Функция для получения цвета узла по типу\n  const getNodeColor = (type: string = 'default'): string => {\n    const colors: Record<string, string> = {\n      person: '#97c2fc',      // синий\n      phone: '#7be141',       // зеленый\n      message: '#ffb752',     // оранжевый\n      location: '#ff7b7b',    // красный\n      organization: '#d9b4ff', // фиолетовый\n      device: '#ffb3ba',      // розовый\n      email: '#b0e57c',       // светло-зеленый\n      social: '#f7cac9',      // персиковый\n      document: '#c0c0c0',    // серебряный\n      default: '#cccccc'      // серый по умолчанию\n    };\n    return colors[type] || colors.default;\n  };\n\n  const getEdgeColor = (type: string = 'default'): string => {\n    const colors: Record<string, string> = {\n      follows: '#3B82F6',\n      subscribed: '#10B981',\n      default: '#6B7280'\n    };\n    return colors[type] || colors.default;\n  };\n\n  // Отслеживаем Shift\n  useEffect(() => {\n    const handleKeyDown = (e: KeyboardEvent) => {\n      if (e.key === 'Shift') {\n        shiftKeyRef.current = true;\n      }\n    };\n\n    const handleKeyUp = (e: KeyboardEvent) => {\n      if (e.key === 'Shift') {\n        shiftKeyRef.current = false;\n      }\n    };\n\n    window.addEventListener('keydown', handleKeyDown);\n    window.addEventListener('keyup', handleKeyUp);\n\n    return () => {\n      window.removeEventListener('keydown', handleKeyDown);\n      window.removeEventListener('keyup', handleKeyUp);\n    };\n  }, []);\n\n  useEffect(() => {\n    if (!networkRef.current || isInitializedRef.current) return;\n\n    console.log('[GraphView] INITIALIZING GRAPH');\n    isInitializedRef.current = true;\n\n    // Отключаем контекстное меню\n    networkRef.current.addEventListener('contextmenu', (e) => {\n      e.preventDefault();\n    });\n\n    const nodesData = artifact.data?.nodes ? JSON.parse(JSON.stringify(artifact.data.nodes)) : [];\n    const edgesData = artifact.data?.edges ? JSON.parse(JSON.stringify(artifact.data.edges)) : [];\n\n    const nodeMap = new Map();\n    const visNodes = nodesData.map((node: any) => {\n      const nodeId = node.id || node.node_id;\n      nodeMap.set(nodeId, node.label || node.name || 'Узел');\n      \n      return {\n        id: nodeId,\n        label: node.label || node.name || 'Узел',\n        x: node.position_x,\n        y: node.position_y,\n        color: getNodeColor(node.type),\n        font: { color: '#ffffff', size: 14, strokeWidth: 0 },\n        shape: 'dot',\n        size: 20,\n        borderWidth: 2,\n        shadow: true,\n        title: node.attributes ? JSON.stringify(node.attributes, null, 2) : '',\n        type: node.type,\n        attributes: node.attributes || {}\n      };\n    });\n\n    const visEdges = edgesData.map((edge: any) => {\n      const fromId = edge.source || edge.from || edge.source_node;\n      const toId = edge.target || edge.to || edge.target_node;\n      return {\n        id: edge.id || edge.edge_id,\n        from: fromId,\n        to: toId,\n        label: edge.label || edge.type || '',\n        color: getEdgeColor(edge.type),\n        font: { color: '#ffffff', size: 12, align: 'middle', strokeWidth: 0 },\n        arrows: { to: { enabled: true, type: 'arrow', scaleFactor: 1 } },\n        smooth: { type: 'continuous', forceDirection: 'none' },\n        width: 2,\n        dashes: false,\n        title: `${nodeMap.get(fromId) || fromId} → ${nodeMap.get(toId) || toId}${edge.label ? ': ' + edge.label : ''}`,\n        type: edge.type,\n        attributes: edge.attributes || {}\n      };\n    });\n\n    const nodes = new DataSet(visNodes);\n    nodesRef.current = nodes;\n    const edges = new DataSet(visEdges);\n\n    const options = {\n      physics: false,\n      layout: { improvedLayout: false, hierarchical: false },\n      nodes: {\n        shape: 'dot',\n        size: 20,\n        font: { color: '#ffffff', size: 14, strokeWidth: 0 },\n        borderWidth: 2,\n        shadow: true,\n        color: {\n          border: '#4b5563',\n          background: '#6b7280',\n          highlight: { border: '#3b82f6', background: '#60a5fa' },\n          hover: { border: '#60a5fa', background: '#3b82f6' }\n        }\n      },\n      edges: {\n        width: 2,\n        color: { color: '#6b7280', highlight: '#3b82f6', hover: '#60a5fa' },\n        smooth: { type: 'continuous', forceDirection: 'none' },\n        arrows: { to: { enabled: true, type: 'arrow', scaleFactor: 1 } },\n        font: { color: '#ffffff', size: 12, align: 'middle', strokeWidth: 0 },\n        dashes: false\n      },\n      interaction: {\n        hover: true,\n        tooltipDelay: 200,\n        navigationButtons: false,\n        keyboard: true,\n        zoomView: true,\n        dragView: true,\n        multiselect: true,\n        dragNodes: true\n      }\n    };\n\n    const network = new Network(networkRef.current, { nodes, edges }, options);\n    networkInstanceRef.current = network;\n\n    network.on('select', (params) => {\n      console.log('[GraphView] Select event:', params);\n      \n      if (params.nodes.length > 0) {\n        const selectedNodesData = params.nodes.map(id => nodes.get(id));\n        dispatch(setSelectedElements(selectedNodesData.map(data => ({ \n          type: 'node', \n          id: data.id, \n          data \n        }))));\n      } else if (params.edges.length > 0) {\n        const edgeId = params.edges[0];\n        const edge = edges.get(edgeId);\n        if (edge) {\n          const enrichedEdge = {\n            ...edge,\n            fromLabel: nodeMap.get(edge.from) || edge.from,\n            toLabel: nodeMap.get(edge.to) || edge.to\n          };\n          dispatch(setSelectedElement({ type: 'edge', id: edgeId, data: enrichedEdge }));\n        }\n      } else {\n        dispatch(setSelectedElement(null));\n        dispatch(setSelectedElements([]));\n      }\n    });\n\n    network.on('dragEnd', (params) => {\n      if (params.nodes.length > 0 && onNodeMove) {\n        const nodeId = params.nodes[0];\n        const position = network.getPosition(nodeId);\n        onNodeMove(nodeId, position.x, position.y);\n      }\n    });\n\n    return () => {\n      if (networkInstanceRef.current) {\n        networkInstanceRef.current.destroy();\n        networkInstanceRef.current = null;\n        isInitializedRef.current = false;\n      }\n    };\n  }, [artifact.id]);\n\n  return (\n    <div style={{ width: '100%', height: '100%', position: 'relative', background: '#111827' }}>\n      <div ref={networkRef} style={{ width: '100%', height: '100%' }} />\n      \n      {/* Компактная панель навигации */}\n      <div style={{\n        position: 'absolute',\n        bottom: '16px',\n        right: '16px',\n        display: 'flex',\n        flexDirection: 'column',\n        gap: '6px',\n        zIndex: 1000\n      }}>\n        <button onClick={fitToScreen} style={compactButtonStyle}>⤢</button>\n        <button onClick={zoomIn} style={compactButtonStyle}>+</button>\n        <button onClick={zoomOut} style={compactButtonStyle}>−</button>\n      </div>\n\n      {/* Компактная информационная панель */}\n      <div style={compactInfoStyle}>\n        <div style={{ fontWeight: 600, marginBottom: '4px', color: '#9ca3af', fontSize: '10px', textTransform: 'uppercase' }}>\n          Граф\n        </div>\n        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px', fontSize: '11px' }}>\n          <span style={{ color: '#9ca3af' }}>Узлы:</span>\n          <span style={{ fontWeight: 500 }}>{artifact.data?.nodes?.length || 0}</span>\n        </div>\n        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px', fontSize: '11px' }}>\n          <span style={{ color: '#9ca3af' }}>Связи:</span>\n          <span style={{ fontWeight: 500 }}>{artifact.data?.edges?.length || 0}</span>\n        </div>\n        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>\n          <span style={{ color: '#9ca3af' }}>Версия:</span>\n          <span style={{ fontWeight: 500 }}>{artifact.version}</span>\n        </div>\n      </div>\n    </div>\n  );\n});\n\n// Компактные стили для кнопок\nconst compactButtonStyle = {\n  width: '32px',\n  height: '32px',\n  backgroundColor: '#1f2937',\n  border: '1px solid #374151',\n  borderRadius: '6px',\n  color: '#9ca3af',\n  cursor: 'pointer',\n  display: 'flex',\n  alignItems: 'center',\n  justifyContent: 'center',\n  fontSize: '16px',\n  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',\n  transition: 'all 0.2s ease',\n};\n\n// Компактная информационная панель\nconst compactInfoStyle = {\n  position: 'absolute' as const,\n  top: '16px',\n  right: '16px',\n  backgroundColor: 'rgba(31, 41, 55, 0.95)',\n  backdropFilter: 'blur(8px)',\n  color: 'white',\n  padding: '8px 12px',\n  borderRadius: '6px',\n  fontSize: '11px',\n  zIndex: 1000,\n  border: '1px solid #374151',\n  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',\n  minWidth: '120px'\n};\n\nexport default GraphView;",
-      "lines": 309,
-      "hash": "dd38f095"
+      "content": "// frontend/src/components/views/GraphView.tsx\nimport React, { useEffect, useRef, useState, useCallback } from 'react';\nimport { useAppDispatch } from '../../store';\nimport { updateArtifact } from '../../store/slices/artifactsSlice';\nimport { HistoryPanel } from '../history/HistoryPanel';\nimport { useActionWithUndo } from '../../hooks/useActionWithUndo';\nimport { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';\nimport { Network } from 'vis-network/standalone';\nimport { DataSet } from 'vis-data/standalone';\nimport 'vis-network/styles/vis-network.css';\nimport './GraphView.css';\n\n\ninterface GraphViewProps {\n  artifact: {\n    id: number;\n    project_id: number;\n    data: {\n      nodes?: Array<{\n        id: string;\n        label: string;\n        type: string;\n        position_x?: number;\n        position_y?: number;\n        [key: string]: any;\n      }>;\n      edges?: Array<{\n        id: string;\n        from: string;\n        to: string;\n        type: string;\n        [key: string]: any;\n      }>;\n    };\n  };\n}\n\nexport const GraphView: React.FC<GraphViewProps> = ({ artifact }) => {\n  const dispatch = useAppDispatch();\n  const containerRef = useRef<HTMLDivElement>(null);\n  const networkRef = useRef<Network | null>(null);\n  const nodesDataSetRef = useRef<DataSet<any> | null>(null);\n  const edgesDataSetRef = useRef<DataSet<any> | null>(null);\n  \n  // Сохраняем ID артефакта для стабильности\n  const artifactIdRef = useRef(artifact.id);\n  const projectIdRef = useRef(artifact.project_id);\n  \n  // Локальное состояние для позиций узлов (оптимистичные обновления)\n  const [localNodePositions, setLocalNodePositions] = useState<Record<string, {x: number, y: number}>>({});\n  \n  // Состояние для группировки перемещений\n  const [pendingMoves, setPendingMoves] = useState<Record<string, {x: number, y: number}>>({});\n  const moveTimeoutRef = useRef<NodeJS.Timeout>();\n  const batchGroupIdRef = useRef<string | null>(null);\n  \n  // Флаг для предотвращения повторной инициализации\n  const isInitializedRef = useRef(false);\n  \n  // Флаг для игнорирования обновлений из Redux во время перетаскивания\n  const isDraggingRef = useRef(false);\n  \n  // Последнее примененное состояние из Redux\n  const lastReduxStateRef = useRef<string>(JSON.stringify(artifact.data));\n\n  // ==========================================================================\n  // Инициализация хука для undo/redo\n  // ==========================================================================\n  \n  const handleStateChange = useCallback(async (newData: any) => {\n    console.log('Updating Redux state:', newData);\n    await dispatch(updateArtifact({\n      projectId: projectIdRef.current,\n      id: artifactIdRef.current,\n      updates: { data: newData }\n    })).unwrap();\n  }, [dispatch]);\n\n  const { \n    execute, \n    undo, \n    redo, \n    startBatch, \n    endBatch,\n    canUndo, \n    canRedo \n  } = useActionWithUndo(\n    artifact.id,\n    artifact.data,\n    handleStateChange\n  );\n\n  // Подключаем клавиатурные сокращения\n  useKeyboardShortcuts(artifact.id);\n\n  // ==========================================================================\n  // Функция для получения актуальных данных узла (локальные позиции + данные из props)\n  // ==========================================================================\n  \n  const getNodeWithLocalPosition = useCallback((node: any) => {\n    const localPos = localNodePositions[node.id];\n    return {\n      ...node,\n      x: localPos?.x ?? node.position_x,\n      y: localPos?.y ?? node.position_y,\n    };\n  }, [localNodePositions]);\n\n  // ==========================================================================\n  // Инициализация vis-network\n  // ==========================================================================\n  \n  useEffect(() => {\n    if (!containerRef.current || isInitializedRef.current) return;\n\n    console.log('Initializing graph with data:', artifact.data);\n    isInitializedRef.current = true;\n\n    // Создаем DataSet'ы с учетом локальных позиций\n    const initialNodes = (artifact.data.nodes || []).map(node => ({\n      id: node.id,\n      label: node.label || node.id,\n      title: `${node.type}\\n${JSON.stringify(node, null, 2)}`,\n      x: node.position_x,\n      y: node.position_y,\n      group: node.type,\n      ...node\n    }));\n\n    const nodes = new DataSet(initialNodes);\n    const edges = new DataSet(\n      (artifact.data.edges || []).map(edge => ({\n        id: edge.id,\n        from: edge.from,\n        to: edge.to,\n        label: edge.type,\n        title: `${edge.type}\\n${JSON.stringify(edge, null, 2)}`,\n        arrows: 'to',\n        ...edge\n      }))\n    );\n\n    nodesDataSetRef.current = nodes;\n    edgesDataSetRef.current = edges;\n\n    // Настройки сети\n    const options = {\n      physics: {\n        enabled: false,\n        stabilization: false\n      },\n      layout: {\n        randomSeed: 42,\n        improvedLayout: false\n      },\n      nodes: {\n        shape: 'dot',\n        size: 20,\n        font: {\n          size: 14,\n          color: '#ffffff',\n        },\n        borderWidth: 2,\n        shadow: true,\n        fixed: false\n      },\n      edges: {\n        width: 2,\n        smooth: {\n          type: 'continuous',\n        },\n        font: {\n          size: 12,\n          color: '#ffffff',\n          align: 'middle',\n        },\n      },\n      interaction: {\n        dragNodes: true,\n        dragView: true,\n        zoomView: true,\n        hover: true,\n        tooltipDelay: 300,\n        multiselect: true,\n      },\n      manipulation: {\n        enabled: false,\n      },\n    };\n\n    // Создаем сеть\n    const network = new Network(\n      containerRef.current,\n      { nodes, edges },\n      options\n    );\n\n    networkRef.current = network;\n\n    // ========================================================================\n    // Обработчики событий\n    // ========================================================================\n\n    // Обработчик начала перетаскивания\n    network.on('dragStart', (params) => {\n      const nodeId = params.nodes[0];\n      if (nodeId) {\n        console.log('Drag start for node:', nodeId);\n        isDraggingRef.current = true;\n        batchGroupIdRef.current = startBatch('Перемещение узлов');\n      }\n    });\n\n    // Обработчик во время перетаскивания - обновляем локальное состояние\n    network.on('dragging', (params) => {\n      const nodeId = params.nodes[0];\n      if (nodeId && params.pointer) {\n        const position = network.getPosition(nodeId);\n        setLocalNodePositions(prev => ({\n          ...prev,\n          [nodeId]: { x: position.x, y: position.y }\n        }));\n      }\n    });\n\n    // Обработчик окончания перетаскивания\n    network.on('dragEnd', async (params) => {\n      const nodeId = params.nodes[0];\n      if (!nodeId) {\n        isDraggingRef.current = false;\n        return;\n      }\n\n      const position = network.getPosition(nodeId);\n      console.log('Drag end for node:', nodeId, position);\n      \n      // Добавляем в ожидающие перемещения\n      setPendingMoves(prev => {\n        const newMoves = {\n          ...prev,\n          [nodeId]: { x: position.x, y: position.y }\n        };\n        \n        // Сбрасываем предыдущий таймаут\n        if (moveTimeoutRef.current) {\n          clearTimeout(moveTimeoutRef.current);\n        }\n\n        // Устанавливаем новый таймаут\n        moveTimeoutRef.current = setTimeout(async () => {\n          console.log('Applying batch move:', newMoves);\n          \n          // Сохраняем текущие pending moves\n          const movesToApply = { ...newMoves };\n          \n          // Очищаем pending moves\n          setPendingMoves({});\n          \n          // Обновляем локальные позиции финально\n          setLocalNodePositions(prev => ({\n            ...prev,\n            ...movesToApply\n          }));\n          \n          // Выполняем batch обновление в Redux\n          await execute(\n            async () => {\n              const updatedNodes = (artifact.data.nodes || []).map(node => \n                movesToApply[node.id] \n                  ? { \n                      ...node, \n                      position_x: movesToApply[node.id].x, \n                      position_y: movesToApply[node.id].y \n                    }\n                  : node\n              );\n\n              const newData = {\n                ...artifact.data,\n                nodes: updatedNodes\n              };\n\n              await handleStateChange(newData);\n              return newData;\n            },\n            {\n              description: `Перемещение ${Object.keys(movesToApply).length} узлов`,\n              actionType: 'batch_move',\n              groupId: batchGroupIdRef.current || undefined,\n              batch: false\n            }\n          );\n\n          // Завершаем группу\n          if (batchGroupIdRef.current) {\n            await endBatch();\n            batchGroupIdRef.current = null;\n          }\n          \n          isDraggingRef.current = false;\n        }, 500);\n        \n        return newMoves;\n      });\n    });\n\n    // Cleanup\n    return () => {\n      network.destroy();\n      if (moveTimeoutRef.current) {\n        clearTimeout(moveTimeoutRef.current);\n      }\n      isInitializedRef.current = false;\n    };\n  }, []); // Пустой массив - инициализация один раз\n\n  // ==========================================================================\n  // Синхронизация с Redux (только когда не перетаскиваем)\n  // ==========================================================================\n  \n  useEffect(() => {\n    if (!networkRef.current || !nodesDataSetRef.current || isDraggingRef.current) {\n      return;\n    }\n\n    const currentReduxState = JSON.stringify(artifact.data);\n    \n    // Если состояние в Redux изменилось (не из-за нашего перетаскивания)\n    if (currentReduxState !== lastReduxStateRef.current) {\n      console.log('Redux state changed externally, updating graph');\n      lastReduxStateRef.current = currentReduxState;\n      \n      // Обновляем узлы\n      const nodesData = (artifact.data.nodes || []).map(node => ({\n        id: node.id,\n        label: node.label || node.id,\n        x: node.position_x,\n        y: node.position_y,\n        group: node.type,\n        ...node\n      }));\n\n      // Очищаем и добавляем заново\n      nodesDataSetRef.current.clear();\n      nodesDataSetRef.current.add(nodesData);\n      \n      // Очищаем локальные позиции\n      setLocalNodePositions({});\n\n      // Обновляем ребра\n      const edgesData = (artifact.data.edges || []).map(edge => ({\n        id: edge.id,\n        from: edge.from,\n        to: edge.to,\n        label: edge.type,\n        ...edge\n      }));\n\n      edgesDataSetRef.current?.clear();\n      if (edgesData.length > 0) {\n        edgesDataSetRef.current?.add(edgesData);\n      }\n    }\n  }, [artifact.data]);\n\n  // ==========================================================================\n  // Обработчик клавиш для undo/redo\n  // ==========================================================================\n  \n  useEffect(() => {\n    const handleKeyDown = (e: KeyboardEvent) => {\n      if ((e.target as HTMLElement).tagName === 'INPUT' || \n          (e.target as HTMLElement).tagName === 'TEXTAREA') {\n        return;\n      }\n\n      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {\n        e.preventDefault();\n        if (e.shiftKey) {\n          redo();\n        } else {\n          undo();\n        }\n      }\n      \n      if ((e.ctrlKey || e.metaKey) && e.key === 'y') {\n        e.preventDefault();\n        redo();\n      }\n    };\n\n    window.addEventListener('keydown', handleKeyDown);\n    return () => window.removeEventListener('keydown', handleKeyDown);\n  }, [undo, redo]);\n\n  // ==========================================================================\n  // Render\n  // ==========================================================================\n\n  return (\n    <div className=\"graph-view\">\n      {/* Панель инструментов */}\n      <div className=\"graph-toolbar\">\n        <div className=\"toolbar-group\">\n          <button \n            onClick={undo}\n            disabled={!canUndo}\n            title=\"Отменить (Ctrl+Z)\"\n            className=\"toolbar-btn\"\n          >\n            ↩️ Undo\n          </button>\n          <button \n            onClick={redo}\n            disabled={!canRedo}\n            title=\"Повторить (Ctrl+Y / Ctrl+Shift+Z)\"\n            className=\"toolbar-btn\"\n          >\n            ↪️ Redo\n          </button>\n        </div>\n        \n        <div className=\"toolbar-group\">\n          <button \n            onClick={() => {\n              // Сохранить\n            }}\n            title=\"Сохранить (Ctrl+S)\"\n            className=\"toolbar-btn\"\n          >\n            💾 Save\n          </button>\n          <button \n            onClick={() => {\n              // Экспорт\n            }}\n            title=\"Экспорт\"\n            className=\"toolbar-btn\"\n          >\n            📤 Export\n          </button>\n        </div>\n        \n        <div className=\"toolbar-status\">\n          {Object.keys(pendingMoves).length > 0 && (\n            <span className=\"status-badge\">\n              Группировка... {Object.keys(pendingMoves).length}\n            </span>\n          )}\n          {isDraggingRef.current && (\n            <span className=\"status-badge\" style={{background: '#ff9800'}}>\n              Перетаскивание...\n            </span>\n          )}\n        </div>\n      </div>\n\n      {/* Контейнер для графа */}\n      <div \n        ref={containerRef} \n        className=\"graph-container\"\n        style={{ width: '100%', height: 'calc(100vh - 200px)' }}\n      />\n    </div>\n  );\n};",
+      "lines": 466,
+      "hash": "36b5c411"
     },
     "frontend/src/store/index.ts": {
-      "content": "// frontend/src/store/index.ts\nimport { configureStore } from '@reduxjs/toolkit';\nimport uiReducer from './slices/uiSlice';\nimport projectsReducer from './slices/projectsSlice';\nimport artifactsReducer from './slices/artifactsSlice';\n// Старый graphSlice пока оставляем для обратной совместимости\nimport graphReducer from './slices/graphSlice';\n\nexport const store = configureStore({\n  reducer: {\n    ui: uiReducer,\n    projects: projectsReducer,\n    artifacts: artifactsReducer,\n    graph: graphReducer, // пока оставляем, постепенно заменится на artifacts\n  },\n  middleware: (getDefaultMiddleware) =>\n    getDefaultMiddleware({\n      serializableCheck: {\n        // Игнорируем несериализуемые значения в определенных путях\n        ignoredActions: ['artifacts/setGraphData'],\n      },\n    }),\n});\n\nexport type RootState = ReturnType<typeof store.getState>;\nexport type AppDispatch = typeof store.dispatch;",
-      "lines": 26,
-      "hash": "69de9414"
+      "content": "// frontend/src/store/index.ts\nimport { configureStore } from '@reduxjs/toolkit';\nimport { useDispatch, useSelector } from 'react-redux';\nimport type { TypedUseSelectorHook } from 'react-redux';\n\n// Импорт всех слайсов\nimport projectsReducer from './slices/projectsSlice';\nimport artifactsReducer from './slices/artifactsSlice';\nimport graphReducer from './slices/graphSlice';\nimport uiReducer from './slices/uiSlice';\nimport historyReducer from './slices/historySlice';  // 👈 новый импорт\n\nexport const store = configureStore({\n  reducer: {\n    projects: projectsReducer,\n    artifacts: artifactsReducer,\n    graph: graphReducer,\n    ui: uiReducer,\n    history: historyReducer,  // 👈 добавляем в store\n  },\n  middleware: (getDefaultMiddleware) =>\n    getDefaultMiddleware({\n      serializableCheck: {\n        // Игнорируем несериализуемые значения в определенных путях\n        ignoredActions: ['history/recordAction/fulfilled'],\n        ignoredPaths: ['history.actions.*.beforeState', 'history.actions.*.afterState'],\n      },\n    }),\n});\n\n// Infer the `RootState` and `AppDispatch` types from the store itself\nexport type RootState = ReturnType<typeof store.getState>;\nexport type AppDispatch = typeof store.dispatch;\n\n// Use throughout your app instead of plain `useDispatch` and `useSelector`\nexport const useAppDispatch: () => AppDispatch = useDispatch;\nexport const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;\n",
+      "lines": 38,
+      "hash": "309e464c"
     },
     "frontend/src/store/slices/artifactsSlice.ts": {
       "content": "// frontend/src/store/slices/artifactsSlice.ts\nimport { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';\nimport { api } from '../../services/api';\n\nexport interface ArtifactData {\n  nodes?: Array<{\n    id: string;\n    type: string;\n    label?: string;\n    attributes?: Record<string, any>;\n    position_x?: number;\n    position_y?: number;\n  }>;\n  edges?: Array<{\n    id: string;\n    source: string;\n    target: string;\n    type: string;\n    attributes?: Record<string, any>;\n  }>;\n  columns?: Array<{ key: string; label: string; type?: string }>;\n  rows?: Array<Record<string, any>>;\n  layers?: Array<any>;\n  points?: Array<{ lat: number; lng: number; properties?: any }>;\n  series?: Array<{ name: string; data: number[] }>;\n  content?: string;\n  [key: string]: any;\n}\n\nexport interface Artifact {\n  id: number;\n  project_id: number;\n  type: 'graph' | 'table' | 'map' | 'chart' | 'document';\n  name: string;\n  description?: string;\n  data: ArtifactData;\n  metadata: Record<string, any>;\n  created_at: string;\n  updated_at: string;\n  version: number;\n  created_by?: string;\n  updated_by?: string;\n  source_artifact_id?: number;\n  derivation_type?: string;\n}\n\nexport interface ArtifactVersion {\n  id: number;\n  artifact_id: number;\n  version: number;\n  data: ArtifactData;\n  metadata: Record<string, any>;\n  created_at: string;\n  created_by?: string;\n  comment?: string;\n}\n\nexport interface ArtifactRelation {\n  id: number;\n  source_artifact_id: number;\n  target_artifact_id: number;\n  relation_type: string;\n  metadata: Record<string, any>;\n  created_at: string;\n}\n\ninterface ArtifactsState {\n  artifacts: Artifact[];\n  currentArtifact: Artifact | null;\n  currentArtifactVersions: ArtifactVersion[];\n  currentArtifactRelations: ArtifactRelation[];\n  isLoading: boolean;\n  isLoadingVersions: boolean;\n  isLoadingRelations: boolean;\n  error: string | null;\n  lastFetched: number | null;\n}\n\nconst initialState: ArtifactsState = {\n  artifacts: [],\n  currentArtifact: null,\n  currentArtifactVersions: [],\n  currentArtifactRelations: [],\n  isLoading: false,\n  isLoadingVersions: false,\n  isLoadingRelations: false,\n  error: null,\n  lastFetched: null,\n};\n\n// Async thunks\nexport const fetchArtifacts = createAsyncThunk(\n  'artifacts/fetchAll',\n  async (projectId: number, { rejectWithValue }) => {\n    console.log(`[Artifacts] fetchArtifacts called with projectId: ${projectId}`);\n    try {\n      console.log(`[Artifacts] Fetching artifacts for project ${projectId}`);\n      const response = await api.get(`/api/v2/projects/${projectId}/artifacts`);\n      console.log(`[Artifacts] Fetched ${response.length} artifacts`);\n      return response;\n    } catch (error: any) {\n      console.error('[Artifacts] Error fetching artifacts:', error);\n      return rejectWithValue(error.message || 'Failed to fetch artifacts');\n    }\n  }\n);\n\nexport const fetchArtifact = createAsyncThunk(\n  'artifacts/fetchOne',\n  async ({ projectId, id }: { projectId: number; id: number }, { rejectWithValue }) => {\n    try {\n      console.log(`[Artifacts] Fetching artifact ${id} for project ${projectId}`);\n      const response = await api.get(`/api/v2/projects/${projectId}/artifacts/${id}`);\n      return response;\n    } catch (error: any) {\n      console.error('[Artifacts] Error fetching artifact:', error);\n      return rejectWithValue(error.message || 'Failed to fetch artifact');\n    }\n  }\n);\n\nexport const createArtifact = createAsyncThunk(\n  'artifacts/create',\n  async ({ projectId, artifact }: { projectId: number; artifact: Partial<Artifact> }, { rejectWithValue }) => {\n    try {\n      console.log(`[Artifacts] Creating artifact in project ${projectId}:`, artifact.name);\n      const response = await api.post(`/api/v2/projects/${projectId}/artifacts`, artifact);\n      console.log(`[Artifacts] Created artifact with id ${response.id}`);\n      return response;\n    } catch (error: any) {\n      console.error('[Artifacts] Error creating artifact:', error);\n      return rejectWithValue(error.message || 'Failed to create artifact');\n    }\n  }\n);\n\nexport const updateArtifact = createAsyncThunk(\n  'artifacts/update',\n  async ({ projectId, id, updates }: { projectId: number; id: number; updates: Partial<Artifact> }, { rejectWithValue }) => {\n    try {\n      console.log(`[Artifacts] Updating artifact ${id} in project ${projectId}`);\n      const response = await api.put(`/api/v2/projects/${projectId}/artifacts/${id}`, updates);\n      console.log(`[Artifacts] Updated artifact ${id} to version ${response.version}`);\n      return response;\n    } catch (error: any) {\n      console.error('[Artifacts] Error updating artifact:', error);\n      return rejectWithValue(error.message || 'Failed to update artifact');\n    }\n  }\n);\n\nexport const deleteArtifact = createAsyncThunk(\n  'artifacts/delete',\n  async ({ projectId, id }: { projectId: number; id: number }, { rejectWithValue }) => {\n    try {\n      console.log(`[Artifacts] Deleting artifact ${id} from project ${projectId}`);\n      await api.delete(`/api/v2/projects/${projectId}/artifacts/${id}`);\n      console.log(`[Artifacts] Deleted artifact ${id}`);\n      return id;\n    } catch (error: any) {\n      console.error('[Artifacts] Error deleting artifact:', error);\n      return rejectWithValue(error.message || 'Failed to delete artifact');\n    }\n  }\n);\n\nexport const deriveArtifact = createAsyncThunk(\n  'artifacts/derive',\n  async ({ projectId, id, derivation }: { projectId: number; id: number; derivation: Partial<Artifact> }, { rejectWithValue }) => {\n    try {\n      console.log(`[Artifacts] Deriving new artifact from ${id} in project ${projectId}`);\n      const response = await api.post(`/api/v2/projects/${projectId}/artifacts/${id}/derive`, derivation);\n      console.log(`[Artifacts] Derived artifact ${response.id} from ${id}`);\n      return response;\n    } catch (error: any) {\n      console.error('[Artifacts] Error deriving artifact:', error);\n      return rejectWithValue(error.message || 'Failed to derive artifact');\n    }\n  }\n);\n\nexport const fetchArtifactVersions = createAsyncThunk(\n  'artifacts/fetchVersions',\n  async ({ projectId, id }: { projectId: number; id: number }, { rejectWithValue }) => {\n    try {\n      console.log(`[Artifacts] Fetching versions for artifact ${id}`);\n      const response = await api.get(`/api/v2/projects/${projectId}/artifacts/${id}/versions`);\n      console.log(`[Artifacts] Fetched ${response.length} versions`);\n      return response;\n    } catch (error: any) {\n      console.error('[Artifacts] Error fetching versions:', error);\n      return rejectWithValue(error.message || 'Failed to fetch versions');\n    }\n  }\n);\n\nexport const fetchArtifactRelations = createAsyncThunk(\n  'artifacts/fetchRelations',\n  async ({ projectId, id }: { projectId: number; id: number }, { rejectWithValue }) => {\n    try {\n      console.log(`[Artifacts] Fetching relations for artifact ${id}`);\n      const response = await api.get(`/api/v2/projects/${projectId}/artifacts/${id}/relations`);\n      console.log(`[Artifacts] Fetched ${response.length} relations`);\n      return response;\n    } catch (error: any) {\n      console.error('[Artifacts] Error fetching relations:', error);\n      return rejectWithValue(error.message || 'Failed to fetch relations');\n    }\n  }\n);\n\n// Helper function to migrate legacy graph to artifact format\nexport const migrateLegacyGraph = (graph: any): Artifact => {\n  console.log('[Artifacts] Migrating legacy graph to artifact format:', graph.id);\n  return {\n    id: graph.id,\n    project_id: graph.project_id,\n    type: 'graph',\n    name: graph.name || 'Imported Graph',\n    description: graph.description,\n    data: {\n      nodes: graph.nodes || [],\n      edges: graph.edges || [],\n    },\n    metadata: {\n      legacy: true,\n      original_id: graph.id,\n      migrated_at: new Date().toISOString(),\n    },\n    created_at: graph.created_at || new Date().toISOString(),\n    updated_at: graph.updated_at || new Date().toISOString(),\n    version: 1,\n  };\n};\n\nconst artifactsSlice = createSlice({\n  name: 'artifacts',\n  initialState,\n  reducers: {\n    setCurrentArtifact: (state, action: PayloadAction<Artifact | null>) => {\n      console.log('[Artifacts] Setting current artifact:', action.payload?.id);\n      state.currentArtifact = action.payload;\n    },\n    clearArtifactError: (state) => {\n      state.error = null;\n    },\n    clearCurrentArtifact: (state) => {\n      state.currentArtifact = null;\n      state.currentArtifactVersions = [];\n      state.currentArtifactRelations = [];\n    },\n    updateArtifactData: (state, action: PayloadAction<{ id: number; data: Partial<ArtifactData> }>) => {\n      const artifact = state.artifacts.find(a => a.id === action.payload.id);\n      if (artifact) {\n        artifact.data = { ...artifact.data, ...action.payload.data };\n        artifact.updated_at = new Date().toISOString();\n      }\n      if (state.currentArtifact?.id === action.payload.id) {\n        state.currentArtifact.data = { ...state.currentArtifact.data, ...action.payload.data };\n        state.currentArtifact.updated_at = new Date().toISOString();\n      }\n    },\n    // Для обратной совместимости со старым graphSlice\n    setGraphData: (state, action: PayloadAction<{ nodes: any[]; edges: any[] }>) => {\n      if (state.currentArtifact?.type === 'graph') {\n        state.currentArtifact.data.nodes = action.payload.nodes;\n        state.currentArtifact.data.edges = action.payload.edges;\n      }\n    },\n  },\n  extraReducers: (builder) => {\n    builder\n      // fetchArtifacts\n      .addCase(fetchArtifacts.pending, (state) => {\n        state.isLoading = true;\n        state.error = null;\n      })\n      .addCase(fetchArtifacts.fulfilled, (state, action) => {\n        state.isLoading = false;\n        state.artifacts = action.payload;\n        state.lastFetched = Date.now();\n        console.log(`[Artifacts] Store updated with ${action.payload.length} artifacts`);\n      })\n      .addCase(fetchArtifacts.rejected, (state, action) => {\n        state.isLoading = false;\n        state.error = action.payload as string;\n      })\n      \n      // fetchArtifact\n      .addCase(fetchArtifact.pending, (state) => {\n        state.isLoading = true;\n        state.error = null;\n      })\n      .addCase(fetchArtifact.fulfilled, (state, action) => {\n        state.isLoading = false;\n        state.currentArtifact = action.payload;\n        console.log(`[Artifacts] Current artifact set to ${action.payload.id}`);\n      })\n      .addCase(fetchArtifact.rejected, (state, action) => {\n        state.isLoading = false;\n        state.error = action.payload as string;\n      })\n      \n      // createArtifact\n      .addCase(createArtifact.fulfilled, (state, action) => {\n        state.artifacts.push(action.payload);\n        console.log(`[Artifacts] Artifact ${action.payload.id} added to store`);\n      })\n      \n      // updateArtifact\n      .addCase(updateArtifact.fulfilled, (state, action) => {\n        const index = state.artifacts.findIndex(a => a.id === action.payload.id);\n        if (index !== -1) {\n          state.artifacts[index] = action.payload;\n        }\n        if (state.currentArtifact?.id === action.payload.id) {\n          state.currentArtifact = action.payload;\n        }\n        console.log(`[Artifacts] Artifact ${action.payload.id} updated in store`);\n      })\n      \n      // deleteArtifact\n      .addCase(deleteArtifact.fulfilled, (state, action) => {\n        state.artifacts = state.artifacts.filter(a => a.id !== action.payload);\n        if (state.currentArtifact?.id === action.payload) {\n          state.currentArtifact = null;\n        }\n        console.log(`[Artifacts] Artifact ${action.payload} removed from store`);\n      })\n      \n      // deriveArtifact\n      .addCase(deriveArtifact.fulfilled, (state, action) => {\n        state.artifacts.push(action.payload);\n        console.log(`[Artifacts] Derived artifact ${action.payload.id} added to store`);\n      })\n      \n      // fetchArtifactVersions\n      .addCase(fetchArtifactVersions.pending, (state) => {\n        state.isLoadingVersions = true;\n      })\n      .addCase(fetchArtifactVersions.fulfilled, (state, action) => {\n        state.isLoadingVersions = false;\n        state.currentArtifactVersions = action.payload;\n      })\n      .addCase(fetchArtifactVersions.rejected, (state) => {\n        state.isLoadingVersions = false;\n      })\n      \n      // fetchArtifactRelations\n      .addCase(fetchArtifactRelations.pending, (state) => {\n        state.isLoadingRelations = true;\n      })\n      .addCase(fetchArtifactRelations.fulfilled, (state, action) => {\n        state.isLoadingRelations = false;\n        state.currentArtifactRelations = action.payload;\n      })\n      .addCase(fetchArtifactRelations.rejected, (state) => {\n        state.isLoadingRelations = false;\n      });\n  },\n});\n\nexport const { \n  setCurrentArtifact, \n  clearArtifactError, \n  clearCurrentArtifact,\n  updateArtifactData,\n  setGraphData // для обратной совместимости\n} = artifactsSlice.actions;\n\nexport default artifactsSlice.reducer;",
@@ -49173,6 +49331,11 @@
       "content": "// src/store/slices/graphSlice.ts\nimport { createSlice, PayloadAction } from '@reduxjs/toolkit';\n\nexport interface Node {\n  id: string;\n  label?: string;\n  type: string;\n  attributes: Record<string, any>;\n  x?: number;\n  y?: number;\n}\n\nexport interface Edge {\n  id: string;\n  from: string;\n  to: string;\n  type: string;\n  attributes: Record<string, any>;\n}\n\ninterface GraphState {\n  nodes: Node[];\n  edges: Edge[];\n  isLoading: boolean;\n  error: string | null;\n  networkInstance: any | null;\n  lastSaved: Date | null;\n}\n\nconst initialState: GraphState = {\n  nodes: [],\n  edges: [],\n  isLoading: false,\n  error: null,\n  networkInstance: null,\n  lastSaved: null,\n};\n\nconst graphSlice = createSlice({\n  name: 'graph',\n  initialState,\n  reducers: {\n    setGraphData: (state, action: PayloadAction<{ nodes: Node[]; edges: Edge[] }>) => {\n      state.nodes = action.payload.nodes;\n      state.edges = action.payload.edges;\n    },\n    addNode: (state, action: PayloadAction<Node>) => {\n      state.nodes.push(action.payload);\n    },\n    updateNode: (state, action: PayloadAction<{ id: string; updates: Partial<Node> }>) => {\n      const index = state.nodes.findIndex(n => n.id === action.payload.id);\n      if (index !== -1) {\n        state.nodes[index] = { ...state.nodes[index], ...action.payload.updates };\n      }\n    },\n    deleteNode: (state, action: PayloadAction<string>) => {\n      state.nodes = state.nodes.filter(n => n.id !== action.payload);\n      state.edges = state.edges.filter(e => e.from !== action.payload && e.to !== action.payload);\n    },\n    addEdge: (state, action: PayloadAction<Edge>) => {\n      state.edges.push(action.payload);\n    },\n    deleteEdge: (state, action: PayloadAction<string>) => {\n      state.edges = state.edges.filter(e => e.id !== action.payload);\n    },\n    setLoading: (state, action: PayloadAction<boolean>) => {\n      state.isLoading = action.payload;\n    },\n    setError: (state, action: PayloadAction<string | null>) => {\n      state.error = action.payload;\n    },\n    setNetworkInstance: (state, action: PayloadAction<any>) => {\n      state.networkInstance = action.payload;\n    },\n    setLastSaved: (state, action: PayloadAction<Date>) => {\n      state.lastSaved = action.payload;\n    },\n    clearGraph: (state) => {\n      state.nodes = [];\n      state.edges = [];\n      state.error = null;\n    },\n  },\n});\n\nexport const {\n  setGraphData,\n  addNode,\n  updateNode,\n  deleteNode,\n  addEdge,\n  deleteEdge,\n  setLoading,\n  setError,\n  setNetworkInstance,\n  setLastSaved,\n  clearGraph,\n} = graphSlice.actions;\nexport default graphSlice.reducer;\n",
       "lines": 100,
       "hash": "680fdb80"
+    },
+    "frontend/src/store/slices/historySlice.ts": {
+      "content": "// frontend/src/store/slices/historySlice.ts\nimport { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';\nimport { api } from '../../services/api';\n\nexport interface HistoryAction {\n  id: string;\n  artifactId: number;\n  actionType: string;\n  beforeState: any;\n  afterState: any;\n  timestamp: string;\n  description: string;\n  userType?: 'user' | 'plugin';\n  pluginId?: string;\n  groupId?: string;\n}\n\ninterface HistoryState {\n  actions: HistoryAction[];\n  currentIndex: number;\n  isLoading: boolean;\n  error: string | null;\n}\n\nconst initialState: HistoryState = {\n  actions: [],\n  currentIndex: -1,\n  isLoading: false,\n  error: null\n};\n\n// ============================================================================\n// Async Thunks\n// ============================================================================\n\nexport const fetchHistory = createAsyncThunk(\n  'history/fetch',\n  async (artifactId: number, { rejectWithValue }) => {\n    try {\n      const response = await api.get(`/api/v2/artifacts/${artifactId}/history?limit=100`);\n      return { artifactId, actions: response.data };\n    } catch (error: any) {\n      return rejectWithValue(error.response?.data?.detail || 'Failed to fetch history');\n    }\n  }\n);\n\nexport const recordAction = createAsyncThunk(\n  'history/record',\n  async ({ \n    artifactId, \n    action \n  }: { \n    artifactId: number; \n    action: any;\n  }, { rejectWithValue }) => {\n    try {\n      const response = await api.post(`/api/v2/artifacts/${artifactId}/history/actions`, action);\n      return response.data;\n    } catch (error: any) {\n      return rejectWithValue(error.response?.data?.detail || 'Failed to record action');\n    }\n  }\n);\n\nexport const undo = createAsyncThunk(\n  'history/undo',\n  async (artifactId: number, { rejectWithValue }) => {\n    try {\n      const response = await api.post(`/api/v2/artifacts/${artifactId}/history/undo`);\n      return response.data;\n    } catch (error: any) {\n      if (error.response?.status === 404) {\n        return null;\n      }\n      return rejectWithValue(error.response?.data?.detail || 'Failed to undo');\n    }\n  }\n);\n\nexport const redo = createAsyncThunk(\n  'history/redo',\n  async (artifactId: number, { rejectWithValue }) => {\n    try {\n      const response = await api.post(`/api/v2/artifacts/${artifactId}/history/redo`);\n      return response.data;\n    } catch (error: any) {\n      if (error.response?.status === 404) {\n        return null;\n      }\n      return rejectWithValue(error.response?.data?.detail || 'Failed to redo');\n    }\n  }\n);\n\n// ============================================================================\n// Slice\n// ============================================================================\n\nconst historySlice = createSlice({\n  name: 'history',\n  initialState,\n  reducers: {\n    addLocalAction: (state, action: PayloadAction<HistoryAction>) => {\n      if (state.currentIndex < state.actions.length - 1) {\n        state.actions = state.actions.slice(0, state.currentIndex + 1);\n      }\n      state.actions.push(action.payload);\n      state.currentIndex = state.actions.length - 1;\n    },\n    \n    jumpToAction: (state, action: PayloadAction<number>) => {\n      if (action.payload >= 0 && action.payload < state.actions.length) {\n        state.currentIndex = action.payload;\n      }\n    },\n    \n    resetHistory: (state) => {\n      state.actions = [];\n      state.currentIndex = -1;\n      state.error = null;\n    },\n    \n    clearError: (state) => {\n      state.error = null;\n    }\n  },\n  extraReducers: (builder) => {\n    builder\n      // Fetch History\n      .addCase(fetchHistory.pending, (state) => {\n        state.isLoading = true;\n        state.error = null;\n      })\n      .addCase(fetchHistory.fulfilled, (state, action) => {\n        state.isLoading = false;\n        state.actions = action.payload.actions;\n        state.currentIndex = action.payload.actions.length - 1;\n      })\n      .addCase(fetchHistory.rejected, (state, action) => {\n        state.isLoading = false;\n        state.error = action.payload as string;\n      })\n      \n      // Record Action\n      .addCase(recordAction.fulfilled, (state, action) => {\n        if (state.currentIndex < state.actions.length - 1) {\n          state.actions = state.actions.slice(0, state.currentIndex + 1);\n        }\n        state.actions.push(action.payload);\n        state.currentIndex = state.actions.length - 1;\n      })\n      \n      // Undo\n      .addCase(undo.fulfilled, (state, action) => {\n        if (action.payload) {\n          state.currentIndex = Math.max(-1, state.currentIndex - 1);\n        }\n      });\n  }\n});\n\nexport const { addLocalAction, jumpToAction, resetHistory, clearError } = historySlice.actions;\nexport default historySlice.reducer;\n",
+      "lines": 165,
+      "hash": "cc30440a"
     },
     "frontend/src/store/slices/projectsSlice.ts": {
       "content": "// store/slices/projectsSlice.ts\nimport { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';\nimport { api } from '../../services/api';\n\nexport interface Project {\n  id: number;\n  name: string;\n  description?: string;\n  created_at: string;\n  updated_at: string;\n}\n\ninterface ProjectsState {\n  projects: Project[];\n  currentProject: Project | null;\n  isLoading: boolean;\n  error: string | null;\n}\n\nconst initialState: ProjectsState = {\n  projects: [],\n  currentProject: null,\n  isLoading: false,\n  error: null,\n};\n\nexport const fetchProjects = createAsyncThunk(\n  'projects/fetchAll',\n  async () => {\n    console.log('[Projects] Fetching all projects');\n    const response = await api.get('/api/v1/projects');\n    return response;\n  }\n);\n\nconst projectsSlice = createSlice({\n  name: 'projects',\n  initialState,\n  reducers: {\n    setCurrentProject: (state, action: PayloadAction<number>) => {\n      const project = state.projects.find(p => p.id === action.payload);\n      if (project) {\n        state.currentProject = project;\n        console.log('[Projects] Current project set to:', project.id, project.name);\n      } else {\n        console.warn('[Projects] Project not found:', action.payload);\n      }\n    },\n  },\n  extraReducers: (builder) => {\n    builder\n      .addCase(fetchProjects.pending, (state) => {\n        state.isLoading = true;\n      })\n      .addCase(fetchProjects.fulfilled, (state, action) => {\n        state.isLoading = false;\n        state.projects = action.payload;\n        console.log('[Projects] Loaded projects:', action.payload.length);\n      })\n      .addCase(fetchProjects.rejected, (state, action) => {\n        state.isLoading = false;\n        state.error = action.error.message || 'Failed to fetch projects';\n      });\n  },\n});\n\nexport const { setCurrentProject } = projectsSlice.actions;\nexport default projectsSlice.reducer;",
@@ -49282,6 +49445,30 @@
     {
       "file": "graphs.py",
       "signature": "@router.delete(\"/{graph_id}\")"
+    },
+    {
+      "file": "history.py",
+      "signature": "@router.get(\"\", response_model=List[GraphActionResponse])"
+    },
+    {
+      "file": "history.py",
+      "signature": "@router.post(\"/actions\", response_model=GraphActionResponse, status_code=201)"
+    },
+    {
+      "file": "history.py",
+      "signature": "@router.post(\"/undo\", response_model=UndoResponse)"
+    },
+    {
+      "file": "history.py",
+      "signature": "@router.post(\"/redo\", response_model=RedoResponse)"
+    },
+    {
+      "file": "history.py",
+      "signature": "@router.get(\"/actions/{action_id}\", response_model=GraphActionResponse)"
+    },
+    {
+      "file": "history.py",
+      "signature": "@router.get(\"/count\")"
     },
     {
       "file": "projects.py",
@@ -49456,6 +49643,10 @@
     {
       "file": "edge.py",
       "class": "Edge(Base):"
+    },
+    {
+      "file": "action.py",
+      "class": "GraphAction(Base):"
     }
   ],
   "dependencies": {
@@ -49499,13 +49690,16 @@
         "react-redux": "^8.1.3",
         "react-router-dom": "^6.20.0",
         "typescript": "^5.2.2",
-        "vis-network": "^9.1.2",
+        "uuid": "^8.3.2",
+        "vis-data": "^7.1.10",
+        "vis-network": "^9.1.13",
         "vite": "^5.0.0",
         "zustand": "^4.4.7"
       },
       "devDependencies": {
         "@types/react": "^18.2.43",
         "@types/react-dom": "^18.2.17",
+        "@types/uuid": "^8.3.4",
         "@types/vis": "^4.21.27",
         "@typescript-eslint/eslint-plugin": "^6.14.0",
         "@typescript-eslint/parser": "^6.14.0",

@@ -23,7 +23,7 @@ class GraphActionResponse(GraphActionBase):
     id: UUID
     artifact_id: int
     timestamp: datetime
-    
+
     class Config:
         from_attributes = True
 
@@ -42,3 +42,8 @@ class RedoResponse(BaseModel):
     state: Dict[str, Any]
     description: str
     timestamp: datetime
+
+class ActionsCountResponse(BaseModel):
+    """Response for actions count."""
+    artifact_id: int
+    total_actions: int

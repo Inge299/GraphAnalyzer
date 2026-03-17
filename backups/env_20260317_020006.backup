@@ -1,0 +1,24 @@
+# Database Configuration
+DATABASE_URL=postgresql+asyncpg://osint_user:osint_password@postgres:5432/osint_db
+POSTGRES_USER=osint_user
+POSTGRES_PASSWORD=osint_password
+POSTGRES_DB=osint_db
+
+# Redis Configuration
+REDIS_URL=redis://redis:6379/0
+
+# Application Settings
+SECRET_KEY=your-secret-key-here-$(date +%s)
+ENVIRONMENT=development
+LOG_LEVEL=INFO
+API_V1_PREFIX=/api/v1
+
+# CORS Settings
+BACKEND_CORS_ORIGINS=["http://localhost:3000", "http://localhost:5000"]
+
+# Celery Settings
+CELERY_BROKER_URL=redis://redis:6379/1
+CELERY_RESULT_BACKEND=redis://redis:6379/2
+
+# File Upload Settings
+MAX_UPLOAD_SIZE=10485760

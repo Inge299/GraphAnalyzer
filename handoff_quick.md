@@ -1,5 +1,5 @@
 # OSINT Graph Analyzer - Quick Handoff
-**Дата:** 2026-03-10T16:43:40.336560
+**Дата:** 2026-03-13T17:28:33.500320
 **Версия:** v1.0
 
 ## 🎯 Current Status
@@ -18,4 +18,4 @@
 - `app/api/routes/artifacts.py`
 - `app/api/routes/edges.py`
 - `app/api/routes/graphs.py`
-- `app/api/routes/nodes.py`
+- `app/api/routes/history.py`

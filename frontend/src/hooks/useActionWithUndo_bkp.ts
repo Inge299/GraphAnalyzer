@@ -36,44 +36,39 @@ export function useActionWithUndo<T extends object>(
   ) => {
     // Сохраняем состояние ДО
     const beforeState = JSON.parse(JSON.stringify(currentState));
-  
+    
     try {
       // Выполняем действие
       await actionFn();
-    
-      // НЕ используем currentState здесь, потому что он мог не обновиться!
-      // Вместо этого получаем состояние через props или вызываем функцию
-    
-      // Даем время на обновление React состояния
-      await new Promise(resolve => setTimeout(resolve, 10));
-    
-      // Получаем актуальное состояние
+      
+      // Получаем состояние ПОСЛЕ
       const afterState = JSON.parse(JSON.stringify(currentState));
-    
-      // Всегда записываем в историю, если это не батч или если состояние изменилось
-      const stateChanged = JSON.stringify(beforeState) !== JSON.stringify(afterState);
-    
-      if (!stateChanged && options.actionType !== 'batch_move') {
+      
+      // Если состояние не изменилось - не записываем
+      if (JSON.stringify(beforeState) === JSON.stringify(afterState)) {
         console.log('⏭️ State unchanged, skipping history');
         return;
       }
-    
-      console.log(`📝 Recording action: ${options.description}`, { beforeState, afterState });
-    
+      
+      // Создаем запись
+      const actionData = {
+        action_type: options.actionType,
+        before_state: beforeState,
+        after_state: afterState,
+        description: options.description,
+        user_type: options.pluginId ? 'plugin' : 'user',
+        plugin_id: options.pluginId,
+        group_id: options.groupId
+      };
+      
+      console.log(`📝 Recording action: ${options.description}`);
+      
       // Отправляем на сервер
       const response = await api.post(
         `/api/v2/artifacts/${artifactId}/history/actions`,
-        {
-          action_type: options.actionType,
-          before_state: beforeState,
-          after_state: afterState,
-          description: options.description,
-          user_type: options.pluginId ? 'plugin' : 'user',
-          plugin_id: options.pluginId,
-          group_id: options.groupId
-        }
+        actionData
       );
-    
+      
       // Добавляем в Redux
       dispatch(addAction({
         id: response.id,
@@ -83,11 +78,11 @@ export function useActionWithUndo<T extends object>(
         afterState,
         timestamp: response.timestamp || new Date().toISOString(),
         description: options.description,
-        userType: options.pluginId ? 'plugin' : 'user',
+        userType: actionData.user_type,
         pluginId: options.pluginId,
         groupId: options.groupId
       }));
-    
+      
       console.log(`✅ Action recorded: ${options.description}`);
     } catch (error) {
       console.error('❌ Action failed:', error);
@@ -100,9 +95,6 @@ export function useActionWithUndo<T extends object>(
       throw error;
     }
   }, [artifactId, currentState, onStateChange, dispatch]);
-
-
-
 
   /**
    * Отменить последнее действие
