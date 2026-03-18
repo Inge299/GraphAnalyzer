@@ -1,6 +1,7 @@
 // frontend/src/store/slices/historySlice.ts
 import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
 import { api } from '../../services/api';
+import { RootState } from '../index';  // Импортируем RootState для селекторов
 
 export interface HistoryAction {
   id: string;
@@ -17,7 +18,7 @@ export interface HistoryAction {
 
 interface HistoryState {
   actions: HistoryAction[];
-  currentActionId: string | null; // ID текущего действия (последнего примененного)
+  currentActionId: string | null;
   isLoading: boolean;
   error: string | null;
 }
@@ -40,7 +41,7 @@ export const fetchHistory = createAsyncThunk(
 
 export const undo = createAsyncThunk(
   'history/undo',
-  async (artifactId: number, { dispatch }) => {
+  async (artifactId: number) => {
     const response = await api.post(`/api/v2/artifacts/${artifactId}/history/undo`);
     return response;
   }
@@ -48,7 +49,7 @@ export const undo = createAsyncThunk(
 
 export const redo = createAsyncThunk(
   'history/redo',
-  async (artifactId: number, { dispatch }) => {
+  async (artifactId: number) => {
     const response = await api.post(`/api/v2/artifacts/${artifactId}/history/redo`);
     return response;
   }
@@ -59,7 +60,6 @@ const historySlice = createSlice({
   initialState,
   reducers: {
     addAction: (state, action: PayloadAction<HistoryAction>) => {
-      // Добавляем действие в конец списка
       state.actions.push(action.payload);
       state.currentActionId = action.payload.id;
       state.error = null;
@@ -90,7 +90,6 @@ const historySlice = createSlice({
       .addCase(fetchHistory.fulfilled, (state, action) => {
         state.isLoading = false;
         state.actions = action.payload;
-        // Последнее действие в списке - текущее
         if (action.payload.length > 0) {
           state.currentActionId = action.payload[action.payload.length - 1].id;
         }
@@ -107,14 +106,12 @@ const historySlice = createSlice({
       })
       .addCase(undo.fulfilled, (state, action) => {
         state.isLoading = false;
-        // Сервер вернул action_id отмененного действия
-        // Находим индекс этого действия и устанавливаем предыдущее как текущее
         const undoneActionId = action.payload.action_id;
         const index = state.actions.findIndex(a => a.id === undoneActionId);
         if (index > 0) {
           state.currentActionId = state.actions[index - 1].id;
         } else if (index === 0) {
-          state.currentActionId = null; // Отменили первое действие
+          state.currentActionId = null;
         }
       })
       .addCase(undo.rejected, (state, action) => {
@@ -129,7 +126,6 @@ const historySlice = createSlice({
       })
       .addCase(redo.fulfilled, (state, action) => {
         state.isLoading = false;
-        // Сервер вернул action_id повторяемого действия
         state.currentActionId = action.payload.action_id;
       })
       .addCase(redo.rejected, (state, action) => {
@@ -138,6 +134,58 @@ const historySlice = createSlice({
       });
   }
 });
+
+// ============================================================================
+// Селекторы
+// ============================================================================
+
+export const selectHistoryActions = (state: RootState) => state.history.actions;
+export const selectCurrentActionId = (state: RootState) => state.history.currentActionId;
+export const selectIsHistoryLoading = (state: RootState) => state.history.isLoading;
+export const selectHistoryError = (state: RootState) => state.history.error;
+
+/**
+ * Проверяет, доступна ли операция Undo
+ */
+export const selectCanUndo = (state: RootState) => {
+  const { actions, currentActionId } = state.history;
+  if (actions.length === 0) return false;
+  if (!currentActionId) return actions.length > 0;
+  const currentIndex = actions.findIndex(a => a.id === currentActionId);
+  return currentIndex > 0;
+};
+
+/**
+ * Проверяет, доступна ли операция Redo
+ */
+export const selectCanRedo = (state: RootState) => {
+  const { actions, currentActionId } = state.history;
+  if (actions.length === 0) return false;
+  if (!currentActionId) return false;
+  const currentIndex = actions.findIndex(a => a.id === currentActionId);
+  return currentIndex < actions.length - 1;
+};
+
+/**
+ * Возвращает текущее действие (последнее примененное)
+ */
+export const selectCurrentAction = (state: RootState) => {
+  const { actions, currentActionId } = state.history;
+  if (!currentActionId) return null;
+  return actions.find(a => a.id === currentActionId) || null;
+};
+
+/**
+ * Возвращает все действия, отсортированные для отображения (новые сверху)
+ */
+export const selectActionsForDisplay = (state: RootState) => {
+  return [...state.history.actions].reverse();
+};
+
+/**
+ * Возвращает количество действий в истории
+ */
+export const selectActionsCount = (state: RootState) => state.history.actions.length;
 
 export const { addAction, setCurrentIndex, resetHistory, clearError } = historySlice.actions;
 export default historySlice.reducer;
