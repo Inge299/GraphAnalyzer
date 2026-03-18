@@ -1,15 +1,16 @@
 // frontend/src/components/views/DocumentView.tsx
 import React from 'react';
-import { Artifact } from '../../store/slices/artifactsSlice';
+import type { ApiArtifact } from '../../types/api';
 
 interface DocumentViewProps {
-  artifact: Artifact;
-  onUpdate: (updates: Partial<Artifact>) => void;
+  artifact: ApiArtifact;
+  _onUpdate: (updates: Partial<ApiArtifact>) => void;
 }
 
-const DocumentView: React.FC<DocumentViewProps> = ({ artifact, onUpdate }) => {
+const DocumentView: React.FC<DocumentViewProps> = ({ artifact, _onUpdate }) => {
   console.log('[DocumentView] Rendering document:', artifact.id);
-
+  // onUpdate пока не используется, будет в Phase 2.5
+  _onUpdate && _onUpdate({});
   return (
     <div className="h-full overflow-auto p-8">
       <div className="max-w-4xl mx-auto bg-gray-800 rounded-lg p-8">
@@ -18,7 +19,7 @@ const DocumentView: React.FC<DocumentViewProps> = ({ artifact, onUpdate }) => {
           <p className="text-gray-400 mb-6">{artifact.description}</p>
         )}
         <div className="prose prose-invert max-w-none">
-          {artifact.data.content ? (
+          {artifact.data?.content ? (
             <div className="whitespace-pre-wrap text-gray-300">
               {artifact.data.content}
             </div>

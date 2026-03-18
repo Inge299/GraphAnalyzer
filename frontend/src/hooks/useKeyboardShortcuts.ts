@@ -3,7 +3,8 @@ import { useEffect } from 'react';
 import { useAppDispatch } from '../store';
 import { undo, redo } from '../store/slices/historySlice';
 
-export const useKeyboardShortcuts = (graphId: number) => {
+export const useKeyboardShortcuts = (artifactId: number) => {
+
   const dispatch = useAppDispatch();
   
   useEffect(() => {
@@ -18,13 +19,13 @@ export const useKeyboardShortcuts = (graphId: number) => {
       // Ctrl+Z или Cmd+Z
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
         e.preventDefault();
-        dispatch(undo());
+        dispatch(undo(artifactId));
       }
       
       // Ctrl+Y или Cmd+Shift+Z
       if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
         e.preventDefault();
-        dispatch(redo());
+        dispatch(redo(artifactId));
       }
     };
     

@@ -9,7 +9,8 @@ interface InspectorPanelProps {
 
 const InspectorPanel: React.FC<InspectorPanelProps> = ({ width }) => {
   const selectedElements = useSelector((state: RootState) => state.ui.selectedElements);
-  const currentArtifact = useSelector((state: RootState) => state.artifacts.currentArtifact);
+  const currentArtifactId = useSelector((state: RootState) => state.artifacts.currentArtifactId);
+  const currentArtifact = currentArtifactId ? useSelector((state: RootState) => state.artifacts.items[currentArtifactId]) : null;
 
   const formatValue = (value: any): string => {
     if (value === null || value === undefined) return '—';

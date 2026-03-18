@@ -1,24 +1,26 @@
 // frontend/src/components/views/MapView.tsx
 import React from 'react';
-import { Artifact } from '../../store/slices/artifactsSlice';
+import type { ApiArtifact } from '../../types/api';
 
 interface MapViewProps {
-  artifact: Artifact;
-  onUpdate: (updates: Partial<Artifact>) => void;
+  artifact: ApiArtifact;
+  _onUpdate: (updates: Partial<ApiArtifact>) => void;
 }
 
-const MapView: React.FC<MapViewProps> = ({ artifact, onUpdate }) => {
+const MapView: React.FC<MapViewProps> = ({ artifact, _onUpdate }) => {
   console.log('[MapView] Rendering map:', artifact.id);
-
+  // onUpdate пока не используется, будет в Phase 2.5
+  _onUpdate && _onUpdate({});
   return (
-    <div className="h-full flex items-center justify-center bg-gray-900">
-      <div className="text-center text-gray-400">
-        <svg className="w-16 h-16 mx-auto mb-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-        </svg>
-        <p className="text-lg">Map View</p>
-        <p className="text-sm">Integration with mapping libraries coming soon</p>
-        <p className="text-xs mt-4 text-gray-600">Points: {artifact.data.points?.length || 0}</p>
+    <div className="h-full overflow-auto p-8">
+      <div className="max-w-4xl mx-auto bg-gray-800 rounded-lg p-8">
+        <h1 className="text-2xl font-bold text-white mb-4">{artifact.name}</h1>
+        {artifact.description && (
+          <p className="text-gray-400 mb-6">{artifact.description}</p>
+        )}
+        <div className="text-center text-gray-500 italic">
+          Map visualization coming in Phase 2.5
+        </div>
       </div>
     </div>
   );

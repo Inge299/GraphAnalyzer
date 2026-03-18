@@ -27,7 +27,7 @@ export const fetchArtifacts = createAsyncThunk(
     try {
       console.log(`[Artifacts] Fetching artifacts for project ${projectId}`);
       const response = await api.get(`/api/v2/projects/${projectId}/artifacts`);
-      return response;
+      return response.data;  // <-- ИСПРАВЛЕНО
     } catch (error: any) {
       console.error('[Artifacts] Error fetching artifacts:', error);
       return rejectWithValue(error.message || 'Failed to fetch artifacts');
@@ -41,7 +41,7 @@ export const fetchArtifact = createAsyncThunk(
     try {
       console.log(`[Artifacts] Fetching artifact ${id}`);
       const response = await api.get(`/api/v2/projects/${projectId}/artifacts/${id}`);
-      return response;
+      return response.data;  // <-- ИСПРАВЛЕНО
     } catch (error: any) {
       console.error('[Artifacts] Error fetching artifact:', error);
       return rejectWithValue(error.message || 'Failed to fetch artifact');
@@ -55,7 +55,7 @@ export const createArtifact = createAsyncThunk(
     try {
       console.log(`[Artifacts] Creating artifact in project ${projectId}`);
       const response = await api.post(`/api/v2/projects/${projectId}/artifacts`, data);
-      return response;
+      return response.data;  // <-- ИСПРАВЛЕНО
     } catch (error: any) {
       console.error('[Artifacts] Error creating artifact:', error);
       return rejectWithValue(error.message || 'Failed to create artifact');
@@ -77,8 +77,8 @@ export const updateArtifact = createAsyncThunk(
     try {
       console.log(`[Artifacts] Updating artifact ${id} in project ${projectId}`, updates);
       const response = await api.put(`/api/v2/projects/${projectId}/artifacts/${id}`, updates);
-      console.log(`[Artifacts] Updated artifact ${id} to version ${response.version}`);
-      return response;
+      console.log(`[Artifacts] Updated artifact ${id} to version ${response.data.version}`);  // <-- ИСПРАВЛЕНО
+      return response.data;  // <-- ИСПРАВЛЕНО
     } catch (error: any) {
       console.error('[Artifacts] Error updating artifact:', error);
       return rejectWithValue(error.message || 'Failed to update artifact');
@@ -92,7 +92,7 @@ export const deleteArtifact = createAsyncThunk(
     try {
       console.log(`[Artifacts] Deleting artifact ${id}`);
       await api.delete(`/api/v2/projects/${projectId}/artifacts/${id}`);
-      return id;
+      return id;  // id и так число, не нужно .data
     } catch (error: any) {
       console.error('[Artifacts] Error deleting artifact:', error);
       return rejectWithValue(error.message || 'Failed to delete artifact');
@@ -124,7 +124,7 @@ const artifactsSlice = createSlice({
       })
       .addCase(fetchArtifacts.fulfilled, (state, action) => {
         state.isLoading = false;
-        const artifacts = action.payload;
+        const artifacts = action.payload;  // теперь это уже data
         artifacts.forEach((artifact: ApiArtifact) => {
           state.items[artifact.id] = artifact;
         });
@@ -136,13 +136,13 @@ const artifactsSlice = createSlice({
 
       // Fetch single artifact
       .addCase(fetchArtifact.fulfilled, (state, action) => {
-        const artifact = action.payload;
+        const artifact = action.payload;  // теперь это уже data
         state.items[artifact.id] = artifact;
       })
 
       // Create artifact
       .addCase(createArtifact.fulfilled, (state, action) => {
-        const artifact = action.payload;
+        const artifact = action.payload;  // теперь это уже data
         state.items[artifact.id] = artifact;
         state.currentArtifactId = artifact.id;
         console.log(`[Artifacts] Artifact ${artifact.id} created in store`);
@@ -150,7 +150,7 @@ const artifactsSlice = createSlice({
 
       // Update artifact
       .addCase(updateArtifact.fulfilled, (state, action) => {
-        const artifact = action.payload;
+        const artifact = action.payload;  // теперь это уже data
         state.items[artifact.id] = {
           ...state.items[artifact.id],
           ...artifact
@@ -160,7 +160,7 @@ const artifactsSlice = createSlice({
 
       // Delete artifact
       .addCase(deleteArtifact.fulfilled, (state, action) => {
-        const id = action.payload;
+        const id = action.payload;  // id уже число
         delete state.items[id];
         if (state.currentArtifactId === id) {
           state.currentArtifactId = null;

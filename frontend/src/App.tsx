@@ -7,16 +7,14 @@ import TabBar from './components/layout/TabBar';
 import InspectorPanel from './components/layout/InspectorPanel';
 import ArtifactView from './components/views/ArtifactView';
 import { fetchProjects, setCurrentProject } from './store/slices/projectsSlice';
-import { fetchArtifacts, Artifact, updateArtifact } from './store/slices/artifactsSlice';
+
+import { fetchArtifacts, updateArtifact } from './store/slices/artifactsSlice';
+
 import { addTab, removeTab, setActiveTab } from './store/slices/uiSlice';
 import './App.css';
+import type { ApiArtifact } from './types/api';
 
-interface Tab {
-  id: string;
-  artifactId: number;
-  title: string;
-  type: string;
-}
+
 
 const App: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -53,7 +51,7 @@ const App: React.FC = () => {
     }
   }, [projects, currentProject, dispatch, hasInitialized]);
 
-  const handleArtifactSelect = (artifact: Artifact) => {
+  const handleArtifactSelect = (artifact: ApiArtifact) => {
     console.log('[App] Artifact selected:', artifact.id, artifact.name);
 
     const existingTab = tabs.find(tab => tab.artifactId === artifact.id);
@@ -80,7 +78,8 @@ const App: React.FC = () => {
     dispatch(removeTab(tabId));
   };
 
-  const handleArtifactUpdate = async (artifactId: number, updates: Partial<Artifact>) => {
+  const handleArtifactUpdate = async (artifactId: number, updates: Partial<ApiArtifact>) => {
+
     if (!currentProject) return;
 
     console.log(`[App] Updating artifact ${artifactId}:`, updates);
@@ -96,25 +95,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handleNodeMove = (artifactId: number, nodeId: string, x: number, y: number) => {
-    console.log(`[App] Node ${nodeId} moved to (${x}, ${y}) in artifact ${artifactId}`);
-
-    const artifact = artifactsList.find(a => a.id === artifactId);
-    if (!artifact || artifact.type !== 'graph') return;
-
-    const updatedNodes = artifact.data.nodes?.map((node: any) =>
-      node.id === nodeId || node.node_id === nodeId
-        ? { ...node, position_x: x, position_y: y }
-        : node
-    );
-
-    handleArtifactUpdate(artifactId, {
-      data: {
-        ...artifact.data,
-        nodes: updatedNodes,
-      },
-    });
-  };
+  
 
   const getArtifactIcon = (type: string): string => {
     switch (type) {
@@ -163,7 +144,7 @@ const App: React.FC = () => {
                 artifact={activeArtifact}
                 onClose={() => activeTabId && handleTabClose(activeTabId)}
                 onUpdate={(updates) => handleArtifactUpdate(activeArtifact.id, updates)}
-                onNodeMove={(nodeId, x, y) => handleNodeMove(activeArtifact.id, nodeId, x, y)}
+
               />
             ) : (
               <div className="empty-state">

@@ -1,7 +1,8 @@
 // frontend/src/components/history/HistoryPanel.tsx
 import React, { useState, useMemo } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store';
-import { undo, redo, jumpTo } from '../../store/slices/historySlice';
+import { undo, redo } from '../../store/slices/historySlice';
+import type { HistoryAction } from '../../store/slices/historySlice';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import './HistoryPanel.css';
@@ -24,7 +25,7 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({
   const [isOpen, setIsOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const getActionIcon = (type: string) => {
+  const getActionIcon = (type: string): string => {
     const icons: Record<string, string> = {
       'add_node': '➕',
       'delete_node': '➖',
@@ -38,46 +39,60 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({
     return icons[type] || '📌';
   };
 
-  const handleUndo = async () => {
+  const handleUndo = async (): Promise<void> => {
     if (onUndo) {
       onUndo();
     } else {
-      const result = await dispatch(undo(artifactId)).unwrap();
-      if (result?.state) {
-        onJump(result.state);
+      try {
+        const result = await dispatch(undo(artifactId)).unwrap();
+        // API возвращает данные в result.data
+        if (result?.data?.state) {
+          onJump(result.data.state);
+        } else if (result?.state) {
+          onJump(result.state);
+        }
+      } catch (error) {
+        console.error('Undo failed:', error);
       }
     }
   };
 
-  const handleRedo = async () => {
+  const handleRedo = async (): Promise<void> => {
     if (onRedo) {
       onRedo();
     } else {
-      const result = await dispatch(redo(artifactId)).unwrap();
-      if (result?.state) {
-        onJump(result.state);
+      try {
+        const result = await dispatch(redo(artifactId)).unwrap();
+        // API возвращает данные в result.data
+        if (result?.data?.state) {
+          onJump(result.data.state);
+        } else if (result?.state) {
+          onJump(result.state);
+        }
+      } catch (error) {
+        console.error('Redo failed:', error);
       }
     }
   };
 
-  const handleJump = (action: HistoryAction) => {
+  const handleJump = (action: HistoryAction): void => {
     onJump(action.afterState);
   };
 
   // Фильтрация по поиску
-  const filteredActions = useMemo(() => {
+  const filteredActions = useMemo((): HistoryAction[] => {
     if (!searchQuery.trim()) return actions;
     
     const query = searchQuery.toLowerCase();
-    return actions.filter(action => 
+    return actions.filter((action: HistoryAction) => 
       action.description.toLowerCase().includes(query) ||
       action.actionType.toLowerCase().includes(query)
     );
   }, [actions, searchQuery]);
 
   // Текущий индекс для подсветки
-  const currentIndex = useMemo(() => {
-    return actions.findIndex(a => a.id === currentActionId);
+  const currentIndex = useMemo((): number => {
+    return actions.findIndex((a: HistoryAction) => a.id === currentActionId);
   }, [actions, currentActionId]);
 
   if (!isOpen) {
@@ -126,7 +141,7 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({
             type="text"
             placeholder="🔍 Поиск в истории..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
           />
         </div>
       )}
@@ -137,7 +152,7 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({
             {searchQuery ? 'Ничего не найдено' : 'Нет действий'}
           </div>
         ) : (
-          [...filteredActions].reverse().map((action, idx) => {
+          [...filteredActions].reverse().map((action: HistoryAction, idx: number) => {
             const originalIndex = actions.length - 1 - idx;
             const isCurrent = originalIndex === currentIndex;
             

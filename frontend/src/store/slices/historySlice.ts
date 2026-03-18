@@ -1,7 +1,7 @@
 // frontend/src/store/slices/historySlice.ts
 import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
 import { api } from '../../services/api';
-import { RootState } from '../index';  // Импортируем RootState для селекторов
+import { RootState } from '../../store';  // Исправленный импорт
 
 export interface HistoryAction {
   id: string;
@@ -35,7 +35,7 @@ export const fetchHistory = createAsyncThunk(
   'history/fetch',
   async (artifactId: number) => {
     const response = await api.get(`/api/v2/artifacts/${artifactId}/history?limit=100`);
-    return response;
+    return response.data;  // <-- ВАЖНО: .data
   }
 );
 
@@ -43,7 +43,7 @@ export const undo = createAsyncThunk(
   'history/undo',
   async (artifactId: number) => {
     const response = await api.post(`/api/v2/artifacts/${artifactId}/history/undo`);
-    return response;
+    return response.data;  // <-- ВАЖНО: .data
   }
 );
 
@@ -51,7 +51,7 @@ export const redo = createAsyncThunk(
   'history/redo',
   async (artifactId: number) => {
     const response = await api.post(`/api/v2/artifacts/${artifactId}/history/redo`);
-    return response;
+    return response.data;  // <-- ВАЖНО: .data
   }
 );
 
@@ -135,18 +135,16 @@ const historySlice = createSlice({
   }
 });
 
-// ============================================================================
-// Селекторы
-// ============================================================================
+// ========== ЭКСПОРТЫ ==========
+export const { addAction, setCurrentIndex, resetHistory, clearError } = historySlice.actions;
+export default historySlice.reducer;
 
+// ========== СЕЛЕКТОРЫ ==========
 export const selectHistoryActions = (state: RootState) => state.history.actions;
 export const selectCurrentActionId = (state: RootState) => state.history.currentActionId;
 export const selectIsHistoryLoading = (state: RootState) => state.history.isLoading;
 export const selectHistoryError = (state: RootState) => state.history.error;
 
-/**
- * Проверяет, доступна ли операция Undo
- */
 export const selectCanUndo = (state: RootState) => {
   const { actions, currentActionId } = state.history;
   if (actions.length === 0) return false;
@@ -155,9 +153,6 @@ export const selectCanUndo = (state: RootState) => {
   return currentIndex > 0;
 };
 
-/**
- * Проверяет, доступна ли операция Redo
- */
 export const selectCanRedo = (state: RootState) => {
   const { actions, currentActionId } = state.history;
   if (actions.length === 0) return false;
@@ -166,26 +161,14 @@ export const selectCanRedo = (state: RootState) => {
   return currentIndex < actions.length - 1;
 };
 
-/**
- * Возвращает текущее действие (последнее примененное)
- */
 export const selectCurrentAction = (state: RootState) => {
   const { actions, currentActionId } = state.history;
   if (!currentActionId) return null;
   return actions.find(a => a.id === currentActionId) || null;
 };
 
-/**
- * Возвращает все действия, отсортированные для отображения (новые сверху)
- */
 export const selectActionsForDisplay = (state: RootState) => {
   return [...state.history.actions].reverse();
 };
 
-/**
- * Возвращает количество действий в истории
- */
 export const selectActionsCount = (state: RootState) => state.history.actions.length;
-
-export const { addAction, setCurrentIndex, resetHistory, clearError } = historySlice.actions;
-export default historySlice.reducer;

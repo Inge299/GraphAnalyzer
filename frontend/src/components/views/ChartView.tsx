@@ -1,24 +1,26 @@
 // frontend/src/components/views/ChartView.tsx
 import React from 'react';
-import { Artifact } from '../../store/slices/artifactsSlice';
+import type { ApiArtifact } from '../../types/api';
 
 interface ChartViewProps {
-  artifact: Artifact;
-  onUpdate: (updates: Partial<Artifact>) => void;
+  artifact: ApiArtifact;
+  _onUpdate: (updates: Partial<ApiArtifact>) => void;
 }
 
-const ChartView: React.FC<ChartViewProps> = ({ artifact, onUpdate }) => {
+const ChartView: React.FC<ChartViewProps> = ({ artifact, _onUpdate }) => {
   console.log('[ChartView] Rendering chart:', artifact.id);
-
+  // onUpdate пока не используется, будет в Phase 2.5
+  _onUpdate && _onUpdate({});
   return (
-    <div className="h-full flex items-center justify-center bg-gray-900">
-      <div className="text-center text-gray-400">
-        <svg className="w-16 h-16 mx-auto mb-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-        </svg>
-        <p className="text-lg">Chart View</p>
-        <p className="text-sm">Integration with charting libraries coming soon</p>
-        <p className="text-xs mt-4 text-gray-600">Series: {artifact.data.series?.length || 0}</p>
+    <div className="h-full overflow-auto p-8">
+      <div className="max-w-4xl mx-auto bg-gray-800 rounded-lg p-8">
+        <h1 className="text-2xl font-bold text-white mb-4">{artifact.name}</h1>
+        {artifact.description && (
+          <p className="text-gray-400 mb-6">{artifact.description}</p>
+        )}
+        <div className="text-center text-gray-500 italic">
+          Chart visualization coming in Phase 2.5
+        </div>
       </div>
     </div>
   );

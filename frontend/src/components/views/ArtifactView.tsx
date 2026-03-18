@@ -1,7 +1,8 @@
 // frontend/src/components/views/ArtifactView.tsx
 import React, { Suspense, memo, useCallback } from 'react';
 import { useAppDispatch } from '../../store';
-import { Artifact, updateArtifact } from '../../store/slices/artifactsSlice';
+import type { ApiArtifact } from '../../types/api';  // Импортируем тип, а не компонент
+import { updateArtifact } from '../../store/slices/artifactsSlice';
 import { useActionWithUndo } from '../../hooks/useActionWithUndo';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import { setSelectedElement, setSelectedElements } from '../../store/slices/uiSlice';
@@ -10,9 +11,9 @@ import { setSelectedElement, setSelectedElements } from '../../store/slices/uiSl
 import { GraphView } from './GraphView';  
 
 interface ArtifactViewProps {
-  artifact: Artifact;
+  artifact: ApiArtifact;  // Используем правильный тип
   onClose: () => void;
-  onUpdate: (updates: Partial<Artifact>) => void;
+  onUpdate: (updates: Partial<ApiArtifact>) => void;  // Исправлен тип
 }
 
 const LoadingFallback = () => (
@@ -37,17 +38,33 @@ const ArtifactView: React.FC<ArtifactViewProps> = memo(({
 }) => {
   const dispatch = useAppDispatch();
   
-  // Инициализация хуков для undo/redo
-  const { executeAction } = useActionWithUndo(artifact.id);
+  // Инициализация хука для undo/redo - передаем ВСЕ 3 аргумента
+  const { 
+    execute, 
+    isRecording,
+    lastError
+  } = useActionWithUndo(
+    artifact.id,
+    artifact.data,
+    async (newData: any) => {
+      // Функция обновления состояния
+      await onUpdate({ data: newData });
+      await dispatch(updateArtifact({
+        projectId: artifact.project_id,
+        id: artifact.id,  // было artifactId, исправлено на id
+        updates: { data: newData }
+      }));
+    }
+  );
+  
   useKeyboardShortcuts(artifact.id);
 
   console.log('[ArtifactView] Rendering', artifact.type, 'artifact:', artifact.id);
 
   // Обработчик перемещения узла с поддержкой undo/redo
   const handleNodeMove = useCallback((nodeId: string, x: number, y: number) => {
-    executeAction(
-      'move_node',
-      () => {
+    execute(
+      async () => {
         // Обновляем позицию узла в данных артефакта
         const updatedNodes = artifact.data?.nodes?.map((node: any) => {
           if (node.id === nodeId || node.node_id === nodeId) {
@@ -60,31 +77,22 @@ const ArtifactView: React.FC<ArtifactViewProps> = memo(({
           return node;
         }) || [];
 
-        const updatedArtifact = {
-          ...artifact,
-          data: {
-            ...(artifact.data || {}),
-            nodes: updatedNodes
-          }
+        return {
+          ...artifact.data,
+          nodes: updatedNodes
         };
-
-        // Обновляем через onUpdate и dispatch
-        onUpdate({ data: updatedArtifact.data });
-        dispatch(updateArtifact({
-          projectId: artifact.project_id,
-          artifactId: artifact.id,
-          data: updatedArtifact.data
-        }));
       },
-      `Перемещение узла ${nodeId}`
+      {
+        description: `Перемещение узла ${nodeId}`,
+        actionType: 'move_node'
+      }
     );
-  }, [artifact, executeAction, onUpdate, dispatch]);
+  }, [artifact.data, execute]);
 
   // Обработчик добавления узла
   const handleAddNode = useCallback((position: { x: number, y: number }, nodeType: string = 'person') => {
-    executeAction(
-      'add_node',
-      () => {
+    execute(
+      async () => {
         const newNodeId = `node_${Date.now()}`;
         const newNode = {
           id: newNodeId,
@@ -100,30 +108,23 @@ const ArtifactView: React.FC<ArtifactViewProps> = memo(({
         };
 
         const updatedNodes = [...(artifact.data?.nodes || []), newNode];
-        const updatedArtifact = {
-          ...artifact,
-          data: {
-            ...(artifact.data || {}),
-            nodes: updatedNodes
-          }
+        
+        return {
+          ...artifact.data,
+          nodes: updatedNodes
         };
-
-        onUpdate({ data: updatedArtifact.data });
-        dispatch(updateArtifact({
-          projectId: artifact.project_id,
-          artifactId: artifact.id,
-          data: updatedArtifact.data
-        }));
       },
-      `Добавление узла ${nodeType}`
+      {
+        description: `Добавление узла ${nodeType}`,
+        actionType: 'add_node'
+      }
     );
-  }, [artifact, executeAction, onUpdate, dispatch]);
+  }, [artifact.data, execute]);
 
   // Обработчик удаления узла
   const handleDeleteNode = useCallback((nodeId: string) => {
-    executeAction(
-      'delete_node',
-      () => {
+    execute(
+      async () => {
         const updatedNodes = artifact.data?.nodes?.filter((node: any) => 
           node.id !== nodeId && node.node_id !== nodeId
         ) || [];
@@ -136,35 +137,27 @@ const ArtifactView: React.FC<ArtifactViewProps> = memo(({
           edge.target_node !== nodeId
         ) || [];
 
-        const updatedArtifact = {
-          ...artifact,
-          data: {
-            ...(artifact.data || {}),
-            nodes: updatedNodes,
-            edges: updatedEdges
-          }
-        };
-
-        onUpdate({ data: updatedArtifact.data });
-        dispatch(updateArtifact({
-          projectId: artifact.project_id,
-          artifactId: artifact.id,
-          data: updatedArtifact.data
-        }));
-        
         // Сбрасываем выделение
         dispatch(setSelectedElement(null));
         dispatch(setSelectedElements([]));
+
+        return {
+          ...artifact.data,
+          nodes: updatedNodes,
+          edges: updatedEdges
+        };
       },
-      `Удаление узла ${nodeId}`
+      {
+        description: `Удаление узла ${nodeId}`,
+        actionType: 'delete_node'
+      }
     );
-  }, [artifact, executeAction, onUpdate, dispatch]);
+  }, [artifact.data, execute, dispatch]);
 
   // Обработчик добавления ребра
   const handleAddEdge = useCallback((sourceId: string, targetId: string, edgeType: string = 'connects') => {
-    executeAction(
-      'add_edge',
-      () => {
+    execute(
+      async () => {
         const newEdgeId = `edge_${Date.now()}`;
         const newEdge = {
           id: newEdgeId,
@@ -178,62 +171,47 @@ const ArtifactView: React.FC<ArtifactViewProps> = memo(({
         };
 
         const updatedEdges = [...(artifact.data?.edges || []), newEdge];
-        const updatedArtifact = {
-          ...artifact,
-          data: {
-            ...(artifact.data || {}),
-            edges: updatedEdges
-          }
+        
+        return {
+          ...artifact.data,
+          edges: updatedEdges
         };
-
-        onUpdate({ data: updatedArtifact.data });
-        dispatch(updateArtifact({
-          projectId: artifact.project_id,
-          artifactId: artifact.id,
-          data: updatedArtifact.data
-        }));
       },
-      `Добавление связи ${sourceId} → ${targetId}`
+      {
+        description: `Добавление связи ${sourceId} → ${targetId}`,
+        actionType: 'add_edge'
+      }
     );
-  }, [artifact, executeAction, onUpdate, dispatch]);
+  }, [artifact.data, execute]);
 
   // Обработчик удаления ребра
   const handleDeleteEdge = useCallback((edgeId: string) => {
-    executeAction(
-      'delete_edge',
-      () => {
+    execute(
+      async () => {
         const updatedEdges = artifact.data?.edges?.filter((edge: any) => 
           edge.id !== edgeId && edge.edge_id !== edgeId
         ) || [];
 
-        const updatedArtifact = {
-          ...artifact,
-          data: {
-            ...(artifact.data || {}),
-            edges: updatedEdges
-          }
-        };
-
-        onUpdate({ data: updatedArtifact.data });
-        dispatch(updateArtifact({
-          projectId: artifact.project_id,
-          artifactId: artifact.id,
-          data: updatedArtifact.data
-        }));
-        
         // Сбрасываем выделение
         dispatch(setSelectedElement(null));
         dispatch(setSelectedElements([]));
+
+        return {
+          ...artifact.data,
+          edges: updatedEdges
+        };
       },
-      `Удаление связи ${edgeId}`
+      {
+        description: `Удаление связи ${edgeId}`,
+        actionType: 'delete_edge'
+      }
     );
-  }, [artifact, executeAction, onUpdate, dispatch]);
+  }, [artifact.data, execute, dispatch]);
 
   // Обработчик редактирования атрибутов
   const handleEditAttributes = useCallback((nodeId: string, attributes: Record<string, any>) => {
-    executeAction(
-      'edit_attribute',
-      () => {
+    execute(
+      async () => {
         const updatedNodes = artifact.data?.nodes?.map((node: any) => {
           if (node.id === nodeId || node.node_id === nodeId) {
             return {
@@ -247,24 +225,17 @@ const ArtifactView: React.FC<ArtifactViewProps> = memo(({
           return node;
         }) || [];
 
-        const updatedArtifact = {
-          ...artifact,
-          data: {
-            ...(artifact.data || {}),
-            nodes: updatedNodes
-          }
+        return {
+          ...artifact.data,
+          nodes: updatedNodes
         };
-
-        onUpdate({ data: updatedArtifact.data });
-        dispatch(updateArtifact({
-          projectId: artifact.project_id,
-          artifactId: artifact.id,
-          data: updatedArtifact.data
-        }));
       },
-      `Редактирование атрибутов узла ${nodeId}`
+      {
+        description: `Редактирование атрибутов узла ${nodeId}`,
+        actionType: 'edit_attribute'
+      }
     );
-  }, [artifact, executeAction, onUpdate, dispatch]);
+  }, [artifact.data, execute]);
 
   const renderView = () => {
     switch (artifact.type) {
@@ -321,6 +292,16 @@ const ArtifactView: React.FC<ArtifactViewProps> = memo(({
           <span style={{ color: '#6b7280', fontSize: '11px' }}>
             v{artifact.version}
           </span>
+          {isRecording && (
+            <span style={{ color: '#f59e0b', fontSize: '11px', marginLeft: '8px' }}>
+              ⟳ запись...
+            </span>
+          )}
+          {lastError && (
+            <span style={{ color: '#ef4444', fontSize: '11px', marginLeft: '8px' }}>
+              ⚠️ ошибка
+            </span>
+          )}
         </div>
         <button
           onClick={onClose}
