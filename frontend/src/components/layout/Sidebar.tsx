@@ -1,6 +1,7 @@
 // frontend/src/components/layout/Sidebar.tsx
 import React, { useState, useEffect } from 'react';
 import { useAppSelector, useAppDispatch } from '../../store';
+import { fetchProjects, setCurrentProject, Project } from '../../store/slices/projectsSlice';
 import { fetchArtifacts, setCurrentArtifact } from '../../store/slices/artifactsSlice';
 import './Sidebar.css';
 
@@ -16,57 +17,29 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onArtifactSelect 
 }) => {
   const dispatch = useAppDispatch();
-  const { items, isLoading } = useAppSelector(state => state.artifacts);
-  const { currentProject } = useAppSelector(state => state.projects);
+  const { projects, currentProject, isLoading: projectsLoading } = useAppSelector(state => state.projects);
+  const { items: artifacts, isLoading: artifactsLoading } = useAppSelector(state => state.artifacts);
+  const [selectedView, setSelectedView] = useState<'projects' | 'artifacts'>('projects');
   const [filter, setFilter] = useState('');
-  const [selectedType, setSelectedType] = useState<string | null>(null);
 
-  // Загружаем артефакты при монтировании
+  // Загружаем проекты при монтировании
   useEffect(() => {
-    if (currentProject?.id) {
+    dispatch(fetchProjects());
+  }, [dispatch]);
+
+  // Загружаем артефакты когда выбран проект
+  useEffect(() => {
+    if (currentProject?.id && selectedView === 'artifacts') {
       dispatch(fetchArtifacts(currentProject.id));
     }
-  }, [currentProject?.id, dispatch]);
+  }, [currentProject?.id, selectedView, dispatch]);
 
-  // Получаем все артефакты как массив
-  const artifacts = Object.values(items || {});
-
-  // Группируем по типам
-  const groupedArtifacts = artifacts.reduce((acc, artifact) => {
-    if (!artifact) return acc;
-    
-    const type = artifact.type || 'unknown';
-    if (!acc[type]) {
-      acc[type] = [];
-    }
-    acc[type].push(artifact);
-    return acc;
-  }, {} as Record<string, typeof artifacts>);
-
-  // Иконки для разных типов
-  const typeIcons: Record<string, string> = {
-    graph: '📊',
-    table: '📋',
-    map: '🗺️',
-    chart: '📈',
-    document: '📄',
-    unknown: '📁'
+  const handleProjectSelect = (project: Project) => {
+    dispatch(setCurrentProject(project.id));
+    setSelectedView('artifacts');
   };
 
-  // Фильтрация по поиску
-  const filteredArtifacts = filter
-    ? artifacts.filter(a => 
-        a?.name?.toLowerCase().includes(filter.toLowerCase()) ||
-        a?.description?.toLowerCase().includes(filter.toLowerCase())
-      )
-    : artifacts;
-
-  // Фильтрация по типу
-  const displayedArtifacts = selectedType
-    ? filteredArtifacts.filter(a => a?.type === selectedType)
-    : filteredArtifacts;
-
-  const handleSelectArtifact = (artifact: any) => {
+  const handleArtifactSelect = (artifact: any) => {
     dispatch(setCurrentArtifact(artifact.id));
     onArtifactSelect(artifact);
   };
@@ -81,28 +54,34 @@ export const Sidebar: React.FC<SidebarProps> = ({
     );
   }
 
-  if (isLoading && artifacts.length === 0) {
-    return (
-      <div className="sidebar">
-        <div className="sidebar-header">
-          <h3>Артефакты</h3>
-          <button className="sidebar-toggle" onClick={onToggleCollapse}>◀</button>
-        </div>
-        <div className="sidebar-loading">
-          <div className="spinner"></div>
-          <span>Загрузка...</span>
-        </div>
-      </div>
-    );
-  }
+  const isLoading = selectedView === 'projects' ? projectsLoading : artifactsLoading;
 
   return (
     <div className="sidebar">
       <div className="sidebar-header">
-        <h3>Артефакты</h3>
+        <h3>{selectedView === 'projects' ? 'Проекты' : 'Артефакты'}</h3>
         <button className="sidebar-toggle" onClick={onToggleCollapse}>◀</button>
       </div>
 
+      {/* Кнопки навигации */}
+      <div className="sidebar-nav">
+        <button 
+          className={`nav-btn ${selectedView === 'projects' ? 'active' : ''}`}
+          onClick={() => setSelectedView('projects')}
+        >
+          📁 Проекты
+        </button>
+        <button 
+          className={`nav-btn ${selectedView === 'artifacts' ? 'active' : ''}`}
+          onClick={() => setSelectedView('artifacts')}
+          disabled={!currentProject}
+          title={!currentProject ? 'Сначала выберите проект' : undefined}
+        >
+          📊 Артефакты
+        </button>
+      </div>
+
+      {/* Поиск */}
       <div className="sidebar-search">
         <input
           type="text"
@@ -112,56 +91,84 @@ export const Sidebar: React.FC<SidebarProps> = ({
         />
       </div>
 
-      <div className="sidebar-filters">
-        <button
-          className={`filter-btn ${!selectedType ? 'active' : ''}`}
-          onClick={() => setSelectedType(null)}
+      {/* Кнопка назад к проектам (если мы в артефактах) */}
+      {selectedView === 'artifacts' && (
+        <button 
+          className="back-btn"
+          onClick={() => setSelectedView('projects')}
         >
-          Все
-          <span className="type-count">({artifacts.length})</span>
+          ← Назад к проектам
         </button>
-        {Object.keys(groupedArtifacts).map(type => (
-          <button
-            key={type}
-            className={`filter-btn ${selectedType === type ? 'active' : ''}`}
-            onClick={() => setSelectedType(type)}
-          >
-            {typeIcons[type] || '📁'} {type}
-            <span className="type-count">({groupedArtifacts[type]?.length || 0})</span>
-          </button>
-        ))}
-      </div>
+      )}
 
+      {/* Список */}
       <div className="sidebar-list">
-        {displayedArtifacts.length === 0 ? (
-          <div className="sidebar-empty">
-            {filter ? 'Ничего не найдено' : 'Нет артефактов'}
-          </div>
-        ) : (
-          displayedArtifacts.map(artifact => {
-            if (!artifact) return null;
-            
-            return (
+        {isLoading ? (
+          <div className="sidebar-loading">Загрузка...</div>
+        ) : selectedView === 'projects' ? (
+          // Список проектов
+          projects.length === 0 ? (
+            <div className="sidebar-empty">Нет проектов</div>
+          ) : (
+            projects.map(project => (
               <div
-                key={artifact.id}
-                className="sidebar-item"
-                onClick={() => handleSelectArtifact(artifact)}
+                key={project.id}
+                className={`sidebar-item ${currentProject?.id === project.id ? 'active' : ''}`}
+                onClick={() => handleProjectSelect(project)}
               >
-                <div className="item-icon">
-                  {typeIcons[artifact.type] || '📁'}
-                </div>
+                <div className="item-icon">📁</div>
                 <div className="item-content">
-                  <div className="item-name">{artifact.name}</div>
+                  <div className="item-name">{project.name}</div>
                   <div className="item-meta">
-                    <span className="item-type">{artifact.type}</span>
-                    <span className="item-version">v{artifact.version}</span>
+                    <span className="item-date">
+                      {new Date(project.created_at).toLocaleDateString()}
+                    </span>
                   </div>
                 </div>
               </div>
-            );
-          })
+            ))
+          )
+        ) : (
+          // Список артефактов
+          !artifacts || Object.values(artifacts).length === 0 ? (
+            <div className="sidebar-empty">Нет артефактов</div>
+          ) : (
+            Object.values(artifacts).map(artifact => {
+              if (!artifact) return null;
+              return (
+                <div
+                  key={artifact.id}
+                  className="sidebar-item"
+                  onClick={() => handleArtifactSelect(artifact)}
+                >
+                  <div className="item-icon">
+                    {artifact.type === 'graph' ? '📊' : 
+                     artifact.type === 'table' ? '📋' :
+                     artifact.type === 'map' ? '🗺️' :
+                     artifact.type === 'chart' ? '📈' : '📄'}
+                  </div>
+                  <div className="item-content">
+                    <div className="item-name">{artifact.name}</div>
+                    <div className="item-meta">
+                      <span className="item-type">{artifact.type}</span>
+                      <span className="item-version">v{artifact.version || 1}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )
         )}
       </div>
+
+      {/* Информация о выбранном проекте */}
+      {selectedView === 'artifacts' && currentProject && (
+        <div className="sidebar-footer">
+          <div className="current-project-info">
+            <strong>Проект:</strong> {currentProject.name}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

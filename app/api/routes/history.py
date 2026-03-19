@@ -2,12 +2,15 @@
 """
 History management endpoints for undo/redo functionality.
 """
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, and_, func
 from typing import List, Optional
 import uuid
 import logging
+import json
+import traceback
+from pydantic import ValidationError
 
 from app.database import get_db
 from app.models.action import GraphAction
@@ -16,7 +19,8 @@ from app.schemas.action import GraphActionCreate, GraphActionResponse, UndoRespo
 from app.api.deps import get_artifact
 from app.services.history_cache import HistoryCache, get_redis_client
 
-router = APIRouter(prefix="/api/v2/artifacts/{artifact_id}/history", tags=["history"])
+# Исправленный префикс - без /api/v2, так как в main.py добавляется /api/v2
+router = APIRouter(prefix="/artifacts/{artifact_id}/history", tags=["history"])
 logger = logging.getLogger(__name__)
 
 # ============================================================================
@@ -73,6 +77,7 @@ async def get_history(
 async def record_action(
     artifact_id: int,
     action_data: GraphActionCreate,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     artifact: Artifact = Depends(get_artifact),
     redis_client = Depends(get_redis_client)
@@ -82,6 +87,35 @@ async def record_action(
     All actions are stored permanently for undo/redo functionality.
     """
     try:
+        # Логируем полученные данные
+        print("\n" + "="*80)
+        print("🔵 RECEIVED ACTION REQUEST")
+        print("="*80)
+        print(f"Artifact ID: {artifact_id}")
+        print(f"Action type: {action_data.action_type}")
+        print(f"Description: {action_data.description}")
+        print(f"User type: {action_data.user_type}")
+        print(f"Plugin ID: {action_data.plugin_id}")
+        print(f"Group ID: {action_data.group_id}")
+        print("\n📦 BEFORE STATE:")
+        print(f"  Type: {type(action_data.before_state)}")
+        print(f"  Has nodes: {'nodes' in action_data.before_state if action_data.before_state else False}")
+        print(f"  Has edges: {'edges' in action_data.before_state if action_data.before_state else False}")
+        if action_data.before_state and 'nodes' in action_data.before_state:
+            print(f"  Nodes count: {len(action_data.before_state['nodes'])}")
+        if action_data.before_state and 'edges' in action_data.before_state:
+            print(f"  Edges count: {len(action_data.before_state['edges'])}")
+        
+        print("\n📦 AFTER STATE:")
+        print(f"  Type: {type(action_data.after_state)}")
+        print(f"  Has nodes: {'nodes' in action_data.after_state if action_data.after_state else False}")
+        print(f"  Has edges: {'edges' in action_data.after_state if action_data.after_state else False}")
+        if action_data.after_state and 'nodes' in action_data.after_state:
+            print(f"  Nodes count: {len(action_data.after_state['nodes'])}")
+        if action_data.after_state and 'edges' in action_data.after_state:
+            print(f"  Edges count: {len(action_data.after_state['edges'])}")
+        print("="*80 + "\n")
+
         # Создаем запись в БД
         db_action = GraphAction(
             artifact_id=artifact_id,
@@ -102,12 +136,37 @@ async def record_action(
         cache = HistoryCache(redis_client)
         await cache.push_action(artifact_id, db_action.to_dict())
 
-        logger.info(f"Recorded action {db_action.id} for artifact {artifact_id}: {db_action.description}")
+        logger.info(f"✅ Recorded action {db_action.id} for artifact {artifact_id}: {db_action.description}")
         return db_action.to_dict()
+        
+    except ValidationError as e:
+        # Детальное логирование ошибки валидации
+        print("\n" + "!"*80)
+        print("❌ VALIDATION ERROR")
+        print("!"*80)
+        print("Error details:")
+        print(json.dumps(e.errors(), indent=2, ensure_ascii=False))
+        
+        # Логируем сырые данные запроса
+        try:
+            body = await request.body()
+            print("\nRaw request body:")
+            print(body.decode('utf-8')[:1000])  # Первые 1000 символов
+        except:
+            print("Could not read request body")
+        
+        print("!"*80 + "\n")
+        raise HTTPException(status_code=422, detail=e.errors())
+        
     except Exception as e:
-        logger.error(f"Error recording action for artifact {artifact_id}: {e}")
+        print("\n" + "!"*80)
+        print("❌ UNEXPECTED ERROR")
+        print("!"*80)
+        traceback.print_exc()
+        print("!"*80 + "\n")
+        logger.error(f"❌ Error recording action for artifact {artifact_id}: {e}")
         await db.rollback()
-        raise HTTPException(status_code=500, detail="Failed to record action")
+        raise HTTPException(status_code=500, detail=f"Failed to record action: {str(e)}")
 
 # ============================================================================
 # Undo операция
@@ -126,6 +185,8 @@ async def undo_action(
     Does NOT delete the action - keeps full history.
     """
     try:
+        print(f"\n🔄 UNDO requested for artifact {artifact_id}")
+        
         # Получаем ВСЕ действия для этого артефакта, отсортированные по времени (старые первые)
         result = await db.execute(
             select(GraphAction)
@@ -135,12 +196,15 @@ async def undo_action(
         all_actions = result.scalars().all()
         
         if not all_actions:
+            print(f"❌ No actions to undo for artifact {artifact_id}")
             raise HTTPException(status_code=404, detail="No actions to undo")
+        
+        print(f"Found {len(all_actions)} actions")
         
         # Если есть только одно действие - отменяем его до начального состояния
         if len(all_actions) == 1:
             action = all_actions[0]
-            logger.info(f"Undo single action {action.id} for artifact {artifact_id}: {action.description}")
+            print(f"Single action undo: {action.id}")
             return {
                 "action_id": action.id,
                 "artifact_id": artifact_id,
@@ -150,13 +214,10 @@ async def undo_action(
             }
         
         # Если действий больше одного - отменяем последнее действие
-        # Для этого нужно вернуть состояние перед последним действием,
-        # то есть after_state предпоследнего действия
         second_last_action = all_actions[-2]  # Предпоследнее действие
         last_action = all_actions[-1]  # Последнее действие
         
-        logger.info(f"Undo action {last_action.id} for artifact {artifact_id}: {last_action.description}")
-        logger.info(f"Returning to state after action {second_last_action.id}")
+        print(f"Undo last action {last_action.id}, returning to state after action {second_last_action.id}")
         
         return {
             "action_id": last_action.id,
@@ -187,6 +248,8 @@ async def redo_action(
     Returns the state to reapply (after_state of the last action).
     """
     try:
+        print(f"\n🔴 REDO requested for artifact {artifact_id}")
+        
         # Получаем ВСЕ действия для этого артефакта
         result = await db.execute(
             select(GraphAction)
@@ -196,12 +259,13 @@ async def redo_action(
         all_actions = result.scalars().all()
         
         if not all_actions:
+            print(f"❌ No actions to redo for artifact {artifact_id}")
             raise HTTPException(status_code=404, detail="No actions to redo")
         
         # Для redo возвращаем after_state последнего действия
         last_action = all_actions[-1]
         
-        logger.info(f"Redo action {last_action.id} for artifact {artifact_id}: {last_action.description}")
+        print(f"Redo last action: {last_action.id}")
         
         return {
             "action_id": last_action.id,

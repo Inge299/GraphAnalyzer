@@ -1,0 +1,5 @@
+Дата: Thu Mar 19 02:00:07 MSK 2026
+Git commit: 3386cc1f640078e67d8bc08442d121e362443bfe
+Docker version: Docker version 29.3.0, build 5927d80
+Docker Compose version: Docker Compose version v5.0.2
+graphanalyzer-app:latest                                                                                6ce89cc7e4cf        408MB         93.1MB   U    

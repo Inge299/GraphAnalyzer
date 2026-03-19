@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-17T14:16:38.506571",
+  "timestamp": "2026-03-18T11:53:18.707698",
   "project_name": "OSINT Graph Analyzer",
   "version": "v1.0",
   "files": {
@@ -10,25 +10,11 @@
       "hash": "cd1f3acb",
       "extension": ".py"
     },
-    "alembic/versions/001_initial_models.py": {
-      "path": "alembic/versions/001_initial_models.py",
-      "size": 5571,
-      "lines": 128,
-      "hash": "2f4145ac",
-      "extension": ".py"
-    },
-    "alembic/versions/002_add_artifacts_tables.py": {
-      "path": "alembic/versions/002_add_artifacts_tables.py",
-      "size": 5642,
-      "lines": 140,
-      "hash": "ee5c1951",
-      "extension": ".py"
-    },
-    "alembic/versions/3e7a730b98c7_initial_state.py": {
-      "path": "alembic/versions/3e7a730b98c7_initial_state.py",
-      "size": 337,
-      "lines": 23,
-      "hash": "d8dbb5eb",
+    "alembic/versions/5a2ae4ac2896_add_graph_actions_table.py": {
+      "path": "alembic/versions/5a2ae4ac2896_add_graph_actions_table.py",
+      "size": 12424,
+      "lines": 279,
+      "hash": "63997d22",
       "extension": ".py"
     },
     "app/api/deps.py": {
@@ -124,9 +110,9 @@
     },
     "app/models/__init__.py": {
       "path": "app/models/__init__.py",
-      "size": 538,
-      "lines": 24,
-      "hash": "5bba91aa",
+      "size": 580,
+      "lines": 25,
+      "hash": "4b236121",
       "extension": ".py"
     },
     "app/models/action.py": {
@@ -262,18 +248,32 @@
       "hash": "1d4ed122",
       "extension": ".yml"
     },
+    "backups/docker-compose_20260318_020005.yml": {
+      "path": "backups/docker-compose_20260318_020005.yml",
+      "size": 1998,
+      "lines": 86,
+      "hash": "8ed3aaf0",
+      "extension": ".yml"
+    },
+    "collect_context.py": {
+      "path": "collect_context.py",
+      "size": 12120,
+      "lines": 266,
+      "hash": "663dfed4",
+      "extension": ".py"
+    },
     "docker-compose.override.yml": {
       "path": "docker-compose.override.yml",
       "size": 849,
       "lines": 39,
-      "hash": "74e634d4",
+      "hash": "9cd35979",
       "extension": ".yml"
     },
     "docker-compose.yml": {
       "path": "docker-compose.yml",
       "size": 1998,
       "lines": 86,
-      "hash": "1d4ed122",
+      "hash": "8ed3aaf0",
       "extension": ".yml"
     },
     "frontend/package-lock.json": {
@@ -299,9 +299,9 @@
     },
     "frontend/src/App.tsx": {
       "path": "frontend/src/App.tsx",
-      "size": 6754,
-      "lines": 191,
-      "hash": "91d38034",
+      "size": 5999,
+      "lines": 172,
+      "hash": "1dc66314",
       "extension": ".tsx"
     },
     "frontend/src/components/history/HistoryPanel.css": {
@@ -313,16 +313,16 @@
     },
     "frontend/src/components/history/HistoryPanel.tsx": {
       "path": "frontend/src/components/history/HistoryPanel.tsx",
-      "size": 5323,
-      "lines": 178,
-      "hash": "715662ce",
+      "size": 6029,
+      "lines": 192,
+      "hash": "4a45a326",
       "extension": ".tsx"
     },
     "frontend/src/components/layout/InspectorPanel.tsx": {
       "path": "frontend/src/components/layout/InspectorPanel.tsx",
-      "size": 13921,
-      "lines": 419,
-      "hash": "7a7253b2",
+      "size": 14055,
+      "lines": 420,
+      "hash": "c6b637d3",
       "extension": ".tsx"
     },
     "frontend/src/components/layout/Sidebar.css": {
@@ -339,13 +339,6 @@
       "hash": "a62907d0",
       "extension": ".tsx"
     },
-    "frontend/src/components/layout/Sidebar_new.tsx": {
-      "path": "frontend/src/components/layout/Sidebar_new.tsx",
-      "size": 26699,
-      "lines": 966,
-      "hash": "589ea494",
-      "extension": ".tsx"
-    },
     "frontend/src/components/layout/TabBar.tsx": {
       "path": "frontend/src/components/layout/TabBar.tsx",
       "size": 1844,
@@ -355,23 +348,23 @@
     },
     "frontend/src/components/views/ArtifactView.tsx": {
       "path": "frontend/src/components/views/ArtifactView.tsx",
-      "size": 11145,
-      "lines": 348,
-      "hash": "2ad62fed",
+      "size": 10488,
+      "lines": 329,
+      "hash": "b1bd6d1f",
       "extension": ".tsx"
     },
     "frontend/src/components/views/ChartView.tsx": {
       "path": "frontend/src/components/views/ChartView.tsx",
-      "size": 1207,
-      "lines": 27,
-      "hash": "8797df78",
+      "size": 985,
+      "lines": 29,
+      "hash": "a92603ae",
       "extension": ".tsx"
     },
     "frontend/src/components/views/DocumentView.tsx": {
       "path": "frontend/src/components/views/DocumentView.tsx",
-      "size": 1108,
-      "lines": 34,
-      "hash": "e7356f87",
+      "size": 1214,
+      "lines": 35,
+      "hash": "6ddc8cbc",
       "extension": ".tsx"
     },
     "frontend/src/components/views/GraphView.css": {
@@ -383,44 +376,37 @@
     },
     "frontend/src/components/views/GraphView.tsx": {
       "path": "frontend/src/components/views/GraphView.tsx",
-      "size": 17613,
-      "lines": 558,
-      "hash": "1fc4ecb8",
+      "size": 8148,
+      "lines": 279,
+      "hash": "973edc5f",
       "extension": ".tsx"
     },
     "frontend/src/components/views/MapView.tsx": {
       "path": "frontend/src/components/views/MapView.tsx",
-      "size": 1154,
-      "lines": 27,
-      "hash": "536f4139",
+      "size": 969,
+      "lines": 29,
+      "hash": "02337cde",
       "extension": ".tsx"
     },
     "frontend/src/components/views/TableView.tsx": {
       "path": "frontend/src/components/views/TableView.tsx",
-      "size": 1594,
-      "lines": 51,
-      "hash": "f61ca032",
+      "size": 985,
+      "lines": 29,
+      "hash": "fa33f1ef",
       "extension": ".tsx"
     },
     "frontend/src/hooks/useActionWithUndo.ts": {
       "path": "frontend/src/hooks/useActionWithUndo.ts",
-      "size": 5868,
-      "lines": 192,
-      "hash": "bfdcd813",
-      "extension": ".ts"
-    },
-    "frontend/src/hooks/useActionWithUndo_bkp.ts": {
-      "path": "frontend/src/hooks/useActionWithUndo_bkp.ts",
-      "size": 7005,
-      "lines": 232,
-      "hash": "a8096c8b",
+      "size": 8037,
+      "lines": 252,
+      "hash": "da1e237b",
       "extension": ".ts"
     },
     "frontend/src/hooks/useKeyboardShortcuts.ts": {
       "path": "frontend/src/hooks/useKeyboardShortcuts.ts",
-      "size": 1146,
-      "lines": 34,
-      "hash": "251b969b",
+      "size": 1170,
+      "lines": 35,
+      "hash": "ccea387f",
       "extension": ".ts"
     },
     "frontend/src/index.css": {
@@ -453,9 +439,9 @@
     },
     "frontend/src/store/slices/artifactsSlice.ts": {
       "path": "frontend/src/store/slices/artifactsSlice.ts",
-      "size": 5913,
+      "size": 6303,
       "lines": 174,
-      "hash": "bcdd6370",
+      "hash": "add02a77",
       "extension": ".ts"
     },
     "frontend/src/store/slices/graphSlice.ts": {
@@ -467,16 +453,16 @@
     },
     "frontend/src/store/slices/historySlice.ts": {
       "path": "frontend/src/store/slices/historySlice.ts",
-      "size": 4524,
-      "lines": 144,
-      "hash": "bd840bf3",
+      "size": 5514,
+      "lines": 174,
+      "hash": "e895a591",
       "extension": ".ts"
     },
     "frontend/src/store/slices/projectsSlice.ts": {
       "path": "frontend/src/store/slices/projectsSlice.ts",
-      "size": 1875,
+      "size": 1892,
       "lines": 68,
-      "hash": "0c6cf74e",
+      "hash": "88d45fdb",
       "extension": ".ts"
     },
     "frontend/src/store/slices/uiSlice.ts": {
@@ -516,16 +502,16 @@
     },
     "frontend/tsconfig.json": {
       "path": "frontend/tsconfig.json",
-      "size": 718,
-      "lines": 32,
-      "hash": "8de78c65",
+      "size": 679,
+      "lines": 25,
+      "hash": "ed2a79ec",
       "extension": ".json"
     },
     "frontend/tsconfig.node.json": {
       "path": "frontend/tsconfig.node.json",
-      "size": 244,
-      "lines": 12,
-      "hash": "df562a73",
+      "size": 257,
+      "lines": 13,
+      "hash": "be26459c",
       "extension": ".json"
     },
     "frontend/vite.config.ts": {
@@ -542,18 +528,25 @@
       "hash": "de571eeb",
       "extension": ".py"
     },
+    "handoff_context_extra.json": {
+      "path": "handoff_context_extra.json",
+      "size": 78353,
+      "lines": 158,
+      "hash": "f6cd4a40",
+      "extension": ".json"
+    },
     "handoff_latest.md": {
       "path": "handoff_latest.md",
-      "size": 531631,
-      "lines": 12322,
-      "hash": "f2d7dd16",
+      "size": 552739,
+      "lines": 12774,
+      "hash": "216fd86c",
       "extension": ".md"
     },
     "handoff_quick.md": {
       "path": "handoff_quick.md",
       "size": 778,
       "lines": 21,
-      "hash": "d25eaec5",
+      "hash": "ff780023",
       "extension": ".md"
     },
     "osint-backups/docker-compose_20260224_214935.yml": {
@@ -579,9 +572,16 @@
     },
     "package-lock.json": {
       "path": "package-lock.json",
-      "size": 92,
-      "lines": 7,
-      "hash": "95afc30d",
+      "size": 631,
+      "lines": 27,
+      "hash": "cfc18019",
+      "extension": ".json"
+    },
+    "package.json": {
+      "path": "package.json",
+      "size": 58,
+      "lines": 6,
+      "hash": "bb0b975c",
       "extension": ".json"
     },
     "plugins/__init__.py": {
@@ -40146,9 +40146,7 @@
         }
       },
       "versions": {
-        "001_initial_models.py": "[FILE] 128 lines",
-        "002_add_artifacts_tables.py": "[FILE] 140 lines",
-        "3e7a730b98c7_initial_state.py": "[FILE] 23 lines"
+        "5a2ae4ac2896_add_graph_actions_table.py": "[FILE] 279 lines"
       }
     },
     "alembic.ini": "[BINARY] 1734 bytes",
@@ -40174,7 +40172,8 @@
       "database.py": "[FILE] 71 lines",
       "main.py": "[FILE] 140 lines",
       "models": {
-        "__init__.py": "[FILE] 24 lines",
+        "__init__.py": "[FILE] 25 lines",
+        "__init__.py.bak": "[BINARY] 538 bytes",
         "action.py": "[FILE] 59 lines",
         "artifact.py": "[FILE] 96 lines",
         "edge.py": "[FILE] 48 lines",
@@ -40197,6 +40196,7 @@
         "schema_service.py": "[FILE] 232 lines"
       }
     },
+    "backup — копия.sh:Zone.Identifier": "[BINARY] 0 bytes",
     "backup.sh": "[BINARY] 2331 bytes",
     "backups": {
       "checksums_20260313_020005.txt": "[BINARY] 954 bytes",
@@ -40204,45 +40204,52 @@
       "checksums_20260315_020005.txt": "[BINARY] 2498 bytes",
       "checksums_20260316_020005.txt": "[BINARY] 3172 bytes",
       "checksums_20260317_020006.txt": "[BINARY] 3846 bytes",
-      "cron.log": "[BINARY] 12888 bytes",
-      "data_20260316_020005.tar.gz": "[BINARY] 145 bytes",
+      "checksums_20260318_020005.txt": "[BINARY] 4428 bytes",
+      "cron.log": "[BINARY] 17290 bytes",
       "data_20260317_020006.tar.gz": "[BINARY] 145 bytes",
-      "db_20260313_020005.sql.gz": "[BINARY] 2410 bytes",
+      "data_20260318_020005.tar.gz": "[BINARY] 145 bytes",
       "db_20260314_020005.sql.gz": "[BINARY] 19383 bytes",
       "db_20260315_020005.sql.gz": "[BINARY] 19382 bytes",
       "db_20260316_020005.sql.gz": "[BINARY] 19379 bytes",
       "db_20260317_020006.sql.gz": "[BINARY] 19716 bytes",
+      "db_20260318_020005.sql.gz": "[BINARY] 17543 bytes",
       "docker-compose_20260313_020005.yml": "[FILE] 86 lines",
       "docker-compose_20260314_020005.yml": "[FILE] 86 lines",
       "docker-compose_20260315_020005.yml": "[FILE] 86 lines",
       "docker-compose_20260316_020005.yml": "[FILE] 86 lines",
       "docker-compose_20260317_020006.yml": "[FILE] 86 lines",
+      "docker-compose_20260318_020005.yml": "[FILE] 86 lines",
       "env_20260313_020005.backup": "[BINARY] 609 bytes",
       "env_20260314_020005.backup": "[BINARY] 609 bytes",
       "env_20260315_020005.backup": "[BINARY] 609 bytes",
       "env_20260316_020005.backup": "[BINARY] 609 bytes",
       "env_20260317_020006.backup": "[BINARY] 609 bytes",
+      "env_20260318_020005.backup": "[BINARY] 609 bytes",
       "npm-deps_20260313_020005.txt": "[BINARY] 52 bytes",
       "npm-deps_20260314_020005.txt": "[BINARY] 52 bytes",
       "npm-deps_20260315_020005.txt": "[BINARY] 52 bytes",
       "npm-deps_20260316_020005.txt": "[BINARY] 52 bytes",
       "npm-deps_20260317_020006.txt": "[BINARY] 52 bytes",
+      "npm-deps_20260318_020005.txt": "[BINARY] 52 bytes",
       "requirements_20260313_020005.txt": "[BINARY] 1215 bytes",
       "requirements_20260314_020005.txt": "[BINARY] 1215 bytes",
       "requirements_20260315_020005.txt": "[BINARY] 1215 bytes",
       "requirements_20260316_020005.txt": "[BINARY] 1215 bytes",
       "requirements_20260317_020006.txt": "[BINARY] 1215 bytes",
+      "requirements_20260318_020005.txt": "[BINARY] 1215 bytes",
       "system_info_20260313_020005.txt": "[BINARY] 352 bytes",
       "system_info_20260314_020005.txt": "[BINARY] 352 bytes",
       "system_info_20260315_020005.txt": "[BINARY] 352 bytes",
       "system_info_20260316_020005.txt": "[BINARY] 352 bytes",
       "system_info_20260317_020006.txt": "[BINARY] 352 bytes",
-      "volume_postgres_20260317_020006.tar.gz": "[BINARY] 87 bytes",
-      "volume_redis_20260316_020005.tar.gz": "[BINARY] 87 bytes",
-      "volume_redis_20260317_020006.tar.gz": "[BINARY] 87 bytes"
+      "system_info_20260318_020005.txt": "[BINARY] 352 bytes",
+      "volume_postgres_20260318_020005.tar.gz": "[BINARY] 87 bytes",
+      "volume_redis_20260317_020006.tar.gz": "[BINARY] 87 bytes",
+      "volume_redis_20260318_020005.tar.gz": "[BINARY] 87 bytes"
     },
     "clean-database.sh": "[BINARY] 7117 bytes",
     "clean-database.sh:Zone.Identifier": "[BINARY] 0 bytes",
+    "collect_context.py": "[FILE] 266 lines",
     "create-test-data.sh": "[BINARY] 14787 bytes",
     "create-test-data.sh:Zone.Identifier": "[BINARY] 0 bytes",
     "data": {},
@@ -40255,33 +40262,32 @@
       "package.json": "[FILE] 50 lines",
       "src": {
         "App.css": "[FILE] 777 lines",
-        "App.tsx": "[FILE] 191 lines",
+        "App.tsx": "[FILE] 172 lines",
         "components": {
           "history": {
             "HistoryPanel.css": "[FILE] 266 lines",
-            "HistoryPanel.tsx": "[FILE] 178 lines"
+            "HistoryPanel.tsx": "[FILE] 192 lines"
           },
           "layout": {
-            "InspectorPanel.tsx": "[FILE] 419 lines",
+            "InspectorPanel.tsx": "[FILE] 420 lines",
             "Sidebar.css": "[FILE] 207 lines",
             "Sidebar.tsx": "[FILE] 170 lines",
-            "Sidebar_new.tsx": "[FILE] 966 lines",
             "TabBar.tsx": "[FILE] 68 lines"
           },
           "views": {
-            "ArtifactView.tsx": "[FILE] 348 lines",
-            "ChartView.tsx": "[FILE] 27 lines",
-            "DocumentView.tsx": "[FILE] 34 lines",
+            "ArtifactView.tsx": "[FILE] 329 lines",
+            "ChartView.tsx": "[FILE] 29 lines",
+            "DocumentView.tsx": "[FILE] 35 lines",
             "GraphView.css": "[FILE] 225 lines",
-            "GraphView.tsx": "[FILE] 558 lines",
-            "MapView.tsx": "[FILE] 27 lines",
-            "TableView.tsx": "[FILE] 51 lines"
+            "GraphView.tsx": "[FILE] 279 lines",
+            "MapView.tsx": "[FILE] 29 lines",
+            "TableView.tsx": "[FILE] 29 lines"
           }
         },
         "hooks": {
-          "useActionWithUndo.ts": "[FILE] 192 lines",
-          "useActionWithUndo_bkp.ts": "[FILE] 232 lines",
-          "useKeyboardShortcuts.ts": "[FILE] 34 lines"
+          "useActionWithUndo.ts": "[FILE] 252 lines",
+          "useActionWithUndo.ts.bak": "[BINARY] 5868 bytes",
+          "useKeyboardShortcuts.ts": "[FILE] 35 lines"
         },
         "index.css": "[FILE] 14 lines",
         "main.tsx": "[FILE] 14 lines",
@@ -40293,7 +40299,7 @@
           "slices": {
             "artifactsSlice.ts": "[FILE] 174 lines",
             "graphSlice.ts": "[FILE] 100 lines",
-            "historySlice.ts": "[FILE] 144 lines",
+            "historySlice.ts": "[FILE] 174 lines",
             "historySlice.ts]": "[BINARY] 1590 bytes",
             "projectsSlice.ts": "[FILE] 68 lines",
             "uiSlice.ts": "[FILE] 106 lines"
@@ -40308,14 +40314,16 @@
         "vite-env.d.ts": "[FILE] 12 lines"
       },
       "step3.py": "[FILE] 1950 lines",
-      "tsconfig.json": "[FILE] 32 lines",
-      "tsconfig.node.json": "[FILE] 12 lines",
+      "tsconfig.json": "[FILE] 25 lines",
+      "tsconfig.json.bak": "[BINARY] 703 bytes",
+      "tsconfig.node.json": "[FILE] 13 lines",
       "vite.config.ts": "[FILE] 33 lines"
     },
     "get-docker.sh": "[BINARY] 22405 bytes",
     "get_structure.py": "[FILE] 493 lines",
-    "handoff_latest.json": "[FILE] 2074840 bytes (skipped, too large)",
-    "handoff_latest.md": "[FILE] 12322 lines",
+    "handoff_context_extra.json": "[FILE] 158 lines",
+    "handoff_latest.json": "[FILE] 2136467 bytes (skipped, too large)",
+    "handoff_latest.md": "[FILE] 12774 lines",
     "handoff_quick.md": "[FILE] 21 lines",
     "osint-backups": {
       "checksums_20260224_214935.txt": "[BINARY] 879 bytes",
@@ -40337,7 +40345,8 @@
       "system_info_20260226_071109.txt": "[BINARY] 381 bytes",
       "system_info_20260301_200321.txt": "[BINARY] 385 bytes"
     },
-    "package-lock.json": "[FILE] 7 lines",
+    "package-lock.json": "[FILE] 27 lines",
+    "package.json": "[FILE] 6 lines",
     "plugins": {
       "__init__.py": "[FILE] 56 lines",
       "examples": {
@@ -50903,14 +50912,14 @@
   },
   "statistics": {
     "total_files": 5733,
-    "total_lines": 2134064,
+    "total_lines": 2133609,
     "by_type": {
-      ".py": 5625,
-      ".yml": 10,
-      ".json": 8,
+      ".py": 5624,
+      ".yml": 11,
+      ".json": 10,
       ".css": 5,
-      ".tsx": 13,
-      ".ts": 14,
+      ".tsx": 12,
+      ".ts": 13,
       ".md": 16,
       ".yaml": 42
     }
@@ -50972,9 +50981,9 @@
       "hash": "675ce8ea"
     },
     "app/models/__init__.py": {
-      "content": "# app/models/__init__.py\n\"\"\"\nDatabase models for OSINT Graph Analyzer.\n\"\"\"\n\nfrom app.models.project import Project\nfrom app.models.graph import Graph\nfrom app.models.node import Node\nfrom app.models.edge import Edge\nfrom app.models.schema import ProjectSchema, NodeType, EdgeType\nfrom app.models.artifact import Artifact, ArtifactRelation, ArtifactVersion\n\n__all__ = [\n    \"Project\",\n    \"Graph\",\n    \"Node\",\n    \"Edge\",\n    \"ProjectSchema\",\n    \"NodeType\",\n    \"EdgeType\",\n    \"Artifact\",\n    \"ArtifactRelation\",\n    \"ArtifactVersion\",\n]",
-      "lines": 24,
-      "hash": "5bba91aa"
+      "content": "# app/models/__init__.py\n\"\"\"\nDatabase models for OSINT Graph Analyzer.\n\"\"\"\n\nfrom app.models.project import Project\nfrom app.models.graph import Graph\nfrom app.models.node import Node\nfrom app.models.edge import Edge\nfrom app.models.schema import ProjectSchema, NodeType, EdgeType\nfrom app.models.artifact import Artifact, ArtifactRelation, ArtifactVersion\nfrom app.models.action import GraphAction\n\n__all__ = [\n    \"Project\",\n    \"Graph\",\n    \"Node\",\n    \"Edge\",\n    \"ProjectSchema\",\n    \"NodeType\",\n    \"EdgeType\",\n    \"Artifact\",\n    \"ArtifactRelation\",\n    \"ArtifactVersion\",\n]",
+      "lines": 25,
+      "hash": "4b236121"
     },
     "app/models/action.py": {
       "content": "# app/models/action.py\n\"\"\"\nAction model for undo/redo functionality.\nStores all user and plugin actions for graph artifacts.\n\"\"\"\nfrom sqlalchemy import Column, Integer, String, JSON, DateTime, ForeignKey, Index\nfrom sqlalchemy.dialects.postgresql import UUID\nfrom datetime import datetime\nimport uuid\n\nfrom app.database import Base\n\nclass GraphAction(Base):\n    __tablename__ = \"graph_actions\"\n\n    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)\n    artifact_id = Column(Integer, ForeignKey(\"artifacts.id\", ondelete=\"CASCADE\"), nullable=False)  # ИСПРАВЛЕНО: было graph_id\n\n    # Тип действия\n    action_type = Column(String(50), nullable=False)  # 'add_node', 'delete_edge', 'move_node', etc.\n\n    # Состояния (полное состояние графа ДО и ПОСЛЕ)\n    before_state = Column(JSON, nullable=False)\n    after_state = Column(JSON, nullable=False)\n\n    # Метаданные\n    timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)\n    user_type = Column(String(20), default='user', nullable=False)  # 'user' или 'plugin'\n    description = Column(String(200))\n    plugin_id = Column(String(100), nullable=True)\n\n    # Для группировки последовательных действий\n    group_id = Column(UUID(as_uuid=True), nullable=True)\n\n    # Индексы для быстрого поиска\n    __table_args__ = (\n        Index(\"ix_graph_actions_artifact_timestamp\", \"artifact_id\", \"timestamp\"),\n        Index(\"ix_graph_actions_group\", \"group_id\"),\n        Index(\"ix_graph_actions_artifact_id\", \"artifact_id\"),\n    )\n\n    def __repr__(self):\n        return f\"<GraphAction id={self.id} type={self.action_type} artifact={self.artifact_id}>\"\n\n    def to_dict(self):\n        \"\"\"Convert action to dictionary for API responses.\"\"\"\n        return {\n            \"id\": str(self.id),\n            \"artifact_id\": self.artifact_id,\n            \"action_type\": self.action_type,\n            \"before_state\": self.before_state,\n            \"after_state\": self.after_state,\n            \"timestamp\": self.timestamp.isoformat() if self.timestamp else None,\n            \"user_type\": self.user_type,\n            \"description\": self.description,\n            \"plugin_id\": self.plugin_id,\n            \"group_id\": str(self.group_id) if self.group_id else None\n        }\n",
@@ -51017,9 +51026,9 @@
       "hash": "a8f057c5"
     },
     "docker-compose.yml": {
-      "content": "version: '3.8'\n\nservices:\n  postgres:\n    image: postgres:15-alpine\n    container_name: osint-postgres\n    environment:\n      POSTGRES_USER: osint_user      # Оставляем как есть\n      POSTGRES_PASSWORD: osint_password\n      POSTGRES_DB: osint_db\n    ports:\n      - \"5432:5432\"\n    volumes:\n      - postgres_data:/var/lib/postgresql/data\n    healthcheck:\n      test: [\"CMD-SHELL\", \"pg_isready -U osint_user\"]\n      interval: 10s\n      timeout: 5s\n      retries: 5\n    networks:\n      - osint-network\n\n  redis:\n    image: redis:7-alpine\n    container_name: osint-redis\n    ports:\n      - \"6379:6379\"\n    volumes:\n      - redis_data:/data\n    healthcheck:\n      test: [\"CMD\", \"redis-cli\", \"ping\"]\n      interval: 10s\n      timeout: 5s\n      retries: 5\n    networks:\n      - osint-network\n\n  app:\n    build:\n      context: .\n      dockerfile: Dockerfile\n    container_name: osint-app\n    ports:\n      - \"5000:5000\"\n    environment:\n      # Исправлено: используем osint_user, osint_password, osint_db\n      - DATABASE_URL=postgresql+asyncpg://osint_user:osint_password@osint-postgres:5432/osint_db\n      - REDIS_URL=redis://osint-redis:6379/0\n      - SECRET_KEY=dev-secret-key-for-development\n      - ENVIRONMENT=development\n      # Добавляем для совместимости\n      - POSTGRES_USER=osint_user\n      - POSTGRES_PASSWORD=osint_password\n      - POSTGRES_DB=osint_db\n    depends_on:\n      postgres:\n        condition: service_healthy\n      redis:\n        condition: service_healthy\n    networks:\n      - osint-network\n    volumes:\n      - ./plugins:/app/plugins\n      - ./data:/app/data\n\n  pgadmin:\n    image: dpage/pgadmin4\n    container_name: osint-pgadmin\n    environment:\n      PGADMIN_DEFAULT_EMAIL: admin@admin.com\n      PGADMIN_DEFAULT_PASSWORD: admin\n    ports:\n      - \"5050:80\"\n    depends_on:\n      - postgres\n    networks:\n      - osint-network\n\nnetworks:\n  osint-network:\n    driver: bridge\n\nvolumes:\n  postgres_data:\n  redis_data:\n",
+      "content": "version: '3.8'\n\nservices:\n  postgres:\n    image: postgres:15-alpine\n    container_name: osint-postgres\n    environment:\n      POSTGRES_USER: osint_user      # Оставляем как есть\n      POSTGRES_PASSWORD: osint_password\n      POSTGRES_DB: osint_db\n    ports:\n      - \"5434:5432\"\n    volumes:\n      - postgres_data:/var/lib/postgresql/data\n    healthcheck:\n      test: [\"CMD-SHELL\", \"pg_isready -U osint_user\"]\n      interval: 10s\n      timeout: 5s\n      retries: 5\n    networks:\n      - osint-network\n\n  redis:\n    image: redis:7-alpine\n    container_name: osint-redis\n    ports:\n      - \"6380:6379\"\n    volumes:\n      - redis_data:/data\n    healthcheck:\n      test: [\"CMD\", \"redis-cli\", \"ping\"]\n      interval: 10s\n      timeout: 5s\n      retries: 5\n    networks:\n      - osint-network\n\n  app:\n    build:\n      context: .\n      dockerfile: Dockerfile\n    container_name: osint-app\n    ports:\n      - \"5000:5000\"\n    environment:\n      # Исправлено: используем osint_user, osint_password, osint_db\n      - DATABASE_URL=postgresql+asyncpg://osint_user:osint_password@osint-postgres:5432/osint_db\n      - REDIS_URL=redis://osint-redis:6379/0\n      - SECRET_KEY=dev-secret-key-for-development\n      - ENVIRONMENT=development\n      # Добавляем для совместимости\n      - POSTGRES_USER=osint_user\n      - POSTGRES_PASSWORD=osint_password\n      - POSTGRES_DB=osint_db\n    depends_on:\n      postgres:\n        condition: service_healthy\n      redis:\n        condition: service_healthy\n    networks:\n      - osint-network\n    volumes:\n      - ./plugins:/app/plugins\n      - ./data:/app/data\n\n  pgadmin:\n    image: dpage/pgadmin4\n    container_name: osint-pgadmin\n    environment:\n      PGADMIN_DEFAULT_EMAIL: admin@admin.com\n      PGADMIN_DEFAULT_PASSWORD: admin\n    ports:\n      - \"5050:80\"\n    depends_on:\n      - postgres\n    networks:\n      - osint-network\n\nnetworks:\n  osint-network:\n    driver: bridge\n\nvolumes:\n  postgres_data:\n  redis_data:\n",
       "lines": 86,
-      "hash": "1d4ed122"
+      "hash": "8ed3aaf0"
     },
     "frontend/package.json": {
       "content": "{\n  \"name\": \"osint-graph-analyzer\",\n  \"private\": true,\n  \"version\": \"0.1.0\",\n  \"type\": \"module\",\n  \"scripts\": {\n    \"dev\": \"vite\",\n    \"build\": \"tsc && vite build\",\n    \"preview\": \"vite preview\",\n    \"lint\": \"eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0\"\n  },\n  \"dependencies\": {\n    \"@emotion/react\": \"^11.11.1\",\n    \"@emotion/styled\": \"^11.11.0\",\n    \"@fortawesome/fontawesome-svg-core\": \"^7.2.0\",\n    \"@fortawesome/free-regular-svg-icons\": \"^7.2.0\",\n    \"@fortawesome/free-solid-svg-icons\": \"^7.2.0\",\n    \"@fortawesome/react-fontawesome\": \"^3.2.0\",\n    \"@mui/material\": \"^5.14.18\",\n    \"@reduxjs/toolkit\": \"^1.9.7\",\n    \"axios\": \"^1.6.2\",\n    \"date-fns\": \"^2.30.0\",\n    \"lodash\": \"^4.17.21\",\n    \"react\": \"^18.2.0\",\n    \"react-dom\": \"^18.2.0\",\n    \"react-redux\": \"^8.1.3\",\n    \"react-router-dom\": \"^6.20.0\",\n    \"typescript\": \"^5.2.2\",\n    \"uuid\": \"^8.3.2\",\n    \"vis-data\": \"^7.1.10\",\n    \"vis-network\": \"^9.1.13\",\n    \"vite\": \"^5.0.0\",\n    \"zustand\": \"^4.4.7\"\n  },\n  \"devDependencies\": {\n    \"@types/react\": \"^18.2.43\",\n    \"@types/react-dom\": \"^18.2.17\",\n    \"@types/uuid\": \"^8.3.4\",\n    \"@types/vis\": \"^4.21.27\",\n    \"@typescript-eslint/eslint-plugin\": \"^6.14.0\",\n    \"@typescript-eslint/parser\": \"^6.14.0\",\n    \"@vitejs/plugin-react\": \"^4.2.1\",\n    \"eslint\": \"^8.55.0\",\n    \"eslint-plugin-react-hooks\": \"^4.6.0\",\n    \"eslint-plugin-react-refresh\": \"^0.4.5\",\n    \"typescript\": \"^5.2.2\",\n    \"vite\": \"^5.0.0\"\n  }\n}\n",
@@ -51027,14 +51036,14 @@
       "hash": "f35f38fb"
     },
     "frontend/src/App.tsx": {
-      "content": "// frontend/src/App.tsx - полностью исправленная версия\nimport React, { useEffect, useState } from 'react';\nimport { useDispatch, useSelector } from 'react-redux';\nimport { RootState, AppDispatch } from './store';\nimport Sidebar from './components/layout/Sidebar';\nimport TabBar from './components/layout/TabBar';\nimport InspectorPanel from './components/layout/InspectorPanel';\nimport ArtifactView from './components/views/ArtifactView';\nimport { fetchProjects, setCurrentProject } from './store/slices/projectsSlice';\nimport { fetchArtifacts, Artifact, updateArtifact } from './store/slices/artifactsSlice';\nimport { addTab, removeTab, setActiveTab } from './store/slices/uiSlice';\nimport './App.css';\n\ninterface Tab {\n  id: string;\n  artifactId: number;\n  title: string;\n  type: string;\n}\n\nconst App: React.FC = () => {\n  const dispatch = useDispatch<AppDispatch>();\n  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);\n  const [hasInitialized, setHasInitialized] = useState(false);\n\n  const { projects, currentProject } = useSelector((state: RootState) => state.projects);\n  const { items: artifacts } = useSelector((state: RootState) => state.artifacts);\n  const { tabs, activeTabId, darkMode, inspectorWidth } = useSelector((state: RootState) => state.ui);\n\n  // Преобразуем объект items в массив для удобства\n  const artifactsList = Object.values(artifacts || {});\n\n  useEffect(() => {\n    console.log('[App] Initializing app, fetching projects');\n    dispatch(fetchProjects());\n  }, [dispatch]);\n\n  useEffect(() => {\n    console.log('[App] projects or currentProject changed:', {\n      projectsCount: projects.length,\n      currentProject: currentProject?.id\n    });\n\n    if (projects.length > 0 && !currentProject && !hasInitialized) {\n      console.log('[App] Setting first project as current:', projects[0].id);\n      dispatch(setCurrentProject(projects[0].id));\n      setHasInitialized(true);\n    }\n\n    if (currentProject?.id) {\n      console.log(`[App] Current project ID: ${currentProject.id}, fetching artifacts`);\n      dispatch(fetchArtifacts(currentProject.id));\n    }\n  }, [projects, currentProject, dispatch, hasInitialized]);\n\n  const handleArtifactSelect = (artifact: Artifact) => {\n    console.log('[App] Artifact selected:', artifact.id, artifact.name);\n\n    const existingTab = tabs.find(tab => tab.artifactId === artifact.id);\n\n    if (existingTab) {\n      dispatch(setActiveTab(existingTab.id));\n    } else {\n      const tabId = `tab-${Date.now()}-${artifact.id}`;\n      const icon = getArtifactIcon(artifact.type);\n\n      dispatch(addTab({\n        id: tabId,\n        artifactId: artifact.id,\n        title: `${icon} ${artifact.name}`,\n        type: artifact.type,\n      }));\n\n      dispatch(setActiveTab(tabId));\n    }\n  };\n\n  const handleTabClose = (tabId: string) => {\n    console.log('[App] Closing tab:', tabId);\n    dispatch(removeTab(tabId));\n  };\n\n  const handleArtifactUpdate = async (artifactId: number, updates: Partial<Artifact>) => {\n    if (!currentProject) return;\n\n    console.log(`[App] Updating artifact ${artifactId}:`, updates);\n\n    try {\n      await dispatch(updateArtifact({\n        projectId: currentProject.id,\n        id: artifactId,\n        updates,\n      }));\n    } catch (error) {\n      console.error('[App] Failed to update artifact:', error);\n    }\n  };\n\n  const handleNodeMove = (artifactId: number, nodeId: string, x: number, y: number) => {\n    console.log(`[App] Node ${nodeId} moved to (${x}, ${y}) in artifact ${artifactId}`);\n\n    const artifact = artifactsList.find(a => a.id === artifactId);\n    if (!artifact || artifact.type !== 'graph') return;\n\n    const updatedNodes = artifact.data.nodes?.map((node: any) =>\n      node.id === nodeId || node.node_id === nodeId\n        ? { ...node, position_x: x, position_y: y }\n        : node\n    );\n\n    handleArtifactUpdate(artifactId, {\n      data: {\n        ...artifact.data,\n        nodes: updatedNodes,\n      },\n    });\n  };\n\n  const getArtifactIcon = (type: string): string => {\n    switch (type) {\n      case 'graph': return '📊';\n      case 'table': return '📋';\n      case 'map': return '🗺️';\n      case 'chart': return '📈';\n      case 'document': return '📄';\n      default: return '📁';\n    }\n  };\n\n  // Безопасное вычисление активного артефакта\n  const getActiveArtifact = () => {\n    if (!activeTabId || !tabs || tabs.length === 0) return null;\n    \n    const activeTab = tabs.find(t => t.id === activeTabId);\n    if (!activeTab) return null;\n    \n    return artifactsList.find(a => a.id === activeTab.artifactId) || null;\n  };\n\n  const activeArtifact = getActiveArtifact();\n\n  return (\n    <div className={`app ${darkMode ? 'dark' : 'light'}`}>\n      <Sidebar\n        isCollapsed={isSidebarCollapsed}\n        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}\n        onArtifactSelect={handleArtifactSelect}\n      />\n\n      <div className=\"main-content\">\n        <TabBar\n          tabs={tabs}\n          activeTabId={activeTabId}\n          onTabClick={(tabId) => dispatch(setActiveTab(tabId))}\n          onTabClose={handleTabClose}\n        />\n\n        <div className=\"content-area\">\n          <div className=\"view-container\">\n            {activeArtifact ? (\n              <ArtifactView\n                key={activeArtifact.id}\n                artifact={activeArtifact}\n                onClose={() => activeTabId && handleTabClose(activeTabId)}\n                onUpdate={(updates) => handleArtifactUpdate(activeArtifact.id, updates)}\n                onNodeMove={(nodeId, x, y) => handleNodeMove(activeArtifact.id, nodeId, x, y)}\n              />\n            ) : (\n              <div className=\"empty-state\">\n                <div className=\"text-center\">\n                  <svg className=\"mx-auto h-12 w-12 text-gray-400\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\">\n                    <path strokeLinecap=\"round\" strokeLinejoin=\"round\" strokeWidth={1} d=\"M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z\" />\n                  </svg>\n                  <h3 className=\"mt-2 text-sm font-medium text-gray-900 dark:text-gray-100\">No artifact selected</h3>\n                  <p className=\"mt-1 text-sm text-gray-500 dark:text-gray-400\">\n                    Select an artifact from the sidebar to start working\n                  </p>\n                </div>\n              </div>\n            )}\n          </div>\n\n          <InspectorPanel width={inspectorWidth} />\n        </div>\n      </div>\n    </div>\n  );\n};\n\nexport default App;\n",
-      "lines": 191,
-      "hash": "91d38034"
+      "content": "// frontend/src/App.tsx - полностью исправленная версия\nimport React, { useEffect, useState } from 'react';\nimport { useDispatch, useSelector } from 'react-redux';\nimport { RootState, AppDispatch } from './store';\nimport Sidebar from './components/layout/Sidebar';\nimport TabBar from './components/layout/TabBar';\nimport InspectorPanel from './components/layout/InspectorPanel';\nimport ArtifactView from './components/views/ArtifactView';\nimport { fetchProjects, setCurrentProject } from './store/slices/projectsSlice';\n\nimport { fetchArtifacts, updateArtifact } from './store/slices/artifactsSlice';\n\nimport { addTab, removeTab, setActiveTab } from './store/slices/uiSlice';\nimport './App.css';\nimport type { ApiArtifact } from './types/api';\n\n\n\nconst App: React.FC = () => {\n  const dispatch = useDispatch<AppDispatch>();\n  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);\n  const [hasInitialized, setHasInitialized] = useState(false);\n\n  const { projects, currentProject } = useSelector((state: RootState) => state.projects);\n  const { items: artifacts } = useSelector((state: RootState) => state.artifacts);\n  const { tabs, activeTabId, darkMode, inspectorWidth } = useSelector((state: RootState) => state.ui);\n\n  // Преобразуем объект items в массив для удобства\n  const artifactsList = Object.values(artifacts || {});\n\n  useEffect(() => {\n    console.log('[App] Initializing app, fetching projects');\n    dispatch(fetchProjects());\n  }, [dispatch]);\n\n  useEffect(() => {\n    console.log('[App] projects or currentProject changed:', {\n      projectsCount: projects.length,\n      currentProject: currentProject?.id\n    });\n\n    if (projects.length > 0 && !currentProject && !hasInitialized) {\n      console.log('[App] Setting first project as current:', projects[0].id);\n      dispatch(setCurrentProject(projects[0].id));\n      setHasInitialized(true);\n    }\n\n    if (currentProject?.id) {\n      console.log(`[App] Current project ID: ${currentProject.id}, fetching artifacts`);\n      dispatch(fetchArtifacts(currentProject.id));\n    }\n  }, [projects, currentProject, dispatch, hasInitialized]);\n\n  const handleArtifactSelect = (artifact: ApiArtifact) => {\n    console.log('[App] Artifact selected:', artifact.id, artifact.name);\n\n    const existingTab = tabs.find(tab => tab.artifactId === artifact.id);\n\n    if (existingTab) {\n      dispatch(setActiveTab(existingTab.id));\n    } else {\n      const tabId = `tab-${Date.now()}-${artifact.id}`;\n      const icon = getArtifactIcon(artifact.type);\n\n      dispatch(addTab({\n        id: tabId,\n        artifactId: artifact.id,\n        title: `${icon} ${artifact.name}`,\n        type: artifact.type,\n      }));\n\n      dispatch(setActiveTab(tabId));\n    }\n  };\n\n  const handleTabClose = (tabId: string) => {\n    console.log('[App] Closing tab:', tabId);\n    dispatch(removeTab(tabId));\n  };\n\n  const handleArtifactUpdate = async (artifactId: number, updates: Partial<ApiArtifact>) => {\n\n    if (!currentProject) return;\n\n    console.log(`[App] Updating artifact ${artifactId}:`, updates);\n\n    try {\n      await dispatch(updateArtifact({\n        projectId: currentProject.id,\n        id: artifactId,\n        updates,\n      }));\n    } catch (error) {\n      console.error('[App] Failed to update artifact:', error);\n    }\n  };\n\n  \n\n  const getArtifactIcon = (type: string): string => {\n    switch (type) {\n      case 'graph': return '📊';\n      case 'table': return '📋';\n      case 'map': return '🗺️';\n      case 'chart': return '📈';\n      case 'document': return '📄';\n      default: return '📁';\n    }\n  };\n\n  // Безопасное вычисление активного артефакта\n  const getActiveArtifact = () => {\n    if (!activeTabId || !tabs || tabs.length === 0) return null;\n    \n    const activeTab = tabs.find(t => t.id === activeTabId);\n    if (!activeTab) return null;\n    \n    return artifactsList.find(a => a.id === activeTab.artifactId) || null;\n  };\n\n  const activeArtifact = getActiveArtifact();\n\n  return (\n    <div className={`app ${darkMode ? 'dark' : 'light'}`}>\n      <Sidebar\n        isCollapsed={isSidebarCollapsed}\n        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}\n        onArtifactSelect={handleArtifactSelect}\n      />\n\n      <div className=\"main-content\">\n        <TabBar\n          tabs={tabs}\n          activeTabId={activeTabId}\n          onTabClick={(tabId) => dispatch(setActiveTab(tabId))}\n          onTabClose={handleTabClose}\n        />\n\n        <div className=\"content-area\">\n          <div className=\"view-container\">\n            {activeArtifact ? (\n              <ArtifactView\n                key={activeArtifact.id}\n                artifact={activeArtifact}\n                onClose={() => activeTabId && handleTabClose(activeTabId)}\n                onUpdate={(updates) => handleArtifactUpdate(activeArtifact.id, updates)}\n\n              />\n            ) : (\n              <div className=\"empty-state\">\n                <div className=\"text-center\">\n                  <svg className=\"mx-auto h-12 w-12 text-gray-400\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\">\n                    <path strokeLinecap=\"round\" strokeLinejoin=\"round\" strokeWidth={1} d=\"M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z\" />\n                  </svg>\n                  <h3 className=\"mt-2 text-sm font-medium text-gray-900 dark:text-gray-100\">No artifact selected</h3>\n                  <p className=\"mt-1 text-sm text-gray-500 dark:text-gray-400\">\n                    Select an artifact from the sidebar to start working\n                  </p>\n                </div>\n              </div>\n            )}\n          </div>\n\n          <InspectorPanel width={inspectorWidth} />\n        </div>\n      </div>\n    </div>\n  );\n};\n\nexport default App;\n",
+      "lines": 172,
+      "hash": "1dc66314"
     },
     "frontend/src/components/views/GraphView.tsx": {
-      "content": "// frontend/src/components/views/GraphView.tsx\nimport React, { useEffect, useRef, useState, useCallback } from 'react';\nimport { useAppDispatch } from '../../store';\nimport { updateArtifact } from '../../store/slices/artifactsSlice';\nimport { HistoryPanel } from '../history/HistoryPanel';\nimport { useActionWithUndo } from '../../hooks/useActionWithUndo';\nimport { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';\nimport { Network } from 'vis-network/standalone';\nimport { DataSet } from 'vis-data/standalone';\nimport 'vis-network/styles/vis-network.css';\nimport './GraphView.css';\n\ninterface GraphViewProps {\n  artifact: {\n    id: number;\n    project_id: number;\n    data: {\n      nodes?: Array<{\n        id: string;\n        label: string;\n        type: string;\n        position_x?: number;\n        position_y?: number;\n        [key: string]: any;\n      }>;\n      edges?: Array<{\n        id: string;\n        from: string;\n        to: string;\n        type: string;\n        [key: string]: any;\n      }>;\n    };\n  };\n}\n\nexport const GraphView: React.FC<GraphViewProps> = ({ artifact }) => {\n  const dispatch = useAppDispatch();\n  const containerRef = useRef<HTMLDivElement>(null);\n  const networkRef = useRef<Network | null>(null);\n  const nodesDataSetRef = useRef<DataSet<any> | null>(null);\n  const edgesDataSetRef = useRef<DataSet<any> | null>(null);\n\n  // Сохраняем ID артефакта для стабильности\n  const artifactIdRef = useRef(artifact.id);\n  const projectIdRef = useRef(artifact.project_id);\n\n  // Локальное состояние для позиций узлов (оптимистичные обновления)\n  const [localNodePositions, setLocalNodePositions] = useState<Record<string, {x: number, y: number}>>({});\n\n  // Состояние для группировки перемещений\n  const [pendingMoves, setPendingMoves] = useState<Record<string, {x: number, y: number}>>({});\n  const moveTimeoutRef = useRef<NodeJS.Timeout>();\n  const batchGroupIdRef = useRef<string | null>(null);\n\n  // Флаг для предотвращения повторной инициализации\n  const isInitializedRef = useRef(false);\n\n  // Флаг для игнорирования обновлений из Redux во время перетаскивания\n  const isDraggingRef = useRef(false);\n\n  // Последнее примененное состояние из Redux\n  const lastReduxStateRef = useRef<string>(JSON.stringify(artifact.data));\n\n  // Флаг для пропуска fit() при внешних обновлениях\n  const skipFitRef = useRef(false);\n\n  // ==========================================================================\n  // Инициализация хука для undo/redo\n  // ==========================================================================\n\n  const handleStateChange = useCallback(async (newData: any) => {\n    console.log('Updating Redux state:', newData);\n    await dispatch(updateArtifact({\n      projectId: projectIdRef.current,\n      id: artifactIdRef.current,\n      updates: { data: newData }\n    })).unwrap();\n  }, [dispatch]);\n\n  const {\n    execute,\n    undo,\n    redo,\n    canUndo,\n    canRedo\n  } = useActionWithUndo(\n    artifact.id,\n    artifact.data,\n    handleStateChange\n  );\n\n  // Подключаем клавиатурные сокращения\n  useKeyboardShortcuts(artifact.id);\n\n  // ==========================================================================\n  // Инициализация vis-network\n  // ==========================================================================\n\n  useEffect(() => {\n    if (!containerRef.current || isInitializedRef.current) return;\n\n    console.log('Initializing graph with data:', artifact.data);\n    isInitializedRef.current = true;\n\n    // Создаем DataSet'ы с учетом локальных позиций\n    const initialNodes = (artifact.data.nodes || []).map(node => ({\n      id: node.id,\n      label: node.label || node.id,\n      title: `${node.type}\\n${JSON.stringify(node, null, 2)}`,\n      x: node.position_x,\n      y: node.position_y,\n      group: node.type,\n      ...node\n    }));\n\n    const nodes = new DataSet(initialNodes);\n    const edges = new DataSet(\n      (artifact.data.edges || []).map(edge => ({\n        id: edge.id,\n        from: edge.from,\n        to: edge.to,\n        label: edge.type,\n        title: `${edge.type}\\n${JSON.stringify(edge, null, 2)}`,\n        arrows: 'to',\n        ...edge\n      }))\n    );\n\n    nodesDataSetRef.current = nodes;\n    edgesDataSetRef.current = edges;\n\n    // Настройки сети\n    const options = {\n      physics: {\n        enabled: false,\n        stabilization: false\n      },\n      layout: {\n        randomSeed: 42,\n        improvedLayout: false\n      },\n      nodes: {\n        shape: 'dot',\n        size: 20,\n        font: {\n          size: 14,\n          color: '#ffffff',\n        },\n        borderWidth: 2,\n        shadow: true,\n        fixed: false\n      },\n      edges: {\n        width: 2,\n        smooth: {\n          enabled: false,\n          type: 'continuous'\n        },\n        font: {\n          size: 12,\n          color: '#ffffff',\n          align: 'middle',\n          strokeWidth: 2,\n          strokeColor: '#2d2d2d'\n        },\n        arrows: {\n          to: {\n            enabled: true,\n            scaleFactor: 0.8\n          }\n        },\n        color: {\n          color: '#848484',\n          highlight: '#2196f3',\n          hover: '#2196f3'\n        }\n      },\n      interaction: {\n        dragNodes: true,\n        dragView: true,\n        zoomView: true,\n        hover: true,\n        tooltipDelay: 300,\n        multiselect: true,\n        navigationButtons: true,\n        keyboard: false\n      },\n      manipulation: {\n        enabled: false,\n      },\n    };\n\n    // Создаем сеть\n    const network = new Network(\n      containerRef.current,\n      { nodes, edges },\n      options\n    );\n\n    networkRef.current = network;\n\n    // Отключаем автоматическое масштабирование при старте\n    network.once('afterDrawing', () => {\n      console.log('Network initialized, skipping fit');\n    });\n\n    // ========================================================================\n    // Обработчики событий\n    // ========================================================================\n\n    // Обработчик начала перетаскивания\n    network.on('dragStart', (params) => {\n      const nodeId = params.nodes[0];\n      if (nodeId) {\n        console.log('Drag start for node:', nodeId);\n        isDraggingRef.current = true;\n        // Создаем группу для batch операций\n        batchGroupIdRef.current = `move_${Date.now()}`;\n      }\n    });\n\n    // Обработчик во время перетаскивания - обновляем локальное состояние\n    network.on('dragging', (params) => {\n      const nodeId = params.nodes[0];\n      if (nodeId) {\n        const position = network.getPosition(nodeId);\n        setLocalNodePositions(prev => ({\n          ...prev,\n          [nodeId]: { x: position.x, y: position.y }\n        }));\n      }\n    });\n\n\n\n    // Обработчик окончания перетаскивания\n    network.on('dragEnd', async (params) => {\n      const nodeId = params.nodes[0];\n      if (!nodeId) {\n        isDraggingRef.current = false;\n        return;\n      }\n\n      const position = network.getPosition(nodeId);\n      console.log('Drag end for node:', nodeId, position);\n\n      // Добавляем в ожидающие перемещения\n      setPendingMoves(prev => {\n        const newMoves = {\n          ...prev,\n          [nodeId]: { x: position.x, y: position.y }\n        };\n\n        // Сбрасываем предыдущий таймаут\n        if (moveTimeoutRef.current) {\n          clearTimeout(moveTimeoutRef.current);\n        }\n\n        // Устанавливаем новый таймаут\n        moveTimeoutRef.current = setTimeout(async () => {\n          const movesToApply = { ...newMoves };\n      \n          // Очищаем pending moves\n          setPendingMoves({});\n      \n          // Создаем функцию для обновления данных\n          const updateData = () => {\n            const updatedNodes = (artifact.data.nodes || []).map(node =>\n              movesToApply[node.id]\n                ? {\n                    ...node,\n                    position_x: movesToApply[node.id].x,\n                    position_y: movesToApply[node.id].y\n                  }\n                : node\n            );\n\n            return {\n              ...artifact.data,\n              nodes: updatedNodes\n            };\n          };\n\n          // Выполняем действие через execute\n          await execute(\n            async () => {\n              const newData = updateData();\n              // НЕ вызываем handleStateChange здесь!\n              // execute сам вызовет onStateChange\n              return newData; // Возвращаем новое состояние\n            },\n            {\n              description: Object.keys(movesToApply).length === 1 \n                ? `Перемещение узла` \n                : `Перемещение ${Object.keys(movesToApply).length} узлов`,\n              actionType: 'batch_move',\n              groupId: batchGroupIdRef.current || undefined\n            }\n          );\n\n          batchGroupIdRef.current = null;\n          isDraggingRef.current = false;\n        }, 500);\n\n        return newMoves;\n      });\n    });\n    \n\n\n    // Обработчик клика на узле\n    network.on('click', (params) => {\n      if (params.nodes.length > 0) {\n        console.log('Clicked node:', params.nodes[0]);\n      }\n    });\n\n    // Cleanup\n    return () => {\n      if (moveTimeoutRef.current) {\n        clearTimeout(moveTimeoutRef.current);\n      }\n      network.destroy();\n      isInitializedRef.current = false;\n    };\n  }, []); // Пустой массив - инициализация только один раз\n\n  // ==========================================================================\n  // Синхронизация с Redux (только когда не перетаскиваем)\n  // ==========================================================================\n\n  useEffect(() => {\n    if (!networkRef.current || !nodesDataSetRef.current || isDraggingRef.current) {\n      return;\n    }\n\n    const currentReduxState = JSON.stringify(artifact.data);\n\n    // Если состояние в Redux изменилось (не из-за нашего перетаскивания)\n    if (currentReduxState !== lastReduxStateRef.current) {\n      console.log('Redux state changed externally, updating graph');\n      lastReduxStateRef.current = currentReduxState;\n\n      // Обновляем узлы\n      const nodesData = (artifact.data.nodes || []).map(node => ({\n        id: node.id,\n        label: node.label || node.id,\n        x: node.position_x,\n        y: node.position_y,\n        group: node.type,\n        ...node\n      }));\n\n      // Очищаем и добавляем заново\n      nodesDataSetRef.current.clear();\n      if (nodesData.length > 0) {\n        nodesDataSetRef.current.add(nodesData);\n      }\n\n      // Очищаем локальные позиции\n      setLocalNodePositions({});\n\n      // Обновляем ребра\n      const edgesData = (artifact.data.edges || []).map(edge => ({\n        id: edge.id,\n        from: edge.from,\n        to: edge.to,\n        label: edge.type,\n        ...edge\n      }));\n\n      edgesDataSetRef.current?.clear();\n      if (edgesData.length > 0) {\n        edgesDataSetRef.current?.add(edgesData);\n      }\n\n      // НЕ делаем fit() - сохраняем текущий масштаб и позицию\n      skipFitRef.current = false;\n    }\n  }, [artifact.data]);\n\n  // ==========================================================================\n  // Обработчик клавиш для undo/redo\n  // ==========================================================================\n\n  useEffect(() => {\n    const handleKeyDown = (e: KeyboardEvent) => {\n      if ((e.target as HTMLElement).tagName === 'INPUT' ||\n          (e.target as HTMLElement).tagName === 'TEXTAREA') {\n        return;\n      }\n\n      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {\n        e.preventDefault();\n        console.log('Undo keyboard shortcut');\n        undo();\n      }\n\n      if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {\n        e.preventDefault();\n        console.log('Redo keyboard shortcut');\n        redo();\n      }\n    };\n\n    window.addEventListener('keydown', handleKeyDown);\n    return () => window.removeEventListener('keydown', handleKeyDown);\n  }, [undo, redo]);\n\n  // ==========================================================================\n  // Render\n  // ==========================================================================\n\n  return (\n    <div className=\"graph-view\">\n      {/* Панель инструментов */}\n      <div className=\"graph-toolbar\">\n        <div className=\"toolbar-group\">\n          <button\n            onClick={undo}\n            disabled={!canUndo}\n            title=\"Отменить (Ctrl+Z)\"\n            className=\"toolbar-btn\"\n          >\n            ↩️ Undo {canUndo ? '(доступно)' : ''}\n          </button>\n          <button\n            onClick={redo}\n            disabled={!canRedo}\n            title=\"Повторить (Ctrl+Y / Ctrl+Shift+Z)\"\n            className=\"toolbar-btn\"\n          >\n            ↪️ Redo {canRedo ? '(доступно)' : ''}\n          </button>\n        </div>\n\n        <div className=\"toolbar-group\">\n          <button\n            onClick={() => {\n              // Сохранить\n              dispatch(updateArtifact({\n                projectId: projectIdRef.current,\n                id: artifactIdRef.current,\n                updates: { data: artifact.data }\n              }));\n            }}\n            title=\"Сохранить (Ctrl+S)\"\n            className=\"toolbar-btn\"\n          >\n            💾 Save\n          </button>\n          <button\n            onClick={() => {\n              // Экспорт\n              const dataStr = JSON.stringify(artifact.data, null, 2);\n              const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);\n              const exportFileDefaultName = `graph-${artifact.id}.json`;\n              const linkElement = document.createElement('a');\n              linkElement.setAttribute('href', dataUri);\n              linkElement.setAttribute('download', exportFileDefaultName);\n              linkElement.click();\n            }}\n            title=\"Экспорт в JSON\"\n            className=\"toolbar-btn\"\n          >\n            📤 Export\n          </button>\n        </div>\n\n        <div className=\"toolbar-group\">\n          <button\n            onClick={() => {\n              if (networkRef.current) {\n                networkRef.current.fit();\n              }\n            }}\n            title=\"Подогнать под экран\"\n            className=\"toolbar-btn\"\n          >\n            🔍 Fit\n          </button>\n          <button\n            onClick={() => {\n              if (networkRef.current) {\n                networkRef.current.moveTo({\n                  scale: 1,\n                  position: { x: 0, y: 0 }\n                });\n              }\n            }}\n            title=\"Сбросить масштаб\"\n            className=\"toolbar-btn\"\n          >\n            🔄 Reset\n          </button>\n        </div>\n\n        <div className=\"toolbar-status\">\n          {Object.keys(pendingMoves).length > 0 && (\n            <span className=\"status-badge\">\n              Группировка... {Object.keys(pendingMoves).length}\n            </span>\n          )}\n          {isDraggingRef.current && (\n            <span className=\"status-badge\" style={{background: '#ff9800'}}>\n              Перетаскивание...\n            </span>\n          )}\n        </div>\n      </div>\n\n      {/* Контейнер для графа */}\n      <div\n        ref={containerRef}\n        className=\"graph-container\"\n        style={{ width: '100%', height: 'calc(100vh - 200px)' }}\n      />\n\n      {/* Панель истории */}\n      <HistoryPanel \n        artifactId={artifact.id}\n        onJump={(state) => {\n          // Обновляем граф из истории\n          if (networkRef.current && nodesDataSetRef.current) {\n            skipFitRef.current = true;\n            \n            const nodesData = (state.nodes || []).map((node: any) => ({\n              id: node.id,\n              label: node.label || node.id,\n              x: node.position_x,\n              y: node.position_y,\n              group: node.type,\n              ...node\n            }));\n\n            nodesDataSetRef.current.clear();\n            nodesDataSetRef.current.add(nodesData);\n\n            const edgesData = (state.edges || []).map((edge: any) => ({\n              id: edge.id,\n              from: edge.from,\n              to: edge.to,\n              label: edge.type,\n              ...edge\n            }));\n\n            edgesDataSetRef.current?.clear();\n            if (edgesData.length > 0) {\n              edgesDataSetRef.current?.add(edgesData);\n            }\n          }\n        }}\n      />\n    </div>\n  );\n};\n",
-      "lines": 558,
-      "hash": "1fc4ecb8"
+      "content": "// frontend/src/components/views/GraphView.tsx\nimport React, { useEffect, useRef, useState, useCallback } from 'react';\nimport { useAppDispatch } from '../../store';\nimport { updateArtifact } from '../../store/slices/artifactsSlice';\nimport { useActionWithUndo } from '../../hooks/useActionWithUndo';\nimport { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';\nimport { Network } from 'vis-network/standalone';\nimport { DataSet } from 'vis-data/standalone';\nimport type { ApiArtifact } from '../../types/api';\nimport 'vis-network/styles/vis-network.css';\nimport './GraphView.css';\n\ninterface GraphViewProps {\n  artifact: ApiArtifact;\n  onNodeMove: (nodeId: string, x: number, y: number) => void;\n  // Другие пропсы опциональны, временно не используются\n  onAddNode?: (position: { x: number, y: number }, nodeType?: string) => void;\n  onDeleteNode?: (nodeId: string) => void;\n  onAddEdge?: (sourceId: string, targetId: string, edgeType?: string) => void;\n  onDeleteEdge?: (edgeId: string) => void;\n  onEditAttributes?: (nodeId: string, attributes: Record<string, any>) => void;\n}\n\nexport const GraphView: React.FC<GraphViewProps> = ({ \n  artifact, \n  onNodeMove,\n  onAddNode: _onAddNode,\n  onDeleteNode: _onDeleteNode,\n  onAddEdge: _onAddEdge,\n  onDeleteEdge: _onDeleteEdge,\n  onEditAttributes: _onEditAttributes\n}) => {\n  const dispatch = useAppDispatch();\n  const containerRef = useRef<HTMLDivElement>(null);\n  const networkRef = useRef<Network | null>(null);\n  // Используем any для DataSet, чтобы избежать сложностей с типами\n  const nodesDataSetRef = useRef<any>(null);\n  const edgesDataSetRef = useRef<any>(null);\n  \n  const [pendingMoves, setPendingMoves] = useState<Record<string, {x: number, y: number}>>({});\n  const moveTimeoutRef = useRef<ReturnType<typeof setTimeout>>();\n  const batchGroupIdRef = useRef<string | null>(null);\n  const isInitializedRef = useRef(false);\n  const isDraggingRef = useRef(false);\n  const lastReduxStateRef = useRef<string>(JSON.stringify(artifact.data));\n\n  const handleStateChange = useCallback(async (newData: any) => {\n    await dispatch(updateArtifact({\n      projectId: artifact.project_id,\n      id: artifact.id,\n      updates: { data: newData }\n    })).unwrap();\n  }, [dispatch, artifact.project_id, artifact.id]);\n\n  // Временно не используем execute\n  const {\n    execute: _execute,\n    isRecording,\n    lastError\n  } = useActionWithUndo(\n    artifact.id,\n    artifact.data,\n    handleStateChange\n  );\n\n  useKeyboardShortcuts(artifact.id);\n\n  useEffect(() => {\n    if (!containerRef.current || isInitializedRef.current) return;\n\n    console.log('[GraphView] Initializing with data:', artifact.data);\n    isInitializedRef.current = true;\n\n    // Создаем DataSet с приведением типов через any\n    const nodes = new DataSet(\n      (artifact.data?.nodes || []).map((node: any) => ({\n        ...node,\n        id: node.id,\n        label: node.label || node.id,\n        title: `${node.type}\\n${JSON.stringify(node, null, 2)}`,\n        x: node.position_x,\n        y: node.position_y,\n      }))\n    ) as any;\n\n    const edges = new DataSet(\n      (artifact.data?.edges || []).map((edge: any) => ({\n        ...edge,\n        id: edge.id,\n        from: edge.from || edge.source_node,\n        to: edge.to || edge.target_node,\n        label: edge.type,\n        title: `${edge.type}\\n${JSON.stringify(edge, null, 2)}`,\n        arrows: 'to',\n      }))\n    ) as any;\n\n    nodesDataSetRef.current = nodes;\n    edgesDataSetRef.current = edges;\n\n    const options = {\n      physics: { enabled: false, stabilization: false },\n      layout: { randomSeed: 42, improvedLayout: false },\n      nodes: {\n        shape: 'dot',\n        size: 20,\n        font: { size: 14, color: '#ffffff' },\n        borderWidth: 2,\n        shadow: true,\n        fixed: false\n      },\n      edges: {\n        width: 2,\n        smooth: {\n          enabled: true,\n          type: 'continuous',\n          roundness: 0.5\n        },\n        font: { \n          size: 12, \n          color: '#ffffff', \n          align: 'middle' \n        },\n        arrows: { \n          to: { \n            enabled: true, \n            scaleFactor: 0.8 \n          } \n        },\n        color: { \n          color: '#848484', \n          highlight: '#2196f3', \n          hover: '#2196f3' \n        }\n      },\n      interaction: {\n        dragNodes: true,\n        dragView: true,\n        zoomView: true,\n        hover: true,\n        tooltipDelay: 300,\n        multiselect: true,\n        navigationButtons: true,\n        keyboard: false\n      },\n      manipulation: { enabled: false }\n    };\n\n    const network = new Network(\n      containerRef.current,\n      { nodes, edges },\n      options\n    );\n\n    networkRef.current = network;\n\n    network.on('dragStart', (params) => {\n      const nodeId = params.nodes[0];\n      if (nodeId) {\n        isDraggingRef.current = true;\n        batchGroupIdRef.current = `move_${Date.now()}`;\n      }\n    });\n\n    network.on('dragEnd', (params) => {\n      const nodeId = params.nodes[0];\n      if (!nodeId) {\n        isDraggingRef.current = false;\n        return;\n      }\n\n      const position = network.getPosition(nodeId);\n      \n      setPendingMoves(prev => ({\n        ...prev,\n        [nodeId]: { x: position.x, y: position.y }\n      }));\n\n      if (moveTimeoutRef.current) {\n        clearTimeout(moveTimeoutRef.current);\n      }\n\n      moveTimeoutRef.current = setTimeout(() => {\n        const currentMoves = { ...pendingMoves, [nodeId]: { x: position.x, y: position.y } };\n        setPendingMoves({});\n\n        Object.entries(currentMoves).forEach(([id, pos]) => {\n          const typedPos = pos as {x: number, y: number};\n          onNodeMove(id, typedPos.x, typedPos.y);\n        });\n\n        batchGroupIdRef.current = null;\n        isDraggingRef.current = false;\n      }, 500);\n    });\n\n    return () => {\n      if (moveTimeoutRef.current) clearTimeout(moveTimeoutRef.current);\n      network.destroy();\n      isInitializedRef.current = false;\n    };\n  }, []); // Пустой массив зависимостей - инициализация только один раз\n\n  useEffect(() => {\n    if (!networkRef.current || !nodesDataSetRef.current || isDraggingRef.current) return;\n\n    const currentReduxState = JSON.stringify(artifact.data);\n    if (currentReduxState === lastReduxStateRef.current) return;\n\n    lastReduxStateRef.current = currentReduxState;\n\n    const nodesData = (artifact.data?.nodes || []).map((node: any) => ({\n      ...node,\n      id: node.id,\n      label: node.label || node.id,\n      x: node.position_x,\n      y: node.position_y,\n    }));\n\n    nodesDataSetRef.current.clear();\n    if (nodesData.length > 0) {\n      nodesDataSetRef.current.add(nodesData);\n    }\n\n    const edgesData = (artifact.data?.edges || []).map((edge: any) => ({\n      ...edge,\n      id: edge.id,\n      from: edge.from || edge.source_node,\n      to: edge.to || edge.target_node,\n      label: edge.type,\n    }));\n\n    edgesDataSetRef.current?.clear();\n    if (edgesData.length > 0) {\n      edgesDataSetRef.current?.add(edgesData);\n    }\n  }, [artifact.data]);\n\n  return (\n    <div className=\"graph-view\" style={{ height: '100%', position: 'relative' }}>\n      <div \n        ref={containerRef} \n        style={{ width: '100%', height: '100%' }}\n      />\n      {isRecording && (\n        <div style={{\n          position: 'absolute',\n          top: 10,\n          right: 10,\n          background: '#f59e0b',\n          color: 'white',\n          padding: '4px 8px',\n          borderRadius: '4px',\n          fontSize: '12px',\n          zIndex: 1000\n        }}>\n          Recording...\n        </div>\n      )}\n      {lastError && (\n        <div style={{\n          position: 'absolute',\n          top: 10,\n          right: 10,\n          background: '#ef4444',\n          color: 'white',\n          padding: '4px 8px',\n          borderRadius: '4px',\n          fontSize: '12px',\n          zIndex: 1000\n        }}>\n          Error\n        </div>\n      )}\n    </div>\n  );\n};\n\nexport default GraphView;",
+      "lines": 279,
+      "hash": "973edc5f"
     },
     "frontend/src/store/index.ts": {
       "content": "// frontend/src/store/index.ts\nimport { configureStore } from '@reduxjs/toolkit';\nimport { useDispatch, useSelector } from 'react-redux';\nimport type { TypedUseSelectorHook } from 'react-redux';\n\n// Импорт всех слайсов\nimport projectsReducer from './slices/projectsSlice';\nimport artifactsReducer from './slices/artifactsSlice';\nimport graphReducer from './slices/graphSlice';\nimport uiReducer from './slices/uiSlice';\nimport historyReducer from './slices/historySlice';  // 👈 новый импорт\n\nexport const store = configureStore({\n  reducer: {\n    projects: projectsReducer,\n    artifacts: artifactsReducer,\n    graph: graphReducer,\n    ui: uiReducer,\n    history: historyReducer,  // 👈 добавляем в store\n  },\n  middleware: (getDefaultMiddleware) =>\n    getDefaultMiddleware({\n      serializableCheck: {\n        // Игнорируем несериализуемые значения в определенных путях\n        ignoredActions: ['history/recordAction/fulfilled'],\n        ignoredPaths: ['history.actions.*.beforeState', 'history.actions.*.afterState'],\n      },\n    }),\n});\n\n// Infer the `RootState` and `AppDispatch` types from the store itself\nexport type RootState = ReturnType<typeof store.getState>;\nexport type AppDispatch = typeof store.dispatch;\n\n// Use throughout your app instead of plain `useDispatch` and `useSelector`\nexport const useAppDispatch: () => AppDispatch = useDispatch;\nexport const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;\n",
@@ -51042,9 +51051,9 @@
       "hash": "309e464c"
     },
     "frontend/src/store/slices/artifactsSlice.ts": {
-      "content": "// frontend/src/store/slices/artifactsSlice.ts\nimport { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';\nimport { api } from '../../services/api';\nimport { ApiArtifact, ApiArtifactCreate, ApiArtifactUpdate } from '../../types/api';\n\ninterface ArtifactsState {\n  items: Record<number, ApiArtifact>;  // key: artifactId\n  currentArtifactId: number | null;\n  isLoading: boolean;\n  error: string | null;\n}\n\nconst initialState: ArtifactsState = {\n  items: {},\n  currentArtifactId: null,\n  isLoading: false,\n  error: null\n};\n\n// ============================================================================\n// Async thunks\n// ============================================================================\n\nexport const fetchArtifacts = createAsyncThunk(\n  'artifacts/fetchAll',\n  async (projectId: number, { rejectWithValue }) => {\n    try {\n      console.log(`[Artifacts] Fetching artifacts for project ${projectId}`);\n      const response = await api.get(`/api/v2/projects/${projectId}/artifacts`);\n      return response;\n    } catch (error: any) {\n      console.error('[Artifacts] Error fetching artifacts:', error);\n      return rejectWithValue(error.message || 'Failed to fetch artifacts');\n    }\n  }\n);\n\nexport const fetchArtifact = createAsyncThunk(\n  'artifacts/fetchOne',\n  async ({ projectId, id }: { projectId: number; id: number }, { rejectWithValue }) => {\n    try {\n      console.log(`[Artifacts] Fetching artifact ${id}`);\n      const response = await api.get(`/api/v2/projects/${projectId}/artifacts/${id}`);\n      return response;\n    } catch (error: any) {\n      console.error('[Artifacts] Error fetching artifact:', error);\n      return rejectWithValue(error.message || 'Failed to fetch artifact');\n    }\n  }\n);\n\nexport const createArtifact = createAsyncThunk(\n  'artifacts/create',\n  async ({ projectId, data }: { projectId: number; data: ApiArtifactCreate }, { rejectWithValue }) => {\n    try {\n      console.log(`[Artifacts] Creating artifact in project ${projectId}`);\n      const response = await api.post(`/api/v2/projects/${projectId}/artifacts`, data);\n      return response;\n    } catch (error: any) {\n      console.error('[Artifacts] Error creating artifact:', error);\n      return rejectWithValue(error.message || 'Failed to create artifact');\n    }\n  }\n);\n\nexport const updateArtifact = createAsyncThunk(\n  'artifacts/update',\n  async ({ \n    projectId, \n    id, \n    updates \n  }: { \n    projectId: number; \n    id: number; \n    updates: ApiArtifactUpdate  // Используем правильный тип\n  }, { rejectWithValue }) => {\n    try {\n      console.log(`[Artifacts] Updating artifact ${id} in project ${projectId}`, updates);\n      const response = await api.put(`/api/v2/projects/${projectId}/artifacts/${id}`, updates);\n      console.log(`[Artifacts] Updated artifact ${id} to version ${response.version}`);\n      return response;\n    } catch (error: any) {\n      console.error('[Artifacts] Error updating artifact:', error);\n      return rejectWithValue(error.message || 'Failed to update artifact');\n    }\n  }\n);\n\nexport const deleteArtifact = createAsyncThunk(\n  'artifacts/delete',\n  async ({ projectId, id }: { projectId: number; id: number }, { rejectWithValue }) => {\n    try {\n      console.log(`[Artifacts] Deleting artifact ${id}`);\n      await api.delete(`/api/v2/projects/${projectId}/artifacts/${id}`);\n      return id;\n    } catch (error: any) {\n      console.error('[Artifacts] Error deleting artifact:', error);\n      return rejectWithValue(error.message || 'Failed to delete artifact');\n    }\n  }\n);\n\n// ============================================================================\n// Slice\n// ============================================================================\n\nconst artifactsSlice = createSlice({\n  name: 'artifacts',\n  initialState,\n  reducers: {\n    setCurrentArtifact: (state, action: PayloadAction<number | null>) => {\n      state.currentArtifactId = action.payload;\n    },\n    clearError: (state) => {\n      state.error = null;\n    }\n  },\n  extraReducers: (builder) => {\n    builder\n      // Fetch all artifacts\n      .addCase(fetchArtifacts.pending, (state) => {\n        state.isLoading = true;\n        state.error = null;\n      })\n      .addCase(fetchArtifacts.fulfilled, (state, action) => {\n        state.isLoading = false;\n        const artifacts = action.payload;\n        artifacts.forEach((artifact: ApiArtifact) => {\n          state.items[artifact.id] = artifact;\n        });\n      })\n      .addCase(fetchArtifacts.rejected, (state, action) => {\n        state.isLoading = false;\n        state.error = action.payload as string;\n      })\n\n      // Fetch single artifact\n      .addCase(fetchArtifact.fulfilled, (state, action) => {\n        const artifact = action.payload;\n        state.items[artifact.id] = artifact;\n      })\n\n      // Create artifact\n      .addCase(createArtifact.fulfilled, (state, action) => {\n        const artifact = action.payload;\n        state.items[artifact.id] = artifact;\n        state.currentArtifactId = artifact.id;\n        console.log(`[Artifacts] Artifact ${artifact.id} created in store`);\n      })\n\n      // Update artifact\n      .addCase(updateArtifact.fulfilled, (state, action) => {\n        const artifact = action.payload;\n        state.items[artifact.id] = {\n          ...state.items[artifact.id],\n          ...artifact\n        };\n        console.log(`[Artifacts] Artifact ${artifact.id} updated in store`);\n      })\n\n      // Delete artifact\n      .addCase(deleteArtifact.fulfilled, (state, action) => {\n        const id = action.payload;\n        delete state.items[id];\n        if (state.currentArtifactId === id) {\n          state.currentArtifactId = null;\n        }\n        console.log(`[Artifacts] Artifact ${id} deleted from store`);\n      });\n  }\n});\n\nexport const { setCurrentArtifact, clearError } = artifactsSlice.actions;\nexport default artifactsSlice.reducer;",
+      "content": "// frontend/src/store/slices/artifactsSlice.ts\nimport { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';\nimport { api } from '../../services/api';\nimport { ApiArtifact, ApiArtifactCreate, ApiArtifactUpdate } from '../../types/api';\n\ninterface ArtifactsState {\n  items: Record<number, ApiArtifact>;  // key: artifactId\n  currentArtifactId: number | null;\n  isLoading: boolean;\n  error: string | null;\n}\n\nconst initialState: ArtifactsState = {\n  items: {},\n  currentArtifactId: null,\n  isLoading: false,\n  error: null\n};\n\n// ============================================================================\n// Async thunks\n// ============================================================================\n\nexport const fetchArtifacts = createAsyncThunk(\n  'artifacts/fetchAll',\n  async (projectId: number, { rejectWithValue }) => {\n    try {\n      console.log(`[Artifacts] Fetching artifacts for project ${projectId}`);\n      const response = await api.get(`/api/v2/projects/${projectId}/artifacts`);\n      return response.data;  // <-- ИСПРАВЛЕНО\n    } catch (error: any) {\n      console.error('[Artifacts] Error fetching artifacts:', error);\n      return rejectWithValue(error.message || 'Failed to fetch artifacts');\n    }\n  }\n);\n\nexport const fetchArtifact = createAsyncThunk(\n  'artifacts/fetchOne',\n  async ({ projectId, id }: { projectId: number; id: number }, { rejectWithValue }) => {\n    try {\n      console.log(`[Artifacts] Fetching artifact ${id}`);\n      const response = await api.get(`/api/v2/projects/${projectId}/artifacts/${id}`);\n      return response.data;  // <-- ИСПРАВЛЕНО\n    } catch (error: any) {\n      console.error('[Artifacts] Error fetching artifact:', error);\n      return rejectWithValue(error.message || 'Failed to fetch artifact');\n    }\n  }\n);\n\nexport const createArtifact = createAsyncThunk(\n  'artifacts/create',\n  async ({ projectId, data }: { projectId: number; data: ApiArtifactCreate }, { rejectWithValue }) => {\n    try {\n      console.log(`[Artifacts] Creating artifact in project ${projectId}`);\n      const response = await api.post(`/api/v2/projects/${projectId}/artifacts`, data);\n      return response.data;  // <-- ИСПРАВЛЕНО\n    } catch (error: any) {\n      console.error('[Artifacts] Error creating artifact:', error);\n      return rejectWithValue(error.message || 'Failed to create artifact');\n    }\n  }\n);\n\nexport const updateArtifact = createAsyncThunk(\n  'artifacts/update',\n  async ({ \n    projectId, \n    id, \n    updates \n  }: { \n    projectId: number; \n    id: number; \n    updates: ApiArtifactUpdate  // Используем правильный тип\n  }, { rejectWithValue }) => {\n    try {\n      console.log(`[Artifacts] Updating artifact ${id} in project ${projectId}`, updates);\n      const response = await api.put(`/api/v2/projects/${projectId}/artifacts/${id}`, updates);\n      console.log(`[Artifacts] Updated artifact ${id} to version ${response.data.version}`);  // <-- ИСПРАВЛЕНО\n      return response.data;  // <-- ИСПРАВЛЕНО\n    } catch (error: any) {\n      console.error('[Artifacts] Error updating artifact:', error);\n      return rejectWithValue(error.message || 'Failed to update artifact');\n    }\n  }\n);\n\nexport const deleteArtifact = createAsyncThunk(\n  'artifacts/delete',\n  async ({ projectId, id }: { projectId: number; id: number }, { rejectWithValue }) => {\n    try {\n      console.log(`[Artifacts] Deleting artifact ${id}`);\n      await api.delete(`/api/v2/projects/${projectId}/artifacts/${id}`);\n      return id;  // id и так число, не нужно .data\n    } catch (error: any) {\n      console.error('[Artifacts] Error deleting artifact:', error);\n      return rejectWithValue(error.message || 'Failed to delete artifact');\n    }\n  }\n);\n\n// ============================================================================\n// Slice\n// ============================================================================\n\nconst artifactsSlice = createSlice({\n  name: 'artifacts',\n  initialState,\n  reducers: {\n    setCurrentArtifact: (state, action: PayloadAction<number | null>) => {\n      state.currentArtifactId = action.payload;\n    },\n    clearError: (state) => {\n      state.error = null;\n    }\n  },\n  extraReducers: (builder) => {\n    builder\n      // Fetch all artifacts\n      .addCase(fetchArtifacts.pending, (state) => {\n        state.isLoading = true;\n        state.error = null;\n      })\n      .addCase(fetchArtifacts.fulfilled, (state, action) => {\n        state.isLoading = false;\n        const artifacts = action.payload;  // теперь это уже data\n        artifacts.forEach((artifact: ApiArtifact) => {\n          state.items[artifact.id] = artifact;\n        });\n      })\n      .addCase(fetchArtifacts.rejected, (state, action) => {\n        state.isLoading = false;\n        state.error = action.payload as string;\n      })\n\n      // Fetch single artifact\n      .addCase(fetchArtifact.fulfilled, (state, action) => {\n        const artifact = action.payload;  // теперь это уже data\n        state.items[artifact.id] = artifact;\n      })\n\n      // Create artifact\n      .addCase(createArtifact.fulfilled, (state, action) => {\n        const artifact = action.payload;  // теперь это уже data\n        state.items[artifact.id] = artifact;\n        state.currentArtifactId = artifact.id;\n        console.log(`[Artifacts] Artifact ${artifact.id} created in store`);\n      })\n\n      // Update artifact\n      .addCase(updateArtifact.fulfilled, (state, action) => {\n        const artifact = action.payload;  // теперь это уже data\n        state.items[artifact.id] = {\n          ...state.items[artifact.id],\n          ...artifact\n        };\n        console.log(`[Artifacts] Artifact ${artifact.id} updated in store`);\n      })\n\n      // Delete artifact\n      .addCase(deleteArtifact.fulfilled, (state, action) => {\n        const id = action.payload;  // id уже число\n        delete state.items[id];\n        if (state.currentArtifactId === id) {\n          state.currentArtifactId = null;\n        }\n        console.log(`[Artifacts] Artifact ${id} deleted from store`);\n      });\n  }\n});\n\nexport const { setCurrentArtifact, clearError } = artifactsSlice.actions;\nexport default artifactsSlice.reducer;",
       "lines": 174,
-      "hash": "bcdd6370"
+      "hash": "add02a77"
     },
     "frontend/src/store/slices/graphSlice.ts": {
       "content": "// src/store/slices/graphSlice.ts\nimport { createSlice, PayloadAction } from '@reduxjs/toolkit';\n\nexport interface Node {\n  id: string;\n  label?: string;\n  type: string;\n  attributes: Record<string, any>;\n  x?: number;\n  y?: number;\n}\n\nexport interface Edge {\n  id: string;\n  from: string;\n  to: string;\n  type: string;\n  attributes: Record<string, any>;\n}\n\ninterface GraphState {\n  nodes: Node[];\n  edges: Edge[];\n  isLoading: boolean;\n  error: string | null;\n  networkInstance: any | null;\n  lastSaved: Date | null;\n}\n\nconst initialState: GraphState = {\n  nodes: [],\n  edges: [],\n  isLoading: false,\n  error: null,\n  networkInstance: null,\n  lastSaved: null,\n};\n\nconst graphSlice = createSlice({\n  name: 'graph',\n  initialState,\n  reducers: {\n    setGraphData: (state, action: PayloadAction<{ nodes: Node[]; edges: Edge[] }>) => {\n      state.nodes = action.payload.nodes;\n      state.edges = action.payload.edges;\n    },\n    addNode: (state, action: PayloadAction<Node>) => {\n      state.nodes.push(action.payload);\n    },\n    updateNode: (state, action: PayloadAction<{ id: string; updates: Partial<Node> }>) => {\n      const index = state.nodes.findIndex(n => n.id === action.payload.id);\n      if (index !== -1) {\n        state.nodes[index] = { ...state.nodes[index], ...action.payload.updates };\n      }\n    },\n    deleteNode: (state, action: PayloadAction<string>) => {\n      state.nodes = state.nodes.filter(n => n.id !== action.payload);\n      state.edges = state.edges.filter(e => e.from !== action.payload && e.to !== action.payload);\n    },\n    addEdge: (state, action: PayloadAction<Edge>) => {\n      state.edges.push(action.payload);\n    },\n    deleteEdge: (state, action: PayloadAction<string>) => {\n      state.edges = state.edges.filter(e => e.id !== action.payload);\n    },\n    setLoading: (state, action: PayloadAction<boolean>) => {\n      state.isLoading = action.payload;\n    },\n    setError: (state, action: PayloadAction<string | null>) => {\n      state.error = action.payload;\n    },\n    setNetworkInstance: (state, action: PayloadAction<any>) => {\n      state.networkInstance = action.payload;\n    },\n    setLastSaved: (state, action: PayloadAction<Date>) => {\n      state.lastSaved = action.payload;\n    },\n    clearGraph: (state) => {\n      state.nodes = [];\n      state.edges = [];\n      state.error = null;\n    },\n  },\n});\n\nexport const {\n  setGraphData,\n  addNode,\n  updateNode,\n  deleteNode,\n  addEdge,\n  deleteEdge,\n  setLoading,\n  setError,\n  setNetworkInstance,\n  setLastSaved,\n  clearGraph,\n} = graphSlice.actions;\nexport default graphSlice.reducer;\n",
@@ -51052,14 +51061,14 @@
       "hash": "680fdb80"
     },
     "frontend/src/store/slices/historySlice.ts": {
-      "content": "// frontend/src/store/slices/historySlice.ts\nimport { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';\nimport { api } from '../../services/api';\n\nexport interface HistoryAction {\n  id: string;\n  artifactId: number;\n  actionType: string;\n  beforeState: any;\n  afterState: any;\n  timestamp: string;\n  description: string;\n  userType: 'user' | 'plugin';\n  pluginId?: string;\n  groupId?: string;\n}\n\ninterface HistoryState {\n  actions: HistoryAction[];\n  currentActionId: string | null; // ID текущего действия (последнего примененного)\n  isLoading: boolean;\n  error: string | null;\n}\n\nconst initialState: HistoryState = {\n  actions: [],\n  currentActionId: null,\n  isLoading: false,\n  error: null\n};\n\n// Async thunks\nexport const fetchHistory = createAsyncThunk(\n  'history/fetch',\n  async (artifactId: number) => {\n    const response = await api.get(`/api/v2/artifacts/${artifactId}/history?limit=100`);\n    return response;\n  }\n);\n\nexport const undo = createAsyncThunk(\n  'history/undo',\n  async (artifactId: number, { dispatch }) => {\n    const response = await api.post(`/api/v2/artifacts/${artifactId}/history/undo`);\n    return response;\n  }\n);\n\nexport const redo = createAsyncThunk(\n  'history/redo',\n  async (artifactId: number, { dispatch }) => {\n    const response = await api.post(`/api/v2/artifacts/${artifactId}/history/redo`);\n    return response;\n  }\n);\n\nconst historySlice = createSlice({\n  name: 'history',\n  initialState,\n  reducers: {\n    addAction: (state, action: PayloadAction<HistoryAction>) => {\n      // Добавляем действие в конец списка\n      state.actions.push(action.payload);\n      state.currentActionId = action.payload.id;\n      state.error = null;\n    },\n    \n    setCurrentIndex: (state, action: PayloadAction<{ actionId: string; direction: 'undo' | 'redo' }>) => {\n      state.currentActionId = action.payload.actionId;\n      state.error = null;\n    },\n    \n    resetHistory: (state) => {\n      state.actions = [];\n      state.currentActionId = null;\n      state.error = null;\n    },\n    \n    clearError: (state) => {\n      state.error = null;\n    }\n  },\n  extraReducers: (builder) => {\n    builder\n      // Fetch history\n      .addCase(fetchHistory.pending, (state) => {\n        state.isLoading = true;\n        state.error = null;\n      })\n      .addCase(fetchHistory.fulfilled, (state, action) => {\n        state.isLoading = false;\n        state.actions = action.payload;\n        // Последнее действие в списке - текущее\n        if (action.payload.length > 0) {\n          state.currentActionId = action.payload[action.payload.length - 1].id;\n        }\n      })\n      .addCase(fetchHistory.rejected, (state, action) => {\n        state.isLoading = false;\n        state.error = action.error.message || 'Failed to fetch history';\n      })\n      \n      // Undo\n      .addCase(undo.pending, (state) => {\n        state.isLoading = true;\n        state.error = null;\n      })\n      .addCase(undo.fulfilled, (state, action) => {\n        state.isLoading = false;\n        // Сервер вернул action_id отмененного действия\n        // Находим индекс этого действия и устанавливаем предыдущее как текущее\n        const undoneActionId = action.payload.action_id;\n        const index = state.actions.findIndex(a => a.id === undoneActionId);\n        if (index > 0) {\n          state.currentActionId = state.actions[index - 1].id;\n        } else if (index === 0) {\n          state.currentActionId = null; // Отменили первое действие\n        }\n      })\n      .addCase(undo.rejected, (state, action) => {\n        state.isLoading = false;\n        state.error = action.error.message || 'Failed to undo';\n      })\n      \n      // Redo\n      .addCase(redo.pending, (state) => {\n        state.isLoading = true;\n        state.error = null;\n      })\n      .addCase(redo.fulfilled, (state, action) => {\n        state.isLoading = false;\n        // Сервер вернул action_id повторяемого действия\n        state.currentActionId = action.payload.action_id;\n      })\n      .addCase(redo.rejected, (state, action) => {\n        state.isLoading = false;\n        state.error = action.error.message || 'Failed to redo';\n      });\n  }\n});\n\nexport const { addAction, setCurrentIndex, resetHistory, clearError } = historySlice.actions;\nexport default historySlice.reducer;\n",
-      "lines": 144,
-      "hash": "bd840bf3"
+      "content": "// frontend/src/store/slices/historySlice.ts\nimport { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';\nimport { api } from '../../services/api';\nimport { RootState } from '../../store';  // Исправленный импорт\n\nexport interface HistoryAction {\n  id: string;\n  artifactId: number;\n  actionType: string;\n  beforeState: any;\n  afterState: any;\n  timestamp: string;\n  description: string;\n  userType: 'user' | 'plugin';\n  pluginId?: string;\n  groupId?: string;\n}\n\ninterface HistoryState {\n  actions: HistoryAction[];\n  currentActionId: string | null;\n  isLoading: boolean;\n  error: string | null;\n}\n\nconst initialState: HistoryState = {\n  actions: [],\n  currentActionId: null,\n  isLoading: false,\n  error: null\n};\n\n// Async thunks\nexport const fetchHistory = createAsyncThunk(\n  'history/fetch',\n  async (artifactId: number) => {\n    const response = await api.get(`/api/v2/artifacts/${artifactId}/history?limit=100`);\n    return response.data;  // <-- ВАЖНО: .data\n  }\n);\n\nexport const undo = createAsyncThunk(\n  'history/undo',\n  async (artifactId: number) => {\n    const response = await api.post(`/api/v2/artifacts/${artifactId}/history/undo`);\n    return response.data;  // <-- ВАЖНО: .data\n  }\n);\n\nexport const redo = createAsyncThunk(\n  'history/redo',\n  async (artifactId: number) => {\n    const response = await api.post(`/api/v2/artifacts/${artifactId}/history/redo`);\n    return response.data;  // <-- ВАЖНО: .data\n  }\n);\n\nconst historySlice = createSlice({\n  name: 'history',\n  initialState,\n  reducers: {\n    addAction: (state, action: PayloadAction<HistoryAction>) => {\n      state.actions.push(action.payload);\n      state.currentActionId = action.payload.id;\n      state.error = null;\n    },\n    \n    setCurrentIndex: (state, action: PayloadAction<{ actionId: string; direction: 'undo' | 'redo' }>) => {\n      state.currentActionId = action.payload.actionId;\n      state.error = null;\n    },\n    \n    resetHistory: (state) => {\n      state.actions = [];\n      state.currentActionId = null;\n      state.error = null;\n    },\n    \n    clearError: (state) => {\n      state.error = null;\n    }\n  },\n  extraReducers: (builder) => {\n    builder\n      // Fetch history\n      .addCase(fetchHistory.pending, (state) => {\n        state.isLoading = true;\n        state.error = null;\n      })\n      .addCase(fetchHistory.fulfilled, (state, action) => {\n        state.isLoading = false;\n        state.actions = action.payload;\n        if (action.payload.length > 0) {\n          state.currentActionId = action.payload[action.payload.length - 1].id;\n        }\n      })\n      .addCase(fetchHistory.rejected, (state, action) => {\n        state.isLoading = false;\n        state.error = action.error.message || 'Failed to fetch history';\n      })\n      \n      // Undo\n      .addCase(undo.pending, (state) => {\n        state.isLoading = true;\n        state.error = null;\n      })\n      .addCase(undo.fulfilled, (state, action) => {\n        state.isLoading = false;\n        const undoneActionId = action.payload.action_id;\n        const index = state.actions.findIndex(a => a.id === undoneActionId);\n        if (index > 0) {\n          state.currentActionId = state.actions[index - 1].id;\n        } else if (index === 0) {\n          state.currentActionId = null;\n        }\n      })\n      .addCase(undo.rejected, (state, action) => {\n        state.isLoading = false;\n        state.error = action.error.message || 'Failed to undo';\n      })\n      \n      // Redo\n      .addCase(redo.pending, (state) => {\n        state.isLoading = true;\n        state.error = null;\n      })\n      .addCase(redo.fulfilled, (state, action) => {\n        state.isLoading = false;\n        state.currentActionId = action.payload.action_id;\n      })\n      .addCase(redo.rejected, (state, action) => {\n        state.isLoading = false;\n        state.error = action.error.message || 'Failed to redo';\n      });\n  }\n});\n\n// ========== ЭКСПОРТЫ ==========\nexport const { addAction, setCurrentIndex, resetHistory, clearError } = historySlice.actions;\nexport default historySlice.reducer;\n\n// ========== СЕЛЕКТОРЫ ==========\nexport const selectHistoryActions = (state: RootState) => state.history.actions;\nexport const selectCurrentActionId = (state: RootState) => state.history.currentActionId;\nexport const selectIsHistoryLoading = (state: RootState) => state.history.isLoading;\nexport const selectHistoryError = (state: RootState) => state.history.error;\n\nexport const selectCanUndo = (state: RootState) => {\n  const { actions, currentActionId } = state.history;\n  if (actions.length === 0) return false;\n  if (!currentActionId) return actions.length > 0;\n  const currentIndex = actions.findIndex(a => a.id === currentActionId);\n  return currentIndex > 0;\n};\n\nexport const selectCanRedo = (state: RootState) => {\n  const { actions, currentActionId } = state.history;\n  if (actions.length === 0) return false;\n  if (!currentActionId) return false;\n  const currentIndex = actions.findIndex(a => a.id === currentActionId);\n  return currentIndex < actions.length - 1;\n};\n\nexport const selectCurrentAction = (state: RootState) => {\n  const { actions, currentActionId } = state.history;\n  if (!currentActionId) return null;\n  return actions.find(a => a.id === currentActionId) || null;\n};\n\nexport const selectActionsForDisplay = (state: RootState) => {\n  return [...state.history.actions].reverse();\n};\n\nexport const selectActionsCount = (state: RootState) => state.history.actions.length;",
+      "lines": 174,
+      "hash": "e895a591"
     },
     "frontend/src/store/slices/projectsSlice.ts": {
-      "content": "// store/slices/projectsSlice.ts\nimport { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';\nimport { api } from '../../services/api';\n\nexport interface Project {\n  id: number;\n  name: string;\n  description?: string;\n  created_at: string;\n  updated_at: string;\n}\n\ninterface ProjectsState {\n  projects: Project[];\n  currentProject: Project | null;\n  isLoading: boolean;\n  error: string | null;\n}\n\nconst initialState: ProjectsState = {\n  projects: [],\n  currentProject: null,\n  isLoading: false,\n  error: null,\n};\n\nexport const fetchProjects = createAsyncThunk(\n  'projects/fetchAll',\n  async () => {\n    console.log('[Projects] Fetching all projects');\n    const response = await api.get('/api/v1/projects');\n    return response;\n  }\n);\n\nconst projectsSlice = createSlice({\n  name: 'projects',\n  initialState,\n  reducers: {\n    setCurrentProject: (state, action: PayloadAction<number>) => {\n      const project = state.projects.find(p => p.id === action.payload);\n      if (project) {\n        state.currentProject = project;\n        console.log('[Projects] Current project set to:', project.id, project.name);\n      } else {\n        console.warn('[Projects] Project not found:', action.payload);\n      }\n    },\n  },\n  extraReducers: (builder) => {\n    builder\n      .addCase(fetchProjects.pending, (state) => {\n        state.isLoading = true;\n      })\n      .addCase(fetchProjects.fulfilled, (state, action) => {\n        state.isLoading = false;\n        state.projects = action.payload;\n        console.log('[Projects] Loaded projects:', action.payload.length);\n      })\n      .addCase(fetchProjects.rejected, (state, action) => {\n        state.isLoading = false;\n        state.error = action.error.message || 'Failed to fetch projects';\n      });\n  },\n});\n\nexport const { setCurrentProject } = projectsSlice.actions;\nexport default projectsSlice.reducer;",
+      "content": "// store/slices/projectsSlice.ts\nimport { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';\nimport { api } from '../../services/api';\n\nexport interface Project {\n  id: number;\n  name: string;\n  description?: string;\n  created_at: string;\n  updated_at: string;\n}\n\ninterface ProjectsState {\n  projects: Project[];\n  currentProject: Project | null;\n  isLoading: boolean;\n  error: string | null;\n}\n\nconst initialState: ProjectsState = {\n  projects: [],\n  currentProject: null,\n  isLoading: false,\n  error: null,\n};\n\nexport const fetchProjects = createAsyncThunk(\n  'projects/fetchAll',\n  async () => {\n    console.log('[Projects] Fetching all projects');\n    const response = await api.get('/api/v1/projects');\n    return response;\n  }\n);\n\nconst projectsSlice = createSlice({\n  name: 'projects',\n  initialState,\n  reducers: {\n    setCurrentProject: (state, action: PayloadAction<number>) => {\n      const project = state.projects.find(p => p.id === action.payload);\n      if (project) {\n        state.currentProject = project;\n        console.log('[Projects] Current project set to:', project.id, project.name);\n      } else {\n        console.warn('[Projects] Project not found:', action.payload);\n      }\n    },\n  },\n  extraReducers: (builder) => {\n    builder\n      .addCase(fetchProjects.pending, (state) => {\n        state.isLoading = true;\n      })\n      .addCase(fetchProjects.fulfilled, (state, action) => {\n        state.isLoading = false;\n        state.projects = action.payload.data;\n        console.log('[Projects] Loaded projects:', action.payload?.data?.length || 0);\n      })\n      .addCase(fetchProjects.rejected, (state, action) => {\n        state.isLoading = false;\n        state.error = action.error.message || 'Failed to fetch projects';\n      });\n  },\n});\n\nexport const { setCurrentProject } = projectsSlice.actions;\nexport default projectsSlice.reducer;",
       "lines": 68,
-      "hash": "0c6cf74e"
+      "hash": "88d45fdb"
     },
     "frontend/src/store/slices/uiSlice.ts": {
       "content": "// frontend/src/store/slices/uiSlice.ts\nimport { createSlice, PayloadAction } from '@reduxjs/toolkit';\n\ninterface Tab {\n  id: string;\n  artifactId: number;\n  title: string;\n  type: string;\n}\n\nexport interface SelectedElement {\n  type: 'node' | 'edge';\n  id: string;\n  data: any;\n}\n\ninterface UIState {\n  darkMode: boolean;\n  sidebarCollapsed: boolean;\n  inspectorWidth: number;\n  tabs: Tab[];\n  activeTabId: string | null;\n  selectedElement: SelectedElement | null;\n  selectedElements: SelectedElement[];\n  notifications: Array<{\n    id: string;\n    type: 'info' | 'success' | 'warning' | 'error';\n    message: string;\n    timeout?: number;\n  }>;\n}\n\nconst initialState: UIState = {\n  darkMode: true,\n  sidebarCollapsed: false,\n  inspectorWidth: 300,\n  tabs: [],\n  activeTabId: null,\n  selectedElement: null,\n  selectedElements: [],\n  notifications: [],\n};\n\nconst uiSlice = createSlice({\n  name: 'ui',\n  initialState,\n  reducers: {\n    toggleDarkMode: (state) => {\n      state.darkMode = !state.darkMode;\n    },\n    setSidebarCollapsed: (state, action: PayloadAction<boolean>) => {\n      state.sidebarCollapsed = action.payload;\n    },\n    setInspectorWidth: (state, action: PayloadAction<number>) => {\n      state.inspectorWidth = action.payload;\n    },\n    addTab: (state, action: PayloadAction<Tab>) => {\n      state.tabs.push(action.payload);\n    },\n    removeTab: (state, action: PayloadAction<string>) => {\n      state.tabs = state.tabs.filter(tab => tab.id !== action.payload);\n      if (state.activeTabId === action.payload) {\n        state.activeTabId = state.tabs[state.tabs.length - 1]?.id || null;\n      }\n    },\n    setActiveTab: (state, action: PayloadAction<string | null>) => {\n      state.activeTabId = action.payload;\n    },\n    setSelectedElement: (state, action: PayloadAction<SelectedElement | null>) => {\n      console.log('[uiSlice] Setting selected element:', action.payload);\n      state.selectedElement = action.payload;\n      state.selectedElements = action.payload ? [action.payload] : [];\n    },\n    setSelectedElements: (state, action: PayloadAction<SelectedElement[]>) => {\n      console.log('[uiSlice] Setting selected elements:', action.payload);\n      state.selectedElements = action.payload;\n      state.selectedElement = action.payload.length === 1 ? action.payload[0] : null;\n    },\n    addNotification: (state, action: PayloadAction<Omit<UIState['notifications'][0], 'id'>>) => {\n      const id = `notification-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;\n      state.notifications.push({ id, ...action.payload });\n    },\n    removeNotification: (state, action: PayloadAction<string>) => {\n      state.notifications = state.notifications.filter(n => n.id !== action.payload);\n    },\n    clearNotifications: (state) => {\n      state.notifications = [];\n    },\n  },\n});\n\nexport const {\n  toggleDarkMode,\n  setSidebarCollapsed,\n  setInspectorWidth,\n  addTab,\n  removeTab,\n  setActiveTab,\n  setSelectedElement,\n  setSelectedElements,\n  addNotification,\n  removeNotification,\n  clearNotifications,\n} = uiSlice.actions;\n\nexport default uiSlice.reducer;",

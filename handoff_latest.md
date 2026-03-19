@@ -1,15 +1,15 @@
 =============================================================================
 🎯 ПРОЕКТ: OSINT Graph Analyzer
-📅 Дата: 2026-03-17T14:16:38.506571
+📅 Дата: 2026-03-18T11:53:18.707698
 📌 Версия: v1.0
 =============================================================================
 
 📊 СТАТИСТИКА
 --------------------------------------------------
 - Всего файлов: 5733
-- Строк кода: 2134064
-- Python файлов: 5625
-- TypeScript/JS: 27
+- Строк кода: 2133609
+- Python файлов: 5624
+- TypeScript/JS: 25
 
 🏗 АРХИТЕКТУРА
 --------------------------------------------------
@@ -82,9 +82,7 @@
       }
     },
     "versions": {
-      "001_initial_models.py": "[FILE] 128 lines",
-      "002_add_artifacts_tables.py": "[FILE] 140 lines",
-      "3e7a730b98c7_initial_state.py": "[FILE] 23 lines"
+      "5a2ae4ac2896_add_graph_actions_table.py": "[FILE] 279 lines"
     }
   },
   "alembic.ini": "[BINARY] 1734 bytes",
@@ -110,7 +108,8 @@
     "database.py": "[FILE] 71 lines",
     "main.py": "[FILE] 140 lines",
     "models": {
-      "__init__.py": "[FILE] 24 lines",
+      "__init__.py": "[FILE] 25 lines",
+      "__init__.py.bak": "[BINARY] 538 bytes",
       "action.py": "[FILE] 59 lines",
       "artifact.py": "[FILE] 96 lines",
       "edge.py": "[FILE] 48 lines",
@@ -133,6 +132,7 @@
       "schema_service.py": "[FILE] 232 lines"
     }
   },
+  "backup — копия.sh:Zone.Identifier": "[BINARY] 0 bytes",
   "backup.sh": "[BINARY] 2331 bytes",
   "backups": {
     "checksums_20260313_020005.txt": "[BINARY] 954 bytes",
@@ -140,45 +140,52 @@
     "checksums_20260315_020005.txt": "[BINARY] 2498 bytes",
     "checksums_20260316_020005.txt": "[BINARY] 3172 bytes",
     "checksums_20260317_020006.txt": "[BINARY] 3846 bytes",
-    "cron.log": "[BINARY] 12888 bytes",
-    "data_20260316_020005.tar.gz": "[BINARY] 145 bytes",
+    "checksums_20260318_020005.txt": "[BINARY] 4428 bytes",
+    "cron.log": "[BINARY] 17290 bytes",
     "data_20260317_020006.tar.gz": "[BINARY] 145 bytes",
-    "db_20260313_020005.sql.gz": "[BINARY] 2410 bytes",
+    "data_20260318_020005.tar.gz": "[BINARY] 145 bytes",
     "db_20260314_020005.sql.gz": "[BINARY] 19383 bytes",
     "db_20260315_020005.sql.gz": "[BINARY] 19382 bytes",
     "db_20260316_020005.sql.gz": "[BINARY] 19379 bytes",
     "db_20260317_020006.sql.gz": "[BINARY] 19716 bytes",
+    "db_20260318_020005.sql.gz": "[BINARY] 17543 bytes",
     "docker-compose_20260313_020005.yml": "[FILE] 86 lines",
     "docker-compose_20260314_020005.yml": "[FILE] 86 lines",
     "docker-compose_20260315_020005.yml": "[FILE] 86 lines",
     "docker-compose_20260316_020005.yml": "[FILE] 86 lines",
     "docker-compose_20260317_020006.yml": "[FILE] 86 lines",
+    "docker-compose_20260318_020005.yml": "[FILE] 86 lines",
     "env_20260313_020005.backup": "[BINARY] 609 bytes",
     "env_20260314_020005.backup": "[BINARY] 609 bytes",
     "env_20260315_020005.backup": "[BINARY] 609 bytes",
     "env_20260316_020005.backup": "[BINARY] 609 bytes",
     "env_20260317_020006.backup": "[BINARY] 609 bytes",
+    "env_20260318_020005.backup": "[BINARY] 609 bytes",
     "npm-deps_20260313_020005.txt": "[BINARY] 52 bytes",
     "npm-deps_20260314_020005.txt": "[BINARY] 52 bytes",
     "npm-deps_20260315_020005.txt": "[BINARY] 52 bytes",
     "npm-deps_20260316_020005.txt": "[BINARY] 52 bytes",
     "npm-deps_20260317_020006.txt": "[BINARY] 52 bytes",
+    "npm-deps_20260318_020005.txt": "[BINARY] 52 bytes",
     "requirements_20260313_020005.txt": "[BINARY] 1215 bytes",
     "requirements_20260314_020005.txt": "[BINARY] 1215 bytes",
     "requirements_20260315_020005.txt": "[BINARY] 1215 bytes",
     "requirements_20260316_020005.txt": "[BINARY] 1215 bytes",
     "requirements_20260317_020006.txt": "[BINARY] 1215 bytes",
+    "requirements_20260318_020005.txt": "[BINARY] 1215 bytes",
     "system_info_20260313_020005.txt": "[BINARY] 352 bytes",
     "system_info_20260314_020005.txt": "[BINARY] 352 bytes",
     "system_info_20260315_020005.txt": "[BINARY] 352 bytes",
     "system_info_20260316_020005.txt": "[BINARY] 352 bytes",
     "system_info_20260317_020006.txt": "[BINARY] 352 bytes",
-    "volume_postgres_20260317_020006.tar.gz": "[BINARY] 87 bytes",
-    "volume_redis_20260316_020005.tar.gz": "[BINARY] 87 bytes",
-    "volume_redis_20260317_020006.tar.gz": "[BINARY] 87 bytes"
+    "system_info_20260318_020005.txt": "[BINARY] 352 bytes",
+    "volume_postgres_20260318_020005.tar.gz": "[BINARY] 87 bytes",
+    "volume_redis_20260317_020006.tar.gz": "[BINARY] 87 bytes",
+    "volume_redis_20260318_020005.tar.gz": "[BINARY] 87 bytes"
   },
   "clean-database.sh": "[BINARY] 7117 bytes",
   "clean-database.sh:Zone.Identifier": "[BINARY] 0 bytes",
+  "collect_context.py": "[FILE] 266 lines",
   "create-test-data.sh": "[BINARY] 14787 bytes",
   "create-test-data.sh:Zone.Identifier": "[BINARY] 0 bytes",
   "data": {},
@@ -191,33 +198,32 @@
     "package.json": "[FILE] 50 lines",
     "src": {
       "App.css": "[FILE] 777 lines",
-      "App.tsx": "[FILE] 191 lines",
+      "App.tsx": "[FILE] 172 lines",
       "components": {
         "history": {
           "HistoryPanel.css": "[FILE] 266 lines",
-          "HistoryPanel.tsx": "[FILE] 178 lines"
+          "HistoryPanel.tsx": "[FILE] 192 lines"
         },
         "layout": {
-          "InspectorPanel.tsx": "[FILE] 419 lines",
+          "InspectorPanel.tsx": "[FILE] 420 lines",
           "Sidebar.css": "[FILE] 207 lines",
           "Sidebar.tsx": "[FILE] 170 lines",
-          "Sidebar_new.tsx": "[FILE] 966 lines",
           "TabBar.tsx": "[FILE] 68 lines"
         },
         "views": {
-          "ArtifactView.tsx": "[FILE] 348 lines",
-          "ChartView.tsx": "[FILE] 27 lines",
-          "DocumentView.tsx": "[FILE] 34 lines",
+          "ArtifactView.tsx": "[FILE] 329 lines",
+          "ChartView.tsx": "[FILE] 29 lines",
+          "DocumentView.tsx": "[FILE] 35 lines",
           "GraphView.css": "[FILE] 225 lines",
-          "GraphView.tsx": "[FILE] 558 lines",
-          "MapView.tsx": "[FILE] 27 lines",
-          "TableView.tsx": "[FILE] 51 lines"
+          "GraphView.tsx": "[FILE] 279 lines",
+          "MapView.tsx": "[FILE] 29 lines",
+          "TableView.tsx": "[FILE] 29 lines"
         }
       },
       "hooks": {
-        "useActionWithUndo.ts": "[FILE] 192 lines",
-        "useActionWithUndo_bkp.ts": "[FILE] 232 lines",
-        "useKeyboardShortcuts.ts": "[FILE] 34 lines"
+        "useActionWithUndo.ts": "[FILE] 252 lines",
+        "useActionWithUndo.ts.bak": "[BINARY] 5868 bytes",
+        "useKeyboardShortcuts.ts": "[FILE] 35 lines"
       },
       "index.css": "[FILE] 14 lines",
       "main.tsx": "[FILE] 14 lines",
@@ -229,7 +235,7 @@
         "slices": {
           "artifactsSlice.ts": "[FILE] 174 lines",
           "graphSlice.ts": "[FILE] 100 lines",
-          "historySlice.ts": "[FILE] 144 lines",
+          "historySlice.ts": "[FILE] 174 lines",
           "historySlice.ts]": "[BINARY] 1590 bytes",
           "projectsSlice.ts": "[FILE] 68 lines",
           "uiSlice.ts": "[FILE] 106 lines"
@@ -244,14 +250,16 @@
       "vite-env.d.ts": "[FILE] 12 lines"
     },
     "step3.py": "[FILE] 1950 lines",
-    "tsconfig.json": "[FILE] 32 lines",
-    "tsconfig.node.json": "[FILE] 12 lines",
+    "tsconfig.json": "[FILE] 25 lines",
+    "tsconfig.json.bak": "[BINARY] 703 bytes",
+    "tsconfig.node.json": "[FILE] 13 lines",
     "vite.config.ts": "[FILE] 33 lines"
   },
   "get-docker.sh": "[BINARY] 22405 bytes",
   "get_structure.py": "[FILE] 493 lines",
-  "handoff_latest.json": "[FILE] 2074840 bytes (skipped, too large)",
-  "handoff_latest.md": "[FILE] 12322 lines",
+  "handoff_context_extra.json": "[FILE] 158 lines",
+  "handoff_latest.json": "[FILE] 2136467 bytes (skipped, too large)",
+  "handoff_latest.md": "[FILE] 12774 lines",
   "handoff_quick.md": "[FILE] 21 lines",
   "osint-backups": {
     "checksums_20260224_214935.txt": "[BINARY] 879 bytes",
@@ -273,7 +281,8 @@
     "system_info_20260226_071109.txt": "[BINARY] 381 bytes",
     "system_info_20260301_200321.txt": "[BINARY] 385 bytes"
   },
-  "package-lock.json": "[FILE] 7 lines",
+  "package-lock.json": "[FILE] 27 lines",
+  "package.json": "[FILE] 6 lines",
   "plugins": {
     "__init__.py": "[FILE] 56 lines",
     "examples": {

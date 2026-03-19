@@ -12,9 +12,9 @@ import {
 
 interface ActionOptions {
   description: string;
-  actionType: string;  // 'add_node', 'delete_edge', 'move_node', 'batch_move', etc.
-  groupId?: string;    // для группировки последовательных действий
-  pluginId?: string;   // если действие от плагина
+  actionType: string;
+  groupId?: string;
+  pluginId?: string;
 }
 
 export function useActionWithUndo<T extends object>(
@@ -25,29 +25,25 @@ export function useActionWithUndo<T extends object>(
   const dispatch = useAppDispatch();
   const isRecordingRef = useRef(false);
   
-  // Состояния для индикации записи и ошибок
   const [isRecording, setIsRecording] = useState(false);
   const [lastError, setLastError] = useState<Error | null>(null);
   
-  // Селекторы из historySlice
   const canUndo = useAppSelector(selectCanUndo);
   const canRedo = useAppSelector(selectCanRedo);
 
-  /**
-   * Создать группу для batch-операций (например, множественное перемещение узлов)
-   */
   const createBatchGroup = useCallback(() => {
-    return `batch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    // Генерируем валидный UUID v4
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
   }, []);
 
-  /**
-   * Выполнить действие с записью в историю
-   */
   const execute = useCallback(async (
     actionFn: () => Promise<T | void> | T | void,
     options: ActionOptions
   ) => {
-    // Предотвращаем повторную запись
     if (isRecordingRef.current) {
       console.log('⏭️ Already recording, skipping');
       return;
@@ -57,26 +53,22 @@ export function useActionWithUndo<T extends object>(
     setIsRecording(true);
     setLastError(null);
     
-    // Сохраняем состояние ДО
-    const beforeState = JSON.parse(JSON.stringify(currentState));
+    const safeCurrentState = currentState || {} as T;
+    const beforeState = JSON.parse(JSON.stringify(safeCurrentState));
     let afterState: T;
     
     try {
-      // Выполняем действие и получаем новое состояние
       const result = await actionFn();
       
-      // Если actionFn вернула новое состояние, используем его
       if (result) {
         afterState = result as T;
-        // Обновляем состояние через onStateChange
         await onStateChange(afterState);
       } else {
-        // Иначе ждем обновления React состояния
         await new Promise(resolve => setTimeout(resolve, 50));
-        afterState = JSON.parse(JSON.stringify(currentState));
+        const safeNewState = currentState || {} as T;
+        afterState = JSON.parse(JSON.stringify(safeNewState));
       }
       
-      // Проверяем, изменилось ли состояние
       const stateChanged = JSON.stringify(beforeState) !== JSON.stringify(afterState);
       
       if (!stateChanged) {
@@ -88,30 +80,32 @@ export function useActionWithUndo<T extends object>(
       
       console.log(`📝 Recording action: ${options.description}`);
       
-      // Отправляем на сервер - ВСЕ ПОЛЯ ОБЯЗАТЕЛЬНЫ!
+      // Экранируем описание на всякий случай
+      const safeDescription = options.description
+        .replace(/[^\x00-\x7F]/g, '') // Удаляем не-ASCII символы для теста
+        .substring(0, 200);
+      
       const actionData = {
         action_type: options.actionType,
-        before_state: beforeState,
-        after_state: afterState,
-        description: options.description,
+        before_state: beforeState || {},
+        after_state: afterState || {},
+        description: safeDescription,
         user_type: options.pluginId ? 'plugin' : 'user',
         plugin_id: options.pluginId || null,
-        group_id: options.groupId || null
+        // group_id должен быть валидным UUID или null
+        group_id: options.groupId || null  // Теперь groupId будет валидным UUID
       };
       
-      console.log('Sending action data:', actionData);
+      console.log('📦 SENDING ACTION DATA:', JSON.stringify(actionData, null, 2));
       
       const response = await api.post(
         `/api/v2/artifacts/${artifactId}/history/actions`,
         actionData
       );
       
-      // ИЗВЛЕКАЕМ DATA ИЗ ОТВЕТА
       const data = response.data;
+      console.log('✅ Action recorded:', data);
       
-      console.log('✅ Action recorded, response data:', data);
-      
-      // Добавляем в Redux - используем data вместо response
       dispatch(addAction({
         id: data.id,
         artifactId,
@@ -119,17 +113,21 @@ export function useActionWithUndo<T extends object>(
         beforeState,
         afterState,
         timestamp: data.timestamp || new Date().toISOString(),
-        description: options.description,
+        description: options.description, // Сохраняем оригинальное описание в Redux
         userType: options.pluginId ? 'plugin' : 'user',
         pluginId: options.pluginId,
         groupId: options.groupId
       }));
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Action failed:', error);
+      if (error.response) {
+        console.error('  Status:', error.response.status);
+        console.error('  Data:', error.response.data);
+        console.error('  Headers:', error.response.headers);
+      }
       setLastError(error as Error);
       
-      // Пытаемся откатить изменения
       try {
         await onStateChange(beforeState);
         console.log('↩️ Rolled back to previous state');
@@ -137,7 +135,6 @@ export function useActionWithUndo<T extends object>(
         console.error('❌ Rollback failed:', rollbackError);
       }
       
-      // Пробрасываем ошибку дальше, чтобы компонент мог ее обработать
       throw error;
     } finally {
       isRecordingRef.current = false;
@@ -145,9 +142,6 @@ export function useActionWithUndo<T extends object>(
     }
   }, [artifactId, currentState, onStateChange, dispatch]);
 
-  /**
-   * Отменить последнее действие
-   */
   const undo = useCallback(async () => {
     if (!canUndo) {
       console.log('⏭️ Nothing to undo');
@@ -161,16 +155,11 @@ export function useActionWithUndo<T extends object>(
       dispatch(clearError());
       
       const response = await api.post(`/api/v2/artifacts/${artifactId}/history/undo`);
-      
-      // ИЗВЛЕКАЕМ DATA ИЗ ОТВЕТА
       const data = response.data;
       
-      console.log('✅ Undo response data:', data);
-      
-      // Применяем состояние от сервера - используем data.state
+      console.log('✅ Undo response:', data);
       await onStateChange(data.state);
       
-      // Обновляем индекс в истории - используем data.action_id
       if (data.action_id) {
         dispatch(setCurrentIndex({ 
           actionId: data.action_id, 
@@ -178,23 +167,18 @@ export function useActionWithUndo<T extends object>(
         }));
       }
       
-      return data; // Возвращаем data вместо response
+      return data;
     } catch (error: any) {
       console.error('❌ Undo failed:', error);
-      
-      if (error.status === 404) {
+      if (error.response?.status === 404) {
         console.log('ℹ️ No actions to undo');
         return null;
       }
-      
       setLastError(error as Error);
       throw error;
     }
   }, [artifactId, onStateChange, dispatch, canUndo]);
 
-  /**
-   * Повторить отмененное действие
-   */
   const redo = useCallback(async () => {
     if (!canRedo) {
       console.log('⏭️ Nothing to redo');
@@ -208,16 +192,11 @@ export function useActionWithUndo<T extends object>(
       dispatch(clearError());
       
       const response = await api.post(`/api/v2/artifacts/${artifactId}/history/redo`);
-      
-      // ИЗВЛЕКАЕМ DATA ИЗ ОТВЕТА
       const data = response.data;
       
-      console.log('✅ Redo response data:', data);
-      
-      // Применяем состояние от сервера - используем data.state
+      console.log('✅ Redo response:', data);
       await onStateChange(data.state);
       
-      // Обновляем индекс в истории - используем data.action_id
       if (data.action_id) {
         dispatch(setCurrentIndex({ 
           actionId: data.action_id, 
@@ -225,15 +204,13 @@ export function useActionWithUndo<T extends object>(
         }));
       }
       
-      return data; // Возвращаем data вместо response
+      return data;
     } catch (error: any) {
       console.error('❌ Redo failed:', error);
-      
-      if (error.status === 404) {
+      if (error.response?.status === 404) {
         console.log('ℹ️ No actions to redo');
         return null;
       }
-      
       setLastError(error as Error);
       throw error;
     }

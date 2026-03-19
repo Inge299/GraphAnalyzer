@@ -16,6 +16,11 @@ interface GraphViewProps {
   artifact: ApiArtifact;
   onNodeMove: (nodeId: string, x: number, y: number, groupId?: string | null) => void;
   onNodesMove?: (moves: Array<{ nodeId: string; x: number; y: number }>, groupId?: string | null) => void;
+  onAddNode?: (position: { x: number, y: number }, nodeType?: string) => void;
+  onDeleteNode?: (nodeId: string) => void;
+  onAddEdge?: (sourceId: string, targetId: string, edgeType?: string) => void;
+  onDeleteEdge?: (edgeId: string) => void;
+  onEditAttributes?: (nodeId: string, attributes: Record<string, any>) => void;
 }
 
 interface PendingMove {
@@ -27,7 +32,12 @@ interface PendingMove {
 export const GraphView: React.FC<GraphViewProps> = ({ 
   artifact, 
   onNodeMove,
-  onNodesMove
+  onNodesMove,
+  onAddNode: _onAddNode,
+  onDeleteNode: _onDeleteNode,
+  onAddEdge: _onAddEdge,
+  onDeleteEdge: _onDeleteEdge,
+  onEditAttributes: _onEditAttributes
 }) => {
   const dispatch = useAppDispatch();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -44,17 +54,9 @@ export const GraphView: React.FC<GraphViewProps> = ({
   const lastReduxStateRef = useRef<string>(JSON.stringify(artifact.data));
   const viewPositionRef = useRef<{ scale: number; position: { x: number; y: number } } | null>(null);
 
+  // --- Селекторы для истории ---
   const canUndo = useAppSelector(selectCanUndo);
   const canRedo = useAppSelector(selectCanRedo);
-
-  // Отладка - смотрим какие данные приходят
-  console.log('[GraphView] Rendering with artifact:', {
-    id: artifact.id,
-    name: artifact.name,
-    nodesCount: artifact.data?.nodes?.length || 0,
-    edgesCount: artifact.data?.edges?.length || 0,
-    data: artifact.data
-  });
 
   const handleStateChange = useCallback(async (newData: any) => {
     await dispatch(updateArtifact({
@@ -64,8 +66,9 @@ export const GraphView: React.FC<GraphViewProps> = ({
     })).unwrap();
   }, [dispatch, artifact.project_id, artifact.id]);
 
+  // --- Хук для UNDO/REDO ---
   const {
-    execute,  
+    execute,
     isRecording,
     lastError,
     createBatchGroup,
@@ -77,8 +80,10 @@ export const GraphView: React.FC<GraphViewProps> = ({
     handleStateChange
   );
 
+  // --- Клавиатурные сокращения ---
   useKeyboardShortcuts(artifact.id);
 
+  // Функция для перехода по истории с сохранением масштаба
   const handleHistoryJump = useCallback(async (state: any) => {
     if (networkRef.current) {
       viewPositionRef.current = {
@@ -89,6 +94,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
     await handleStateChange(state);
   }, [handleStateChange]);
 
+  // Эффект для восстановления масштаба после обновления данных
   useEffect(() => {
     if (networkRef.current && viewPositionRef.current) {
       networkRef.current.moveTo({
@@ -99,75 +105,80 @@ export const GraphView: React.FC<GraphViewProps> = ({
     }
   }, [artifact.data]);
 
-  // Инициализация графа
   useEffect(() => {
     if (!containerRef.current || isInitializedRef.current) return;
 
-    console.log('[GraphView] Initializing network with data:', artifact.data);
-    
-    const nodes = artifact.data?.nodes || [];
-    const edges = artifact.data?.edges || [];
+    console.log('[GraphView] Initializing with data:', artifact.data);
+    isInitializedRef.current = true;
 
-    console.log('[GraphView] Nodes to render:', nodes.length);
-    console.log('[GraphView] Edges to render:', edges.length);
-
-    // Создаем DataSet для узлов
-    const nodesData = new DataSet(
-      nodes.map((node: any) => ({
+    // Создаем DataSet с приведением типов через any
+    const nodes = new DataSet(
+      (artifact.data?.nodes || []).map((node: any) => ({
+        ...node,
         id: node.id,
         label: node.label || node.id,
-        title: `${node.type}\n${JSON.stringify(node.attributes || {}, null, 2)}`,
+        title: `${node.type}\n${JSON.stringify(node, null, 2)}`,
         x: node.position_x,
         y: node.position_y,
-        color: node.type === 'person' ? '#64b5f6' : 
-               node.type === 'company' ? '#81c784' : 
-               node.type === 'domain' ? '#ffb74d' : '#e0e0e0',
-        shape: 'dot',
-        size: 20,
-        font: { size: 14, color: '#ffffff' },
-        borderWidth: 2,
-        shadow: true
       }))
-    );
+    ) as any;
 
-    // Создаем DataSet для связей
-    const edgesData = new DataSet(
-      edges.map((edge: any) => ({
+    const edges = new DataSet(
+      (artifact.data?.edges || []).map((edge: any) => ({
+        ...edge,
         id: edge.id,
         from: edge.from || edge.source_node,
         to: edge.to || edge.target_node,
         label: edge.type,
-        title: `${edge.type}\n${JSON.stringify(edge.attributes || {}, null, 2)}`,
+        title: `${edge.type}\n${JSON.stringify(edge, null, 2)}`,
         arrows: 'to',
-        width: 2,
-        color: { color: '#848484', highlight: '#2196f3' },
-        smooth: { enabled: true, type: 'continuous' }
       }))
-    );
+    ) as any;
 
-    nodesDataSetRef.current = nodesData;
-    edgesDataSetRef.current = edgesData;
+    nodesDataSetRef.current = nodes;
+    edgesDataSetRef.current = edges;
 
     const options = {
       physics: { enabled: false, stabilization: false },
+      layout: { randomSeed: 42, improvedLayout: false },
       nodes: {
         shape: 'dot',
         size: 20,
         font: { size: 14, color: '#ffffff' },
         borderWidth: 2,
-        shadow: true
+        shadow: true,
+        fixed: false
       },
       edges: {
         width: 2,
-        smooth: { enabled: true, type: 'continuous' },
-        font: { size: 12, color: '#ffffff', align: 'middle' },
-        arrows: { to: { enabled: true, scaleFactor: 0.8 } }
+        smooth: {
+          enabled: true,
+          type: 'continuous',
+          roundness: 0.5
+        },
+        font: { 
+          size: 12, 
+          color: '#ffffff', 
+          align: 'middle' 
+        },
+        arrows: { 
+          to: { 
+            enabled: true, 
+            scaleFactor: 0.8 
+          } 
+        },
+        color: { 
+          color: '#848484', 
+          highlight: '#2196f3', 
+          hover: '#2196f3' 
+        }
       },
       interaction: {
         dragNodes: true,
         dragView: true,
         zoomView: true,
         hover: true,
+        tooltipDelay: 300,
         multiselect: true,
         navigationButtons: true,
         keyboard: false
@@ -177,22 +188,23 @@ export const GraphView: React.FC<GraphViewProps> = ({
 
     const network = new Network(
       containerRef.current,
-      { nodes: nodesData, edges: edgesData },
+      { nodes, edges },
       options
     );
 
     networkRef.current = network;
 
+    // Обработчик начала перетаскивания
     network.on('dragStart', (params) => {
       if (params.nodes && params.nodes.length > 0) {
         draggedNodesRef.current = params.nodes;
         isDraggingRef.current = true;
-        // createBatchGroup теперь возвращает валидный UUID
         batchGroupIdRef.current = createBatchGroup();
         console.log(`[GraphView] Started drag batch for ${params.nodes.length} nodes:`, batchGroupIdRef.current);
       }
     });
 
+    // Обработчик окончания перетаскивания
     network.on('dragEnd', (params) => {
       if (!params.nodes || params.nodes.length === 0) {
         isDraggingRef.current = false;
@@ -200,6 +212,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
         return;
       }
 
+      // Собираем позиции всех перемещаемых узлов
       const moves: PendingMove[] = params.nodes.map((nodeId: string) => {
         const position = network.getPosition(nodeId);
         return { nodeId, x: position.x, y: position.y };
@@ -214,6 +227,8 @@ export const GraphView: React.FC<GraphViewProps> = ({
       moveTimeoutRef.current = setTimeout(() => {
         const allMoves = [...pendingMoves, ...moves];
         
+        console.log(`[GraphView] Applying batch of ${allMoves.length} moves for ${new Set(allMoves.map(m => m.nodeId)).size} unique nodes`);
+
         if (onNodesMove && allMoves.length > 1) {
           onNodesMove(allMoves, batchGroupIdRef.current);
         } else {
@@ -226,42 +241,33 @@ export const GraphView: React.FC<GraphViewProps> = ({
         batchGroupIdRef.current = null;
         isDraggingRef.current = false;
         draggedNodesRef.current = [];
+        
+        console.log('[GraphView] Batch moves applied');
       }, 500);
     });
-
-    // Подгоняем вид под граф
-    network.once('afterDrawing', () => {
-      network.fit({ animation: true });
-    });
-
-    isInitializedRef.current = true;
 
     return () => {
       if (moveTimeoutRef.current) clearTimeout(moveTimeoutRef.current);
       network.destroy();
       isInitializedRef.current = false;
     };
-  }, []); // Пустой массив - инициализация только один раз
+  }, [artifact.data, onNodeMove, onNodesMove, createBatchGroup]); // Убрал pendingMoves из зависимостей
 
-  // Обновление данных при изменении artifact.data
+  // Эффект для обновления DataSet при изменении данных
   useEffect(() => {
     if (!networkRef.current || !nodesDataSetRef.current || isDraggingRef.current) return;
 
     const currentReduxState = JSON.stringify(artifact.data);
     if (currentReduxState === lastReduxStateRef.current) return;
 
-    console.log('[GraphView] Updating data from Redux');
     lastReduxStateRef.current = currentReduxState;
 
-    // Обновляем узлы
     const nodesData = (artifact.data?.nodes || []).map((node: any) => ({
+      ...node,
       id: node.id,
       label: node.label || node.id,
       x: node.position_x,
       y: node.position_y,
-      color: node.type === 'person' ? '#64b5f6' : 
-             node.type === 'company' ? '#81c784' : 
-             node.type === 'domain' ? '#ffb74d' : '#e0e0e0'
     }));
 
     nodesDataSetRef.current.clear();
@@ -269,12 +275,12 @@ export const GraphView: React.FC<GraphViewProps> = ({
       nodesDataSetRef.current.add(nodesData);
     }
 
-    // Обновляем связи
     const edgesData = (artifact.data?.edges || []).map((edge: any) => ({
+      ...edge,
       id: edge.id,
       from: edge.from || edge.source_node,
       to: edge.to || edge.target_node,
-      label: edge.type
+      label: edge.type,
     }));
 
     edgesDataSetRef.current?.clear();
@@ -283,6 +289,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
     }
   }, [artifact.data]);
 
+  // --- Обработчики для кнопок ---
   const handleUndoClick = useCallback(() => {
     undoAction();
   }, [undoAction]);
@@ -290,25 +297,6 @@ export const GraphView: React.FC<GraphViewProps> = ({
   const handleRedoClick = useCallback(() => {
     redoAction();
   }, [redoAction]);
-
-  // Если нет данных, показываем заглушку
-  if (!artifact.data || (!artifact.data.nodes?.length && !artifact.data.edges?.length)) {
-    return (
-      <div className="graph-view" style={{ height: '100%', position: 'relative' }}>
-        <div style={{ 
-          position: 'absolute', 
-          top: '50%', 
-          left: '50%', 
-          transform: 'translate(-50%, -50%)',
-          textAlign: 'center',
-          color: '#888'
-        }}>
-          <h3>Пустой граф</h3>
-          <p>Нет узлов для отображения</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="graph-view" style={{ height: '100%', position: 'relative' }}>
@@ -325,15 +313,41 @@ export const GraphView: React.FC<GraphViewProps> = ({
         borderRadius: '6px',
         backdropFilter: 'blur(4px)'
       }}>
-        <button onClick={handleUndoClick} disabled={!canUndo}>
+        <button 
+          onClick={handleUndoClick} 
+          disabled={!canUndo}
+          style={{
+            padding: '6px 12px',
+            background: !canUndo ? '#444' : '#2196f3',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: !canUndo ? 'not-allowed' : 'pointer',
+            opacity: !canUndo ? 0.5 : 1
+          }}
+          title="Undo (Ctrl+Z)"
+        >
           ↩️ Undo
         </button>
-        <button onClick={handleRedoClick} disabled={!canRedo}>
+        <button 
+          onClick={handleRedoClick} 
+          disabled={!canRedo}
+          style={{
+            padding: '6px 12px',
+            background: !canRedo ? '#444' : '#2196f3',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: !canRedo ? 'not-allowed' : 'pointer',
+            opacity: !canRedo ? 0.5 : 1
+          }}
+          title="Redo (Ctrl+Y)"
+        >
           ↪️ Redo
         </button>
       </div>
 
-      {/* Индикаторы */}
+      {/* Индикаторы состояния */}
       <div style={{ 
         position: 'absolute', 
         top: 10, 
@@ -341,27 +355,52 @@ export const GraphView: React.FC<GraphViewProps> = ({
         zIndex: 10, 
         display: 'flex', 
         flexDirection: 'column', 
-        gap: '5px' 
+        gap: '5px', 
+        alignItems: 'flex-end' 
       }}>
         {isRecording && (
-          <div style={{ background: '#f59e0b', color: 'white', padding: '4px 12px', borderRadius: '4px' }}>
+          <div style={{ 
+            background: '#f59e0b', 
+            color: 'white', 
+            padding: '4px 12px', 
+            borderRadius: '4px', 
+            fontSize: '12px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+          }}>
             ⏺ Recording...
           </div>
         )}
         {lastError && (
-          <div style={{ background: '#ef4444', color: 'white', padding: '4px 12px', borderRadius: '4px' }}>
+          <div style={{ 
+            background: '#ef4444', 
+            color: 'white', 
+            padding: '4px 12px', 
+            borderRadius: '4px', 
+            fontSize: '12px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+          }}>
             ❌ {lastError.message}
           </div>
         )}
         {pendingMoves.length > 0 && (
-          <div style={{ background: '#3b82f6', color: 'white', padding: '4px 12px', borderRadius: '4px' }}>
+          <div style={{ 
+            background: '#3b82f6', 
+            color: 'white', 
+            padding: '4px 12px', 
+            borderRadius: '4px', 
+            fontSize: '12px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+          }}>
             📦 Grouping {new Set(pendingMoves.map(m => m.nodeId)).size} nodes...
           </div>
         )}
       </div>
 
       {/* Контейнер для графа */}
-      <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+      <div 
+        ref={containerRef} 
+        style={{ width: '100%', height: '100%' }}
+      />
 
       {/* Панель истории */}
       <HistoryPanel
