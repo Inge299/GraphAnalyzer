@@ -1,5 +1,6 @@
 // frontend/src/components/views/GraphView.tsx
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { useAppDispatch } from '../../store';
 import { HistoryPanel } from '../history/HistoryPanel';
 import { Network } from 'vis-network/standalone';
 import { DataSet } from 'vis-data/standalone';
@@ -48,16 +49,54 @@ export const GraphView: React.FC<GraphViewProps> = ({
   const isDraggingRef = useRef(false);
   const lastReduxStateRef = useRef<string>(JSON.stringify(artifact.data));
   const viewPositionRef = useRef<{ scale: number; position: { x: number; y: number } } | null>(null);
-  const isFirstLoadRef = useRef(true);
 
-  // Инициализация графа (только один раз)
+  console.log('[GraphView] Rendering with artifact:', {
+    id: artifact.id,
+    name: artifact.name,
+    nodesCount: artifact.data?.nodes?.length || 0,
+    edgesCount: artifact.data?.edges?.length || 0,
+    version: artifact.version
+  });
+
+  const handleHistoryJump = useCallback((state: any) => {
+    console.log('[GraphView] Jumping to history state');
+    
+    if (networkRef.current) {
+      viewPositionRef.current = {
+        scale: networkRef.current.getScale(),
+        position: networkRef.current.getViewPosition()
+      };
+    }
+    
+    // Обновляем артефакт через родительский компонент
+    // Здесь нужно вызвать обновление артефакта
+    // Так как onStateChange в App.tsx обновляет Redux
+    // А Redux обновит GraphView через props
+    console.log('[GraphView] History jump - artifact will be updated via Redux');
+  }, []);
+
+  useEffect(() => {
+    if (networkRef.current && viewPositionRef.current) {
+      networkRef.current.moveTo({
+        position: viewPositionRef.current.position,
+        scale: viewPositionRef.current.scale,
+        animation: false
+      });
+      viewPositionRef.current = null;
+    }
+  }, [artifact.data]);
+
+  // Инициализация графа
   useEffect(() => {
     if (!containerRef.current || isInitializedRef.current) return;
 
-    console.log('[GraphView] Initializing network (first time only)');
+    console.log('[GraphView] Initializing network with data:', artifact.data);
     
     const nodes = artifact.data?.nodes || [];
     const edges = artifact.data?.edges || [];
+
+    console.log('[GraphView] Nodes to render:', nodes.length);
+    console.log('[GraphView] Edges to render:', edges.length);
 
     // Создаем DataSet для узлов
     const nodesData = new DataSet(
@@ -144,7 +183,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
       if (params.nodes && params.nodes.length > 0) {
         isDraggingRef.current = true;
         batchGroupIdRef.current = createBatchGroup();
-        console.log(`[GraphView] Started drag batch for ${params.nodes.length} nodes`);
+        console.log(`[GraphView] Started drag batch for ${params.nodes.length} nodes:`, batchGroupIdRef.current);
       }
     });
 
@@ -156,7 +195,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
 
       const moves: PendingMove[] = params.nodes.map((nodeId: string) => {
         const position = network.getPosition(nodeId);
-        return { nodeId, x: Math.round(position.x), y: Math.round(position.y) };
+        return { nodeId, x: position.x, y: position.y };
       });
 
       setPendingMoves(prev => [...prev, ...moves]);
@@ -168,7 +207,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
       moveTimeoutRef.current = setTimeout(() => {
         const allMoves = [...pendingMoves, ...moves];
         
-        console.log(`[GraphView] Drag ended, processing ${allMoves.length} moves`);
+        console.log(`[GraphView] Drag ended, processing ${allMoves.length} moves with group ${batchGroupIdRef.current}`);
         
         if (onNodesMove && allMoves.length > 1) {
           onNodesMove(allMoves, batchGroupIdRef.current);
@@ -184,12 +223,9 @@ export const GraphView: React.FC<GraphViewProps> = ({
       }, 500);
     });
 
-    // Подгоняем вид под граф только при первой загрузке
+    // Подгоняем вид под граф
     network.once('afterDrawing', () => {
-      if (isFirstLoadRef.current) {
-        network.fit({ animation: true, duration: 300 });
-        isFirstLoadRef.current = false;
-      }
+      network.fit({ animation: true });
     });
 
     isInitializedRef.current = true;
@@ -198,11 +234,10 @@ export const GraphView: React.FC<GraphViewProps> = ({
       if (moveTimeoutRef.current) clearTimeout(moveTimeoutRef.current);
       network.destroy();
       isInitializedRef.current = false;
-      isFirstLoadRef.current = true;
     };
-  }, []); // Пустой массив - инициализация только один раз
+  }, [onNodeMove, onNodesMove]);
 
-  // Обновление данных при изменении artifact.data (без переинициализации)
+  // Обновление данных при изменении artifact.data
   useEffect(() => {
     if (!networkRef.current || !nodesDataSetRef.current || isDraggingRef.current) return;
 
@@ -211,10 +246,6 @@ export const GraphView: React.FC<GraphViewProps> = ({
 
     console.log('[GraphView] Updating data from Redux, version:', artifact.version);
     lastReduxStateRef.current = currentReduxState;
-
-    // Сохраняем текущий вид перед обновлением
-    const currentScale = networkRef.current.getScale();
-    const currentPosition = networkRef.current.getViewPosition();
 
     // Обновляем узлы
     const nodesData = (artifact.data?.nodes || []).map((node: any) => ({
@@ -244,13 +275,6 @@ export const GraphView: React.FC<GraphViewProps> = ({
     if (edgesData.length > 0) {
       edgesDataSetRef.current?.add(edgesData);
     }
-    
-    // Восстанавливаем вид после обновления (без анимации)
-    networkRef.current.moveTo({
-      position: currentPosition,
-      scale: currentScale,
-      animation: false
-    });
   }, [artifact.data, artifact.version]);
 
   const handleUndoClick = useCallback(() => {
@@ -262,12 +286,6 @@ export const GraphView: React.FC<GraphViewProps> = ({
     console.log('[GraphView] Redo button clicked');
     onRedo?.();
   }, [onRedo]);
-
-  const handleHistoryJump = useCallback((state: any) => {
-    console.log('[GraphView] History jump');
-    // Здесь нужно вызвать обновление артефакта
-    // onUndo/onRedo уже вызываются из HistoryPanel
-  }, []);
 
   if (!artifact.data || (!artifact.data.nodes?.length && !artifact.data.edges?.length)) {
     return (

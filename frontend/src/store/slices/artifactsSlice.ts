@@ -4,7 +4,7 @@ import { api } from '../../services/api';
 import { ApiArtifact, ApiArtifactCreate, ApiArtifactUpdate } from '../../types/api';
 
 interface ArtifactsState {
-  items: Record<number, ApiArtifact>;  // key: artifactId
+  items: Record<number, ApiArtifact>;
   currentArtifactId: number | null;
   isLoading: boolean;
   error: string | null;
@@ -27,7 +27,7 @@ export const fetchArtifacts = createAsyncThunk(
     try {
       console.log(`[Artifacts] Fetching artifacts for project ${projectId}`);
       const response = await api.get(`/api/v2/projects/${projectId}/artifacts`);
-      return response.data;  // <-- ИСПРАВЛЕНО
+      return response.data;
     } catch (error: any) {
       console.error('[Artifacts] Error fetching artifacts:', error);
       return rejectWithValue(error.message || 'Failed to fetch artifacts');
@@ -41,7 +41,7 @@ export const fetchArtifact = createAsyncThunk(
     try {
       console.log(`[Artifacts] Fetching artifact ${id}`);
       const response = await api.get(`/api/v2/projects/${projectId}/artifacts/${id}`);
-      return response.data;  // <-- ИСПРАВЛЕНО
+      return response.data;
     } catch (error: any) {
       console.error('[Artifacts] Error fetching artifact:', error);
       return rejectWithValue(error.message || 'Failed to fetch artifact');
@@ -55,7 +55,7 @@ export const createArtifact = createAsyncThunk(
     try {
       console.log(`[Artifacts] Creating artifact in project ${projectId}`);
       const response = await api.post(`/api/v2/projects/${projectId}/artifacts`, data);
-      return response.data;  // <-- ИСПРАВЛЕНО
+      return response.data;
     } catch (error: any) {
       console.error('[Artifacts] Error creating artifact:', error);
       return rejectWithValue(error.message || 'Failed to create artifact');
@@ -63,26 +63,13 @@ export const createArtifact = createAsyncThunk(
   }
 );
 
-export const updateArtifact = createAsyncThunk(
-  'artifacts/update',
-  async ({ 
-    projectId, 
-    id, 
-    updates 
-  }: { 
-    projectId: number; 
-    id: number; 
-    updates: ApiArtifactUpdate  // Используем правильный тип
-  }, { rejectWithValue }) => {
-    try {
-      console.log(`[Artifacts] Updating artifact ${id} in project ${projectId}`, updates);
-      const response = await api.put(`/api/v2/projects/${projectId}/artifacts/${id}`, updates);
-      console.log(`[Artifacts] Updated artifact ${id} to version ${response.data.version}`);  // <-- ИСПРАВЛЕНО
-      return response.data;  // <-- ИСПРАВЛЕНО
-    } catch (error: any) {
-      console.error('[Artifacts] Error updating artifact:', error);
-      return rejectWithValue(error.message || 'Failed to update artifact');
-    }
+// updateArtifact теперь НЕ делает API запрос, только обновляет Redux
+// Но принимает обновленный артефакт из useActionWithUndo
+export const updateArtifactRedux = createAsyncThunk(
+  'artifacts/updateRedux',
+  async (artifact: ApiArtifact, { rejectWithValue }) => {
+    // Просто возвращаем артефакт для обновления Redux
+    return artifact;
   }
 );
 
@@ -92,7 +79,7 @@ export const deleteArtifact = createAsyncThunk(
     try {
       console.log(`[Artifacts] Deleting artifact ${id}`);
       await api.delete(`/api/v2/projects/${projectId}/artifacts/${id}`);
-      return id;  // id и так число, не нужно .data
+      return id;
     } catch (error: any) {
       console.error('[Artifacts] Error deleting artifact:', error);
       return rejectWithValue(error.message || 'Failed to delete artifact');
@@ -110,9 +97,18 @@ const artifactsSlice = createSlice({
   reducers: {
     setCurrentArtifact: (state, action: PayloadAction<number | null>) => {
       state.currentArtifactId = action.payload;
+      console.log('[Artifacts] Current artifact set to:', action.payload);
     },
     clearError: (state) => {
       state.error = null;
+    },
+    // Синхронное обновление артефакта (без API)
+    updateArtifactSync: (state, action: PayloadAction<ApiArtifact>) => {
+      const artifact = action.payload;
+      if (artifact && artifact.id) {
+        state.items[artifact.id] = artifact;
+        console.log(`[Artifacts] Sync updated artifact ${artifact.id}, version:`, artifact.version);
+      }
     }
   },
   extraReducers: (builder) => {
@@ -124,10 +120,14 @@ const artifactsSlice = createSlice({
       })
       .addCase(fetchArtifacts.fulfilled, (state, action) => {
         state.isLoading = false;
-        const artifacts = action.payload;  // теперь это уже data
-        artifacts.forEach((artifact: ApiArtifact) => {
-          state.items[artifact.id] = artifact;
-        });
+        const artifacts = action.payload;
+        if (Array.isArray(artifacts)) {
+          artifacts.forEach((artifact: ApiArtifact) => {
+            if (artifact && artifact.id) {
+              state.items[artifact.id] = artifact;
+            }
+          });
+        }
       })
       .addCase(fetchArtifacts.rejected, (state, action) => {
         state.isLoading = false;
@@ -135,40 +135,49 @@ const artifactsSlice = createSlice({
       })
 
       // Fetch single artifact
+      .addCase(fetchArtifact.pending, (state) => {
+        state.isLoading = true;
+      })
       .addCase(fetchArtifact.fulfilled, (state, action) => {
-        const artifact = action.payload;  // теперь это уже data
-        state.items[artifact.id] = artifact;
+        state.isLoading = false;
+        const artifact = action.payload;
+        if (artifact && artifact.id) {
+          state.items[artifact.id] = artifact;
+        }
+      })
+      .addCase(fetchArtifact.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
       })
 
       // Create artifact
       .addCase(createArtifact.fulfilled, (state, action) => {
-        const artifact = action.payload;  // теперь это уже data
-        state.items[artifact.id] = artifact;
-        state.currentArtifactId = artifact.id;
-        console.log(`[Artifacts] Artifact ${artifact.id} created in store`);
+        const artifact = action.payload;
+        if (artifact && artifact.id) {
+          state.items[artifact.id] = artifact;
+          state.currentArtifactId = artifact.id;
+        }
       })
 
-      // Update artifact
-      .addCase(updateArtifact.fulfilled, (state, action) => {
-        const artifact = action.payload;  // теперь это уже data
-        state.items[artifact.id] = {
-          ...state.items[artifact.id],
-          ...artifact
-        };
-        console.log(`[Artifacts] Artifact ${artifact.id} updated in store`);
+      // Update artifact Redux (синхронно)
+      .addCase(updateArtifactRedux.fulfilled, (state, action) => {
+        const artifact = action.payload;
+        if (artifact && artifact.id) {
+          state.items[artifact.id] = artifact;
+          console.log(`[Artifacts] Redux updated for artifact ${artifact.id}, version:`, artifact.version);
+        }
       })
 
       // Delete artifact
       .addCase(deleteArtifact.fulfilled, (state, action) => {
-        const id = action.payload;  // id уже число
+        const id = action.payload;
         delete state.items[id];
         if (state.currentArtifactId === id) {
           state.currentArtifactId = null;
         }
-        console.log(`[Artifacts] Artifact ${id} deleted from store`);
       });
   }
 });
 
-export const { setCurrentArtifact, clearError } = artifactsSlice.actions;
+export const { setCurrentArtifact, clearError, updateArtifactSync } = artifactsSlice.actions;
 export default artifactsSlice.reducer;

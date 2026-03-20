@@ -1,7 +1,7 @@
 // frontend/src/store/slices/historySlice.ts
-import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { api } from '../../services/api';
-import { RootState } from '../../store';  // Исправленный импорт
+import { RootState } from '../../store';
 
 export interface HistoryAction {
   id: string;
@@ -33,25 +33,46 @@ const initialState: HistoryState = {
 // Async thunks
 export const fetchHistory = createAsyncThunk(
   'history/fetch',
-  async (artifactId: number) => {
-    const response = await api.get(`/api/v2/artifacts/${artifactId}/history?limit=100`);
-    return response.data;  // <-- ВАЖНО: .data
+  async (artifactId: number, { rejectWithValue }) => {
+    try {
+      console.log('[History] Fetching history for artifact', artifactId);
+      const response = await api.get(`/api/v2/artifacts/${artifactId}/history?limit=100`);
+      console.log('[History] Fetched', response.data?.length || 0, 'actions');
+      return response.data;
+    } catch (error: any) {
+      console.error('[History] Fetch failed:', error);
+      return rejectWithValue(error.message || 'Failed to fetch history');
+    }
   }
 );
 
 export const undo = createAsyncThunk(
   'history/undo',
-  async (artifactId: number) => {
-    const response = await api.post(`/api/v2/artifacts/${artifactId}/history/undo`);
-    return response.data;  // <-- ВАЖНО: .data
+  async (artifactId: number, { rejectWithValue }) => {
+    try {
+      console.log('[History] Undo requested for artifact', artifactId);
+      const response = await api.post(`/api/v2/artifacts/${artifactId}/history/undo`);
+      console.log('[History] Undo response:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('[History] Undo failed:', error);
+      return rejectWithValue(error.message || 'Failed to undo');
+    }
   }
 );
 
 export const redo = createAsyncThunk(
   'history/redo',
-  async (artifactId: number) => {
-    const response = await api.post(`/api/v2/artifacts/${artifactId}/history/redo`);
-    return response.data;  // <-- ВАЖНО: .data
+  async (artifactId: number, { rejectWithValue }) => {
+    try {
+      console.log('[History] Redo requested for artifact', artifactId);
+      const response = await api.post(`/api/v2/artifacts/${artifactId}/history/redo`);
+      console.log('[History] Redo response:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('[History] Redo failed:', error);
+      return rejectWithValue(error.message || 'Failed to redo');
+    }
   }
 );
 
@@ -63,17 +84,27 @@ const historySlice = createSlice({
       state.actions.push(action.payload);
       state.currentActionId = action.payload.id;
       state.error = null;
+      console.log('[History] Action added, total:', state.actions.length);
     },
     
     setCurrentIndex: (state, action: PayloadAction<{ actionId: string; direction: 'undo' | 'redo' }>) => {
       state.currentActionId = action.payload.actionId;
       state.error = null;
+      console.log('[History] Current index set to:', action.payload.actionId, 'direction:', action.payload.direction);
+    },
+    
+    setHistoryActions: (state, action: PayloadAction<HistoryAction[]>) => {
+      state.actions = action.payload;
+      state.currentActionId = action.payload.length > 0 ? action.payload[action.payload.length - 1].id : null;
+      state.error = null;
+      console.log('[History] Set history actions, count:', action.payload.length);
     },
     
     resetHistory: (state) => {
       state.actions = [];
       state.currentActionId = null;
       state.error = null;
+      console.log('[History] History reset');
     },
     
     clearError: (state) => {
@@ -92,11 +123,15 @@ const historySlice = createSlice({
         state.actions = action.payload;
         if (action.payload.length > 0) {
           state.currentActionId = action.payload[action.payload.length - 1].id;
+        } else {
+          state.currentActionId = null;
         }
+        console.log('[History] Loaded', action.payload.length, 'actions');
       })
       .addCase(fetchHistory.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.error.message || 'Failed to fetch history';
+        state.error = action.payload as string;
+        console.error('[History] Fetch rejected:', state.error);
       })
       
       // Undo
@@ -107,16 +142,23 @@ const historySlice = createSlice({
       .addCase(undo.fulfilled, (state, action) => {
         state.isLoading = false;
         const undoneActionId = action.payload.action_id;
+        // Находим индекс отмененного действия
         const index = state.actions.findIndex(a => a.id === undoneActionId);
         if (index > 0) {
           state.currentActionId = state.actions[index - 1].id;
         } else if (index === 0) {
           state.currentActionId = null;
         }
+        // Удаляем отмененное действие из списка
+        if (index !== -1) {
+          state.actions = state.actions.filter(a => a.id !== undoneActionId);
+        }
+        console.log('[History] Undo completed, remaining actions:', state.actions.length);
       })
       .addCase(undo.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.error.message || 'Failed to undo';
+        state.error = action.payload as string;
+        console.error('[History] Undo rejected:', state.error);
       })
       
       // Redo
@@ -126,17 +168,22 @@ const historySlice = createSlice({
       })
       .addCase(redo.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.currentActionId = action.payload.action_id;
+        const redoneActionId = action.payload.action_id;
+        state.currentActionId = redoneActionId;
+        // Redo добавляет новое действие, нужно получить обновленный список
+        // Это будет сделано через fetchHistory в useActionWithUndo
+        console.log('[History] Redo completed, new action id:', redoneActionId);
       })
       .addCase(redo.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.error.message || 'Failed to redo';
+        state.error = action.payload as string;
+        console.error('[History] Redo rejected:', state.error);
       });
   }
 });
 
 // ========== ЭКСПОРТЫ ==========
-export const { addAction, setCurrentIndex, resetHistory, clearError } = historySlice.actions;
+export const { addAction, setCurrentIndex, resetHistory, clearError, setHistoryActions } = historySlice.actions;
 export default historySlice.reducer;
 
 // ========== СЕЛЕКТОРЫ ==========

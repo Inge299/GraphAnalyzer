@@ -1,13 +1,15 @@
 // frontend/src/hooks/useActionWithUndo.ts
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../store';
 import { api } from '../services/api';
+import { updateArtifactSync } from '../store/slices/artifactsSlice';
 import { 
   addAction, 
   setCurrentIndex, 
   clearError,
   selectCanUndo,
-  selectCanRedo 
+  selectCanRedo,
+  setHistoryActions
 } from '../store/slices/historySlice';
 
 interface ActionOptions {
@@ -20,10 +22,12 @@ interface ActionOptions {
 export function useActionWithUndo<T extends object>(
   artifactId: number,
   currentState: T,
-  onStateChange: (newState: T) => Promise<void> | void
+  onStateChange: (newState: T) => void,
+  projectId: number = 1
 ) {
   const dispatch = useAppDispatch();
   const isRecordingRef = useRef(false);
+  const lastStateRef = useRef<T>(currentState);
   
   const [isRecording, setIsRecording] = useState(false);
   const [lastError, setLastError] = useState<Error | null>(null);
@@ -31,8 +35,20 @@ export function useActionWithUndo<T extends object>(
   const canUndo = useAppSelector(selectCanUndo);
   const canRedo = useAppSelector(selectCanRedo);
 
+  useEffect(() => {
+    lastStateRef.current = currentState;
+  }, [currentState]);
+
+  const refreshHistory = useCallback(async () => {
+    try {
+      const response = await api.get(`/api/v2/artifacts/${artifactId}/history?limit=100`);
+      dispatch(setHistoryActions(response.data));
+    } catch (error) {
+      console.error('Failed to refresh history:', error);
+    }
+  }, [artifactId, dispatch]);
+
   const createBatchGroup = useCallback(() => {
-    // Генерируем валидный UUID v4
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
       const r = Math.random() * 16 | 0;
       const v = c === 'x' ? r : (r & 0x3 | 0x8);
@@ -45,7 +61,6 @@ export function useActionWithUndo<T extends object>(
     options: ActionOptions
   ) => {
     if (isRecordingRef.current) {
-      console.log('⏭️ Already recording, skipping');
       return;
     }
 
@@ -53,168 +68,79 @@ export function useActionWithUndo<T extends object>(
     setIsRecording(true);
     setLastError(null);
     
-    const safeCurrentState = currentState || {} as T;
-    const beforeState = JSON.parse(JSON.stringify(safeCurrentState));
+    const beforeState = JSON.parse(JSON.stringify(lastStateRef.current || {}));
     let afterState: T;
     
     try {
       const result = await actionFn();
+      afterState = (result as T) || JSON.parse(JSON.stringify(lastStateRef.current || {}));
       
-      if (result) {
-        afterState = result as T;
-        await onStateChange(afterState);
-      } else {
-        await new Promise(resolve => setTimeout(resolve, 50));
-        const safeNewState = currentState || {} as T;
-        afterState = JSON.parse(JSON.stringify(safeNewState));
-      }
-      
-      const stateChanged = JSON.stringify(beforeState) !== JSON.stringify(afterState);
-      
-      if (!stateChanged) {
-        console.log('⏭️ State unchanged, skipping history');
-        isRecordingRef.current = false;
-        setIsRecording(false);
-        return;
-      }
-      
-      console.log(`📝 Recording action: ${options.description}`);
-      
-      // Экранируем описание на всякий случай
-      const safeDescription = options.description
-        .replace(/[^\x00-\x7F]/g, '') // Удаляем не-ASCII символы для теста
-        .substring(0, 200);
-      
-      const actionData = {
+      // 1. Сохраняем в историю
+      await api.post(`/api/v2/artifacts/${artifactId}/history/actions`, {
         action_type: options.actionType,
-        before_state: beforeState || {},
-        after_state: afterState || {},
-        description: safeDescription,
+        before_state: beforeState,
+        after_state: afterState,
+        description: options.description.substring(0, 200),
         user_type: options.pluginId ? 'plugin' : 'user',
         plugin_id: options.pluginId || null,
-        // group_id должен быть валидным UUID или null
-        group_id: options.groupId || null  // Теперь groupId будет валидным UUID
-      };
+        group_id: options.groupId || null
+      });
       
-      console.log('📦 SENDING ACTION DATA:', JSON.stringify(actionData, null, 2));
-      
-      const response = await api.post(
-        `/api/v2/artifacts/${artifactId}/history/actions`,
-        actionData
+      // 2. Обновляем артефакт
+      const updateResponse = await api.put(
+        `/api/v2/projects/${projectId}/artifacts/${artifactId}`,
+        { data: afterState }
       );
       
-      const data = response.data;
-      console.log('✅ Action recorded:', data);
+      // 3. Обновляем Redux
+      dispatch(updateArtifactSync(updateResponse.data));
+      lastStateRef.current = updateResponse.data.data;
       
-      dispatch(addAction({
-        id: data.id,
-        artifactId,
-        actionType: options.actionType,
-        beforeState,
-        afterState,
-        timestamp: data.timestamp || new Date().toISOString(),
-        description: options.description, // Сохраняем оригинальное описание в Redux
-        userType: options.pluginId ? 'plugin' : 'user',
-        pluginId: options.pluginId,
-        groupId: options.groupId
-      }));
+      // 4. Обновляем историю
+      await refreshHistory();
       
     } catch (error: any) {
-      console.error('❌ Action failed:', error);
-      if (error.response) {
-        console.error('  Status:', error.response.status);
-        console.error('  Data:', error.response.data);
-        console.error('  Headers:', error.response.headers);
-      }
-      setLastError(error as Error);
-      
-      try {
-        await onStateChange(beforeState);
-        console.log('↩️ Rolled back to previous state');
-      } catch (rollbackError) {
-        console.error('❌ Rollback failed:', rollbackError);
-      }
-      
-      throw error;
+      console.error('Action failed:', error);
+      setLastError(error);
     } finally {
       isRecordingRef.current = false;
       setIsRecording(false);
     }
-  }, [artifactId, currentState, onStateChange, dispatch]);
+  }, [artifactId, projectId, dispatch, refreshHistory]);
 
   const undo = useCallback(async () => {
-    if (!canUndo) {
-      console.log('⏭️ Nothing to undo');
-      return null;
-    }
-    
-    console.log('⏪ Undo requested');
-    setLastError(null);
+    if (!canUndo) return;
     
     try {
-      dispatch(clearError());
-      
       const response = await api.post(`/api/v2/artifacts/${artifactId}/history/undo`);
-      const data = response.data;
-      
-      console.log('✅ Undo response:', data);
-      await onStateChange(data.state);
-      
-      if (data.action_id) {
-        dispatch(setCurrentIndex({ 
-          actionId: data.action_id, 
-          direction: 'undo' 
-        }));
-      }
-      
-      return data;
-    } catch (error: any) {
-      console.error('❌ Undo failed:', error);
-      if (error.response?.status === 404) {
-        console.log('ℹ️ No actions to undo');
-        return null;
-      }
-      setLastError(error as Error);
-      throw error;
+      const updateResponse = await api.put(
+        `/api/v2/projects/${projectId}/artifacts/${artifactId}`,
+        { data: response.data.state }
+      );
+      dispatch(updateArtifactSync(updateResponse.data));
+      lastStateRef.current = updateResponse.data.data;
+      await refreshHistory();
+    } catch (error) {
+      console.error('Undo failed:', error);
     }
-  }, [artifactId, onStateChange, dispatch, canUndo]);
+  }, [artifactId, projectId, dispatch, refreshHistory, canUndo]);
 
   const redo = useCallback(async () => {
-    if (!canRedo) {
-      console.log('⏭️ Nothing to redo');
-      return null;
-    }
-    
-    console.log('⏩ Redo requested');
-    setLastError(null);
+    if (!canRedo) return;
     
     try {
-      dispatch(clearError());
-      
       const response = await api.post(`/api/v2/artifacts/${artifactId}/history/redo`);
-      const data = response.data;
-      
-      console.log('✅ Redo response:', data);
-      await onStateChange(data.state);
-      
-      if (data.action_id) {
-        dispatch(setCurrentIndex({ 
-          actionId: data.action_id, 
-          direction: 'redo' 
-        }));
-      }
-      
-      return data;
-    } catch (error: any) {
-      console.error('❌ Redo failed:', error);
-      if (error.response?.status === 404) {
-        console.log('ℹ️ No actions to redo');
-        return null;
-      }
-      setLastError(error as Error);
-      throw error;
+      const updateResponse = await api.put(
+        `/api/v2/projects/${projectId}/artifacts/${artifactId}`,
+        { data: response.data.state }
+      );
+      dispatch(updateArtifactSync(updateResponse.data));
+      lastStateRef.current = updateResponse.data.data;
+      await refreshHistory();
+    } catch (error) {
+      console.error('Redo failed:', error);
     }
-  }, [artifactId, onStateChange, dispatch, canRedo]);
+  }, [artifactId, projectId, dispatch, refreshHistory, canRedo]);
 
   return {
     execute,

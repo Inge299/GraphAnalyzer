@@ -1,15 +1,15 @@
 =============================================================================
 🎯 ПРОЕКТ: OSINT Graph Analyzer
-📅 Дата: 2026-03-18T11:53:18.707698
+📅 Дата: 2026-03-20T14:23:43.809578
 📌 Версия: v1.0
 =============================================================================
 
 📊 СТАТИСТИКА
 --------------------------------------------------
-- Всего файлов: 5733
-- Строк кода: 2133609
-- Python файлов: 5624
-- TypeScript/JS: 25
+- Всего файлов: 5740
+- Строк кода: 2134147
+- Python файлов: 5625
+- TypeScript/JS: 27
 
 🏗 АРХИТЕКТУРА
 --------------------------------------------------
@@ -94,14 +94,15 @@
         "artifacts.py": "[FILE] 727 lines",
         "edges.py": "[FILE] 219 lines",
         "graphs.py": "[FILE] 59 lines",
-        "history.py": "[FILE] 269 lines",
-        "history.py.bkp": "[BINARY] 7703 bytes",
+        "history — копия.py:Zone.Identifier": "[BINARY] 0 bytes",
+        "history.py": "[FILE] 202 lines",
+        "history__.py": "[FILE] 332 lines",
         "nodes.py": "[FILE] 249 lines",
         "projects.py": "[FILE] 142 lines",
         "schema.py": "[FILE] 93 lines"
       }
     },
-    "config.py": "[FILE] 64 lines",
+    "config.py": "[FILE] 69 lines",
     "core": {
       "exceptions.py": "[FILE] 101 lines"
     },
@@ -141,47 +142,59 @@
     "checksums_20260316_020005.txt": "[BINARY] 3172 bytes",
     "checksums_20260317_020006.txt": "[BINARY] 3846 bytes",
     "checksums_20260318_020005.txt": "[BINARY] 4428 bytes",
-    "cron.log": "[BINARY] 17290 bytes",
-    "data_20260317_020006.tar.gz": "[BINARY] 145 bytes",
-    "data_20260318_020005.tar.gz": "[BINARY] 145 bytes",
-    "db_20260314_020005.sql.gz": "[BINARY] 19383 bytes",
-    "db_20260315_020005.sql.gz": "[BINARY] 19382 bytes",
+    "checksums_20260319_020005.txt": "[BINARY] 5010 bytes",
+    "checksums_20260320_020005.txt": "[BINARY] 5592 bytes",
+    "cron.log": "[BINARY] 27390 bytes",
+    "data_20260319_020005.tar.gz": "[BINARY] 145 bytes",
+    "data_20260320_020005.tar.gz": "[BINARY] 145 bytes",
     "db_20260316_020005.sql.gz": "[BINARY] 19379 bytes",
     "db_20260317_020006.sql.gz": "[BINARY] 19716 bytes",
     "db_20260318_020005.sql.gz": "[BINARY] 17543 bytes",
+    "db_20260319_020005.sql.gz": "[BINARY] 18457 bytes",
+    "db_20260320_020005.sql.gz": "[BINARY] 22397 bytes",
     "docker-compose_20260313_020005.yml": "[FILE] 86 lines",
     "docker-compose_20260314_020005.yml": "[FILE] 86 lines",
     "docker-compose_20260315_020005.yml": "[FILE] 86 lines",
     "docker-compose_20260316_020005.yml": "[FILE] 86 lines",
     "docker-compose_20260317_020006.yml": "[FILE] 86 lines",
     "docker-compose_20260318_020005.yml": "[FILE] 86 lines",
+    "docker-compose_20260319_020005.yml": "[FILE] 86 lines",
+    "docker-compose_20260320_020005.yml": "[FILE] 86 lines",
     "env_20260313_020005.backup": "[BINARY] 609 bytes",
     "env_20260314_020005.backup": "[BINARY] 609 bytes",
     "env_20260315_020005.backup": "[BINARY] 609 bytes",
     "env_20260316_020005.backup": "[BINARY] 609 bytes",
     "env_20260317_020006.backup": "[BINARY] 609 bytes",
     "env_20260318_020005.backup": "[BINARY] 609 bytes",
+    "env_20260319_020005.backup": "[BINARY] 659 bytes",
+    "env_20260320_020005.backup": "[BINARY] 659 bytes",
     "npm-deps_20260313_020005.txt": "[BINARY] 52 bytes",
     "npm-deps_20260314_020005.txt": "[BINARY] 52 bytes",
     "npm-deps_20260315_020005.txt": "[BINARY] 52 bytes",
     "npm-deps_20260316_020005.txt": "[BINARY] 52 bytes",
     "npm-deps_20260317_020006.txt": "[BINARY] 52 bytes",
     "npm-deps_20260318_020005.txt": "[BINARY] 52 bytes",
+    "npm-deps_20260319_020005.txt": "[BINARY] 76 bytes",
+    "npm-deps_20260320_020005.txt": "[BINARY] 76 bytes",
     "requirements_20260313_020005.txt": "[BINARY] 1215 bytes",
     "requirements_20260314_020005.txt": "[BINARY] 1215 bytes",
     "requirements_20260315_020005.txt": "[BINARY] 1215 bytes",
     "requirements_20260316_020005.txt": "[BINARY] 1215 bytes",
     "requirements_20260317_020006.txt": "[BINARY] 1215 bytes",
     "requirements_20260318_020005.txt": "[BINARY] 1215 bytes",
+    "requirements_20260319_020005.txt": "[BINARY] 1215 bytes",
+    "requirements_20260320_020005.txt": "[BINARY] 1215 bytes",
     "system_info_20260313_020005.txt": "[BINARY] 352 bytes",
     "system_info_20260314_020005.txt": "[BINARY] 352 bytes",
     "system_info_20260315_020005.txt": "[BINARY] 352 bytes",
     "system_info_20260316_020005.txt": "[BINARY] 352 bytes",
     "system_info_20260317_020006.txt": "[BINARY] 352 bytes",
     "system_info_20260318_020005.txt": "[BINARY] 352 bytes",
-    "volume_postgres_20260318_020005.tar.gz": "[BINARY] 87 bytes",
-    "volume_redis_20260317_020006.tar.gz": "[BINARY] 87 bytes",
-    "volume_redis_20260318_020005.tar.gz": "[BINARY] 87 bytes"
+    "system_info_20260319_020005.txt": "[BINARY] 352 bytes",
+    "system_info_20260320_020005.txt": "[BINARY] 352 bytes",
+    "volume_postgres_20260320_020005.tar.gz": "[BINARY] 87 bytes",
+    "volume_redis_20260319_020005.tar.gz": "[BINARY] 87 bytes",
+    "volume_redis_20260320_020005.tar.gz": "[BINARY] 87 bytes"
   },
   "clean-database.sh": "[BINARY] 7117 bytes",
   "clean-database.sh:Zone.Identifier": "[BINARY] 0 bytes",
@@ -193,56 +206,64 @@
   "docker-compose.yml": "[FILE] 86 lines",
   "docker-compose.yml.backup": "[BINARY] 1709 bytes",
   "frontend": {
+    "5173ъ": "[BINARY] 0 bytes",
     "index.html": "[BINARY] 369 bytes",
     "package-lock.json": "[FILE] 4787 lines",
     "package.json": "[FILE] 50 lines",
     "src": {
-      "App.css": "[FILE] 777 lines",
-      "App.tsx": "[FILE] 172 lines",
+      "App.css": "[FILE] 113 lines",
+      "App.tsx": "[FILE] 229 lines",
       "components": {
         "history": {
           "HistoryPanel.css": "[FILE] 266 lines",
           "HistoryPanel.tsx": "[FILE] 192 lines"
         },
         "layout": {
-          "InspectorPanel.tsx": "[FILE] 420 lines",
-          "Sidebar.css": "[FILE] 207 lines",
-          "Sidebar.tsx": "[FILE] 170 lines",
+          "InspectorPanel.css": "[FILE] 121 lines",
+          "InspectorPanel.tsx": "[FILE] 170 lines",
+          "Sidebar — копия.css:Zone.Identifier": "[BINARY] 0 bytes",
+          "Sidebar.css": "[FILE] 277 lines",
+          "Sidebar.tsx": "[FILE] 176 lines",
+          "TabBar.css": "[FILE] 119 lines",
           "TabBar.tsx": "[FILE] 68 lines"
         },
         "views": {
           "ArtifactView.tsx": "[FILE] 329 lines",
           "ChartView.tsx": "[FILE] 29 lines",
           "DocumentView.tsx": "[FILE] 35 lines",
+          "GraphView — копия.tsx": "[FILE] 416 lines",
+          "GraphView — копия.tsx:Zone.Identifier": "[BINARY] 0 bytes",
           "GraphView.css": "[FILE] 225 lines",
-          "GraphView.tsx": "[FILE] 279 lines",
+          "GraphView.tsx": "[FILE] 377 lines",
           "MapView.tsx": "[FILE] 29 lines",
           "TableView.tsx": "[FILE] 29 lines"
         }
       },
       "hooks": {
-        "useActionWithUndo.ts": "[FILE] 252 lines",
+        "useActionWithUndo.ts": "[FILE] 258 lines",
         "useActionWithUndo.ts.bak": "[BINARY] 5868 bytes",
         "useKeyboardShortcuts.ts": "[FILE] 35 lines"
       },
       "index.css": "[FILE] 14 lines",
       "main.tsx": "[FILE] 14 lines",
       "services": {
-        "api.ts": "[FILE] 76 lines"
+        "api.ts": "[FILE] 77 lines"
       },
       "store": {
         "index.ts": "[FILE] 38 lines",
         "slices": {
-          "artifactsSlice.ts": "[FILE] 174 lines",
+          "artifactsSlice.ts": "[FILE] 194 lines",
           "graphSlice.ts": "[FILE] 100 lines",
           "historySlice.ts": "[FILE] 174 lines",
           "historySlice.ts]": "[BINARY] 1590 bytes",
-          "projectsSlice.ts": "[FILE] 68 lines",
+          "projectsSlice.ts": "[FILE] 96 lines",
           "uiSlice.ts": "[FILE] 106 lines"
         }
       },
       "types": {
-        "api.ts": "[FILE] 106 lines"
+        "api — копия.ts": "[FILE] 106 lines",
+        "api — копия.ts:Zone.Identifier": "[BINARY] 0 bytes",
+        "api.ts": "[FILE] 59 lines"
       },
       "utils": {
         "formatters.ts": "[FILE] 52 lines"
@@ -258,8 +279,8 @@
   "get-docker.sh": "[BINARY] 22405 bytes",
   "get_structure.py": "[FILE] 493 lines",
   "handoff_context_extra.json": "[FILE] 158 lines",
-  "handoff_latest.json": "[FILE] 2136467 bytes (skipped, too large)",
-  "handoff_latest.md": "[FILE] 12774 lines",
+  "handoff_latest.json": "[FILE] 2127782 bytes (skipped, too large)",
+  "handoff_latest.md": "[FILE] 12783 lines",
   "handoff_quick.md": "[FILE] 21 lines",
   "osint-backups": {
     "checksums_20260224_214935.txt": "[BINARY] 879 bytes",
@@ -11876,18 +11897,21 @@ async def delete_graph(
     return {"message": f"Graph {graph_id} deleted"}
 
 
---- app/api/routes/history.py (hash: cd023a5e) ---
-// размер: 269 строк
+--- app/api/routes/history.py (hash: f370ca37) ---
+// размер: 202 строк
 # app/api/routes/history.py
 """
 History management endpoints for undo/redo functionality.
 """
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, and_, func
 from typing import List, Optional
 import uuid
 import logging
+import json
+import traceback
+from pydantic import ValidationError
 
 from app.database import get_db
 from app.models.action import GraphAction
@@ -11896,7 +11920,213 @@ from app.schemas.action import GraphActionCreate, GraphActionResponse, UndoRespo
 from app.api.deps import get_artifact
 from app.services.history_cache import HistoryCache, get_redis_client
 
-router = APIRouter(prefix="/api/v2/artifacts/{artifact_id}/history", tags=["history"])
+router = APIRouter(prefix="/artifacts/{artifact_id}/history", tags=["history"])
+logger = logging.getLogger(__name__)
+
+# ============================================================================
+# Получение истории
+# ============================================================================
+
+@router.get("", response_model=List[GraphActionResponse])
+async def get_history(
+    artifact_id: int,
+    limit: int = Query(50, ge=1, le=200, description="Number of actions to return"),
+    offset: int = Query(0, ge=0, description="Offset for pagination"),
+    db: AsyncSession = Depends(get_db),
+    artifact: Artifact = Depends(get_artifact),
+    redis_client = Depends(get_redis_client)
+):
+    try:
+        cache = HistoryCache(redis_client)
+
+        if offset == 0 and limit <= 100:
+            cached_actions = await cache.get_recent(artifact_id, limit)
+            if cached_actions:
+                logger.debug(f"Returning {len(cached_actions)} actions from cache for artifact {artifact_id}")
+                return cached_actions
+
+        result = await db.execute(
+            select(GraphAction)
+            .where(GraphAction.artifact_id == artifact_id)
+            .order_by(desc(GraphAction.timestamp))
+            .limit(limit)
+            .offset(offset)
+        )
+        actions = result.scalars().all()
+
+        if offset == 0 and actions:
+            await cache.push_many(artifact_id, [a.to_dict() for a in actions])
+
+        return [action.to_dict() for action in actions]
+    except Exception as e:
+        logger.error(f"Error getting history for artifact {artifact_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get history")
+
+# ============================================================================
+# Запись действий
+# ============================================================================
+
+@router.post("/actions", response_model=GraphActionResponse, status_code=201)
+async def record_action(
+    artifact_id: int,
+    action_data: GraphActionCreate,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    artifact: Artifact = Depends(get_artifact),
+    redis_client = Depends(get_redis_client)
+):
+    try:
+        print("\n" + "="*80)
+        print("🔵 RECEIVED ACTION REQUEST")
+        print("="*80)
+        print(f"Artifact ID: {artifact_id}")
+        print(f"Action type: {action_data.action_type}")
+        print(f"Description: {action_data.description}")
+        print("="*80 + "\n")
+
+        db_action = GraphAction(
+            artifact_id=artifact_id,
+            action_type=action_data.action_type,
+            before_state=action_data.before_state,
+            after_state=action_data.after_state,
+            description=action_data.description,
+            user_type=action_data.user_type,
+            plugin_id=action_data.plugin_id,
+            group_id=action_data.group_id or uuid.uuid4()
+        )
+
+        db.add(db_action)
+        await db.commit()
+        await db.refresh(db_action)
+
+        cache = HistoryCache(redis_client)
+        await cache.push_action(artifact_id, db_action.to_dict())
+
+        logger.info(f"✅ Recorded action {db_action.id} for artifact {artifact_id}: {db_action.description}")
+        return db_action.to_dict()
+        
+    except ValidationError as e:
+        print("\n" + "!"*80)
+        print("❌ VALIDATION ERROR")
+        print("!"*80)
+        print(json.dumps(e.errors(), indent=2, ensure_ascii=False))
+        print("!"*80 + "\n")
+        raise HTTPException(status_code=422, detail=e.errors())
+        
+    except Exception as e:
+        print("\n" + "!"*80)
+        print("❌ UNEXPECTED ERROR")
+        print("!"*80)
+        traceback.print_exc()
+        print("!"*80 + "\n")
+        logger.error(f"❌ Error recording action for artifact {artifact_id}: {e}")
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to record action: {str(e)}")
+
+# ============================================================================
+# Undo операция - возвращает состояние ДО последнего действия
+# ============================================================================
+
+@router.post("/undo", response_model=UndoResponse)
+async def undo_action(
+    artifact_id: int,
+    db: AsyncSession = Depends(get_db),
+    artifact: Artifact = Depends(get_artifact),
+    redis_client = Depends(get_redis_client)
+):
+    """
+    Undo the last action.
+    Returns the state BEFORE the last action and DELETES the action from history.
+    """
+    try:
+        print(f"\n🔄 UNDO requested for artifact {artifact_id}")
+        
+        # Получаем последнее действие
+        result = await db.execute(
+            select(GraphAction)
+            .where(GraphAction.artifact_id == artifact_id)
+            .order_by(desc(GraphAction.timestamp))
+            .limit(1)
+        )
+        last_action = result.scalar_one_or_none()
+        
+        if not last_action:
+            print(f"❌ No actions to undo for artifact {artifact_id}")
+            raise HTTPException(status_code=404, detail="No actions to undo")
+        
+        print(f"Undoing action {last_action.id}: {last_action.description}")
+        print(f"Returning to state BEFORE this action")
+        
+        # Получаем состояние ДО действия
+        state_to_return = last_action.before_state
+        
+        # Удаляем действие из БД
+        await db.delete(last_action)
+        await db.commit()
+        
+        # Обновляем кэш
+        cache = HistoryCache(redis_client)
+        await cache.clear(artifact_id)
+        
+        print(f"✅ Action {last_action.id} deleted")
+        
+        return {
+            "action_id": last_action.id,
+            "artifact_id": artifact_id,
+            "state": state_to_return,
+            "description": f"Undo: {last_action.description}",
+            "timestamp": last_action.timestamp
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error undoing action for artifact {artifact_id}: {e}")
+        await db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to undo action")
+
+# ============================================================================
+# Redo операция - не поддерживается в этой упрощенной версии
+# (для полноценного Redo нужно хранить удаленные действия)
+# ============================================================================
+
+@router.post("/redo", response_model=RedoResponse)
+async def redo_action(
+    artifact_id: int,
+    db: AsyncSession = Depends(get_db),
+    artifact: Artifact = Depends(get_artifact),
+    redis_client = Depends(get_redis_client)
+):
+    """
+    Redo is not supported in this simplified version.
+    """
+    raise HTTPException(status_code=400, detail="Redo is not supported in this version")
+
+--- app/api/routes/history__.py (hash: 8c8c2841) ---
+// размер: 332 строк
+# app/api/routes/history.py
+"""
+History management endpoints for undo/redo functionality.
+"""
+from fastapi import APIRouter, HTTPException, Depends, Query, Request
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, desc, and_, func
+from typing import List, Optional
+import uuid
+import logging
+import json
+import traceback
+from pydantic import ValidationError
+
+from app.database import get_db
+from app.models.action import GraphAction
+from app.models.artifact import Artifact
+from app.schemas.action import GraphActionCreate, GraphActionResponse, UndoResponse, RedoResponse
+from app.api.deps import get_artifact
+from app.services.history_cache import HistoryCache, get_redis_client
+
+# Исправленный префикс - без /api/v2, так как в main.py добавляется /api/v2
+router = APIRouter(prefix="/artifacts/{artifact_id}/history", tags=["history"])
 logger = logging.getLogger(__name__)
 
 # ============================================================================
@@ -11953,6 +12183,7 @@ async def get_history(
 async def record_action(
     artifact_id: int,
     action_data: GraphActionCreate,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     artifact: Artifact = Depends(get_artifact),
     redis_client = Depends(get_redis_client)
@@ -11962,6 +12193,35 @@ async def record_action(
     All actions are stored permanently for undo/redo functionality.
     """
     try:
+        # Логируем полученные данные
+        print("\n" + "="*80)
+        print("🔵 RECEIVED ACTION REQUEST")
+        print("="*80)
+        print(f"Artifact ID: {artifact_id}")
+        print(f"Action type: {action_data.action_type}")
+        print(f"Description: {action_data.description}")
+        print(f"User type: {action_data.user_type}")
+        print(f"Plugin ID: {action_data.plugin_id}")
+        print(f"Group ID: {action_data.group_id}")
+        print("\n📦 BEFORE STATE:")
+        print(f"  Type: {type(action_data.before_state)}")
+        print(f"  Has nodes: {'nodes' in action_data.before_state if action_data.before_state else False}")
+        print(f"  Has edges: {'edges' in action_data.before_state if action_data.before_state else False}")
+        if action_data.before_state and 'nodes' in action_data.before_state:
+            print(f"  Nodes count: {len(action_data.before_state['nodes'])}")
+        if action_data.before_state and 'edges' in action_data.before_state:
+            print(f"  Edges count: {len(action_data.before_state['edges'])}")
+        
+        print("\n📦 AFTER STATE:")
+        print(f"  Type: {type(action_data.after_state)}")
+        print(f"  Has nodes: {'nodes' in action_data.after_state if action_data.after_state else False}")
+        print(f"  Has edges: {'edges' in action_data.after_state if action_data.after_state else False}")
+        if action_data.after_state and 'nodes' in action_data.after_state:
+            print(f"  Nodes count: {len(action_data.after_state['nodes'])}")
+        if action_data.after_state and 'edges' in action_data.after_state:
+            print(f"  Edges count: {len(action_data.after_state['edges'])}")
+        print("="*80 + "\n")
+
         # Создаем запись в БД
         db_action = GraphAction(
             artifact_id=artifact_id,
@@ -11982,12 +12242,37 @@ async def record_action(
         cache = HistoryCache(redis_client)
         await cache.push_action(artifact_id, db_action.to_dict())
 
-        logger.info(f"Recorded action {db_action.id} for artifact {artifact_id}: {db_action.description}")
+        logger.info(f"✅ Recorded action {db_action.id} for artifact {artifact_id}: {db_action.description}")
         return db_action.to_dict()
+        
+    except ValidationError as e:
+        # Детальное логирование ошибки валидации
+        print("\n" + "!"*80)
+        print("❌ VALIDATION ERROR")
+        print("!"*80)
+        print("Error details:")
+        print(json.dumps(e.errors(), indent=2, ensure_ascii=False))
+        
+        # Логируем сырые данные запроса
+        try:
+            body = await request.body()
+            print("\nRaw request body:")
+            print(body.decode('utf-8')[:1000])  # Первые 1000 символов
+        except:
+            print("Could not read request body")
+        
+        print("!"*80 + "\n")
+        raise HTTPException(status_code=422, detail=e.errors())
+        
     except Exception as e:
-        logger.error(f"Error recording action for artifact {artifact_id}: {e}")
+        print("\n" + "!"*80)
+        print("❌ UNEXPECTED ERROR")
+        print("!"*80)
+        traceback.print_exc()
+        print("!"*80 + "\n")
+        logger.error(f"❌ Error recording action for artifact {artifact_id}: {e}")
         await db.rollback()
-        raise HTTPException(status_code=500, detail="Failed to record action")
+        raise HTTPException(status_code=500, detail=f"Failed to record action: {str(e)}")
 
 # ============================================================================
 # Undo операция
@@ -12006,6 +12291,8 @@ async def undo_action(
     Does NOT delete the action - keeps full history.
     """
     try:
+        print(f"\n🔄 UNDO requested for artifact {artifact_id}")
+        
         # Получаем ВСЕ действия для этого артефакта, отсортированные по времени (старые первые)
         result = await db.execute(
             select(GraphAction)
@@ -12015,12 +12302,15 @@ async def undo_action(
         all_actions = result.scalars().all()
         
         if not all_actions:
+            print(f"❌ No actions to undo for artifact {artifact_id}")
             raise HTTPException(status_code=404, detail="No actions to undo")
+        
+        print(f"Found {len(all_actions)} actions")
         
         # Если есть только одно действие - отменяем его до начального состояния
         if len(all_actions) == 1:
             action = all_actions[0]
-            logger.info(f"Undo single action {action.id} for artifact {artifact_id}: {action.description}")
+            print(f"Single action undo: {action.id}")
             return {
                 "action_id": action.id,
                 "artifact_id": artifact_id,
@@ -12030,13 +12320,10 @@ async def undo_action(
             }
         
         # Если действий больше одного - отменяем последнее действие
-        # Для этого нужно вернуть состояние перед последним действием,
-        # то есть after_state предпоследнего действия
         second_last_action = all_actions[-2]  # Предпоследнее действие
         last_action = all_actions[-1]  # Последнее действие
         
-        logger.info(f"Undo action {last_action.id} for artifact {artifact_id}: {last_action.description}")
-        logger.info(f"Returning to state after action {second_last_action.id}")
+        print(f"Undo last action {last_action.id}, returning to state after action {second_last_action.id}")
         
         return {
             "action_id": last_action.id,
@@ -12067,6 +12354,8 @@ async def redo_action(
     Returns the state to reapply (after_state of the last action).
     """
     try:
+        print(f"\n🔴 REDO requested for artifact {artifact_id}")
+        
         # Получаем ВСЕ действия для этого артефакта
         result = await db.execute(
             select(GraphAction)
@@ -12076,12 +12365,13 @@ async def redo_action(
         all_actions = result.scalars().all()
         
         if not all_actions:
+            print(f"❌ No actions to redo for artifact {artifact_id}")
             raise HTTPException(status_code=404, detail="No actions to redo")
         
         # Для redo возвращаем after_state последнего действия
         last_action = all_actions[-1]
         
-        logger.info(f"Redo action {last_action.id} for artifact {artifact_id}: {last_action.description}")
+        print(f"Redo last action: {last_action.id}")
         
         return {
             "action_id": last_action.id,
@@ -12146,7 +12436,6 @@ async def get_actions_count(
     count = result.scalar()
     
     return {"artifact_id": artifact_id, "total_actions": count}
-
 
 --- app/api/routes/nodes.py (hash: 4a2846de) ---
 // размер: 249 строк
@@ -12641,14 +12930,12 @@ async def get_edge_types(
         logger.error(f"Error getting edge types: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
---- app/config.py (hash: 820d42a5) ---
-// размер: 64 строк
-""""
-Configuration management using Pydantic settings.
-"""
+--- app/config.py (hash: 11919b7e) ---
+// размер: 69 строк
+# app/config.py
 from typing import List, Optional
 from pydantic_settings import BaseSettings
-from pydantic import AnyHttpUrl, validator
+from pydantic import validator
 import json
 import os
 
@@ -12671,17 +12958,25 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     API_V1_PREFIX: str = "/api/v1"
 
-    # CORS
-    BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = []
+    # CORS - используем простой список строк вместо AnyHttpUrl
+    BACKEND_CORS_ORIGINS: List[str] = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173"
+    ]
 
     @validator("BACKEND_CORS_ORIGINS", pre=True)
-    def assemble_cors_origins(cls, v: str | List[str]) -> List[str] | str:
+    def assemble_cors_origins(cls, v):
         """Parse CORS origins from string or list."""
-        if isinstance(v, str) and not v.startswith("["):
+        if isinstance(v, str):
+            if v.startswith('['):
+                try:
+                    return json.loads(v)
+                except:
+                    return [i.strip() for i in v.strip('[]').split(',')]
             return [i.strip() for i in v.split(",")]
-        elif isinstance(v, (list, str)):
-            return v
-        raise ValueError(v)
+        return v
 
     # Celery
     CELERY_BROKER_URL: str = "redis://redis:6379/1"
@@ -12698,7 +12993,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = True
-        extra = "ignore"  # Игнорировать лишние поля
+        extra = "ignore"
 
 # Create global settings instance
 settings = Settings()
@@ -12706,77 +13001,3 @@ settings = Settings()
 # Validate critical settings
 if settings.ENVIRONMENT == "production" and settings.SECRET_KEY == "your-secret-key-here-change-in-production":
     raise ValueError("SECRET_KEY must be changed in production!")
-
-
---- app/database.py (hash: 5ef709dd) ---
-// размер: 71 строк
-"""
-Database configuration and session management.
-"""
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy.orm import declarative_base, declared_attr
-from typing import AsyncGenerator
-import logging
-
-from app.config import settings
-
-# Configure logging
-logger = logging.getLogger(__name__)
-
-# Create async engine
-engine = create_async_engine(
-    settings.DATABASE_URL,
-    echo=settings.ENVIRONMENT == "development",
-    pool_size=20,
-    max_overflow=10,
-    pool_pre_ping=True,
-)
-
-# Create async session factory
-AsyncSessionLocal = async_sessionmaker(
-    engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-    autocommit=False,
-    autoflush=False,
-)
-
-class Base:
-    """Base class for SQLAlchemy models with common attributes."""
-
-    @declared_attr
-    def __tablename__(cls):
-        """Generate table name automatically."""
-        return cls.__name__.lower()
-
-    # Common columns can be added here
-    # id = Column(Integer, primary_key=True, index=True)
-    # created_at = Column(DateTime, default=datetime.utcnow)
-    # updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-# Create declarative base
-Base = declarative_base(cls=Base)
-
-async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    """
-    Dependency for getting database sessions.
-
-    Yields:
-        AsyncSession: Database session
-    """
-    session = AsyncSessionLocal()
-    try:
-        yield session
-    except Exception as e:
-        logger.error(f"Database session error: {e}")
-        await session.rollback()
-        raise
-    finally:
-        await session.close()
-
-async def init_db() -> None:
-    """Initialize database (for development only)."""
-    if settings.ENVIRONMENT == "development":
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-        logger.info("Database tables created/verified")

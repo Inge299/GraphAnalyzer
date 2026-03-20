@@ -1,5 +1,5 @@
 // frontend/src/App.tsx
-import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useAppDispatch, useAppSelector } from './store';
 import { fetchProjects } from './store/slices/projectsSlice';
 import { setCurrentArtifact, fetchArtifacts } from './store/slices/artifactsSlice';
@@ -26,9 +26,6 @@ function App() {
   
   const [tabs, setTabs] = useState<Tab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
-  
-  // Локальное состояние для последних координат
-  const lastNodesStateRef = useRef<any>(null);
 
   useEffect(() => {
     dispatch(fetchProjects());
@@ -51,13 +48,6 @@ function App() {
     return activeArtifact?.data || { nodes: [], edges: [] };
   }, [activeArtifact]);
 
-  // Обновляем локальное состояние при изменении activeArtifact
-  useEffect(() => {
-    if (activeArtifact?.data?.nodes) {
-      lastNodesStateRef.current = activeArtifact.data;
-    }
-  }, [activeArtifact]);
-
   const {
     execute,
     isRecording,
@@ -70,13 +60,11 @@ function App() {
   } = useActionWithUndo(
     activeArtifact?.id || 0,
     currentArtifactData,
-    (newData) => {
-      // Обновляем локальное состояние после успешного API
-      lastNodesStateRef.current = newData;
-    },
+    () => {}, // пустая функция
     activeArtifact?.project_id || 1
   );
 
+  // Исправленный обработчик перемещения одного узла
   const handleNodeMove = useCallback(async (
     nodeId: string, 
     x: number, 
@@ -85,22 +73,17 @@ function App() {
   ) => {
     if (!activeArtifact) return;
 
-    // Используем локальное состояние вместо Redux
-    let currentData = lastNodesStateRef.current;
-    
-    // Если локальное состояние пустое, берем из Redux
+    // Берем актуальные данные из Redux
+    const currentData = artifacts[activeArtifact.id]?.data;
     if (!currentData) {
-      currentData = artifacts[activeArtifact.id]?.data;
-    }
-    
-    if (!currentData) {
-      console.error('[App] Artifact data not found');
+      console.error('[App] Artifact data not found in store');
       return;
     }
 
-    console.log(`[App] Moving ${nodeId} to (${x}, ${y})`);
-    console.log('[App] Current nodes from local state:', currentData.nodes.map((n: any) => `${n.id}:(${n.position_x},${n.position_y})`).join(', '));
+    console.log('[App] Moving node:', nodeId, 'to:', x, y);
+    console.log('[App] Current nodes:', currentData.nodes.map((n: any) => ({ id: n.id, x: n.position_x, y: n.position_y })));
 
+    // СОХРАНЯЕМ ВСЕ УЗЛЫ, обновляем только текущий
     const updatedNodes = (currentData?.nodes || []).map((node: any) => {
       if (node.id === nodeId) {
         return { ...node, position_x: Math.round(x), position_y: Math.round(y) };
@@ -108,15 +91,12 @@ function App() {
       return node;
     });
 
-    console.log('[App] New nodes:', updatedNodes.map((n: any) => `${n.id}:(${n.position_x},${n.position_y})`).join(', '));
-
     const afterState = {
       ...currentData,
       nodes: updatedNodes
     };
 
-    // Обновляем локальное состояние сразу для следующего перемещения
-    lastNodesStateRef.current = afterState;
+    console.log('[App] After state nodes:', afterState.nodes.map((n: any) => ({ id: n.id, x: n.position_x, y: n.position_y })));
 
     await execute(
       async () => afterState,
@@ -128,20 +108,23 @@ function App() {
     );
   }, [activeArtifact, artifacts, execute]);
 
+  // Исправленный обработчик перемещения нескольких узлов
   const handleNodesMove = useCallback(async (
     moves: Array<{ nodeId: string; x: number; y: number }>,
     groupId?: string | null
   ) => {
     if (!activeArtifact || moves.length === 0) return;
 
-    let currentData = lastNodesStateRef.current;
+    const currentData = artifacts[activeArtifact.id]?.data;
     if (!currentData) {
-      currentData = artifacts[activeArtifact.id]?.data;
+      console.error('[App] Artifact data not found in store');
+      return;
     }
-    if (!currentData) return;
 
+    // Создаем карту новых позиций
     const moveMap = new Map(moves.map(m => [m.nodeId, { x: Math.round(m.x), y: Math.round(m.y) }]));
     
+    // СОХРАНЯЕМ ВСЕ УЗЛЫ, обновляем только перемещаемые
     const updatedNodes = (currentData?.nodes || []).map((node: any) => {
       const move = moveMap.get(node.id);
       if (move) {
@@ -154,8 +137,6 @@ function App() {
       ...currentData,
       nodes: updatedNodes
     };
-
-    lastNodesStateRef.current = afterState;
 
     await execute(
       async () => afterState,
@@ -185,11 +166,6 @@ function App() {
     setTabs(prev => [...prev, newTab]);
     setActiveTabId(newTab.id);
     dispatch(setCurrentArtifact(artifact.id));
-    
-    // Сбрасываем локальное состояние при смене артефакта
-    if (artifact?.data) {
-      lastNodesStateRef.current = artifact.data;
-    }
   }, [tabs, dispatch]);
 
   const handleTabClick = useCallback((tabId: string) => {
@@ -197,13 +173,8 @@ function App() {
     const tab = tabs.find(t => t.id === tabId);
     if (tab) {
       dispatch(setCurrentArtifact(tab.artifactId));
-      // Обновляем локальное состояние
-      const artifact = artifacts[tab.artifactId];
-      if (artifact?.data) {
-        lastNodesStateRef.current = artifact.data;
-      }
     }
-  }, [tabs, artifacts, dispatch]);
+  }, [tabs, dispatch]);
 
   const handleTabClose = useCallback((tabId: string) => {
     setTabs(prev => prev.filter(t => t.id !== tabId));
@@ -214,17 +185,12 @@ function App() {
         const tab = tabs.find(t => t.id === newActiveId);
         if (tab) {
           dispatch(setCurrentArtifact(tab.artifactId));
-          const artifact = artifacts[tab.artifactId];
-          if (artifact?.data) {
-            lastNodesStateRef.current = artifact.data;
-          }
         }
       } else {
         dispatch(setCurrentArtifact(null));
-        lastNodesStateRef.current = null;
       }
     }
-  }, [activeTabId, tabs, artifacts, dispatch]);
+  }, [activeTabId, tabs, dispatch]);
 
   const handleUndo = useCallback(async () => {
     await undoAction();
