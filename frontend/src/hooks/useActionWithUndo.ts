@@ -9,7 +9,8 @@ import {
   clearError,
   selectCanUndo,
   selectCanRedo,
-  setHistoryActions
+  setHistoryActions,
+  setRedoAvailable  // Добавляем
 } from '../store/slices/historySlice';
 
 interface ActionOptions {
@@ -60,9 +61,7 @@ export function useActionWithUndo<T extends object>(
     actionFn: () => Promise<T | void> | T | void,
     options: ActionOptions
   ) => {
-    if (isRecordingRef.current) {
-      return;
-    }
+    if (isRecordingRef.current) return;
 
     isRecordingRef.current = true;
     setIsRecording(true);
@@ -96,8 +95,9 @@ export function useActionWithUndo<T extends object>(
       dispatch(updateArtifactSync(updateResponse.data));
       lastStateRef.current = updateResponse.data.data;
       
-      // 4. Обновляем историю
+      // 4. Обновляем историю и сбрасываем REDO
       await refreshHistory();
+      dispatch(setRedoAvailable(false));  // Новое действие — REDO недоступен
       
     } catch (error: any) {
       console.error('Action failed:', error);
@@ -120,6 +120,7 @@ export function useActionWithUndo<T extends object>(
       dispatch(updateArtifactSync(updateResponse.data));
       lastStateRef.current = updateResponse.data.data;
       await refreshHistory();
+      dispatch(setRedoAvailable(true));  // После UNDO можно сделать REDO
     } catch (error) {
       console.error('Undo failed:', error);
     }
@@ -137,6 +138,7 @@ export function useActionWithUndo<T extends object>(
       dispatch(updateArtifactSync(updateResponse.data));
       lastStateRef.current = updateResponse.data.data;
       await refreshHistory();
+      dispatch(setRedoAvailable(false));  // После REDO следующий REDO недоступен
     } catch (error) {
       console.error('Redo failed:', error);
     }
