@@ -138,7 +138,7 @@ export function useActionWithUndo<T extends object>(
       dispatch(updateArtifactSync(updateResponse.data));
       lastStateRef.current = updateResponse.data.data;
       await refreshHistory();
-      dispatch(setRedoAvailable(false));  // После REDO следующий REDO недоступен
+      // dispatch(setRedoAvailable(false));  // После REDO следующий REDO недоступен
     } catch (error) {
       console.error('Redo failed:', error);
     }
