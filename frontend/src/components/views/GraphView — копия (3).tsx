@@ -1,5 +1,6 @@
 // frontend/src/components/views/GraphView.tsx
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { HistoryPanel } from '../history/HistoryPanel';
 import { Network } from 'vis-network/standalone';
 import { DataSet } from 'vis-data/standalone';
 import type { ApiArtifact } from '../../types/api';
@@ -369,7 +370,12 @@ export const GraphView: React.FC<GraphViewProps> = ({
       <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
 
       {/* Панель истории */}
-      
+      <HistoryPanel
+        artifactId={artifact.id}
+        onJump={handleHistoryJump}
+        onUndo={handleUndoClick}
+        onRedo={handleRedoClick}
+      />
     </div>
   );
 };

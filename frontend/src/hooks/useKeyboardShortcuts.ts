@@ -3,33 +3,37 @@ import { useEffect } from 'react';
 import { useAppDispatch } from '../store';
 import { undo, redo } from '../store/slices/historySlice';
 
-export const useKeyboardShortcuts = (artifactId: number) => {
-
+export const useKeyboardShortcuts = (artifactId: number, canUndo: boolean, canRedo: boolean) => {
   const dispatch = useAppDispatch();
   
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Игнорируем, если фокус на поле ввода
-      if ((e.target as HTMLElement).tagName === 'INPUT' || 
-          (e.target as HTMLElement).tagName === 'TEXTAREA' ||
-          (e.target as HTMLElement).isContentEditable) {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || 
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable) {
         return;
       }
 
-      // Ctrl+Z или Cmd+Z
+      // Ctrl+Z или Cmd+Z (Undo)
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
         e.preventDefault();
-        dispatch(undo(artifactId));
+        if (canUndo) {
+          dispatch(undo(artifactId));
+        }
       }
       
-      // Ctrl+Y или Cmd+Shift+Z
+      // Ctrl+Y или Ctrl+Shift+Z (Redo)
       if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
         e.preventDefault();
-        dispatch(redo(artifactId));
+        if (canRedo) {
+          dispatch(redo(artifactId));
+        }
       }
     };
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [dispatch]);
+  }, [dispatch, artifactId, canUndo, canRedo]);
 };
