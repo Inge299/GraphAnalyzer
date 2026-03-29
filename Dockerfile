@@ -33,7 +33,7 @@ ENV PATH=/root/.local/bin:$PATH
 # Copy application code
 COPY app ./app
 COPY plugins ./plugins
-COPY data ./data
+RUN mkdir -p /app/data
 
 COPY alembic.ini /app/alembic.ini
 COPY alembic /app/alembic
@@ -52,3 +52,4 @@ HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
 
 # Run application
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "5000"]
+

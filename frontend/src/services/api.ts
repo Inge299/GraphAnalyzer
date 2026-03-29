@@ -68,10 +68,21 @@ export const graphApi = {
 export const projectApi = {
   getAll: () => api.get('/api/v1/projects').then(res => res.data),
   get: (id: number) => api.get(`/api/v1/projects/${id}`).then(res => res.data),
-  create: (data: any) => api.post('/api/v1/projects', data).then(res => res.data),
+  create: (data: any) => api.post('/api/v1/projects', null, { params: data }).then(res => res.data),
   update: (id: number, data: any) => api.put(`/api/v1/projects/${id}`, data).then(res => res.data),
   delete: (id: number) => api.delete(`/api/v1/projects/${id}`).then(res => res.data),
   getGraphs: (projectId: number) => api.get(`/api/v1/projects/${projectId}/graphs`).then(res => res.data),
 };
 
+export const pluginApi = {
+  list: () => api.get('/api/v1/plugins').then(res => res.data),
+  execute: (pluginId: string, projectId: number, inputArtifactIds: number[], params: any = {}) =>
+    api.post(`/api/v1/plugins/${pluginId}/execute`, {
+      project_id: projectId,
+      input_artifact_ids: inputArtifactIds,
+      params
+    }).then(res => res.data),
+};
+
 export default api;
+

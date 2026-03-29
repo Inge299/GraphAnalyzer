@@ -1,28 +1,177 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from typing import List, Dict, Any, Optional
+from pydantic import BaseModel, Field
+import logging
 
+from app.database import get_db
+from app.models.artifact import Artifact, ArtifactVersion, ArtifactRelation
+from app.models.action import GraphAction
+from app.services.plugin_service import PluginService
+from app.services.history_cache import HistoryCache, get_redis_client
+
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
+
+class PluginExecuteRequest(BaseModel):
+    project_id: int = Field(..., description="Project ID to store output artifacts")
+    input_artifact_ids: List[int] = Field(..., description="Input artifact IDs")
+    params: Optional[Dict[str, Any]] = Field(default=None)
+
+
 @router.get("/")
-async def get_plugins():
-    """Get all plugins."""
-    return {"message": "Plugins endpoint", "plugins": []}
+async def list_plugins():
+    """List all available plugins."""
+    service = PluginService()
+    return {"plugins": service.list_plugins()}
+
 
 @router.get("/{plugin_id}")
 async def get_plugin(plugin_id: str):
-    """Get a specific plugin."""
-    return {"message": f"Plugin {plugin_id}"}
+    """Get plugin metadata by ID."""
+    service = PluginService()
+    try:
+        plugin = service.get_plugin(plugin_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Plugin not found")
+    return plugin.to_metadata()
 
-@router.post("/{plugin_id}/enable")
-async def enable_plugin(plugin_id: str):
-    """Enable a plugin."""
-    return {"message": f"Plugin {plugin_id} enabled"}
 
-@router.post("/{plugin_id}/disable")
-async def disable_plugin(plugin_id: str):
-    """Disable a plugin."""
-    return {"message": f"Plugin {plugin_id} disabled"}
+@router.post("/{plugin_id}/execute")
+async def execute_plugin(
+    plugin_id: str,
+    request: PluginExecuteRequest,
+    db: AsyncSession = Depends(get_db),
+    redis_client = Depends(get_redis_client)
+):
+    """Execute a plugin and store resulting artifacts."""
+    if not request.input_artifact_ids:
+        raise HTTPException(status_code=400, detail="input_artifact_ids is required")
 
-@router.get("/{plugin_id}/config")
-async def get_plugin_config(plugin_id: str):
-    """Get plugin configuration."""
-    return {"message": f"Plugin {plugin_id} config"}
+    service = PluginService()
+    try:
+        plugin = service.get_plugin(plugin_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Plugin not found")
+
+    result = await db.execute(
+        select(Artifact).where(
+            Artifact.id.in_(request.input_artifact_ids),
+            Artifact.project_id == request.project_id
+        )
+    )
+    artifacts = result.scalars().all()
+
+    if len(artifacts) != len(request.input_artifact_ids):
+        raise HTTPException(status_code=404, detail="One or more artifacts not found in project")
+
+    if plugin.applicable_to:
+        for artifact in artifacts:
+            if artifact.type not in plugin.applicable_to:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Plugin not applicable to artifact type '{artifact.type}'"
+                )
+
+    input_payloads = [
+        {
+            "id": artifact.id,
+            "project_id": artifact.project_id,
+            "type": artifact.type,
+            "name": artifact.name,
+            "description": artifact.description,
+            "data": artifact.data,
+            "metadata": artifact.artifact_metadata
+        }
+        for artifact in artifacts
+    ]
+
+    try:
+        outputs = await service.execute(plugin_id, input_payloads, request.params)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Plugin execution failed: {e}")
+        raise HTTPException(status_code=500, detail="Plugin execution failed")
+
+    if not isinstance(outputs, list):
+        raise HTTPException(status_code=500, detail="Plugin returned invalid output")
+
+    valid_types = {"graph", "table", "map", "chart", "document"}
+    created = []
+    cache = HistoryCache(redis_client)
+
+    try:
+        for spec in outputs:
+            if not isinstance(spec, dict):
+                raise HTTPException(status_code=500, detail="Plugin returned invalid artifact spec")
+            if spec.get("type") not in valid_types:
+                raise HTTPException(status_code=400, detail="Invalid artifact type from plugin")
+            if not spec.get("name"):
+                raise HTTPException(status_code=400, detail="Artifact name is required")
+            if spec.get("data") is None:
+                raise HTTPException(status_code=400, detail="Artifact data is required")
+
+            artifact = Artifact(
+                project_id=request.project_id,
+                type=spec["type"],
+                name=spec["name"],
+                description=spec.get("description"),
+                data=spec["data"],
+                artifact_metadata=spec.get("metadata", {})
+            )
+            db.add(artifact)
+            await db.flush()
+
+            version = ArtifactVersion(
+                artifact_id=artifact.id,
+                version=1,
+                data=artifact.data,
+                changed_by=plugin_id
+            )
+            db.add(version)
+
+            for src in artifacts:
+                db.add(ArtifactRelation(
+                    source_id=src.id,
+                    target_id=artifact.id,
+                    relation_type="derived_from"
+                ))
+
+            action = GraphAction(
+                artifact_id=artifact.id,
+                action_type="plugin_execute",
+                before_state={},
+                after_state=artifact.data,
+                description=f"Plugin {plugin_id} created artifact",
+                user_type="plugin",
+                plugin_id=plugin_id
+            )
+            db.add(action)
+            await db.flush()
+
+            await cache.push_action(artifact.id, action.to_dict())
+
+            created.append({
+                "id": artifact.id,
+                "project_id": artifact.project_id,
+                "type": artifact.type,
+                "name": artifact.name,
+                "description": artifact.description,
+                "data": artifact.data,
+                "metadata": artifact.artifact_metadata,
+                "version": 1
+            })
+
+        await db.commit()
+        return {"created": created}
+
+    except HTTPException:
+        await db.rollback()
+        raise
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Failed to persist plugin artifacts: {e}")
+        raise HTTPException(status_code=500, detail="Failed to store plugin results")

@@ -57,3 +57,25 @@ export interface ApiProject {
   created_at: string;
   updated_at: string;
 }
+
+export interface ApiPlugin {
+  id: string;
+  name: string;
+  version: string;
+  description: string;
+  menu_path: string;
+  input_types: string[];
+  output_types: string[];
+  applicable_to: string[];
+}
+
+export interface ApiPluginExecuteRequest {
+  project_id: number;
+  input_artifact_ids: number[];
+  params?: Record<string, any>;
+}
+
+export interface ApiPluginExecuteResponse {
+  created: ApiArtifact[];
+}
+

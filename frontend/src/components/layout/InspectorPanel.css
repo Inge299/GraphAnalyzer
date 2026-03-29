@@ -1,63 +1,61 @@
-/* frontend/src/components/layout/InspectorPanel.css */
-
+﻿/* frontend/src/components/layout/InspectorPanel.css */
 .inspector-panel {
-  width: 300px;
-  background: var(--bg-secondary, #2d2d2d);
-  border-left: 1px solid var(--border-color, #404040);
+  width: 280px;
+  height: 100%;
+  background: #2d2d2d;
+  border-left: 1px solid #404040;
   display: flex;
   flex-direction: column;
-  height: 100%;
+  overflow: hidden;
 }
 
 .inspector-header {
   padding: 16px;
-  border-bottom: 1px solid var(--border-color, #404040);
+  border-bottom: 1px solid #404040;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
 }
 
 .inspector-header h3 {
   margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary, #fff);
+  font-size: 16px;
+  color: #fff;
 }
 
 .project-badge {
-  font-size: 11px;
+  background: #404040;
+  color: #fff;
   padding: 2px 8px;
-  background: var(--bg-tertiary, #363636);
   border-radius: 12px;
-  color: var(--text-secondary, #aaa);
+  font-size: 12px;
 }
 
 .inspector-tabs {
   display: flex;
-  padding: 8px 8px 0;
-  gap: 4px;
-  border-bottom: 1px solid var(--border-color, #404040);
+  border-bottom: 1px solid #404040;
 }
 
 .tab-btn {
   flex: 1;
-  padding: 8px;
+  padding: 8px 12px;
   background: transparent;
   border: none;
-  border-bottom: 2px solid transparent;
-  color: var(--text-secondary, #aaa);
+  color: #888;
   cursor: pointer;
   font-size: 12px;
   transition: all 0.2s;
 }
 
 .tab-btn:hover {
-  color: var(--text-primary, #fff);
+  color: #fff;
+  background: #363636;
 }
 
 .tab-btn.active {
-  color: #2196f3;
-  border-bottom-color: #2196f3;
+  color: #fff;
+  background: #363636;
+  border-bottom: 2px solid #2196f3;
 }
 
 .inspector-content {
@@ -66,56 +64,122 @@
   padding: 16px;
 }
 
-.inspector-empty {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-secondary, #888);
-  font-size: 13px;
-  text-align: center;
-  padding: 20px;
-}
-
 .property-group {
   margin-bottom: 16px;
 }
 
 .property-group label {
   display: block;
-  font-size: 11px;
-  text-transform: uppercase;
-  color: var(--text-secondary, #888);
+  font-size: 12px;
+  color: #888;
   margin-bottom: 4px;
 }
 
 .property-value {
   font-size: 13px;
-  color: var(--text-primary, #fff);
-  word-break: break-word;
+  color: #fff;
+  background: #363636;
+  padding: 8px 10px;
+  border-radius: 4px;
 }
 
-.type-badge {
-  display: inline-block;
-  padding: 4px 8px;
-  background: var(--bg-tertiary, #363636);
-  border-radius: 4px;
+.property-inline {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.property-input {
+  flex: 1;
+  min-width: 0;
+  background: #1f242b;
+  border: 1px solid #3a4553;
+  border-radius: 6px;
+  color: #e5e7eb;
+  padding: 6px 8px;
   font-size: 12px;
 }
 
-.metadata-json {
-  background: var(--bg-tertiary, #363636);
-  padding: 8px;
-  border-radius: 4px;
-  font-family: monospace;
-  font-size: 11px;
-  overflow-x: auto;
-  white-space: pre-wrap;
+.property-input:focus {
+  outline: none;
+  border-color: #2563eb;
 }
 
-.placeholder {
-  color: var(--text-secondary, #888);
+.property-action {
+  background: #2f3742;
+  border: 1px solid #3e4857;
+  color: #e5e7eb;
+  padding: 6px 8px;
+  font-size: 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.property-action.secondary {
+  background: #1f242b;
+}
+
+.property-action.danger {
+  background: #7f1d1d;
+  border-color: #7f1d1d;
+}
+
+.property-action:hover {
+  background: #3a4553;
+}
+
+.property-action.secondary:hover {
+  background: #2f3742;
+}
+
+.property-action.danger:hover {
+  background: #991b1b;
+}
+
+.type-badge {
+  text-transform: uppercase;
+  font-size: 11px;
+  color: #2196f3;
+  background: rgba(33, 150, 243, 0.1);
+}
+
+.metadata-json {
+  background: #1f242b;
+  color: #e5e7eb;
+  padding: 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  overflow: auto;
+}
+
+.inspector-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #888;
+  font-size: 13px;
+  padding: 16px;
+  text-align: center;
+}
+
+.history-tab .placeholder {
+  color: #888;
   font-style: italic;
   text-align: center;
-  padding: 20px;
+  margin-top: 20px;
+}
+
+.inspector-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.inspector-content::-webkit-scrollbar-track {
+  background: #2d2d2d;
+}
+
+.inspector-content::-webkit-scrollbar-thumb {
+  background: #404040;
+  border-radius: 3px;
 }

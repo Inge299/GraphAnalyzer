@@ -1,0 +1,88 @@
+﻿/* frontend/src/components/views/DocumentView.css */
+.document-view {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: #1b1f26;
+  color: #e5e7eb;
+}
+
+.document-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #2f3642;
+  background: #1f242b;
+}
+
+.document-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.document-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.document-tab {
+  background: #2f3742;
+  border: 1px solid #3e4857;
+  color: #e5e7eb;
+  padding: 4px 10px;
+  font-size: 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.document-tab.active {
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+.document-save {
+  background: #10b981;
+  border: 1px solid #10b981;
+  color: #ffffff;
+  padding: 4px 10px;
+  font-size: 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.document-save:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.document-saved {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.document-editor {
+  flex: 1;
+  border: none;
+  outline: none;
+  padding: 16px;
+  font-size: 14px;
+  line-height: 1.6;
+  background: #111827;
+  color: #e5e7eb;
+  resize: none;
+}
+
+.document-preview {
+  flex: 1;
+  margin: 0;
+  padding: 16px;
+  font-size: 14px;
+  line-height: 1.6;
+  background: #111827;
+  color: #e5e7eb;
+  white-space: pre-wrap;
+}

@@ -1,19 +1,20 @@
 // frontend/src/components/views/ArtifactView.tsx
-import React, { Suspense, memo, useCallback } from 'react';
+import React, { Suspense, memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useAppDispatch } from '../../store';
-import type { ApiArtifact } from '../../types/api';  // Импортируем тип, а не компонент
+import { fetchArtifacts, setCurrentArtifact } from '../../store/slices/artifactsSlice';
+import { pluginApi } from '../../services/api';
+import type { ApiPlugin } from '../../types/api';
+import type { ApiArtifact } from '../../types/api';
 import { updateArtifact } from '../../store/slices/artifactsSlice';
 import { useActionWithUndo } from '../../hooks/useActionWithUndo';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import { setSelectedElement, setSelectedElements } from '../../store/slices/uiSlice';
-
-// Импортируем GraphView напрямую (убираем lazy)
-import { GraphView } from './GraphView';  
+import { GraphView } from './GraphView';
 
 interface ArtifactViewProps {
-  artifact: ApiArtifact;  // Используем правильный тип
+  artifact: ApiArtifact;
   onClose: () => void;
-  onUpdate: (updates: Partial<ApiArtifact>) => void;  // Исправлен тип
+  onUpdate: (updates: Partial<ApiArtifact>) => void;
 }
 
 const LoadingFallback = () => (
@@ -37,35 +38,101 @@ const ArtifactView: React.FC<ArtifactViewProps> = memo(({
   onUpdate,
 }) => {
   const dispatch = useAppDispatch();
-  
-  // Инициализация хука для undo/redo - передаем ВСЕ 3 аргумента
-  const { 
-    execute, 
+  const [plugins, setPlugins] = useState<ApiPlugin[]>([]);
+  const [pluginsLoading, setPluginsLoading] = useState(false);
+  const [pluginsError, setPluginsError] = useState<string | null>(null);
+  const [runningPluginId, setRunningPluginId] = useState<string | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ visible: boolean; x: number; y: number }>(
+    {
+      visible: false,
+      x: 0,
+      y: 0
+    }
+  );
+
+  const {
+    execute,
     isRecording,
     lastError
   } = useActionWithUndo(
     artifact.id,
     artifact.data,
     async (newData: any) => {
-      // Функция обновления состояния
       await onUpdate({ data: newData });
       await dispatch(updateArtifact({
         projectId: artifact.project_id,
-        id: artifact.id,  // было artifactId, исправлено на id
+        id: artifact.id,
         updates: { data: newData }
       }));
     }
   );
-  
+
   useKeyboardShortcuts(artifact.id);
+  useEffect(() => {
+    let isMounted = true;
+    const loadPlugins = async () => {
+      setPluginsLoading(true);
+      setPluginsError(null);
+      try {
+        const response = await pluginApi.list();
+        if (!isMounted) return;
+        setPlugins(response?.plugins || []);
+      } catch (error: any) {
+        if (!isMounted) return;
+        setPluginsError(error?.message || 'Failed to load plugins');
+      } finally {
+        if (isMounted) setPluginsLoading(false);
+      }
+    };
+
+    loadPlugins();
+    return () => {
+      isMounted = false;
+    };
+  }, [artifact.id]);
+
+  useEffect(() => {
+    const handleClick = () => {
+      if (contextMenu.visible) {
+        setContextMenu({ visible: false, x: 0, y: 0 });
+      }
+    };
+    window.addEventListener('click', handleClick);
+    return () => window.removeEventListener('click', handleClick);
+  }, [contextMenu.visible]);
+
+  const applicablePlugins = useMemo(() => {
+    return plugins.filter(p => !p.applicable_to?.length || p.applicable_to.includes(artifact.type));
+  }, [plugins, artifact.type]);
+
+  const handleRunPlugin = useCallback(async (plugin: ApiPlugin) => {
+    setRunningPluginId(plugin.id);
+    setPluginsError(null);
+    try {
+      const response = await pluginApi.execute(plugin.id, artifact.project_id, [artifact.id], {});
+      await dispatch(fetchArtifacts(artifact.project_id));
+      const created = response?.created || [];
+      if (created.length > 0) {
+        dispatch(setCurrentArtifact(created[0].id));
+      }
+      setContextMenu({ visible: false, x: 0, y: 0 });
+    } catch (error: any) {
+      setPluginsError(error?.message || 'Failed to execute plugin');
+    } finally {
+      setRunningPluginId(null);
+    }
+  }, [artifact.id, artifact.project_id, dispatch]);
+
+  const handleContextMenu = useCallback((event: React.MouseEvent) => {
+    event.preventDefault();
+    setContextMenu({ visible: true, x: event.clientX, y: event.clientY });
+  }, []);
 
   console.log('[ArtifactView] Rendering', artifact.type, 'artifact:', artifact.id);
 
-  // Обработчик перемещения узла с поддержкой undo/redo
   const handleNodeMove = useCallback((nodeId: string, x: number, y: number) => {
     execute(
       async () => {
-        // Обновляем позицию узла в данных артефакта
         const updatedNodes = artifact.data?.nodes?.map((node: any) => {
           if (node.id === nodeId || node.node_id === nodeId) {
             return {
@@ -83,13 +150,12 @@ const ArtifactView: React.FC<ArtifactViewProps> = memo(({
         };
       },
       {
-        description: `Перемещение узла ${nodeId}`,
+        description: `\u041f\u0435\u0440\u0435\u043c\u0435\u0449\u0435\u043d\u0438\u0435 \u0443\u0437\u043b\u0430 ${nodeId}`
         actionType: 'move_node'
       }
     );
   }, [artifact.data, execute]);
 
-  // Обработчик добавления узла
   const handleAddNode = useCallback((position: { x: number, y: number }, nodeType: string = 'person') => {
     execute(
       async () => {
@@ -108,36 +174,33 @@ const ArtifactView: React.FC<ArtifactViewProps> = memo(({
         };
 
         const updatedNodes = [...(artifact.data?.nodes || []), newNode];
-        
+
         return {
           ...artifact.data,
           nodes: updatedNodes
         };
       },
       {
-        description: `Добавление узла ${nodeType}`,
+        description: `\u0414\u043e\u0431\u0430\u0432\u043b\u0435\u043d\u0438\u0435 \u0443\u0437\u043b\u0430 ${nodeType}`
         actionType: 'add_node'
       }
     );
   }, [artifact.data, execute]);
 
-  // Обработчик удаления узла
   const handleDeleteNode = useCallback((nodeId: string) => {
     execute(
       async () => {
-        const updatedNodes = artifact.data?.nodes?.filter((node: any) => 
+        const updatedNodes = artifact.data?.nodes?.filter((node: any) =>
           node.id !== nodeId && node.node_id !== nodeId
         ) || [];
 
-        // Также удаляем связанные ребра
-        const updatedEdges = artifact.data?.edges?.filter((edge: any) => 
-          edge.from !== nodeId && 
-          edge.to !== nodeId && 
-          edge.source_node !== nodeId && 
+        const updatedEdges = artifact.data?.edges?.filter((edge: any) =>
+          edge.from !== nodeId &&
+          edge.to !== nodeId &&
+          edge.source_node !== nodeId &&
           edge.target_node !== nodeId
         ) || [];
 
-        // Сбрасываем выделение
         dispatch(setSelectedElement(null));
         dispatch(setSelectedElements([]));
 
@@ -148,180 +211,71 @@ const ArtifactView: React.FC<ArtifactViewProps> = memo(({
         };
       },
       {
-        description: `Удаление узла ${nodeId}`,
+        description: `\u0423\u0434\u0430\u043b\u0435\u043d\u0438\u0435 \u0443\u0437\u043b\u0430 ${nodeId}`
         actionType: 'delete_node'
       }
     );
   }, [artifact.data, execute, dispatch]);
 
-  // Обработчик добавления ребра
-  const handleAddEdge = useCallback((sourceId: string, targetId: string, edgeType: string = 'connects') => {
-    execute(
-      async () => {
-        const newEdgeId = `edge_${Date.now()}`;
-        const newEdge = {
-          id: newEdgeId,
-          edge_id: newEdgeId,
-          from: sourceId,
-          to: targetId,
-          source_node: sourceId,
-          target_node: targetId,
-          type: edgeType,
-          label: edgeType
-        };
-
-        const updatedEdges = [...(artifact.data?.edges || []), newEdge];
-        
-        return {
-          ...artifact.data,
-          edges: updatedEdges
-        };
-      },
-      {
-        description: `Добавление связи ${sourceId} → ${targetId}`,
-        actionType: 'add_edge'
-      }
-    );
-  }, [artifact.data, execute]);
-
-  // Обработчик удаления ребра
-  const handleDeleteEdge = useCallback((edgeId: string) => {
-    execute(
-      async () => {
-        const updatedEdges = artifact.data?.edges?.filter((edge: any) => 
-          edge.id !== edgeId && edge.edge_id !== edgeId
-        ) || [];
-
-        // Сбрасываем выделение
-        dispatch(setSelectedElement(null));
-        dispatch(setSelectedElements([]));
-
-        return {
-          ...artifact.data,
-          edges: updatedEdges
-        };
-      },
-      {
-        description: `Удаление связи ${edgeId}`,
-        actionType: 'delete_edge'
-      }
-    );
-  }, [artifact.data, execute, dispatch]);
-
-  // Обработчик редактирования атрибутов
-  const handleEditAttributes = useCallback((nodeId: string, attributes: Record<string, any>) => {
-    execute(
-      async () => {
-        const updatedNodes = artifact.data?.nodes?.map((node: any) => {
-          if (node.id === nodeId || node.node_id === nodeId) {
-            return {
-              ...node,
-              attributes: {
-                ...(node.attributes || {}),
-                ...attributes
-              }
-            };
-          }
-          return node;
-        }) || [];
-
-        return {
-          ...artifact.data,
-          nodes: updatedNodes
-        };
-      },
-      {
-        description: `Редактирование атрибутов узла ${nodeId}`,
-        actionType: 'edit_attribute'
-      }
-    );
-  }, [artifact.data, execute]);
-
-  const renderView = () => {
-    switch (artifact.type) {
-      case 'graph':
-        return (
-          <Suspense fallback={<LoadingFallback />}>
-            <GraphView
-              artifact={artifact}
-              onNodeMove={handleNodeMove}
-              onAddNode={handleAddNode}
-              onDeleteNode={handleDeleteNode}
-              onAddEdge={handleAddEdge}
-              onDeleteEdge={handleDeleteEdge}
-              onEditAttributes={handleEditAttributes}
-            />
-          </Suspense>
-        );
-      case 'table':
-        return <PlaceholderView icon="📋" text="Таблицы будут в Этапе 2.5" />;
-      case 'map':
-        return <PlaceholderView icon="🗺️" text="Карты будут в Этапе 2.5" />;
-      case 'chart':
-        return <PlaceholderView icon="📈" text="Диаграммы будут в Этапе 2.5" />;
-      case 'document':
-        return <PlaceholderView icon="📄" text="Документы будут в Этапе 2.5" />;
-      default:
-        return <PlaceholderView icon="❓" text="Неизвестный тип артефакта" />;
-    }
-  };
-
   return (
-    <div className="artifact-view" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      {/* Компактный заголовок */}
-      <div style={{
-        padding: '8px 12px',
-        borderBottom: '1px solid #374151',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        backgroundColor: '#1f2937',
-        flexShrink: 0
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '16px' }}>
-            {artifact.type === 'graph' && '📊'}
-            {artifact.type === 'table' && '📋'}
-            {artifact.type === 'map' && '🗺️'}
-            {artifact.type === 'chart' && '📈'}
-            {artifact.type === 'document' && '📄'}
-          </span>
-          <span style={{ color: '#ffffff', fontSize: '13px', fontWeight: 500 }}>
-            {artifact.name}
-          </span>
-          <span style={{ color: '#6b7280', fontSize: '11px' }}>
-            v{artifact.version}
-          </span>
-          {isRecording && (
-            <span style={{ color: '#f59e0b', fontSize: '11px', marginLeft: '8px' }}>
-              ⟳ запись...
-            </span>
-          )}
-          {lastError && (
-            <span style={{ color: '#ef4444', fontSize: '11px', marginLeft: '8px' }}>
-              ⚠️ ошибка
-            </span>
-          )}
-        </div>
-        <button
-          onClick={onClose}
+    <div className="artifact-view" onContextMenu={handleContextMenu}>
+      {contextMenu.visible && (
+        <div
           style={{
-            background: 'none',
-            border: 'none',
-            color: '#9ca3af',
-            cursor: 'pointer',
-            fontSize: '16px',
-            padding: '4px'
+            position: 'fixed',
+            top: contextMenu.y,
+            left: contextMenu.x,
+            background: '#1f2937',
+            border: '1px solid #2f3b4a',
+            borderRadius: 6,
+            padding: 8,
+            minWidth: 220,
+            zIndex: 9999
           }}
-          title="Закрыть"
         >
-          ✕
-        </button>
-      </div>
-      
-      <div style={{ flex: 1, overflow: 'hidden' }}>
-        {renderView()}
-      </div>
+          <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 6 }}>Плагины</div>
+          {pluginsLoading && (
+            <div style={{ fontSize: 12, color: '#9ca3af' }}>Загрузка...</div>
+          )}
+          {pluginsError && (
+            <div style={{ fontSize: 12, color: '#f87171' }}>{pluginsError}</div>
+          )}
+          {!pluginsLoading && !pluginsError && applicablePlugins.length === 0 && (
+            <div style={{ fontSize: 12, color: '#9ca3af' }}>Нет доступных плагинов</div>
+          )}
+          {applicablePlugins.map(plugin => (
+            <button
+              key={plugin.id}
+              onClick={() => handleRunPlugin(plugin)}
+              disabled={!!runningPluginId}
+              style={{
+                width: '100%',
+                textAlign: 'left',
+                background: 'transparent',
+                border: 'none',
+                color: '#e5e7eb',
+                padding: '6px 4px',
+                cursor: 'pointer'
+              }}
+            >
+              {runningPluginId === plugin.id ? 'Запуск...' : plugin.name}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <GraphView
+        key={artifact.id}
+        artifact={artifact}
+        onNodeMove={handleNodeMove}
+        onNodesMove={() => {}}
+        onUndo={() => {}}
+        onRedo={() => {}}
+        canUndo={false}
+        canRedo={false}
+        isRecording={isRecording}
+        lastError={lastError}
+      />
     </div>
   );
 });

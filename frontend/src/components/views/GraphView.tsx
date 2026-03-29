@@ -24,6 +24,43 @@ interface PendingMove {
   y: number;
 }
 
+
+const getNodeId = (node: any) => node.id || node.node_id;
+
+const getNodeLabel = (node: any) => {
+  const visual = node.attributes?.visual || {};
+  const baseLabel = node.label || visual.label || node.attributes?.label || node.attributes?.name || node.attributes?.title || getNodeId(node) || '';
+  const icon = visual.icon || node.attributes?.icon;
+  if (icon && typeof icon === 'string') {
+    return `${icon} ${baseLabel}`.trim();
+  }
+  return baseLabel;
+};
+
+const getNodeColors = (node: any) => {
+  const visual = node.attributes?.visual || {};
+  const color = visual.color || node.attributes?.color || (
+    node.type === 'person' ? '#64b5f6' :
+    node.type === 'company' ? '#81c784' :
+    node.type === 'domain' ? '#ffb74d' : '#e0e0e0'
+  );
+  const border = visual.borderColor || node.attributes?.borderColor || color;
+  return { background: color, border };
+};
+
+const getNodeFont = (node: any) => {
+  const visual = node.attributes?.visual || {};
+  return {
+    size: visual.fontSize || node.attributes?.fontSize || 14,
+    color: visual.fontColor || node.attributes?.fontColor || '#ffffff'
+  };
+};
+
+const getNodeSize = (node: any) => {
+  const visual = node.attributes?.visual || {};
+  return visual.size || node.attributes?.size || 20;
+};
+
 export const GraphView: React.FC<GraphViewProps> = ({ 
   artifact, 
   onNodeMove,
@@ -61,35 +98,38 @@ export const GraphView: React.FC<GraphViewProps> = ({
     // Создаем DataSet для узлов
     const nodesData = new DataSet(
       nodes.map((node: any) => ({
-        id: node.id,
-        label: node.label || node.id,
+        id: getNodeId(node),
+        label: getNodeLabel(node),
         title: `${node.type}\n${JSON.stringify(node.attributes || {}, null, 2)}`,
         x: node.position_x,
         y: node.position_y,
-        color: node.type === 'person' ? '#64b5f6' : 
-               node.type === 'company' ? '#81c784' : 
-               node.type === 'domain' ? '#ffb74d' : '#e0e0e0',
-        shape: 'dot',
-        size: 20,
-        font: { size: 14, color: '#ffffff' },
-        borderWidth: 2,
+        color: getNodeColors(node),
+        shape: (node.attributes?.visual?.shape || node.attributes?.shape || 'dot'),
+        size: getNodeSize(node),
+        font: getNodeFont(node),
+        borderWidth: node.attributes?.visual?.borderWidth || node.attributes?.borderWidth || 2,
         shadow: true
       }))
     );
 
     // Создаем DataSet для связей
     const edgesData = new DataSet(
-      edges.map((edge: any) => ({
-        id: edge.id,
-        from: edge.from || edge.source_node,
-        to: edge.to || edge.target_node,
-        label: edge.type,
-        title: `${edge.type}\n${JSON.stringify(edge.attributes || {}, null, 2)}`,
-        arrows: 'to',
-        width: 2,
-        color: { color: '#848484', highlight: '#2196f3' },
-        smooth: { enabled: false, type: 'continuous' }
-      }))
+      edges.map((edge: any) => {
+        const visual = edge.attributes?.visual || {};
+        const edgeColor = visual.color || edge.attributes?.color || '#848484';
+        const edgeLabel = edge.label || visual.label || edge.attributes?.label || edge.type;
+        return {
+          id: edge.id,
+          from: edge.from || edge.source_node,
+          to: edge.to || edge.target_node,
+          label: edgeLabel,
+          title: `${edge.type}\n${JSON.stringify(edge.attributes || {}, null, 2)}`,
+          arrows: 'to',
+          width: visual.width || edge.attributes?.width || 2,
+          color: { color: edgeColor, highlight: '#2196f3' },
+          smooth: { enabled: false, type: 'continuous' }
+        };
+      })
     );
 
     nodesDataSetRef.current = nodesData;
@@ -375,3 +415,9 @@ export const GraphView: React.FC<GraphViewProps> = ({
 };
 
 export default GraphView;
+
+
+
+
+
+
