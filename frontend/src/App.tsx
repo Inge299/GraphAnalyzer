@@ -1,4 +1,4 @@
-﻿// frontend/src/App.tsx
+// frontend/src/App.tsx
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useAppDispatch, useAppSelector } from './store';
 import { fetchProjects, setCurrentProject } from './store/slices/projectsSlice';
@@ -66,20 +66,23 @@ function App() {
     if (!currentArtifactId) return;
     const artifact = artifacts[currentArtifactId];
     if (!artifact) return;
-    const existing = tabs.find(t => t.artifactId === currentArtifactId);
-    if (existing) {
-      setActiveTabId(existing.id);
-      return;
-    }
-    const newTab: Tab = {
-      id: `tab-${artifact.id}-${Date.now()}`,
-      artifactId: artifact.id,
-      title: artifact.name,
-      type: artifact.type
-    };
-    setTabs(prev => [...prev, newTab]);
-    setActiveTabId(newTab.id);
-  }, [currentArtifactId, artifacts, tabs]);
+
+    setTabs(prev => {
+      const existing = prev.find(t => t.artifactId === currentArtifactId);
+      if (existing) {
+        setActiveTabId(existing.id);
+        return prev;
+      }
+      const newTab: Tab = {
+        id: `tab-${artifact.id}`,
+        artifactId: artifact.id,
+        title: artifact.name,
+        type: artifact.type
+      };
+      setActiveTabId(newTab.id);
+      return [...prev, newTab];
+    });
+  }, [currentArtifactId, artifacts]);
 
   useEffect(() => {
     setTabs(prev => prev.map(tab => {
@@ -89,6 +92,25 @@ function App() {
       return { ...tab, title: artifact.name, type: artifact.type };
     }));
   }, [artifacts]);
+  useEffect(() => {
+    setTabs(prev => {
+      const validTabs = prev.filter(tab => !!artifacts[tab.artifactId]);
+      if (validTabs.length === prev.length) return prev;
+
+      const stillActive = activeTabId && validTabs.find(t => t.id === activeTabId);
+      if (!stillActive) {
+        const next = validTabs[0] || null;
+        setActiveTabId(next ? next.id : null);
+        if (next) {
+          dispatch(setCurrentArtifact(next.artifactId));
+        } else {
+          dispatch(setCurrentArtifact(null));
+        }
+      }
+
+      return validTabs;
+    });
+  }, [artifacts, activeTabId, dispatch]);
 
   const activeArtifact = useMemo(() => {
     if (!activeTabId) return null;
@@ -125,6 +147,8 @@ function App() {
     activeArtifact?.project_id || 1
   );
 
+  
+
   const handleNodeMove = useCallback(async (
     nodeId: string,
     x: number,
@@ -134,15 +158,10 @@ function App() {
     if (!activeArtifact) return;
 
     let currentData = lastNodesStateRef.current;
-
     if (!currentData) {
       currentData = artifacts[activeArtifact.id]?.data;
     }
-
-    if (!currentData) {
-      console.error('[App] Artifact data not found');
-      return;
-    }
+    if (!currentData) return;
 
     const updatedNodes = (currentData?.nodes || []).map((node: any) => {
       if (node.id === nodeId) {
@@ -207,29 +226,50 @@ function App() {
     );
   }, [activeArtifact, artifacts, execute]);
 
+  
+
+  const handleGraphUpdate = useCallback(async (
+    newData: any,
+    description: string,
+    actionType: string
+  ) => {
+    if (!activeArtifact) return;
+    lastNodesStateRef.current = newData;
+    await execute(
+      async () => newData,
+      {
+        description,
+        actionType
+      }
+    );
+  }, [activeArtifact, execute]);
+
   const handleArtifactSelect = useCallback((artifact: any) => {
-    const existingTab = tabs.find(t => t.artifactId === artifact.id);
-    if (existingTab) {
-      setActiveTabId(existingTab.id);
+    setTabs(prev => {
+      const existingTab = prev.find(t => t.artifactId === artifact.id);
+      if (existingTab) {
+        setActiveTabId(existingTab.id);
+        dispatch(setCurrentArtifact(artifact.id));
+        return prev;
+      }
+
+      const newTab: Tab = {
+        id: `tab-${artifact.id}`,
+        artifactId: artifact.id,
+        title: artifact.name,
+        type: artifact.type
+      };
+
+      setActiveTabId(newTab.id);
       dispatch(setCurrentArtifact(artifact.id));
-      return;
-    }
 
-    const newTab: Tab = {
-      id: `tab-${artifact.id}-${Date.now()}`,
-      artifactId: artifact.id,
-      title: artifact.name,
-      type: artifact.type
-    };
+      if (artifact?.data) {
+        lastNodesStateRef.current = artifact.data;
+      }
 
-    setTabs(prev => [...prev, newTab]);
-    setActiveTabId(newTab.id);
-    dispatch(setCurrentArtifact(artifact.id));
-
-    if (artifact?.data) {
-      lastNodesStateRef.current = artifact.data;
-    }
-  }, [tabs, dispatch]);
+      return [...prev, newTab];
+    });
+  }, [dispatch]);
 
   const handleTabClick = useCallback((tabId: string) => {
     setActiveTabId(tabId);
@@ -363,6 +403,7 @@ function App() {
                 artifact={activeArtifact}
                 onNodeMove={handleNodeMove}
                 onNodesMove={handleNodesMove}
+                onGraphUpdate={handleGraphUpdate}
                 onUndo={handleUndo}
                 onRedo={handleRedo}
                 canUndo={canUndo}
@@ -395,3 +436,22 @@ function App() {
 }
 
 export default App;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
