@@ -8,13 +8,13 @@ import type { SelectedElement } from '../../store/slices/uiSlice';
 import './InspectorPanel.css';
 
 interface InspectorPanelProps {
-  // props placeholder
+  onApplyGraphData?: (newData: any, description: string, actionType: string) => Promise<void> | void;
 }
 
 const labels = {
   inspector: '\u0418\u043d\u0441\u043f\u0435\u043a\u0442\u043e\u0440',
   selectArtifact: '\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0430\u0440\u0442\u0435\u0444\u0430\u043a\u0442 \u0434\u043b\u044f \u043f\u0440\u043e\u0441\u043c\u043e\u0442\u0440\u0430',
-  properties: '\u0421\u0432\u043e\u0439\u0441\u0442\u0432\u0430',
+  properties: '\u041e\u0431\u0449\u0430\u044f',
   history: '\u0418\u0441\u0442\u043e\u0440\u0438\u044f',
   metadata: '\u041c\u0435\u0442\u0430\u0434\u0430\u043d\u043d\u044b\u0435',
   name: '\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435',
@@ -45,10 +45,10 @@ const labels = {
   cancel: '\u041e\u0442\u043c\u0435\u043d\u0430',
   save: '\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c',
   selectResult: '\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0440\u0435\u0437\u0443\u043b\u044c\u0442\u0430\u0442',
-  elementProps: '\u0421\u0432\u043e\u0439\u0441\u0442\u0432\u0430 \u044d\u043b\u0435\u043c\u0435\u043d\u0442\u043e\u0432',
-  selectedCount: '\u0412\u044b\u0431\u0440\u0430\u043d\u043e',
+  elementProps: '\u0421\u0432\u043e\u0439\u0441\u0442\u0432\u0430',
+  selectedCount: '\u041a\u043e\u043b-\u0432\u043e',
   mixedSelection: '\u0412\u044b\u0434\u0435\u043b\u0435\u043d\u044b \u0438 \u0432\u0435\u0440\u0448\u0438\u043d\u044b, \u0438 \u0441\u0432\u044f\u0437\u0438. \u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u043e\u0434\u0438\u043d \u0442\u0438\u043f \u044d\u043b\u0435\u043c\u0435\u043d\u0442\u043e\u0432.',
-  elementLabel: '\u041f\u043e\u0434\u043f\u0438\u0441\u044c',
+  elementLabel: '\u0422\u0435\u043a\u0441\u0442',
   elementColor: '\u0426\u0432\u0435\u0442',
   elementIcon: '\u0418\u043a\u043e\u043d\u043a\u0430',
   iconScale: '\u0420\u0430\u0437\u043c\u0435\u0440 \u0438\u043a\u043e\u043d\u043a\u0438',
@@ -81,8 +81,8 @@ const iconOptions = [
 ];
 
 const iconScaleOptions = ['1', '2', '3', '4', '5'];
-const nodeColorPalette = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#a855f7', '#06b6d4', '#14b8a6', '#84cc16', '#f43f5e', '#eab308'];
-const edgeColorPalette = ['#64748b', '#60a5fa', '#f97316', '#22c55e', '#a855f7', '#ef4444', '#facc15', '#e5e7eb'];
+const nodeColorPalette = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#a855f7', '#06b6d4', '#14b8a6', '#84cc16', '#f43f5e', '#eab308', '#000000'];
+const edgeColorPalette = ['#64748b', '#60a5fa', '#f97316', '#22c55e', '#a855f7', '#ef4444', '#facc15', '#e5e7eb', '#000000'];
 const getCommonValue = <T,>(items: SelectedElement[], getter: (item: SelectedElement) => T | undefined): T | undefined => {
   if (items.length === 0) return undefined;
   const first = getter(items[0]);
@@ -92,9 +92,9 @@ const getCommonValue = <T,>(items: SelectedElement[], getter: (item: SelectedEle
   return first;
 };
 
-const InspectorPanel: React.FC<InspectorPanelProps> = () => {
+const InspectorPanel: React.FC<InspectorPanelProps> = ({ onApplyGraphData }) => {
   const dispatch = useAppDispatch();
-  const [activeTab, setActiveTab] = useState<'properties' | 'elements' | 'history' | 'metadata'>('properties');
+  const [activeTab, setActiveTab] = useState<'properties' | 'elements' | 'metadata'>('properties');
   const [plugins, setPlugins] = useState<ApiPlugin[]>([]);
   const [pluginsLoading, setPluginsLoading] = useState(false);
   const [pluginsError, setPluginsError] = useState<string | null>(null);
@@ -124,7 +124,7 @@ const InspectorPanel: React.FC<InspectorPanelProps> = () => {
 
   const selectedElements = useAppSelector(state => state.ui.selectedElements);
   const currentProject = useAppSelector(state => state.projects.currentProject);
-  const handleTabChange = useCallback((tab: 'properties' | 'elements' | 'history' | 'metadata') => {
+  const handleTabChange = useCallback((tab: 'properties' | 'elements' | 'metadata') => {
     setActiveTab(tab);
   }, []);
 
@@ -395,8 +395,16 @@ const InspectorPanel: React.FC<InspectorPanelProps> = () => {
 
     setElementsSaving(true);
     try {
-      const updated = await artifactApi.update(currentProject.id, selectedArtifact.id, { data: updatedData });
-      dispatch(updateArtifactSync(updated));
+      if (onApplyGraphData && selectedArtifact.type === 'graph') {
+        const actionType = graphSelection.mode === 'nodes' ? 'edit_node_attributes' : 'edit_edge_attributes';
+        const description = graphSelection.mode === 'nodes'
+          ? `Изменение атрибутов ${graphSelection.total} вершин`
+          : `Изменение атрибутов ${graphSelection.total} связей`;
+        await onApplyGraphData(updatedData, description, actionType);
+      } else {
+        const updated = await artifactApi.update(currentProject.id, selectedArtifact.id, { data: updatedData });
+        dispatch(updateArtifactSync(updated));
+      }
     } catch {
       // no-op
     } finally {
@@ -415,10 +423,11 @@ const InspectorPanel: React.FC<InspectorPanelProps> = () => {
     elementEdgeWidth,
     elementEdgeDirection,
     elementEdgeStyle,
-    dispatch
+    dispatch,
+    onApplyGraphData
   ]);
   if (!selectedArtifact) {
-    return (
+  return (
       <div className="inspector-panel">
         <div className="inspector-header">
           <h3>{labels.inspector}</h3>
@@ -430,6 +439,11 @@ const InspectorPanel: React.FC<InspectorPanelProps> = () => {
     );
   }
 
+
+  const artifactMetadata = ((selectedArtifact as any).metadata || (selectedArtifact as any).artifact_metadata || {}) as Record<string, any>;
+  const derivedFrom = artifactMetadata.derived_from;
+  const sourcePlugin = artifactMetadata.source_plugin;
+  const metadataRest = Object.fromEntries(Object.entries(artifactMetadata).filter(([key]) => key !== 'derived_from' && key !== 'source_plugin'));
   return (
     <div className="inspector-panel">
       {createdArtifacts && (
@@ -502,27 +516,21 @@ const InspectorPanel: React.FC<InspectorPanelProps> = () => {
 
       <div className="inspector-tabs">
         <button
-          className={`tab-btn ${activeTab === 'properties' ? 'active' : ''}`}
+          className={'tab-btn ' + (activeTab === 'properties' ? 'active' : '')}
           onClick={() => handleTabChange('properties')}
         >
           {labels.properties}
         </button>
         {selectedArtifact.type === 'graph' && (
           <button
-            className={`tab-btn ${activeTab === 'elements' ? 'active' : ''}`}
+            className={'tab-btn ' + (activeTab === 'elements' ? 'active' : '')}
             onClick={() => handleTabChange('elements')}
           >
             {labels.elementProps}
           </button>
         )}
         <button
-          className={`tab-btn ${activeTab === 'history' ? 'active' : ''}`}
-          onClick={() => handleTabChange('history')}
-        >
-          {labels.history}
-        </button>
-        <button
-          className={`tab-btn ${activeTab === 'metadata' ? 'active' : ''}`}
+          className={'tab-btn ' + (activeTab === 'metadata' ? 'active' : '')}
           onClick={() => handleTabChange('metadata')}
         >
           {labels.metadata}
@@ -571,36 +579,14 @@ const InspectorPanel: React.FC<InspectorPanelProps> = () => {
               )}
             </div>
 
-            <div className="property-group">
-              <label>{labels.type}</label>
-              <div className="property-value type-badge">
-                {selectedArtifact.type === 'graph' ? labels.typeGraph :
-                 selectedArtifact.type === 'table' ? labels.typeTable :
-                 selectedArtifact.type === 'map' ? labels.typeMap :
-                 selectedArtifact.type === 'chart' ? labels.typeChart : labels.typeDocument}
-              </div>
-            </div>
-
-            {selectedArtifact.description && (
-              <div className="property-group">
-                <label>{labels.description}</label>
-                <div className="property-value">{selectedArtifact.description}</div>
-              </div>
-            )}
-
-            <div className="property-group">
-              <label>{labels.version}</label>
-              <div className="property-value">v{selectedArtifact.version || 1}</div>
-            </div>
-
-            <div className="property-group">
+            <div className="property-group property-row-inline">
               <label>{labels.created}</label>
               <div className="property-value">
                 {new Date(selectedArtifact.created_at).toLocaleString()}
               </div>
             </div>
 
-            <div className="property-group">
+            <div className="property-group property-row-inline">
               <label>{labels.updated}</label>
               <div className="property-value">
                 {new Date(selectedArtifact.updated_at).toLocaleString()}
@@ -691,7 +677,7 @@ const InspectorPanel: React.FC<InspectorPanelProps> = () => {
                           type="color"
                           value={/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(elementColor) ? elementColor : '#3b82f6'}
                           onChange={(e) => setElementColor(e.target.value)}
-                          style={{ maxWidth: 48, padding: 2 }}
+                          style={{ width: 36, minWidth: 36, height: 30, padding: 2, borderRadius: 6 }}
                         />
                         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                           {nodeColorPalette.map((color) => (
@@ -699,7 +685,7 @@ const InspectorPanel: React.FC<InspectorPanelProps> = () => {
                               key={color}
                               type="button"
                               onClick={() => setElementColor(color)}
-                              style={{ width: 16, height: 16, borderRadius: 999, border: '1px solid #475569', background: color, cursor: 'pointer' }}
+                              style={{ width: 18, height: 18, borderRadius: 4, border: '1px solid #475569', background: color, cursor: 'pointer' }}
                               title={color}
                             />
                           ))}
@@ -749,7 +735,7 @@ const InspectorPanel: React.FC<InspectorPanelProps> = () => {
                           type="color"
                           value={/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(elementColor) ? elementColor : '#64748b'}
                           onChange={(e) => setElementColor(e.target.value)}
-                          style={{ maxWidth: 48, padding: 2 }}
+                          style={{ width: 36, minWidth: 36, height: 30, padding: 2, borderRadius: 6 }}
                         />
                         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                           {edgeColorPalette.map((color) => (
@@ -757,7 +743,7 @@ const InspectorPanel: React.FC<InspectorPanelProps> = () => {
                               key={color}
                               type="button"
                               onClick={() => setElementColor(color)}
-                              style={{ width: 16, height: 16, borderRadius: 999, border: '1px solid #475569', background: color, cursor: 'pointer' }}
+                              style={{ width: 18, height: 18, borderRadius: 4, border: '1px solid #475569', background: color, cursor: 'pointer' }}
                               title={color}
                             />
                           ))}
@@ -797,14 +783,44 @@ const InspectorPanel: React.FC<InspectorPanelProps> = () => {
             )}
           </div>
         )}
-        {activeTab === 'history' && (
-          <div className="history-tab">
-            <p className="placeholder">{labels.historyPlaceholder}</p>
-          </div>
-        )}
-
         {activeTab === 'metadata' && (
           <div className="metadata-tab">
+            <div className="property-group">
+              <label>{labels.type}</label>
+              <div className="property-value type-badge">
+                {selectedArtifact.type === 'graph' ? labels.typeGraph :
+                 selectedArtifact.type === 'table' ? labels.typeTable :
+                 selectedArtifact.type === 'map' ? labels.typeMap :
+                 selectedArtifact.type === 'chart' ? labels.typeChart : labels.typeDocument}
+              </div>
+            </div>
+
+            {selectedArtifact.description && (
+              <div className="property-group">
+                <label>{labels.description}</label>
+                <div className="property-value">{selectedArtifact.description}</div>
+              </div>
+            )}
+
+            <div className="property-group">
+              <label>{labels.version}</label>
+              <div className="property-value">v{selectedArtifact.version || 1}</div>
+            </div>
+
+            {sourcePlugin && (
+              <div className="property-group">
+                <label>source_plugin</label>
+                <div className="property-value">{String(sourcePlugin)}</div>
+              </div>
+            )}
+
+            {derivedFrom !== undefined && derivedFrom !== null && (
+              <div className="property-group">
+                <label>derived_from</label>
+                <div className="property-value">{String(derivedFrom)}</div>
+              </div>
+            )}
+
             <div className="property-group">
               <label>{labels.artifactId}</label>
               <div className="property-value">{selectedArtifact.id}</div>
@@ -815,11 +831,11 @@ const InspectorPanel: React.FC<InspectorPanelProps> = () => {
               <div className="property-value">{selectedArtifact.project_id}</div>
             </div>
 
-            {selectedArtifact.metadata && (
+            {Object.keys(metadataRest).length > 0 && (
               <div className="property-group">
                 <label>{labels.extraMetadata}</label>
                 <pre className="metadata-json">
-                  {JSON.stringify(selectedArtifact.metadata, null, 2)}
+                  {JSON.stringify(metadataRest, null, 2)}
                 </pre>
               </div>
             )}
@@ -831,6 +847,24 @@ const InspectorPanel: React.FC<InspectorPanelProps> = () => {
 };
 
 export default InspectorPanel;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -1,4 +1,15 @@
-/* frontend/src/App.css */
+﻿/* frontend/src/App.css */
+
+:root {
+  --bg-primary: #f3f5f9;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #eef2f7;
+  --bg-hover: #e6ecf5;
+  --border-color: #d7deea;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --accent: #2563eb;
+}
 
 .app {
   display: flex;
@@ -6,15 +17,14 @@
   height: 100vh;
   width: 100vw;
   overflow: hidden;
-  background: var(--bg-primary, #1e1e1e);
-  color: var(--text-primary, #fff);
+  background: var(--bg-primary);
+  color: var(--text-primary);
 }
 
-/* Верхняя панель с вкладками */
 .tab-bar {
   height: 40px;
-  background: var(--bg-secondary, #2d2d2d);
-  border-bottom: 1px solid var(--border-color, #404040);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   padding: 0 8px;
@@ -22,19 +32,17 @@
   flex-shrink: 0;
 }
 
-/* Основной контейнер с тремя колонками */
 .main-layout {
   display: flex;
   flex: 1;
-  min-height: 0;  /* Важно для правильной работы flexbox */
+  min-height: 0;
   overflow: hidden;
 }
 
-/* Левая панель (Sidebar) */
 .sidebar {
   width: 280px;
-  background: var(--bg-secondary, #2d2d2d);
-  border-right: 1px solid var(--border-color, #404040);
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -45,30 +53,27 @@
   width: 40px;
 }
 
-/* Центральная область (GraphView) */
 .content-area {
   flex: 1;
-  min-width: 0;  /* Важно для правильной работы flexbox */
-  background: var(--bg-primary, #1e1e1e);
+  min-width: 0;
+  background: #f8fafc;
   position: relative;
   overflow: hidden;
 }
 
-/* Правая панель (Inspector) */
 .inspector-panel {
   width: 300px;
-  background: var(--bg-secondary, #2d2d2d);
-  border-left: 1px solid var(--border-color, #404040);
+  background: var(--bg-secondary);
+  border-left: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
   overflow: hidden;
 }
 
-/* Адаптивность */
 @media (max-width: 1200px) {
   .inspector-panel {
-    width: 250px;
+    width: 260px;
   }
 }
 
@@ -76,8 +81,9 @@
   .sidebar {
     width: 240px;
   }
+
   .inspector-panel {
-    display: none;  /* Прячем инспектор на мобильных */
+    display: none;
   }
 }
 
@@ -87,7 +93,7 @@
   justify-content: center;
   height: 100vh;
   font-size: 18px;
-  color: var(--text-secondary, #888);
+  color: var(--text-secondary);
 }
 
 .no-selection {
@@ -96,7 +102,7 @@
   align-items: center;
   justify-content: center;
   height: 100%;
-  color: var(--text-secondary, #888);
+  color: var(--text-secondary);
   text-align: center;
   padding: 20px;
 }
@@ -104,10 +110,10 @@
 .no-selection h2 {
   margin-bottom: 10px;
   font-size: 24px;
-  font-weight: 300;
+  font-weight: 500;
 }
 
 .no-selection p {
   font-size: 14px;
-  opacity: 0.7;
+  opacity: 0.9;
 }

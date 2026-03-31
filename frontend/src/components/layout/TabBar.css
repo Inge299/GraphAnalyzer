@@ -1,9 +1,9 @@
-/* frontend/src/components/layout/TabBar.css */
+﻿/* frontend/src/components/layout/TabBar.css */
 
 .tab-bar {
   height: 40px;
-  background: var(--bg-secondary, #2d2d2d);
-  border-bottom: 1px solid var(--border-color, #404040);
+  background: var(--bg-secondary, #ffffff);
+  border-bottom: 1px solid var(--border-color, #d7deea);
   display: flex;
   align-items: center;
   padding: 0 8px;
@@ -30,11 +30,11 @@
 }
 
 .tabs-container::-webkit-scrollbar-track {
-  background: var(--bg-primary, #1e1e1e);
+  background: var(--bg-primary, #f3f5f9);
 }
 
 .tabs-container::-webkit-scrollbar-thumb {
-  background: var(--border-color, #404040);
+  background: var(--border-color, #d7deea);
   border-radius: 3px;
 }
 
@@ -44,10 +44,10 @@
   gap: 8px;
   padding: 0 12px;
   height: 32px;
-  background: var(--bg-tertiary, #363636);
-  border: 1px solid var(--border-color, #404040);
+  background: var(--bg-tertiary, #eef2f7);
+  border: 1px solid var(--border-color, #d7deea);
   border-radius: 6px 6px 0 0;
-  color: var(--text-secondary, #aaa);
+  color: var(--text-secondary, #475569);
   font-size: 13px;
   cursor: pointer;
   user-select: none;
@@ -58,19 +58,19 @@
 }
 
 .tab:hover {
-  background: var(--bg-hover, #404040);
-  color: var(--text-primary, #fff);
+  background: var(--bg-hover, #e6ecf5);
+  color: var(--text-primary, #0f172a);
 }
 
 .tab.active {
-  background: var(--bg-secondary, #2d2d2d);
-  color: #2196f3;
-  border-color: #2196f3;
-  border-bottom-color: var(--bg-secondary, #2d2d2d);
+  background: var(--bg-secondary, #ffffff);
+  color: var(--accent, #2563eb);
+  border-color: var(--accent, #2563eb);
+  border-bottom-color: var(--bg-secondary, #ffffff);
 }
 
 .tab-title {
-  max-width: 150px;
+  max-width: 180px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -89,7 +89,7 @@
   cursor: pointer;
   border-radius: 4px;
   padding: 0;
-  opacity: 0.6;
+  opacity: 0.65;
   transition: all 0.2s;
 }
 
@@ -101,7 +101,7 @@
 
 .tab-close:hover {
   opacity: 1;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(15, 23, 42, 0.08);
 }
 
 .add-tab {
@@ -110,17 +110,16 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg-tertiary, #363636);
-  border: 1px solid var(--border-color, #404040);
+  background: var(--bg-tertiary, #eef2f7);
+  border: 1px solid var(--border-color, #d7deea);
   border-radius: 6px;
-  color: var(--text-secondary, #aaa);
+  color: var(--text-secondary, #475569);
   cursor: pointer;
   transition: all 0.2s;
   flex-shrink: 0;
 }
 
 .add-tab:hover {
-  background: var(--bg-hover, #404040);
-  color: var(--text-primary, #fff);
+  background: var(--bg-hover, #e6ecf5);
+  color: var(--text-primary, #0f172a);
 }
-

@@ -1,4 +1,4 @@
-// frontend/src/App.tsx
+﻿// frontend/src/App.tsx
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useAppDispatch, useAppSelector } from './store';
 import { fetchProjects, setCurrentProject } from './store/slices/projectsSlice';
@@ -429,13 +429,14 @@ function App() {
             </div>
           )}
         </div>
-        <InspectorPanel />
+        <InspectorPanel onApplyGraphData={handleGraphUpdate} />
       </div>
     </div>
   );
 }
 
 export default App;
+
 
 
 

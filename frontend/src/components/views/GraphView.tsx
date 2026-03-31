@@ -100,10 +100,14 @@ const getNodeColors = (node: any) => {
 
 const getNodeFont = (node: any) => {
   const visual = node.attributes?.visual || {};
+  const baseSize = Number(visual.fontSize || node.attributes?.fontSize || 13);
   return {
-    size: visual.fontSize || node.attributes?.fontSize || 13,
+    size: Math.max(12, Math.round(baseSize * 1.5)),
     color: '#0f172a',
-    face: 'Inter, Arial, sans-serif'
+    face: 'Inter, Arial, sans-serif',
+    strokeWidth: 6,
+    strokeColor: '#f8fafc',
+    vadjust: 0
   };
 };
 
@@ -299,7 +303,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
         hover: true,
         multiselect: true,
         selectConnectedEdges: false,
-        navigationButtons: true,
+        navigationButtons: false,
         keyboard: false
       },
       manipulation: { enabled: false }
@@ -455,6 +459,11 @@ export const GraphView: React.FC<GraphViewProps> = ({
     onRedo?.();
   }, [onRedo]);
 
+  const handleFitClick = useCallback(() => {
+    if (!networkRef.current) return;
+    networkRef.current.fit({ animation: true, duration: 250 });
+  }, []);
+
   const handleHistoryJump = useCallback((state: any) => {
     console.log('[GraphView] History jump');
     // Р—РґРµСЃСЊ РЅСѓР¶РЅРѕ РІС‹Р·РІР°С‚СЊ РѕР±РЅРѕРІР»РµРЅРёРµ Р°СЂС‚РµС„Р°РєС‚Р°
@@ -472,8 +481,8 @@ export const GraphView: React.FC<GraphViewProps> = ({
           textAlign: 'center',
           color: '#888'
         }}>
-          <h3>РџСѓСЃС‚РѕР№ РіСЂР°С„</h3>
-          <p>РќРµС‚ СѓР·Р»РѕРІ РґР»СЏ РѕС‚РѕР±СЂР°Р¶РµРЅРёСЏ</p>
+          <h3>Пустой граф</h3>
+          <p>Нет узлов для отображения</p>
         </div>
       </div>
     );
@@ -489,7 +498,8 @@ export const GraphView: React.FC<GraphViewProps> = ({
         zIndex: 10, 
         display: 'flex', 
         gap: '8px',
-        background: 'rgba(45, 45, 45, 0.9)',
+        background: 'rgba(255, 255, 255, 0.95)',
+        border: '1px solid #d7deea',
         padding: '8px 12px',
         borderRadius: '6px',
         backdropFilter: 'blur(4px)'
@@ -500,15 +510,15 @@ export const GraphView: React.FC<GraphViewProps> = ({
           title="РћС‚РјРµРЅРёС‚СЊ (Ctrl+Z)"
           style={{
             padding: '6px 12px',
-            background: '#3b82f6',
-            border: 'none',
+            background: '#2563eb',
+            border: '1px solid #2563eb',
             borderRadius: '4px',
-            color: 'white',
+            color: '#ffffff',
             cursor: canUndo ? 'pointer' : 'not-allowed',
             opacity: canUndo ? 1 : 0.5
           }}
         >
-          Undo
+          ↶
         </button>
         <button 
           onClick={handleRedoClick} 
@@ -516,17 +526,31 @@ export const GraphView: React.FC<GraphViewProps> = ({
           title="РџРѕРІС‚РѕСЂРёС‚СЊ (Ctrl+Y)"
           style={{
             padding: '6px 12px',
-            background: '#3b82f6',
-            border: 'none',
+            background: '#2563eb',
+            border: '1px solid #2563eb',
             borderRadius: '4px',
-            color: 'white',
+            color: '#ffffff',
             cursor: canRedo ? 'pointer' : 'not-allowed',
             opacity: canRedo ? 1 : 0.5
           }}
         >
-          Redo
+          ↷
         </button>
-        <div style={{ fontSize: '12px', color: '#aaa', marginLeft: '8px', padding: '6px 0' }}>
+        <button
+          onClick={handleFitClick}
+          title="Вписать"
+          style={{
+            padding: '6px 10px',
+            background: '#2563eb',
+            border: '1px solid #2563eb',
+            borderRadius: '4px',
+            color: '#ffffff',
+            cursor: 'pointer'
+          }}
+        >
+          ⤢
+        </button>
+        <div style={{ fontSize: '12px', color: '#475569', marginLeft: '8px', padding: '6px 0' }}>
           v{artifact.version}
         </div>
       </div>
@@ -568,6 +592,16 @@ export const GraphView: React.FC<GraphViewProps> = ({
 };
 
 export default GraphView;
+
+
+
+
+
+
+
+
+
+
 
 
 
