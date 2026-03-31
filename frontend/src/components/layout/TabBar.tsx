@@ -103,12 +103,12 @@ const TabBar: React.FC<TabBarProps> = ({
   }, [plugins, contextArtifact]);
 
   const handleRunPlugin = useCallback(async (plugin: ApiPlugin) => {
-    if (!contextArtifact || !projectId) return;
+    if (!contextArtifact) return;
     setRunningPluginId(plugin.id);
     setPluginsError(null);
     try {
-      const response = await pluginApi.execute(plugin.id, projectId, [contextArtifact.id], {});
-      await dispatch(fetchArtifacts(projectId));
+      const response = await pluginApi.execute(plugin.id, contextArtifact.project_id, [contextArtifact.id], {});
+      await dispatch(fetchArtifacts(contextArtifact.project_id));
       const created = response?.created || [];
       if (created.length === 1) {
         dispatch(setCurrentArtifact(created[0].id));
@@ -121,7 +121,7 @@ const TabBar: React.FC<TabBarProps> = ({
     } finally {
       setRunningPluginId(null);
     }
-  }, [contextArtifact, projectId, dispatch]);
+  }, [contextArtifact, dispatch]);
 
   const handleContextMenu = useCallback((event: React.MouseEvent, artifactId: number) => {
     event.preventDefault();
@@ -225,7 +225,7 @@ const TabBar: React.FC<TabBarProps> = ({
             <button
               key={plugin.id}
               onClick={() => handleRunPlugin(plugin)}
-              disabled={!!runningPluginId || !projectId}
+              disabled={!!runningPluginId || !contextArtifact}
               style={{
                 width: '100%',
                 textAlign: 'left',
@@ -274,6 +274,8 @@ const TabBar: React.FC<TabBarProps> = ({
 };
 
 export default TabBar;
+
+
 
 
 

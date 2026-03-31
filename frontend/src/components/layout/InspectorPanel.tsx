@@ -1,9 +1,9 @@
-﻿// frontend/src/components/layout/InspectorPanel.tsx
+// frontend/src/components/layout/InspectorPanel.tsx
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { fetchArtifacts, deleteArtifact, updateArtifactSync, setCurrentArtifact } from '../../store/slices/artifactsSlice';
-import { artifactApi, pluginApi } from '../../services/api';
-import type { ApiPlugin, ApiArtifact } from '../../types/api';
+import { artifactApi, pluginApi, domainModelApi } from '../../services/api';
+import type { ApiPlugin, ApiArtifact, PluginExecutionContext, DomainModelConfig } from '../../types/api';
 import type { SelectedElement } from '../../store/slices/uiSlice';
 import './InspectorPanel.css';
 
@@ -66,7 +66,7 @@ const labels = {
   dashed: '\u041f\u0443\u043d\u043a\u0442\u0438\u0440\u043d\u0430\u044f'
 };
 
-const iconOptions = [
+const fallbackIconOptions = [
   { value: 'smartphone', label: 'Smartphone' },
   { value: 'sim', label: 'SIM card' },
   { value: 'person_phone', label: 'Subscriber' },
@@ -83,6 +83,14 @@ const iconOptions = [
 const iconScaleOptions = ['1', '2', '3', '4', '5'];
 const nodeColorPalette = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#a855f7', '#06b6d4', '#14b8a6', '#84cc16', '#f43f5e', '#eab308', '#000000'];
 const edgeColorPalette = ['#64748b', '#60a5fa', '#f97316', '#22c55e', '#a855f7', '#ef4444', '#facc15', '#e5e7eb', '#000000'];
+const defaultEdgeDirectionOptions = ['from', 'to', 'both'];
+const isLikelyMojibake = (value: string) => /[\u00D0\u00D1][\u0080-\u00BF]|[\uFFFD]/.test(value);
+
+const normalizeDisplayLabel = (candidate: string, fallback: string) => {
+  const trimmed = candidate.trim();
+  if (!trimmed || isLikelyMojibake(trimmed)) return fallback;
+  return trimmed;
+};
 const getCommonValue = <T,>(items: SelectedElement[], getter: (item: SelectedElement) => T | undefined): T | undefined => {
   if (items.length === 0) return undefined;
   const first = getter(items[0]);
@@ -105,6 +113,8 @@ const InspectorPanel: React.FC<InspectorPanelProps> = ({ onApplyGraphData }) => 
   const [renaming, setRenaming] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [createdArtifacts, setCreatedArtifacts] = useState<ApiArtifact[] | null>(null);
+  const [iconOptions, setIconOptions] = useState(fallbackIconOptions);
+  const [edgeDirectionOptions, setEdgeDirectionOptions] = useState(defaultEdgeDirectionOptions);
 
   const [elementLabel, setElementLabel] = useState('');
   const [elementColor, setElementColor] = useState('');
@@ -124,31 +134,117 @@ const InspectorPanel: React.FC<InspectorPanelProps> = ({ onApplyGraphData }) => 
 
   const selectedElements = useAppSelector(state => state.ui.selectedElements);
   const currentProject = useAppSelector(state => state.projects.currentProject);
+
+  const pluginContext = useMemo<PluginExecutionContext>(() => {
+    if (!selectedArtifact) return {};
+
+    if (selectedArtifact.type === 'graph') {
+      const selected_nodes = selectedElements
+        .filter(item => item.type === 'node')
+        .map(item => String(item.id));
+      const selected_edges = selectedElements
+        .filter(item => item.type === 'edge')
+        .map(item => String(item.id));
+
+      return { selected_nodes, selected_edges };
+    }
+
+    return {};
+  }, [selectedArtifact, selectedElements]);
+
+  const pluginContextKey = useMemo(() => {
+    const nodes = [...(pluginContext.selected_nodes || [])].sort();
+    const edges = [...(pluginContext.selected_edges || [])].sort();
+    const rows = [...(pluginContext.selected_rows || [])].sort();
+
+    return JSON.stringify({
+      selected_nodes: nodes,
+      selected_edges: edges,
+      selected_rows: rows,
+      selected_text: pluginContext.selected_text || '',
+      selected_geo: pluginContext.selected_geo || null,
+    });
+  }, [pluginContext]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadDomainModel = async () => {
+      try {
+        const model = await domainModelApi.get() as DomainModelConfig;
+        if (cancelled) return;
+
+        const icons = (model?.node_types || [])
+          .map((node) => {
+            const icon = String(node?.icon || '').trim();
+            if (!icon) return null;
+            const fallbackLabel = String(node?.id || icon);
+            const label = normalizeDisplayLabel(String(node?.label || ''), fallbackLabel);
+            return { value: icon, label };
+          })
+          .filter(Boolean) as Array<{ value: string; label: string }>;
+
+        const uniqueIcons = Array.from(new Map(icons.map((item) => [item.value, item])).values());
+        setIconOptions(uniqueIcons.length > 0 ? uniqueIcons : fallbackIconOptions);
+
+        const configuredDirections = model?.rules?.edge_direction_values || [];
+        const normalizedDirections = configuredDirections
+          .map((value) => String(value).trim())
+          .filter((value) => value === 'from' || value === 'to' || value === 'both');
+
+        setEdgeDirectionOptions(normalizedDirections.length > 0 ? normalizedDirections : defaultEdgeDirectionOptions);
+      } catch {
+        if (cancelled) return;
+        setIconOptions(fallbackIconOptions);
+        setEdgeDirectionOptions(defaultEdgeDirectionOptions);
+      }
+    };
+
+    loadDomainModel();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const handleTabChange = useCallback((tab: 'properties' | 'elements' | 'metadata') => {
     setActiveTab(tab);
   }, []);
 
   useEffect(() => {
-    const loadPlugins = async () => {
-      if (!selectedArtifact) {
-        setPlugins([]);
-        return;
-      }
+    if (!selectedArtifact) {
+      setPlugins([]);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
       setPluginsLoading(true);
       setPluginsError(null);
       try {
-        const response = await pluginApi.list();
+        const response = await pluginApi.applicable(
+          selectedArtifact.project_id,
+          selectedArtifact.id,
+          pluginContext
+        );
+        if (cancelled) return;
         const list: ApiPlugin[] = response?.plugins || [];
         setPlugins(list);
       } catch (error: any) {
+        if (cancelled) return;
         setPluginsError(error?.message || 'Failed to load plugins');
       } finally {
-        setPluginsLoading(false);
+        if (!cancelled) {
+          setPluginsLoading(false);
+        }
       }
-    };
+    }, 120);
 
-    loadPlugins();
-  }, [selectedArtifact]);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [selectedArtifact?.id, selectedArtifact?.project_id, pluginContextKey]);
 
   useEffect(() => {
     if (selectedArtifact?.name) {
@@ -228,19 +324,17 @@ const InspectorPanel: React.FC<InspectorPanelProps> = ({ onApplyGraphData }) => 
     setElementEdgeDirection(direction === undefined ? '' : String(direction));
     setElementEdgeStyle(dashed === undefined ? 'unchanged' : (dashed ? 'dashed' : 'solid'));
   }, [graphSelection]);
-  const applicablePlugins = useMemo(() => {
-    if (!selectedArtifact) return [];
-    return plugins.filter(p => !p.applicable_to?.length || p.applicable_to.includes(selectedArtifact.type));
-  }, [plugins, selectedArtifact]);
+  const applicablePlugins = useMemo(() => plugins, [plugins]);
 
   const handleRunPlugin = useCallback(async (plugin: ApiPlugin) => {
-    if (!selectedArtifact || !currentProject) return;
+    if (!selectedArtifact) return;
     setRunningPluginId(plugin.id);
     setPluginsMessage(null);
     setPluginsError(null);
     try {
-      const response = await pluginApi.execute(plugin.id, currentProject.id, [selectedArtifact.id], {});
-      await dispatch(fetchArtifacts(currentProject.id));
+      const targetProjectId = selectedArtifact.project_id;
+      const response = await pluginApi.execute(plugin.id, targetProjectId, [selectedArtifact.id], {}, pluginContext);
+      await dispatch(fetchArtifacts(targetProjectId));
       const created = response?.created || [];
       if (created.length === 1) {
         dispatch(setCurrentArtifact(created[0].id));
@@ -253,7 +347,7 @@ const InspectorPanel: React.FC<InspectorPanelProps> = ({ onApplyGraphData }) => 
     } finally {
       setRunningPluginId(null);
     }
-  }, [selectedArtifact, currentProject, dispatch]);
+  }, [selectedArtifact, pluginContext, dispatch]);
 
   const handleSelectCreated = useCallback((artifactId: number) => {
     dispatch(setCurrentArtifact(artifactId));
@@ -398,8 +492,8 @@ const InspectorPanel: React.FC<InspectorPanelProps> = ({ onApplyGraphData }) => 
       if (onApplyGraphData && selectedArtifact.type === 'graph') {
         const actionType = graphSelection.mode === 'nodes' ? 'edit_node_attributes' : 'edit_edge_attributes';
         const description = graphSelection.mode === 'nodes'
-          ? `Изменение атрибутов ${graphSelection.total} вершин`
-          : `Изменение атрибутов ${graphSelection.total} связей`;
+          ? `Edit attributes for ${graphSelection.total} node(s)`
+          : `Edit attributes for ${graphSelection.total} edge(s)`;
         await onApplyGraphData(updatedData, description, actionType);
       } else {
         const updated = await artifactApi.update(currentProject.id, selectedArtifact.id, { data: updatedData });
@@ -758,9 +852,11 @@ const InspectorPanel: React.FC<InspectorPanelProps> = ({ onApplyGraphData }) => 
                       <label>{labels.edgeDirection}</label>
                       <select className="property-input" value={elementEdgeDirection} onChange={(e) => setElementEdgeDirection(e.target.value)}>
                         <option value="">{labels.unchanged}</option>
-                        <option value="from">&lt;-</option>
-                        <option value="to">-&gt;</option>
-                        <option value="both">&lt;-&gt;</option>
+                        {edgeDirectionOptions.map((direction) => (
+                          <option key={direction} value={direction}>
+                            {direction === 'from' ? '<-' : direction === 'to' ? '->' : '<->'}
+                          </option>
+                        ))}
                       </select>
                     </div>
                     <div className="property-group">
@@ -847,6 +943,32 @@ const InspectorPanel: React.FC<InspectorPanelProps> = ({ onApplyGraphData }) => 
 };
 
 export default InspectorPanel;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

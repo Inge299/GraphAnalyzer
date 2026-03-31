@@ -1,4 +1,4 @@
-﻿// frontend/src/App.tsx
+// frontend/src/App.tsx
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useAppDispatch, useAppSelector } from './store';
 import { fetchProjects, setCurrentProject } from './store/slices/projectsSlice';
@@ -69,20 +69,26 @@ function App() {
 
     setTabs(prev => {
       const existing = prev.find(t => t.artifactId === currentArtifactId);
-      if (existing) {
-        setActiveTabId(existing.id);
-        return prev;
-      }
+      if (existing) return prev;
+
       const newTab: Tab = {
         id: `tab-${artifact.id}`,
         artifactId: artifact.id,
         title: artifact.name,
         type: artifact.type
       };
-      setActiveTabId(newTab.id);
       return [...prev, newTab];
     });
   }, [currentArtifactId, artifacts]);
+
+  useEffect(() => {
+    if (!currentArtifactId) return;
+    const active = tabs.find(t => t.artifactId === currentArtifactId);
+    if (!active) return;
+    if (activeTabId !== active.id) {
+      setActiveTabId(active.id);
+    }
+  }, [currentArtifactId, tabs, activeTabId]);
 
   useEffect(() => {
     setTabs(prev => prev.map(tab => {
@@ -95,22 +101,25 @@ function App() {
   useEffect(() => {
     setTabs(prev => {
       const validTabs = prev.filter(tab => !!artifacts[tab.artifactId]);
-      if (validTabs.length === prev.length) return prev;
-
-      const stillActive = activeTabId && validTabs.find(t => t.id === activeTabId);
-      if (!stillActive) {
-        const next = validTabs[0] || null;
-        setActiveTabId(next ? next.id : null);
-        if (next) {
-          dispatch(setCurrentArtifact(next.artifactId));
-        } else {
-          dispatch(setCurrentArtifact(null));
-        }
-      }
-
-      return validTabs;
+      return validTabs.length === prev.length ? prev : validTabs;
     });
-  }, [artifacts, activeTabId, dispatch]);
+  }, [artifacts]);
+
+  useEffect(() => {
+    if (!tabs.length) {
+      if (activeTabId !== null) {
+        setActiveTabId(null);
+      }
+      return;
+    }
+
+    const stillActive = activeTabId && tabs.find(t => t.id === activeTabId);
+    if (stillActive) return;
+
+    const next = tabs[0];
+    setActiveTabId(next.id);
+    dispatch(setCurrentArtifact(next.artifactId));
+  }, [tabs, activeTabId, dispatch]);
 
   const activeArtifact = useMemo(() => {
     if (!activeTabId) return null;
@@ -225,9 +234,60 @@ function App() {
       }
     );
   }, [activeArtifact, artifacts, execute]);
+  const handleAddEdge = useCallback(async (
+    sourceId: string,
+    targetId: string,
+    edgeType: string = 'connected_to'
+  ) => {
+    if (!activeArtifact) return;
 
-  
+    let currentData = lastNodesStateRef.current;
+    if (!currentData) {
+      currentData = artifacts[activeArtifact.id]?.data;
+    }
+    if (!currentData) return;
 
+    const existingEdges = currentData?.edges || [];
+    let edgeIndex = existingEdges.length + 1;
+    let edgeId = `auto_edge_${edgeIndex}`;
+    const ids = new Set(existingEdges.map((e: any) => String(e.id)));
+    while (ids.has(edgeId)) {
+      edgeIndex += 1;
+      edgeId = `auto_edge_${edgeIndex}`;
+    }
+
+    const newEdge = {
+      id: edgeId,
+      type: edgeType,
+      from: sourceId,
+      to: targetId,
+      label: edgeType,
+      attributes: {
+        visual: {
+          color: '#475569',
+          width: 2,
+          direction: 'to',
+          dashed: false,
+          label: edgeType
+        }
+      }
+    };
+
+    const afterState = {
+      ...currentData,
+      edges: [...existingEdges, newEdge]
+    };
+
+    lastNodesStateRef.current = afterState;
+
+    await execute(
+      async () => afterState,
+      {
+        description: `Add edge ${sourceId} -> ${targetId}`,
+        actionType: 'add_edge'
+      }
+    );
+  }, [activeArtifact, artifacts, execute]);
   const handleGraphUpdate = useCallback(async (
     newData: any,
     description: string,
@@ -245,31 +305,27 @@ function App() {
   }, [activeArtifact, execute]);
 
   const handleArtifactSelect = useCallback((artifact: any) => {
-    setTabs(prev => {
-      const existingTab = prev.find(t => t.artifactId === artifact.id);
-      if (existingTab) {
-        setActiveTabId(existingTab.id);
-        dispatch(setCurrentArtifact(artifact.id));
-        return prev;
-      }
+    const existingTab = tabs.find(t => t.artifactId === artifact.id);
 
+    if (existingTab) {
+      setActiveTabId(existingTab.id);
+    } else {
       const newTab: Tab = {
-        id: `tab-${artifact.id}`,
+        id: 'tab-' + artifact.id,
         artifactId: artifact.id,
         title: artifact.name,
         type: artifact.type
       };
-
+      setTabs(prev => [...prev, newTab]);
       setActiveTabId(newTab.id);
-      dispatch(setCurrentArtifact(artifact.id));
+    }
 
-      if (artifact?.data) {
-        lastNodesStateRef.current = artifact.data;
-      }
+    dispatch(setCurrentArtifact(artifact.id));
 
-      return [...prev, newTab];
-    });
-  }, [dispatch]);
+    if (artifact?.data) {
+      lastNodesStateRef.current = artifact.data;
+    }
+  }, [tabs, dispatch]);
 
   const handleTabClick = useCallback((tabId: string) => {
     setActiveTabId(tabId);
@@ -403,7 +459,7 @@ function App() {
                 artifact={activeArtifact}
                 onNodeMove={handleNodeMove}
                 onNodesMove={handleNodesMove}
-                onGraphUpdate={handleGraphUpdate}
+                onAddEdge={handleAddEdge}
                 onUndo={handleUndo}
                 onRedo={handleRedo}
                 canUndo={canUndo}
@@ -436,6 +492,9 @@ function App() {
 }
 
 export default App;
+
+
+
 
 
 

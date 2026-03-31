@@ -9,6 +9,7 @@ from app.database import get_db
 from app.models.artifact import Artifact, ArtifactVersion, ArtifactRelation
 from app.models.action import GraphAction
 from app.services.plugin_service import PluginService
+from app.services.plugin_contract import validate_plugin_execution
 from app.services.history_cache import HistoryCache, get_redis_client
 
 logger = logging.getLogger(__name__)
@@ -19,6 +20,13 @@ class PluginExecuteRequest(BaseModel):
     project_id: int = Field(..., description="Project ID to store output artifacts")
     input_artifact_ids: List[int] = Field(..., description="Input artifact IDs")
     params: Optional[Dict[str, Any]] = Field(default=None)
+    context: Optional[Dict[str, Any]] = Field(default=None, description="Selection/runtime context")
+
+
+class ApplicablePluginsRequest(BaseModel):
+    project_id: int = Field(..., description="Project ID")
+    artifact_id: int = Field(..., description="Target artifact ID")
+    context: Optional[Dict[str, Any]] = Field(default=None, description="Selection/runtime context")
 
 
 @router.get("/")
@@ -26,6 +34,54 @@ async def list_plugins():
     """List all available plugins."""
     service = PluginService()
     return {"plugins": service.list_plugins()}
+
+
+@router.post("/applicable")
+async def list_applicable_plugins(
+    request: ApplicablePluginsRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """List plugins applicable to artifact + current UI selection context."""
+    result = await db.execute(
+        select(Artifact).where(
+            Artifact.id == request.artifact_id,
+            Artifact.project_id == request.project_id,
+        )
+    )
+    artifact = result.scalar_one_or_none()
+    if artifact is None:
+        raise HTTPException(status_code=404, detail="Artifact not found in project")
+
+    service = PluginService()
+    all_plugins = service.list_plugins()
+
+    payload = {
+        "id": artifact.id,
+        "project_id": artifact.project_id,
+        "type": artifact.type,
+        "name": artifact.name,
+        "description": artifact.description,
+        "data": artifact.data,
+        "metadata": artifact.artifact_metadata,
+    }
+
+    applicable: List[Dict[str, Any]] = []
+    context = request.context or {}
+
+    for metadata in all_plugins:
+        try:
+            plugin = service.get_plugin(metadata["id"])
+            validate_plugin_execution(
+                plugin=plugin,
+                input_artifacts=[payload],
+                params={},
+                context=context,
+            )
+            applicable.append(metadata)
+        except Exception:
+            continue
+
+    return {"plugins": applicable}
 
 
 @router.get("/{plugin_id}")
@@ -44,7 +100,7 @@ async def execute_plugin(
     plugin_id: str,
     request: PluginExecuteRequest,
     db: AsyncSession = Depends(get_db),
-    redis_client = Depends(get_redis_client)
+    redis_client=Depends(get_redis_client)
 ):
     """Execute a plugin and store resulting artifacts."""
     if not request.input_artifact_ids:
@@ -89,7 +145,16 @@ async def execute_plugin(
     ]
 
     try:
-        outputs = await service.execute(plugin_id, input_payloads, request.params)
+        validate_plugin_execution(
+            plugin=plugin,
+            input_artifacts=input_payloads,
+            params=request.params,
+            context=request.context,
+        )
+        execution_params = dict(request.params or {})
+        if request.context is not None:
+            execution_params["_context"] = request.context
+        outputs = await service.execute(plugin_id, input_payloads, execution_params)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:

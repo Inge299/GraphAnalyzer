@@ -12,7 +12,7 @@ from app.database import engine, Base
 
 # Import all routers
 from app.api.routes import projects, schema, nodes, edges, graphs
-from app.routers import plugins, analytics
+from app.routers import plugins, analytics, domain_model
 from app.api.routes import artifacts
 from app.api.routes import history
 
@@ -116,6 +116,7 @@ app.include_router(edges.router, prefix="/api/v1", tags=["edges"])
 app.include_router(graphs.router, prefix="/api/v1", tags=["graphs"])
 app.include_router(plugins.router, prefix="/api/v1/plugins", tags=["plugins"])
 app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["analytics"])
+app.include_router(domain_model.router, prefix="/api/v1/config", tags=["domain-model"])
 app.include_router(artifacts.router, prefix="/api/v2", tags=["artifacts"])
 app.include_router(history.router, prefix="/api/v2", tags=["history"])
 
@@ -123,10 +124,15 @@ app.include_router(history.router, prefix="/api/v2", tags=["history"])
 
 @app.exception_handler(404)
 async def custom_404_handler(request, exc):
-    """Custom 404 error handler."""
+    """Custom 404 handler that preserves route-level details when available."""
+    detail = getattr(exc, "detail", "")
+    if isinstance(detail, (dict, list)):
+        detail_payload = detail
+    else:
+        detail_payload = str(detail or exc)
     return JSONResponse(
         status_code=404,
-        content={"message": "Endpoint not found", "detail": str(exc)}
+        content={"message": "Endpoint not found", "detail": detail_payload}
     )
 
 @app.exception_handler(500)
@@ -137,3 +143,6 @@ async def custom_500_handler(request, exc):
         status_code=500,
         content={"message": "Internal server error", "detail": "An unexpected error occurred"}
     )
+
+
+

@@ -26,6 +26,15 @@ class PluginBase:
     output_types: List[str] = ["graph"]
     applicable_to: List[str] = ["graph"]
 
+    # New contract (optional, backward compatible)
+    inputs: Dict[str, Any] = {"artifact_types": ["graph"], "selection": {}}
+    applicable_when: Dict[str, Any] = {}
+    params_schema: List[Dict[str, Any]] = []
+    output_strategy: Dict[str, Any] = {
+        "mode": "create_new",
+        "history_action": "plugin_execute",
+    }
+
     async def execute(self, input_artifacts: List[dict], params: Optional[dict] = None) -> List[dict]:
         """
         Execute plugin logic.
@@ -59,7 +68,11 @@ class PluginBase:
             "menu_path": self.menu_path,
             "input_types": self.input_types,
             "output_types": self.output_types,
-            "applicable_to": self.applicable_to
+            "applicable_to": self.applicable_to,
+            "inputs": self.inputs,
+            "applicable_when": self.applicable_when,
+            "params_schema": self.params_schema,
+            "output_strategy": self.output_strategy,
         }
 
 

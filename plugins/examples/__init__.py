@@ -1,8 +1,3 @@
-"""
-Example plugins for OSINT Graph Analyzer.
-"""
+"""Examples package reserved for future plugins."""
 
-from plugins.examples.degree_analyzer import DegreeAnalyzerPlugin
-from plugins.examples.community_detector import CommunityDetectorPlugin
-
-__all__ = ['DegreeAnalyzerPlugin', 'CommunityDetectorPlugin']
+__all__ = []
