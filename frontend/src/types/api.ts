@@ -1,4 +1,4 @@
-﻿// frontend/src/types/api.ts
+// frontend/src/types/api.ts
 
 export interface ApiNode {
   id: string;
@@ -121,6 +121,8 @@ export interface DomainModelNodeType {
 
 export interface DomainModelRules {
   edge_direction_values?: string[];
+  allow_parallel_edges?: boolean;
+  merge_nodes_with_same_label?: boolean;
 }
 
 export interface DomainModelConfig {

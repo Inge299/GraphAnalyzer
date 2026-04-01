@@ -238,3 +238,144 @@
 
 
 
+
+.builder-tab .property-action {
+  width: 100%;
+  white-space: normal;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.builder-tab .property-value {
+  grid-column: 1 / -1;
+}
+
+
+
+
+
+
+.builder-tab .property-group {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.builder-tab .property-group label {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.builder-tab .property-input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.builder-tab .property-action {
+  display: block;
+  width: 100%;
+}
+
+.edge-type-preview {
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border: 1px solid #d7deea;
+  border-radius: 6px;
+  background: #f8fafc;
+}
+
+.edge-type-preview-line {
+  width: 46px;
+  height: 0;
+  border-top: 3px solid var(--edge-color, #64748b);
+  border-radius: 2px;
+}
+
+.edge-type-preview-text {
+  font-size: 11px;
+  color: #475569;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.edge-type-select {
+  position: relative;
+  width: 100%;
+}
+
+.edge-type-select-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: space-between;
+  background: #ffffff;
+  border: 1px solid #d7deea;
+  border-radius: 6px;
+  color: #0f172a;
+  padding: 5px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.edge-type-select-trigger:hover {
+  border-color: #93c5fd;
+}
+
+.edge-type-select-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  background: #ffffff;
+  border: 1px solid #d7deea;
+  border-radius: 8px;
+  z-index: 50;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.14);
+}
+
+.edge-type-select-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: none;
+  color: #0f172a;
+  padding: 7px 8px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.edge-type-select-item:hover,
+.edge-type-select-item.active {
+  background: #eff6ff;
+}
+
+.edge-type-select-line {
+  width: 28px;
+  min-width: 28px;
+  height: 0;
+  border-top: 3px solid var(--edge-color, #64748b);
+  border-radius: 2px;
+}
+
+.edge-type-select-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.edge-type-select-placeholder {
+  color: #94a3b8;
+}
+
+.edge-type-select-caret {
+  margin-left: auto;
+  color: #64748b;
+}

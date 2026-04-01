@@ -196,214 +196,215 @@ const Sidebar: React.FC<SidebarProps> = ({
     });
   }, [projectArtifacts, normalizedFilter]);
 
-  if (isCollapsed) {
-    return (
-      <div className="sidebar collapsed">
-        <button className="sidebar-toggle" onClick={onToggleCollapse}>
-          &gt;
-        </button>
-      </div>
-    );
-  }
-
   const isLoading = selectedView === 'projects' ? projectsLoading : artifactsLoading;
   const actionsDisabled = !currentProject || !!creatingType;
 
   return (
-    <div className="sidebar">
-      <div className="sidebar-header">
-        <h3>{selectedView === 'projects' ? labels.projects : labels.artifacts}</h3>
-        <button className="sidebar-toggle" onClick={onToggleCollapse}>&lt;</button>
-      </div>
-
-      <div className="sidebar-nav">
+    <div className={`sidebar-shell ${isCollapsed ? 'collapsed' : 'expanded'}`}>
+      <div className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>
         <button
-          className={`nav-btn ${selectedView === 'projects' ? 'active' : ''}`}
-          onClick={() => setSelectedView('projects')}
+          className="sidebar-grip"
+          onClick={onToggleCollapse}
+          title={isCollapsed ? '\u041f\u043e\u043a\u0430\u0437\u0430\u0442\u044c \u043f\u0430\u043d\u0435\u043b\u044c' : '\u0421\u043a\u0440\u044b\u0442\u044c \u043f\u0430\u043d\u0435\u043b\u044c'}
+          aria-label={isCollapsed ? '\u041f\u043e\u043a\u0430\u0437\u0430\u0442\u044c \u043f\u0430\u043d\u0435\u043b\u044c' : '\u0421\u043a\u0440\u044b\u0442\u044c \u043f\u0430\u043d\u0435\u043b\u044c'}
         >
-          {labels.projects}
+          {isCollapsed ? '>' : '<'}
         </button>
-        <button
-          className={`nav-btn ${selectedView === 'artifacts' ? 'active' : ''}`}
-          onClick={() => setSelectedView('artifacts')}
-          disabled={!currentProject}
-          title={!currentProject ? labels.selectProject : undefined}
-        >
-          {labels.artifacts}
-        </button>
-      </div>
 
-      {selectedView === 'projects' && (
-        <div className="project-create-row">
-          <input
-            className="project-input"
-            type="text"
-            value={projectName}
-            placeholder={labels.createProjectPlaceholder}
-            onChange={(e) => {
-              setProjectName(e.target.value);
-              setProjectError(null);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleCreateProject();
-            }}
-          />
+        <div className="sidebar-header">
+          <h3>{selectedView === 'projects' ? labels.projects : labels.artifacts}</h3>
+          <button className="sidebar-toggle" onClick={onToggleCollapse}>{isCollapsed ? '>' : '<'}</button>
+        </div>
+
+        <div className="sidebar-nav">
           <button
-            className="project-create"
-            onClick={handleCreateProject}
-            disabled={creatingProject || !projectName.trim()}
+            className={`nav-btn ${selectedView === 'projects' ? 'active' : ''}`}
+            onClick={() => setSelectedView('projects')}
           >
-            {labels.createProject}
+            {labels.projects}
           </button>
-          {projectError && <div className="project-error">{projectError}</div>}
+          <button
+            className={`nav-btn ${selectedView === 'artifacts' ? 'active' : ''}`}
+            onClick={() => setSelectedView('artifacts')}
+            disabled={!currentProject}
+            title={!currentProject ? labels.selectProject : undefined}
+          >
+            {labels.artifacts}
+          </button>
         </div>
-      )}
 
-      <div className="sidebar-actions">
-        <button
-          className="action-btn"
-          onClick={() => openCreate('graph')}
-          disabled={actionsDisabled}
-          title={!currentProject ? labels.selectProject : labels.createGraph}
-        >
-          {icons.graph}
-        </button>
-        <button
-          className="action-btn"
-          onClick={() => openCreate('document')}
-          disabled={actionsDisabled}
-          title={!currentProject ? labels.selectProject : labels.createDocument}
-        >
-          {icons.document}
-        </button>
-        <button
-          className="action-btn"
-          onClick={() => openCreate('map')}
-          disabled={actionsDisabled}
-          title={!currentProject ? labels.selectProject : labels.createMap}
-        >
-          {icons.map}
-        </button>
-      </div>
-      {creatingType && (
-        <div className="sidebar-create-row">
+        {selectedView === 'projects' && (
+          <div className="project-create-row">
+            <input
+              className="project-input"
+              type="text"
+              value={projectName}
+              placeholder={labels.createProjectPlaceholder}
+              onChange={(e) => {
+                setProjectName(e.target.value);
+                setProjectError(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleCreateProject();
+              }}
+            />
+            <button
+              className="project-create"
+              onClick={handleCreateProject}
+              disabled={creatingProject || !projectName.trim()}
+            >
+              {labels.createProject}
+            </button>
+            {projectError && <div className="project-error">{projectError}</div>}
+          </div>
+        )}
+
+        <div className="sidebar-actions">
+          <button
+            className="action-btn"
+            onClick={() => openCreate('graph')}
+            disabled={actionsDisabled}
+            title={!currentProject ? labels.selectProject : labels.createGraph}
+          >
+            {icons.graph}
+          </button>
+          <button
+            className="action-btn"
+            onClick={() => openCreate('document')}
+            disabled={actionsDisabled}
+            title={!currentProject ? labels.selectProject : labels.createDocument}
+          >
+            {icons.document}
+          </button>
+          <button
+            className="action-btn"
+            onClick={() => openCreate('map')}
+            disabled={actionsDisabled}
+            title={!currentProject ? labels.selectProject : labels.createMap}
+          >
+            {icons.map}
+          </button>
+        </div>
+        {creatingType && (
+          <div className="sidebar-create-row">
+            <input
+              className="create-input"
+              type="text"
+              value={createName}
+              placeholder={labels.createNamePlaceholder}
+              onChange={(e) => setCreateName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleCreateArtifact();
+                if (e.key === 'Escape') cancelCreate();
+              }}
+            />
+            <button className="create-confirm" onClick={handleCreateArtifact}>
+              {labels.createConfirm}
+            </button>
+            <button className="create-cancel" onClick={cancelCreate}>
+              {labels.createCancel}
+            </button>
+          </div>
+        )}
+
+        <div className="sidebar-search">
           <input
-            className="create-input"
             type="text"
-            value={createName}
-            placeholder={labels.createNamePlaceholder}
-            onChange={(e) => setCreateName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleCreateArtifact();
-              if (e.key === 'Escape') cancelCreate();
-            }}
+            placeholder={labels.search}
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
           />
-          <button className="create-confirm" onClick={handleCreateArtifact}>
-            {labels.createConfirm}
-          </button>
-          <button className="create-cancel" onClick={cancelCreate}>
-            {labels.createCancel}
-          </button>
         </div>
-      )}
 
-      <div className="sidebar-search">
-        <input
-          type="text"
-          placeholder={labels.search}
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-        />
-      </div>
+        {selectedView === 'artifacts' && (
+          <button
+            className="back-btn"
+            onClick={() => setSelectedView('projects')}
+          >
+            {labels.backToProjects}
+          </button>
+        )}
 
-      {selectedView === 'artifacts' && (
-        <button
-          className="back-btn"
-          onClick={() => setSelectedView('projects')}
-        >
-          {labels.backToProjects}
-        </button>
-      )}
-
-      <div className="sidebar-list">
-        {isLoading ? (
-          <div className="sidebar-loading">{labels.loading}</div>
-        ) : selectedView === 'projects' ? (
-          filteredProjects.length === 0 ? (
-            <div className="sidebar-empty">{labels.noProjects}</div>
-          ) : (
-            filteredProjects.map(project => (
-              <div
-                key={project.id}
-                className={`sidebar-item ${currentProject?.id === project.id ? 'active' : ''}`}
-                onClick={() => handleProjectSelect(project.id)}
-              >
-                <div className="item-icon">P</div>
-                <div className="item-content">
-                  <div className="item-name">{project.name}</div>
-                  <div className="item-meta">
-                    <span className="item-date">
-                      {new Date(project.created_at).toLocaleDateString()}
-                    </span>
-                  </div>
-                </div>
-                <button
-                  className="project-delete"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteProject(project.id, project.name);
-                  }}
-                  title={labels.deleteProject}
-                  disabled={deletingProjectId === project.id}
-                >
-                  X
-                </button>
-              </div>
-            ))
-          )
-        ) : (
-          filteredArtifacts.length === 0 ? (
-            <div className="sidebar-empty">{labels.noArtifacts}</div>
-          ) : (
-            filteredArtifacts.map(artifact => {
-              if (!artifact) return null;
-              const icon = artifact.type === 'graph'
-                ? 'G'
-                : artifact.type === 'table'
-                  ? 'T'
-                  : artifact.type === 'map'
-                    ? 'M'
-                    : artifact.type === 'chart'
-                      ? 'C'
-                      : 'D';
-              return (
+        <div className="sidebar-list">
+          {isLoading ? (
+            <div className="sidebar-loading">{labels.loading}</div>
+          ) : selectedView === 'projects' ? (
+            filteredProjects.length === 0 ? (
+              <div className="sidebar-empty">{labels.noProjects}</div>
+            ) : (
+              filteredProjects.map(project => (
                 <div
-                  key={artifact.id}
-                  className="sidebar-item"
-                  onClick={() => handleArtifactSelect(artifact)}
+                  key={project.id}
+                  className={`sidebar-item ${currentProject?.id === project.id ? 'active' : ''}`}
+                  onClick={() => handleProjectSelect(project.id)}
                 >
-                  <div className="item-icon">{icon}</div>
+                  <div className="item-icon">P</div>
                   <div className="item-content">
-                    <div className="item-name">{artifact.name}</div>
+                    <div className="item-name">{project.name}</div>
                     <div className="item-meta">
-                      <span className="item-type">{artifact.type}</span>
-                      <span className="item-version">v{artifact.version || 1}</span>
+                      <span className="item-date">
+                        {new Date(project.created_at).toLocaleDateString()}
+                      </span>
                     </div>
                   </div>
+                  <button
+                    className="project-delete"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteProject(project.id, project.name);
+                    }}
+                    title={labels.deleteProject}
+                    disabled={deletingProjectId === project.id}
+                  >
+                    X
+                  </button>
                 </div>
-              );
-            })
-          )
+              ))
+            )
+          ) : (
+            filteredArtifacts.length === 0 ? (
+              <div className="sidebar-empty">{labels.noArtifacts}</div>
+            ) : (
+              filteredArtifacts.map(artifact => {
+                if (!artifact) return null;
+                const icon = artifact.type === 'graph'
+                  ? 'G'
+                  : artifact.type === 'table'
+                    ? 'T'
+                    : artifact.type === 'map'
+                      ? 'M'
+                      : artifact.type === 'chart'
+                        ? 'C'
+                        : 'D';
+                return (
+                  <div
+                    key={artifact.id}
+                    className="sidebar-item"
+                    onClick={() => handleArtifactSelect(artifact)}
+                  >
+                    <div className="item-icon">{icon}</div>
+                    <div className="item-content">
+                      <div className="item-name">{artifact.name}</div>
+                      <div className="item-meta">
+                        <span className="item-type">{artifact.type}</span>
+                        <span className="item-version">v{artifact.version || 1}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )
+          )}
+        </div>
+
+        {selectedView === 'artifacts' && currentProject && (
+          <div className="sidebar-footer">
+            <div className="current-project-info">
+              <strong>{labels.projectLabel}</strong> {currentProject.name}
+            </div>
+          </div>
         )}
       </div>
-
-      {selectedView === 'artifacts' && currentProject && (
-        <div className="sidebar-footer">
-          <div className="current-project-info">
-            <strong>{labels.projectLabel}</strong> {currentProject.name}
-          </div>
-        </div>
-      )}
     </div>
   );
 };

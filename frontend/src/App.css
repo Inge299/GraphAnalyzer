@@ -1,4 +1,4 @@
-﻿/* frontend/src/App.css */
+/* frontend/src/App.css */
 
 :root {
   --bg-primary: #f3f5f9;
@@ -39,20 +39,10 @@
   overflow: hidden;
 }
 
-.sidebar {
-  width: 280px;
-  background: var(--bg-secondary);
-  border-right: 1px solid var(--border-color);
-  display: flex;
-  flex-direction: column;
+.sidebar-shell {
+  height: 100%;
   flex-shrink: 0;
-  overflow: hidden;
 }
-
-.sidebar.collapsed {
-  width: 40px;
-}
-
 .content-area {
   flex: 1;
   min-width: 0;
