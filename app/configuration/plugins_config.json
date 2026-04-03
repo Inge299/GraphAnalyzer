@@ -1,0 +1,23 @@
+﻿{
+  "version": 1,
+  "plugins": {
+    "abonent_period_enricher": {
+      "connection": {
+        "url": "",
+        "db": {
+          "driver": "mssql+pymssql",
+          "host": "localhost",
+          "instance": "",
+          "port": 1433,
+          "database": "TestData",
+          "auth_type": "sql",
+          "username": "sa",
+          "password": ""
+        }
+      },
+      "query": {
+        "table": "[TestData].[dbo].[abonents_list]"
+      }
+    }
+  }
+}

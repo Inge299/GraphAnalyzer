@@ -10,6 +10,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.services.domain_model_service import get_domain_model
+from app.services.plugins_config_service import get_plugin_config
 from plugins import PluginBase
 
 
@@ -69,12 +70,42 @@ def _dedupe_preserve_order(items: List[str]) -> List[str]:
     return result
 
 
+def _build_mssql_url(db_cfg: Dict[str, Any]) -> str:
+    """Build SQLAlchemy URL from plugin config fields.
+
+    Supported auth_type values:
+    - "sql": username/password auth
+    - "trusted": integrated/trusted connection
+
+    Note: this uses SQLAlchemy style URL. Choose driver in config, for example:
+      - mssql+pymssql
+      - mssql+pyodbc
+    """
+    driver = str(db_cfg.get("driver") or "").strip() or "mssql+pymssql"
+    host = str(db_cfg.get("host") or "").strip() or "localhost"
+    port = int(db_cfg.get("port") or 1433)
+    instance = str(db_cfg.get("instance") or "").strip()
+    database = str(db_cfg.get("database") or "").strip() or "TestData"
+    auth_type = str(db_cfg.get("auth_type") or "sql").strip().lower()
+
+    server = host
+    if instance:
+        server = f"{host}\\{instance}"
+
+    if auth_type == "trusted":
+        return f"{driver}://@{server}:{port}/{database}?trusted_connection=yes"
+
+    username = str(db_cfg.get("username") or "").strip()
+    password = str(db_cfg.get("password") or "").strip()
+    return f"{driver}://{username}:{password}@{server}:{port}/{database}"
+
+
 class AbonentPeriodEnricherPlugin(PluginBase):
     id = "abonent_period_enricher"
     name = "Abonent Period Enricher"
-    version = "0.1.0"
+    version = "0.2.0"
     description = "Loads abonent records for a period and enriches/creates abonent node in current graph"
-    menu_path = "Enrichment/Telecom"
+    menu_path = "Создать объект/Телеком"
     input_types = ["graph"]
     output_types = ["graph"]
     applicable_to = ["graph"]
@@ -149,12 +180,48 @@ class AbonentPeriodEnricherPlugin(PluginBase):
             }
         ]
 
+    def _resolve_plugin_sql_config(self) -> Dict[str, Any]:
+        cfg = get_plugin_config(self.id)
+        return cfg if isinstance(cfg, dict) else {}
+
+    def _resolve_db_url(self) -> str:
+        # Backward compatible env var override (highest priority).
+        env_url = os.getenv("ABONENTS_DB_URL", "").strip()
+        if env_url:
+            return env_url
+
+        cfg = self._resolve_plugin_sql_config()
+        connection = cfg.get("connection") if isinstance(cfg.get("connection"), dict) else {}
+
+        direct_url = str(connection.get("url") or "").strip()
+        if direct_url:
+            return direct_url
+
+        db_cfg = connection.get("db") if isinstance(connection.get("db"), dict) else {}
+        if db_cfg:
+            return _build_mssql_url(db_cfg)
+
+        return ""
+
+    def _resolve_table_name(self) -> str:
+        cfg = self._resolve_plugin_sql_config()
+        query_cfg = cfg.get("query") if isinstance(cfg.get("query"), dict) else {}
+        configured = str(query_cfg.get("table") or "").strip()
+        if configured:
+            return configured
+
+        env_table = str(os.getenv("ABONENTS_TABLE", "")).strip()
+        if env_table:
+            return env_table
+
+        return "[TestData].[dbo].[abonents_list]"
+
     def _load_rows(self, phone_number: str, period_start: date, period_end: date) -> List[Dict[str, str]]:
-        db_url = os.getenv("ABONENTS_DB_URL", "").strip()
+        db_url = self._resolve_db_url()
         if not db_url:
             return []
 
-        table_name = os.getenv("ABONENTS_TABLE", "[TestData].[dbo].[abonents_list]").strip() or "[TestData].[dbo].[abonents_list]"
+        table_name = self._resolve_table_name()
 
         before_sql = text(
             f"""
