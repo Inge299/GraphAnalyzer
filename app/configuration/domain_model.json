@@ -1,45 +1,45 @@
-{
+﻿{
   "version": 1,
   "node_types": [
     {
       "id": "person",
-      "label": "Абонент",
+      "label": "РђР±РѕРЅРµРЅС‚",
       "icon": "person_phone",
       "default_visual": {
         "color": "#2563eb",
         "iconScale": 2,
         "ringEnabled": true,
-        "ringWidth": 2
+        "ringWidth": 1.5
       },
       "attributes": [
-        { "key": "name", "type": "string", "label": "Имя" },
-        { "key": "phone", "type": "string", "label": "Телефон" }
+        { "key": "name", "type": "string", "label": "РРјСЏ" },
+        { "key": "phone", "type": "string", "label": "РўРµР»РµС„РѕРЅ" }
       ]
     },
     {
       "id": "phone",
-      "label": "Смартфон",
+      "label": "РЎРјР°СЂС‚С„РѕРЅ",
       "icon": "smartphone",
       "default_visual": {
         "color": "#0ea5e9",
         "iconScale": 2,
         "ringEnabled": true,
-        "ringWidth": 2
+        "ringWidth": 1.5
       },
       "attributes": [
-        { "key": "number", "type": "string", "label": "Номер" },
+        { "key": "number", "type": "string", "label": "РќРѕРјРµСЂ" },
         { "key": "imei", "type": "string", "label": "IMEI" }
       ]
     },
     {
       "id": "sim",
-      "label": "SIM-карта",
+      "label": "SIM-РєР°СЂС‚Р°",
       "icon": "sim",
       "default_visual": {
         "color": "#22c55e",
         "iconScale": 2,
         "ringEnabled": true,
-        "ringWidth": 2
+        "ringWidth": 1.5
       },
       "attributes": [
         { "key": "iccid", "type": "string", "label": "ICCID" },
@@ -48,13 +48,13 @@
     },
     {
       "id": "ip",
-      "label": "IP-адрес",
+      "label": "IP-Р°РґСЂРµСЃ",
       "icon": "ip",
       "default_visual": {
         "color": "#6366f1",
         "iconScale": 2,
         "ringEnabled": true,
-        "ringWidth": 2
+        "ringWidth": 1.5
       },
       "attributes": [
         { "key": "ip", "type": "string", "label": "IP" }
@@ -62,13 +62,13 @@
     },
     {
       "id": "email",
-      "label": "Почта",
+      "label": "РџРѕС‡С‚Р°",
       "icon": "mail",
       "default_visual": {
         "color": "#f59e0b",
         "iconScale": 2,
         "ringEnabled": true,
-        "ringWidth": 2
+        "ringWidth": 1.5
       },
       "attributes": [
         { "key": "email", "type": "string", "label": "Email" }
@@ -76,96 +76,96 @@
     },
     {
       "id": "social_id",
-      "label": "Соцсеть",
+      "label": "РЎРѕС†СЃРµС‚СЊ",
       "icon": "social",
       "default_visual": {
         "color": "#ec4899",
         "iconScale": 2,
         "ringEnabled": true,
-        "ringWidth": 2
+        "ringWidth": 1.5
       },
       "attributes": [
-        { "key": "network", "type": "string", "label": "Сеть" },
-        { "key": "account", "type": "string", "label": "Аккаунт" }
+        { "key": "network", "type": "string", "label": "РЎРµС‚СЊ" },
+        { "key": "account", "type": "string", "label": "РђРєРєР°СѓРЅС‚" }
       ]
     },
     {
       "id": "passport",
-      "label": "Паспорт",
+      "label": "РџР°СЃРїРѕСЂС‚",
       "icon": "passport",
       "default_visual": {
         "color": "#ef4444",
         "iconScale": 2,
         "ringEnabled": true,
-        "ringWidth": 2
+        "ringWidth": 1.5
       },
       "attributes": [
-        { "key": "series", "type": "string", "label": "Серия" },
-        { "key": "number", "type": "string", "label": "Номер" }
+        { "key": "series", "type": "string", "label": "РЎРµСЂРёСЏ" },
+        { "key": "number", "type": "string", "label": "РќРѕРјРµСЂ" }
       ]
     },
     {
       "id": "vehicle",
-      "label": "Авто",
+      "label": "РђРІС‚Рѕ",
       "icon": "car",
       "default_visual": {
         "color": "#14b8a6",
         "iconScale": 2,
         "ringEnabled": true,
-        "ringWidth": 2
+        "ringWidth": 1.5
       },
       "attributes": [
-        { "key": "plate", "type": "string", "label": "Госномер" }
+        { "key": "plate", "type": "string", "label": "Р“РѕСЃРЅРѕРјРµСЂ" }
       ]
     },
     {
       "id": "address",
-      "label": "Адрес",
+      "label": "РђРґСЂРµСЃ",
       "icon": "address",
       "default_visual": {
         "color": "#8b5cf6",
         "iconScale": 2,
         "ringEnabled": true,
-        "ringWidth": 2
+        "ringWidth": 1.5
       },
       "attributes": [
-        { "key": "address", "type": "string", "label": "Адрес" }
+        { "key": "address", "type": "string", "label": "РђРґСЂРµСЃ" }
       ]
     },
     {
       "id": "location",
-      "label": "Координаты",
+      "label": "РљРѕРѕСЂРґРёРЅР°С‚С‹",
       "icon": "location",
       "default_visual": {
         "color": "#f97316",
         "iconScale": 2,
         "ringEnabled": true,
-        "ringWidth": 2
+        "ringWidth": 1.5
       },
       "attributes": [
-        { "key": "latitude", "type": "number", "label": "Широта" },
-        { "key": "longitude", "type": "number", "label": "Долгота" }
+        { "key": "latitude", "type": "number", "label": "РЁРёСЂРѕС‚Р°" },
+        { "key": "longitude", "type": "number", "label": "Р”РѕР»РіРѕС‚Р°" }
       ]
     },
     {
       "id": "bank_card",
-      "label": "Банковская карта",
+      "label": "Р‘Р°РЅРєРѕРІСЃРєР°СЏ РєР°СЂС‚Р°",
       "icon": "bank_card",
       "default_visual": {
         "color": "#64748b",
         "iconScale": 2,
         "ringEnabled": true,
-        "ringWidth": 2
+        "ringWidth": 1.5
       },
       "attributes": [
-        { "key": "pan_masked", "type": "string", "label": "Номер (маска)" }
+        { "key": "pan_masked", "type": "string", "label": "РќРѕРјРµСЂ (РјР°СЃРєР°)" }
       ]
     }
   ],
   "edge_types": [
     {
       "id": "owns",
-      "label": "Владеет",
+      "label": "Р’Р»Р°РґРµРµС‚",
       "default_visual": {
         "color": "#334155",
         "width": 2,
@@ -177,7 +177,7 @@
     },
     {
       "id": "uses",
-      "label": "Использует",
+      "label": "РСЃРїРѕР»СЊР·СѓРµС‚",
       "default_visual": {
         "color": "#2563eb",
         "width": 2,
@@ -189,7 +189,7 @@
     },
     {
       "id": "located_at",
-      "label": "Находится",
+      "label": "РќР°С…РѕРґРёС‚СЃСЏ",
       "default_visual": {
         "color": "#0f766e",
         "width": 2,
@@ -201,7 +201,7 @@
     },
     {
       "id": "connected_to",
-      "label": "Связан",
+      "label": "РЎРІСЏР·Р°РЅ",
       "default_visual": {
         "color": "#475569",
         "width": 2,

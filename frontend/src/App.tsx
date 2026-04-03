@@ -1,4 +1,4 @@
-// frontend/src/App.tsx
+﻿// frontend/src/App.tsx
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useAppDispatch, useAppSelector } from './store';
 import { fetchProjects, setCurrentProject } from './store/slices/projectsSlice';
@@ -163,7 +163,17 @@ function App() {
   useEffect(() => {
     setTabs(prev => {
       const validTabs = prev.filter(tab => !!artifacts[tab.artifactId]);
-      return validTabs.length === prev.length ? prev : validTabs;
+      const deduped: Tab[] = [];
+      const seen = new Set<number>();
+      for (const tab of validTabs) {
+        if (seen.has(tab.artifactId)) continue;
+        seen.add(tab.artifactId);
+        deduped.push(tab);
+      }
+      if (deduped.length === prev.length && deduped.every((tab, idx) => tab.id === prev[idx]?.id)) {
+        return prev;
+      }
+      return deduped;
     });
   }, [artifacts]);
 
@@ -339,7 +349,7 @@ function App() {
         return nodeType === typeId && nodeLabel === normalizedLabel;
       });
       if (duplicate) {
-        window.alert('РЈР·РµР» СЃ С‚Р°РєРёРј С‚РёРїРѕРј Рё РїРѕРґРїРёСЃСЊСЋ СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓРµС‚');
+        window.alert('Р Р€Р В·Р ВµР В» РЎРѓ РЎвЂљР В°Р С”Р С‘Р С РЎвЂљР С‘Р С—Р С•Р С Р С‘ Р С—Р С•Р Т‘Р С—Р С‘РЎРѓРЎРЉРЎР‹ РЎС“Р В¶Р Вµ РЎРѓРЎС“РЎвЂ°Р ВµРЎРѓРЎвЂљР Р†РЎС“Р ВµРЎвЂљ');
         return;
       }
     }
@@ -361,7 +371,7 @@ function App() {
       label: typeId
     };
 
-    const nodeLabel = String(label || defaults.label || typeId || 'РќРѕРІС‹Р№ СѓР·РµР»');
+    const nodeLabel = String(label || defaults.label || typeId || 'Р СњР С•Р Р†РЎвЂ№Р в„– РЎС“Р В·Р ВµР В»');
 
     const newNode = {
       id: nodeId,
@@ -393,7 +403,7 @@ function App() {
     await execute(
       async () => afterState,
       {
-        description: `Р”РѕР±Р°РІР»РµРЅ СѓР·РµР» ${nodeLabel}`,
+        description: `Р вЂќР С•Р В±Р В°Р Р†Р В»Р ВµР Р… РЎС“Р В·Р ВµР В» ${nodeLabel}`,
         actionType: 'add_node'
       }
     );
@@ -550,27 +560,28 @@ function App() {
   }, []);
 
   const handleArtifactSelect = useCallback((artifact: any) => {
-    const existingTab = tabs.find(t => t.artifactId === artifact.id);
+    const tabId = 'tab-' + artifact.id;
 
-    if (existingTab) {
-      setActiveTabId(existingTab.id);
-    } else {
+    setTabs(prev => {
+      const existingTab = prev.find(t => t.artifactId === artifact.id);
+      if (existingTab) return prev;
+
       const newTab: Tab = {
-        id: 'tab-' + artifact.id,
+        id: tabId,
         artifactId: artifact.id,
         title: artifact.name,
         type: artifact.type
       };
-      setTabs(prev => [...prev, newTab]);
-      setActiveTabId(newTab.id);
-    }
+      return [...prev, newTab];
+    });
 
+    setActiveTabId(tabId);
     dispatch(setCurrentArtifact(artifact.id));
 
     if (artifact?.data) {
       lastNodesStateRef.current = artifact.data;
     }
-  }, [tabs, dispatch]);
+  }, [dispatch]);
 
   const handleTabClick = useCallback((tabId: string) => {
     setActiveTabId(tabId);
@@ -745,6 +756,8 @@ function App() {
 }
 
 export default App;
+
+
 
 
 

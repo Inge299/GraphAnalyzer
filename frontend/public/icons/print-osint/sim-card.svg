@@ -1,8 +1,8 @@
 ﻿<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" fill="none">
-  <circle cx="32" cy="32" r="26" fill="#FBFBF9" stroke="#1B1F23" stroke-width="2.8"/>
-  <path d="M25 18H36L43 25V42.5C43 43.8807 41.8807 45 40.5 45H25C23.6193 45 22.5 43.8807 22.5 42.5V20.5C22.5 19.1193 23.6193 18 25 18Z" fill="#EEF1F3" stroke="#1B1F23" stroke-width="2.8" stroke-linejoin="round"/>
-  <path d="M36 18V25H43" stroke="#1B1F23" stroke-width="2.8" stroke-linejoin="round"/>
-  <rect x="27.5" y="29" width="11" height="10.5" rx="1.5" stroke="#1B1F23" stroke-width="2.8"/>
-  <path d="M31 29V39.5" stroke="#1B1F23" stroke-width="2.8"/>
-  <path d="M35 29V39.5" stroke="#1B1F23" stroke-width="2.8"/>
+  <circle cx="32" cy="32" r="26" fill="#FBFBF9" stroke="#1B1F23" stroke-width="1.5"/>
+  <path d="M25 18H35L43 26V42.5C43 43.8807 41.8807 45 40.5 45H25C23.6193 45 22.5 43.8807 22.5 42.5V20.5C22.5 19.1193 23.6193 18 25 18Z" fill="#EEF1F3" stroke="#1B1F23" stroke-width="1.7" stroke-linejoin="round"/>
+  <rect x="27.5" y="29" width="11" height="10.5" rx="1.5" stroke="#1B1F23" stroke-width="1.7"/>
+  <path d="M31 29V39.5" stroke="#1B1F23" stroke-width="1.7"/>
+  <path d="M35 29V39.5" stroke="#1B1F23" stroke-width="1.7"/>
 </svg>
+

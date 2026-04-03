@@ -1,12 +1,14 @@
 ﻿// frontend/src/components/views/GraphView.tsx
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useAppDispatch } from '../../store';
 import { setSelectedElements } from '../../store/slices/uiSlice';
 import { Network } from 'vis-network/standalone';
 import { DataSet } from 'vis-data/standalone';
-import { domainModelApi } from '../../services/api';
-import type { ApiArtifact, DomainModelConfig } from '../../types/api';
+import { domainModelApi, pluginApi } from '../../services/api';
+import type { ApiArtifact, ApiPlugin, DomainModelConfig, PluginExecutionContext } from '../../types/api';
 import { layoutConfig } from '../../config/layout';
+import { fetchArtifacts, setCurrentArtifact } from '../../store/slices/artifactsSlice';
+import { collectPluginParamsWithPrompts } from '../../utils/pluginParams';
 import 'vis-network/styles/vis-network.css';
 import './GraphView.css';
 
@@ -35,6 +37,72 @@ interface PendingMove {
   y: number;
 }
 
+interface PluginContextMenuState {
+  x: number;
+  y: number;
+  context: PluginExecutionContext;
+  plugins: ApiPlugin[];
+  loading: boolean;
+}
+
+interface PluginMenuNode {
+  key: string;
+  label: string;
+  depth: number;
+  children: PluginMenuNode[];
+  plugins: ApiPlugin[];
+}
+
+interface PluginMenuEntry {
+  kind: 'folder' | 'plugin';
+  key: string;
+  label: string;
+  node?: PluginMenuNode;
+  plugin?: ApiPlugin;
+}
+
+const buildPluginMenuTree = (plugins: ApiPlugin[]): PluginMenuNode[] => {
+  const root: PluginMenuNode[] = [];
+  const nodeByPath = new Map<string, PluginMenuNode>();
+
+  const ensureNode = (segments: string[]) => {
+    let parentPath = '';
+    let siblings = root;
+
+    segments.forEach((segment, index) => {
+      const safe = segment.trim() || '\u041f\u0440\u043e\u0447\u0435\u0435';
+      const path = parentPath ? `${parentPath}/${safe}` : safe;
+      let node = nodeByPath.get(path);
+      if (!node) {
+        node = { key: path, label: safe, depth: index, children: [], plugins: [] };
+        siblings.push(node);
+        nodeByPath.set(path, node);
+      }
+      siblings = node.children;
+      parentPath = path;
+    });
+
+    return nodeByPath.get(parentPath);
+  };
+
+  plugins.forEach((plugin) => {
+    const rawPath = String(plugin.menu_path || '\u041f\u0440\u043e\u0447\u0435\u0435').trim() || '\u041f\u0440\u043e\u0447\u0435\u0435';
+    const segments = rawPath.split('/').map((s) => s.trim()).filter(Boolean);
+    const target = ensureNode(segments.length > 0 ? segments : ['\u041f\u0440\u043e\u0447\u0435\u0435']);
+    if (target) target.plugins.push(plugin);
+  });
+
+  const sortTree = (nodes: PluginMenuNode[]) => {
+    nodes.sort((a, b) => a.label.localeCompare(b.label, 'ru'));
+    nodes.forEach((node) => {
+      node.plugins.sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+      sortTree(node.children);
+    });
+  };
+
+  sortTree(root);
+  return root;
+};
 
 const getNodeId = (node: any) => node.id || node.node_id;
 
@@ -62,12 +130,28 @@ const wrapLabel = (value: string, maxChars = 22) => {
   return lines.join('\n');
 };
 
-const getNodeLabel = (node: any) => {
+const getNodeBaseLabel = (node: any) => {
   const visual = node.attributes?.visual || {};
-  const baseLabel = node.label || visual.label || node.attributes?.label || node.attributes?.name || node.attributes?.title || getNodeId(node) || '';
-  return wrapLabel(String(baseLabel), 22);
+  return String(node.label || visual.label || node.attributes?.label || node.attributes?.name || node.attributes?.title || getNodeId(node) || '');
 };
 
+const getNodeLabel = (node: any) => wrapLabel(getNodeBaseLabel(node), 22);
+
+const getNodeTooltip = (node: any, scale: number) => {
+  const maxScale = Number((layoutConfig as any)?.interaction?.nodeTooltipMaxScale ?? 0.75);
+  if (!Number.isFinite(maxScale) || scale > maxScale) return '';
+  return getNodeBaseLabel(node);
+};
+
+const getEdgeBaseLabel = (edge: any) => String(edge.label || edge.attributes?.visual?.label || edge.attributes?.label || edge.type || '');
+
+const getEdgeLabel = (edge: any) => wrapLabel(getEdgeBaseLabel(edge), 24);
+
+const getEdgeTooltip = (edge: any, scale: number) => {
+  const maxScale = Number((layoutConfig as any)?.interaction?.nodeTooltipMaxScale ?? 0.75);
+  if (!Number.isFinite(maxScale) || scale > maxScale) return '';
+  return getEdgeBaseLabel(edge);
+};
 const getNodeIcon = (node: any) => {
   const visual = node.attributes?.visual || {};
   return visual.icon || node.attributes?.icon || '';
@@ -82,13 +166,22 @@ const getNodeRingEnabled = (node: any) => {
 
 const getNodeRingWidth = (node: any) => {
   const visual = node.attributes?.visual || {};
-  const raw = visual.ringWidth ?? node.attributes?.ringWidth ?? 2;
+  const raw = visual.ringWidth ?? node.attributes?.ringWidth ?? 1.5;
   const width = Number(raw);
-  return Number.isFinite(width) ? Math.max(0, width) : 2;
+  return Number.isFinite(width) ? Math.max(0, width) : 1.5;
 };
 
-const getNodeImagePadding = (_node: any) => {
-  return 10;
+const getIconVisualKey = (icon: string) => String(icon || '').trim().toLowerCase().replace(/\.[a-z0-9]+$/i, '');
+
+const getNodeImagePadding = (node: any) => {
+  const icon = getNodeIcon(node);
+  if (!icon) return Number((layoutConfig as any)?.iconRendering?.defaultImagePadding ?? 10);
+
+  const key = getIconVisualKey(icon);
+  const iconRendering = (layoutConfig as any)?.iconRendering || {};
+  const perIcon = (iconRendering.perIcon || {})[key] || {};
+  const raw = Number(perIcon.imagePadding ?? iconRendering.defaultImagePadding ?? 10);
+  return Number.isFinite(raw) ? Math.max(0, raw) : 10;
 };
 
 
@@ -160,16 +253,19 @@ const getNodeSize = (node: any) => {
   const visual = node.attributes?.visual || {};
   const icon = getNodeIcon(node);
   const scaleRaw = visual.iconScale ?? node.attributes?.iconScale;
-  const iconScale = Number(scaleRaw || 2);
-  const padding = getNodeImagePadding(node);
+  const scaleValue = Number(scaleRaw);
+  const iconScale = Number.isFinite(scaleValue) ? scaleValue : 2;
+  const sizePaddingRaw = Number((layoutConfig as any)?.iconRendering?.sizePadding ?? (layoutConfig as any)?.iconRendering?.defaultImagePadding ?? 10);
+  const sizePadding = Number.isFinite(sizePaddingRaw) ? Math.max(0, sizePaddingRaw) : 10;
   if (icon) {
-    return Math.max(42, Math.min(140, 24 + (iconScale * 12) + (padding * 2)));
+    return Math.max(42, Math.min(140, 24 + (iconScale * 12) + (sizePadding * 2)));
   }
   return visual.size || node.attributes?.size || 20;
 };
 
 const getNodeShape = (node: any) => {
-  return getNodeIcon(node) ? 'circularImage' : (node.attributes?.visual?.shape || node.attributes?.shape || 'dot');
+  const image = getNodeImage(node);
+  return image ? 'circularImage' : (node.attributes?.visual?.shape || node.attributes?.shape || 'dot');
 };
 
 const iconAliasMap: Record<string, string> = {
@@ -190,7 +286,10 @@ const normalizeIconName = (icon: string) => {
 
 const isValidIconName = (icon: string) => {
   if (!icon || icon === '?') return false;
-  return /^[a-zA-Z0-9_.-]+$/.test(icon);
+  const normalized = icon.trim();
+  if (!/^[a-zA-Z0-9_.-]+$/.test(normalized)) return false;
+  if (!normalized.includes('.') && normalized.length < 2) return false;
+  return true;
 };
 
 const printOsintIconMap: Record<string, string> = {
@@ -321,10 +420,10 @@ const buildEdgeCurveMap = (edges: any[]) => {
 
   return curveMap;
 };
-const buildEdgeForVis = (edge: any, nodeRadiusById: Record<string, number>, curveMap: Map<string, EdgeCurveMeta>) => {
+const buildEdgeForVis = (edge: any, nodeRadiusById: Record<string, number>, curveMap: Map<string, EdgeCurveMeta>, scale: number) => {
   const visual = edge.attributes?.visual || {};
   const edgeColor = visual.color || edge.attributes?.color || '#848484';
-  const edgeLabel = wrapLabel(String(edge.label || visual.label || edge.attributes?.label || edge.type || ''), 24);
+  const edgeLabel = getEdgeLabel(edge);
   const edgeWidth = Number(visual.width || edge.attributes?.width || 2);
   const direction = visual.direction || edge.attributes?.direction || 'to';
   const dashed = Boolean(visual.dashed ?? edge.attributes?.dashed);
@@ -344,7 +443,7 @@ const buildEdgeForVis = (edge: any, nodeRadiusById: Record<string, number>, curv
     from: edge.from || edge.source_node,
     to: edge.to || edge.target_node,
     label: edgeLabel,
-    title: `${edge.type}\n${JSON.stringify(edge.attributes || {}, null, 2)}`,
+    title: getEdgeTooltip(edge, scale),
     arrows,
     arrowStrikethrough: false,
     dashes: dashed ? [Math.max(12, edgeWidth * 3), Math.max(10, edgeWidth * 2.8)] : false,
@@ -406,6 +505,8 @@ export const GraphView: React.FC<GraphViewProps> = ({
   const onNodeCreateCompleteRef = useRef(onNodeCreateComplete);
   const connectTypeRef = useRef<string | null>(connectType || null);
   const onConnectCompleteRef = useRef(onConnectComplete);
+  const [pluginMenu, setPluginMenu] = useState<PluginContextMenuState | null>(null);
+  const pluginMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     connectModeRef.current = connectMode;
@@ -453,6 +554,27 @@ export const GraphView: React.FC<GraphViewProps> = ({
   useEffect(() => {
     onConnectCompleteRef.current = onConnectComplete;
   }, [onConnectComplete]);
+  useEffect(() => {
+    const onMouseDown = (event: MouseEvent) => {
+      if (event.button !== 0) return;
+      if (!pluginMenuRef.current) return;
+      if (event.target instanceof Node && pluginMenuRef.current.contains(event.target)) return;
+      setPluginMenu(null);
+    };
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setPluginMenu(null);
+      }
+    };
+
+    document.addEventListener('mousedown', onMouseDown);
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onMouseDown);
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, []);
 
   useEffect(() => {
     artifactDataRef.current = artifact.data || {};
@@ -598,6 +720,29 @@ export const GraphView: React.FC<GraphViewProps> = ({
     if (edgeUpdates.length > 0) {
       edgesDataSetRef.current.update(edgeUpdates);
     }
+}, []);
+
+  const updateNodeTooltipsByScale = useCallback((scale: number) => {
+    if (!nodesDataSetRef.current || !edgesDataSetRef.current) return;
+
+    const resolvedNodes = (artifactDataRef.current?.nodes || []).map((node: any) =>
+      resolveNodeWithDomainIcon(node, nodeTypeIconsRef.current)
+    );
+    const nodeUpdates = resolvedNodes.map((node: any) => ({
+      id: getNodeId(node),
+      title: getNodeTooltip(node, scale)
+    }));
+    if (nodeUpdates.length > 0) {
+      nodesDataSetRef.current.update(nodeUpdates);
+    }
+
+    const edgeUpdates = (artifactDataRef.current?.edges || []).map((edge: any) => ({
+      id: String(edge.id),
+      title: getEdgeTooltip(edge, scale)
+    }));
+    if (edgeUpdates.length > 0) {
+      edgesDataSetRef.current.update(edgeUpdates);
+    }
   }, []);
 
   const updateSelectionFromNetwork = useCallback(() => {
@@ -624,6 +769,48 @@ export const GraphView: React.FC<GraphViewProps> = ({
 
     dispatch(setSelectedElements([...nodes, ...edges]));
   }, [dispatch]);
+
+  const buildPluginContextFromSelection = useCallback((
+    selectedNodes: string[],
+    selectedEdges: string[]
+  ): PluginExecutionContext => {
+    return {
+      selected_nodes: selectedNodes,
+      selected_edges: selectedEdges
+    };
+  }, []);
+
+  const closePluginMenu = useCallback(() => {
+    setPluginMenu(null);
+  }, []);
+
+  const runPluginFromMenu = useCallback(async (plugin: ApiPlugin, context: PluginExecutionContext) => {
+    try {
+      const params = await collectPluginParamsWithPrompts(plugin, artifact.project_id);
+      if (params === null) return;
+
+      const response = await pluginApi.execute(
+        plugin.id,
+        artifact.project_id,
+        [artifact.id],
+        params,
+        context
+      );
+
+      await dispatch(fetchArtifacts(artifact.project_id));
+
+      const created = response?.created || [];
+      if (created.length > 0) {
+        dispatch(setCurrentArtifact(created[0].id));
+      }
+    } catch (error: any) {
+      const detail = error?.response?.data?.detail || error?.message || '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0437\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u044c \u043f\u043b\u0430\u0433\u0438\u043d.';
+      window.alert(detail);
+    } finally {
+      closePluginMenu();
+    }
+  }, [artifact.id, artifact.project_id, closePluginMenu, dispatch]);
+
   useEffect(() => {
     if (!containerRef.current || isInitializedRef.current) return;
 
@@ -638,7 +825,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
       nodes.map((node: any) => ({
         id: getNodeId(node),
         label: getNodeLabel(node),
-        title: `${node.type}\n${JSON.stringify(node.attributes || {}, null, 2)}`,
+        title: getNodeTooltip(node, 1),
         x: node.position_x,
         y: node.position_y,
         color: getNodeColors(node),
@@ -656,7 +843,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
     const nodeRadiusById = buildNodeRadiusById(nodes);
     const edgeCurveMap = buildEdgeCurveMap(edges);
     const edgesData = new DataSet(
-      edges.map((edge: any) => buildEdgeForVis(edge, nodeRadiusById, edgeCurveMap))
+      edges.map((edge: any) => buildEdgeForVis(edge, nodeRadiusById, edgeCurveMap, 1))
     );
 
     nodesDataSetRef.current = nodesData;
@@ -739,6 +926,12 @@ export const GraphView: React.FC<GraphViewProps> = ({
     );
 
     networkRef.current = network;
+    updateNodeTooltipsByScale(network.getScale());
+
+    const onZoom = () => {
+      updateNodeTooltipsByScale(network.getScale());
+    };
+    network.on('zoom', onZoom);
 
     const createBatchGroup = () => {
       return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -750,6 +943,10 @@ export const GraphView: React.FC<GraphViewProps> = ({
 
     network.on('dragStart', (params) => {
       if (params.nodes && params.nodes.length > 0) {
+        if (params.nodes.length === 1) {
+          network.selectNodes([String(params.nodes[0])], false);
+          updateSelectionFromNetwork();
+        }
         isDraggingRef.current = true;
         batchGroupIdRef.current = createBatchGroup();
         console.log(`[GraphView] Started drag batch for ${params.nodes.length} nodes`);
@@ -796,6 +993,62 @@ export const GraphView: React.FC<GraphViewProps> = ({
     network.on('deselectNode', updateSelectionFromNetwork);
     network.on('deselectEdge', updateSelectionFromNetwork);
 
+    
+        const openPluginMenuAt = async (domPoint: { x: number; y: number }) => {
+      const nodeAtPoint = network.getNodeAt(domPoint);
+      const edgeAtPoint = network.getEdgeAt(domPoint);
+
+      if (nodeAtPoint && network.getSelectedNodes().length === 0) {
+        network.selectNodes([String(nodeAtPoint)]);
+      }
+      if (edgeAtPoint && network.getSelectedEdges().length === 0) {
+        network.selectEdges([String(edgeAtPoint)]);
+      }
+
+      updateSelectionFromNetwork();
+
+      const selectedNodes = network.getSelectedNodes().map((id: any) => String(id));
+      const selectedEdges = network.getSelectedEdges().map((id: any) => String(id));
+      const context = buildPluginContextFromSelection(selectedNodes, selectedEdges);
+
+      setPluginMenu({
+        x: Number(domPoint.x || 0),
+        y: Number(domPoint.y || 0),
+        context,
+        plugins: [],
+        loading: true,
+      });
+
+      try {
+        const response = await pluginApi.applicable(artifact.project_id, artifact.id, context);
+        setPluginMenu((prev) => {
+          if (!prev) return prev;
+          return { ...prev, loading: false, plugins: response?.plugins || [] };
+        });
+      } catch {
+        setPluginMenu((prev) => {
+          if (!prev) return prev;
+          return { ...prev, loading: false, plugins: [] };
+        });
+      }
+    };
+
+    network.on('oncontext', async (params: any) => {
+      params?.event?.preventDefault?.();
+      const domPoint = params?.pointer?.DOM || params?.event?.center || { x: 0, y: 0 };
+      await openPluginMenuAt(domPoint);
+    });
+
+    const onDomContextMenu = async (event: MouseEvent) => {
+      event.preventDefault();
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const domPoint = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+      await openPluginMenuAt(domPoint);
+    };
+
+    containerRef.current?.addEventListener('contextmenu', onDomContextMenu);
+
     network.on('click', (params: any) => {
       const pendingNode = nodeCreateSpecRef.current;
       if (pendingNode) {
@@ -835,61 +1088,60 @@ export const GraphView: React.FC<GraphViewProps> = ({
           const sourceType = String(sourceNode?.type || '');
           const edgeType = findEdgeType(requestedEdgeType);
           const allowedFrom = Array.isArray(edgeType?.allowed_from) ? edgeType.allowed_from : ['*'];
+
           if (!matchesType(allowedFrom, sourceType)) {
-            window.alert('Выбранный узел не может быть началом выбранного типа связи.');
+            window.alert('\u041d\u0430\u0447\u0430\u043b\u044c\u043d\u044b\u0439 \u0443\u0437\u0435\u043b \u043d\u0435 \u043f\u043e\u0434\u0445\u043e\u0434\u0438\u0442 \u0434\u043b\u044f \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u043e\u0433\u043e \u0442\u0438\u043f\u0430 \u0441\u0432\u044f\u0437\u0438.');
             return;
           }
         }
+
         setEdgeSourceId(clickedNodeId);
         return;
       }
 
-      if (sourceId === clickedNodeId) {
-        setEdgeSourceId(null);
-        return;
-      }
-
-      const data = artifactDataRef.current || {};
-      const nodesById = new Map((data.nodes || []).map((node: any) => [String(getNodeId(node)), node]));
-      const sourceNode = nodesById.get(sourceId);
-      const targetNode = nodesById.get(clickedNodeId);
-      const sourceType = String(sourceNode?.type || '');
-      const targetType = String(targetNode?.type || '');
-
+      let edgeType = 'connected_to';
       const requestedEdgeType = connectTypeRef.current ? String(connectTypeRef.current) : null;
-      const edgeType = requestedEdgeType || resolveAllowedEdgeType(sourceType, targetType);
-      if (!edgeType) {
-        window.alert('Нельзя создать связь: для выбранных типов узлов нет подходящего типа связи.');
-        setEdgeSourceId(null);
-        if (requestedEdgeType) {
-          onConnectCompleteRef.current?.();
-        } else {
-          setConnectMode(false);
-        }
-        return;
-      }
 
-      if (requestedEdgeType && !isAllowedForEdgeType(requestedEdgeType, sourceType, targetType)) {
-        window.alert('Связь выбранного типа недопустима для этих узлов.');
-        setEdgeSourceId(null);
-        return;
-      }
+      if (requestedEdgeType) {
+        edgeType = requestedEdgeType;
+      } else {
+        const data = artifactDataRef.current || {};
+        const nodesById = new Map((data.nodes || []).map((node: any) => [String(getNodeId(node)), node]));
+        const sourceNode = nodesById.get(sourceId);
+        const targetNode = nodesById.get(clickedNodeId);
+        const sourceType = String(sourceNode?.type || '');
+        const targetType = String(targetNode?.type || '');
+        const resolvedType = resolveAllowedEdgeType(sourceType, targetType);
 
-      const allowParallelEdges = rulesRef.current.allow_parallel_edges;
-      if (!allowParallelEdges) {
-        const edges = data.edges || [];
-        const alreadyExists = edges.some((edge: any) => {
-          const from = String(edge.from || edge.source_node || '');
-          const to = String(edge.to || edge.target_node || '');
-          const type = String(edge.type || '');
-          return from === sourceId && to === clickedNodeId && type === edgeType;
-        });
-        if (alreadyExists) {
-          window.alert('Такая связь уже существует. Создание дубликата запрещено правилами.');
+        if (!resolvedType) {
+          window.alert('\u0414\u043b\u044f \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u043e\u0439 \u043f\u0430\u0440\u044b \u0443\u0437\u043b\u043e\u0432 \u043d\u0435\u0442 \u0434\u043e\u043f\u0443\u0441\u0442\u0438\u043c\u043e\u0433\u043e \u0442\u0438\u043f\u0430 \u0441\u0432\u044f\u0437\u0438.');
           setEdgeSourceId(null);
-          if (!requestedEdgeType) {
-            setConnectMode(false);
-          }
+          if (!requestedEdgeType) setConnectMode(false);
+          return;
+        }
+
+        edgeType = resolvedType;
+      }
+
+      if (clickedNodeId === sourceId) {
+        window.alert('\u041d\u0435\u043b\u044c\u0437\u044f \u0441\u043e\u0437\u0434\u0430\u0442\u044c \u0441\u0432\u044f\u0437\u044c \u0443\u0437\u043b\u0430 \u0441 \u0441\u0430\u043c\u0438\u043c \u0441\u043e\u0431\u043e\u0439.');
+        setEdgeSourceId(null);
+        if (!requestedEdgeType) setConnectMode(false);
+        return;
+      }
+
+      if (requestedEdgeType) {
+        const data = artifactDataRef.current || {};
+        const nodesById = new Map((data.nodes || []).map((node: any) => [String(getNodeId(node)), node]));
+        const sourceNode = nodesById.get(sourceId);
+        const targetNode = nodesById.get(clickedNodeId);
+        const sourceType = String(sourceNode?.type || '');
+        const targetType = String(targetNode?.type || '');
+
+        if (!isAllowedForEdgeType(requestedEdgeType, sourceType, targetType)) {
+          window.alert('\u042d\u0442\u043e\u0442 \u0442\u0438\u043f \u0441\u0432\u044f\u0437\u0438 \u043d\u0435\u043b\u044c\u0437\u044f \u0441\u043e\u0437\u0434\u0430\u0442\u044c \u043c\u0435\u0436\u0434\u0443 \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u044b\u043c\u0438 \u0443\u0437\u043b\u0430\u043c\u0438.');
+          setEdgeSourceId(null);
+          onConnectCompleteRef.current?.();
           return;
         }
       }
@@ -902,7 +1154,6 @@ export const GraphView: React.FC<GraphViewProps> = ({
         setConnectMode(false);
       }
     });
-
     network.once('afterDrawing', () => {
       if (isFirstLoadRef.current) {
         network.fit({ animation: true, duration: 300 });
@@ -916,6 +1167,8 @@ export const GraphView: React.FC<GraphViewProps> = ({
 
     return () => {
       if (moveTimeoutRef.current) clearTimeout(moveTimeoutRef.current);
+      containerRef.current?.removeEventListener('contextmenu', onDomContextMenu);
+      network.off('zoom', onZoom);
       network.destroy();
       isInitializedRef.current = false;
       isFirstLoadRef.current = true;
@@ -941,7 +1194,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
     const nodesData = resolvedNodes.map((node: any) => ({
       id: getNodeId(node),
       label: getNodeLabel(node),
-      title: `${node.type}\n${JSON.stringify(node.attributes || {}, null, 2)}`,
+      title: getNodeTooltip(node, currentScale),
       x: node.position_x,
       y: node.position_y,
       color: getNodeColors(node),
@@ -962,7 +1215,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
 
     const nodeRadiusById = buildNodeRadiusById(resolvedNodes);
     const edgeCurveMap = buildEdgeCurveMap(artifact.data?.edges || []);
-    const edgesData = (artifact.data?.edges || []).map((edge: any) => buildEdgeForVis(edge, nodeRadiusById, edgeCurveMap));
+    const edgesData = (artifact.data?.edges || []).map((edge: any) => buildEdgeForVis(edge, nodeRadiusById, edgeCurveMap, currentScale));
 
     edgesDataSetRef.current?.clear();
     if (edgesData.length > 0) {
@@ -985,7 +1238,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
 
   useEffect(() => {
     applyConnectPreview();
-  }, [connectType, edgeSourceId, applyConnectPreview]);
+  }, [connectType, edgeSourceId, domainModelRevision, applyConnectPreview]);
   useEffect(() => {
     const isTypingTarget = (target: EventTarget | null) => {
       if (!(target instanceof HTMLElement)) return false;
@@ -1282,6 +1535,48 @@ export const GraphView: React.FC<GraphViewProps> = ({
     updateSelectionFromNetwork();
   }, [onNodeMove, onNodesMove, updateSelectionFromNetwork]);
 
+  const handleSelectConnectedEdges = useCallback(() => {
+    if (!networkRef.current) return;
+
+    const selectedNodeIds = networkRef.current.getSelectedNodes().map((id) => String(id));
+    if (selectedNodeIds.length === 0) return;
+
+    const data = artifactDataRef.current || {};
+    const edgeIds = new Set<string>(networkRef.current.getSelectedEdges().map((id) => String(id)));
+
+    (data.edges || []).forEach((edge: any) => {
+      const fromId = String(edge.from || edge.source_node || '');
+      const toId = String(edge.to || edge.target_node || '');
+      if (selectedNodeIds.includes(fromId) || selectedNodeIds.includes(toId)) {
+        edgeIds.add(String(edge.id));
+      }
+    });
+
+    networkRef.current.setSelection({ nodes: selectedNodeIds, edges: Array.from(edgeIds) }, { unselectAll: true, highlightEdges: false });
+    updateSelectionFromNetwork();
+  }, [updateSelectionFromNetwork]);
+
+  const handleSelectEndpoints = useCallback(() => {
+    if (!networkRef.current) return;
+
+    const data = artifactDataRef.current || {};
+    const selectedNodeIds = new Set<string>(networkRef.current.getSelectedNodes().map((id) => String(id)));
+    const selectedEdgeIds = new Set<string>(networkRef.current.getSelectedEdges().map((id) => String(id)));
+    if (selectedEdgeIds.size === 0) return;
+
+    (data.edges || []).forEach((edge: any) => {
+      const edgeId = String(edge.id);
+      if (!selectedEdgeIds.has(edgeId)) return;
+
+      const fromId = String(edge.from || edge.source_node || '');
+      const toId = String(edge.to || edge.target_node || '');
+      selectedNodeIds.add(fromId);
+      selectedNodeIds.add(toId);
+    });
+
+    networkRef.current.setSelection({ nodes: Array.from(selectedNodeIds), edges: Array.from(selectedEdgeIds) }, { unselectAll: true, highlightEdges: false });
+    updateSelectionFromNetwork();
+  }, [updateSelectionFromNetwork]);
   const handleFitClick = useCallback(() => {
     if (!networkRef.current) return;
     networkRef.current.fit({ animation: true, duration: 250 });
@@ -1291,24 +1586,84 @@ export const GraphView: React.FC<GraphViewProps> = ({
     console.log('[GraphView] History jump');
 
   }, []);
+  const pluginMenuTree = useMemo(() => buildPluginMenuTree(pluginMenu?.plugins || []), [pluginMenu?.plugins]);
+  const menuMaxWidth = 360;
+  const menuMaxHeight = 440;
+  const pluginMenuLeft = pluginMenu ? Math.max(8, Math.min(pluginMenu.x + 8, (containerRef.current?.clientWidth || 800) - menuMaxWidth - 8)) : 8;
+  const pluginMenuTop = pluginMenu ? Math.max(8, Math.min(pluginMenu.y + 8, (containerRef.current?.clientHeight || 600) - menuMaxHeight - 8)) : 8;
+  const getPluginMenuEntries = useCallback((node: PluginMenuNode | null): PluginMenuEntry[] => {
+    const folders = (node ? node.children : pluginMenuTree).map((child) => ({
+      kind: 'folder' as const,
+      key: child.key,
+      label: child.label,
+      node: child,
+    }));
 
-  if (!artifact.data || (!artifact.data.nodes?.length && !artifact.data.edges?.length)) {
-    return (
-      <div className="graph-view" style={{ height: '100%', position: 'relative', background: '#f8fafc' }}>
-        <div style={{ 
-          position: 'absolute', 
-          top: '50%', 
-          left: '50%', 
-          transform: 'translate(-50%, -50%)',
-          textAlign: 'center',
-          color: '#888'
-        }}>
-          <h3>{'\u041f\u0443\u0441\u0442\u043e\u0439 \u0433\u0440\u0430\u0444'}</h3>
-          <p>{'\u041d\u0435\u0442 \u0443\u0437\u043b\u043e\u0432 \u0434\u043b\u044f \u043e\u0442\u043e\u0431\u0440\u0430\u0436\u0435\u043d\u0438\u044f'}</p>
-        </div>
-      </div>
-    );
-  }
+    const plugins = (node ? node.plugins : []).map((plugin) => ({
+      kind: 'plugin' as const,
+      key: `plugin:${plugin.id}`,
+      label: plugin.name,
+      plugin,
+    }));
+
+    return [...folders, ...plugins];
+  }, [pluginMenuTree]);
+
+  const renderPluginMenuRows = (entries: PluginMenuEntry[], depth = 0): React.ReactNode => (
+    <>
+      {entries.map((entry) => {
+        const rowBaseStyle: React.CSSProperties = {
+          width: '100%',
+          textAlign: 'left',
+          border: 'none',
+          background: 'transparent',
+          color: '#0f172a',
+          borderRadius: 4,
+          padding: '4px 8px',
+          cursor: 'pointer',
+          fontSize: 12,
+          lineHeight: '16px',
+          display: 'block',
+          whiteSpace: 'nowrap',
+          paddingLeft: `${8 + depth * 14}px`
+        };
+
+        if (entry.kind === 'plugin' && entry.plugin) {
+          return (
+            <button
+              key={entry.key}
+              type='button'
+              onClick={() => runPluginFromMenu(entry.plugin!, pluginMenu?.context || {})}
+              style={rowBaseStyle}
+            >
+              {entry.label}
+            </button>
+          );
+        }
+
+        const folderNode = entry.node;
+        if (!folderNode) return null;
+
+        return (
+          <React.Fragment key={entry.key}>
+            <div
+              style={{
+                ...rowBaseStyle,
+                cursor: 'default',
+                color: '#475569',
+                fontWeight: 600
+              }}
+            >
+              {entry.label}
+            </div>
+            {renderPluginMenuRows(getPluginMenuEntries(folderNode), depth + 1)}
+          </React.Fragment>
+        );
+      })}
+    </>
+  );
+
+  const isGraphEmpty = !artifact.data || (!(artifact.data.nodes?.length) && !(artifact.data.edges?.length));
 
   return (
     <div className="graph-view" style={{ height: '100%', position: 'relative', background: '#f8fafc' }}>
@@ -1432,26 +1787,170 @@ export const GraphView: React.FC<GraphViewProps> = ({
         )}
         {nodeCreateSpec && (
           <div style={{ background: '#16a34a', color: 'white', padding: '4px 12px', borderRadius: '4px', fontSize: '12px' }}>
-            {`Кликните по графу для добавления узла: ${nodeCreateSpec.label}`}
+            {`\u041a\u043b\u0438\u043a\u043d\u0438\u0442\u0435 \u043f\u043e \u0433\u0440\u0430\u0444\u0443 \u0434\u043b\u044f \u0434\u043e\u0431\u0430\u0432\u043b\u0435\u043d\u0438\u044f \u0443\u0437\u043b\u0430: ${nodeCreateSpec.label}`}
           </div>
         )}
         {connectType && (
           <div style={{ background: '#2563eb', color: 'white', padding: '4px 12px', borderRadius: '4px', fontSize: '12px' }}>
-            {edgeSourceId ? 'Выберите конечный узел для создания связи' : 'Выберите начальный узел для создания связи'}
+            {edgeSourceId
+              ? '\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u043a\u043e\u043d\u0435\u0447\u043d\u044b\u0439 \u0443\u0437\u0435\u043b \u0434\u043b\u044f \u0441\u043e\u0437\u0434\u0430\u043d\u0438\u044f \u0441\u0432\u044f\u0437\u0438'
+              : '\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u043d\u0430\u0447\u0430\u043b\u044c\u043d\u044b\u0439 \u0443\u0437\u0435\u043b \u0434\u043b\u044f \u0441\u043e\u0437\u0434\u0430\u043d\u0438\u044f \u0441\u0432\u044f\u0437\u0438'}
           </div>
         )}
       </div>
 
       
+      {pluginMenu && (
+        <div
+          ref={pluginMenuRef}
+          style={{
+            position: 'absolute',
+            left: pluginMenuLeft,
+            top: pluginMenuTop,
+            zIndex: 1000,
+            minWidth: 240,
+            maxWidth: 300,
+            background: '#ffffff',
+            border: '1px solid #d7deea',
+            borderRadius: 8,
+            boxShadow: '0 12px 28px rgba(15, 23, 42, 0.16)',
+            padding: 6
+          }}
+        >
+
+
+          <button
+            type='button'
+            onClick={() => {
+              handleSelectConnectedEdges();
+              closePluginMenu();
+            }}
+            disabled={!pluginMenu.context.selected_nodes || pluginMenu.context.selected_nodes.length === 0}
+            style={{
+              width: '100%',
+              textAlign: 'left',
+              border: 'none',
+              background: 'transparent',
+              color: '#0f172a',
+              borderRadius: 4,
+              padding: '5px 8px',
+              cursor: (!pluginMenu.context.selected_nodes || pluginMenu.context.selected_nodes.length === 0) ? 'not-allowed' : 'pointer',
+              opacity: (!pluginMenu.context.selected_nodes || pluginMenu.context.selected_nodes.length === 0) ? 0.5 : 1,
+              fontSize: 12,
+              lineHeight: '16px'
+            }}
+          >
+            {'\u0412\u044b\u0434\u0435\u043b\u0438\u0442\u044c \u0441\u0432\u044f\u0437\u0438'}
+          </button>
+
+          <button
+            type='button'
+            onClick={() => {
+              handleSelectEndpoints();
+              closePluginMenu();
+            }}
+            disabled={!pluginMenu.context.selected_edges || pluginMenu.context.selected_edges.length === 0}
+            style={{
+              width: '100%',
+              textAlign: 'left',
+              border: 'none',
+              background: 'transparent',
+              color: '#0f172a',
+              borderRadius: 4,
+              padding: '5px 8px',
+              cursor: (!pluginMenu.context.selected_edges || pluginMenu.context.selected_edges.length === 0) ? 'not-allowed' : 'pointer',
+              opacity: (!pluginMenu.context.selected_edges || pluginMenu.context.selected_edges.length === 0) ? 0.5 : 1,
+              fontSize: 12,
+              lineHeight: '16px'
+            }}
+          >
+            {'\u0412\u044b\u0434\u0435\u043b\u0438\u0442\u044c \u043e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u044f'}
+          </button>
+
+          <div style={{ height: 1, background: '#eef2f7', margin: '4px 0 6px 0' }} />
+
+          {pluginMenu.loading && (
+            <div style={{ fontSize: 12, color: '#334155', padding: '6px 8px' }}>{'\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430...'}</div>
+          )}
+          {!pluginMenu.loading && pluginMenuTree.length === 0 && (
+            <div style={{ fontSize: 12, color: '#64748b', padding: '6px 8px' }}>{'\u041d\u0435\u0442 \u0434\u043e\u0441\u0442\u0443\u043f\u043d\u044b\u0445 \u043f\u043b\u0430\u0433\u0438\u043d\u043e\u0432'}</div>
+          )}
+          {!pluginMenu.loading && renderPluginMenuRows(getPluginMenuEntries(null))}
+        </div>
+      )}
+
+      {isGraphEmpty && (
+        <div style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          textAlign: 'center',
+          color: '#64748b',
+          pointerEvents: 'none',
+          zIndex: 2
+        }}>
+          <h3 style={{ margin: '0 0 8px 0' }}>{'\u041f\u0443\u0441\u0442\u043e\u0439 \u0433\u0440\u0430\u0444'}</h3>
+          <p style={{ margin: 0 }}>{'\u041a\u043b\u0438\u043a\u043d\u0438\u0442\u0435 \u043f\u043e \u043f\u043e\u043b\u044e, \u0447\u0442\u043e\u0431\u044b \u0441\u043e\u0437\u0434\u0430\u0442\u044c \u043f\u0435\u0440\u0432\u0443\u044e \u0432\u0435\u0440\u0448\u0438\u043d\u0443'}</p>
+        </div>
+      )}
+
       <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
 
-      
-      
     </div>
   );
 };
 
 export default GraphView;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

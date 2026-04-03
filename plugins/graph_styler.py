@@ -1,4 +1,4 @@
-"""
+﻿"""
 Plugin that applies visual attributes to graph nodes and edges.
 """
 from typing import List, Dict, Any
@@ -14,6 +14,10 @@ class GraphStylerPlugin(PluginBase):
     input_types = ["graph"]
     output_types = ["graph"]
     applicable_to = ["graph"]
+    params_schema = [
+        {"key": "period_start", "label": "Дата начала", "type": "date", "required": False},
+        {"key": "period_end", "label": "Дата окончания", "type": "date", "required": False},
+    ]
 
     async def execute(self, input_artifacts: List[dict], params: Dict[str, Any] | None = None) -> List[dict]:
         if not input_artifacts:
@@ -84,3 +88,4 @@ class GraphStylerPlugin(PluginBase):
                 }
             }
         ]
+

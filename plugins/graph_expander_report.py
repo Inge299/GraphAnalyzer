@@ -1,4 +1,4 @@
-"""Plugin that adds new nodes/edges with visual attributes and produces a document report."""
+﻿"""Plugin that adds new nodes/edges with visual attributes and produces a document report."""
 
 from typing import List, Dict, Any, Optional
 
@@ -32,6 +32,10 @@ class GraphExpanderReportPlugin(PluginBase):
     input_types = ["graph"]
     output_types = ["graph", "document"]
     applicable_to = ["graph"]
+    params_schema = [
+        {"key": "period_start", "label": "Дата начала", "type": "date", "required": False},
+        {"key": "period_end", "label": "Дата окончания", "type": "date", "required": False},
+    ]
 
     async def execute(self, input_artifacts: List[dict], params: Optional[Dict[str, Any]] = None) -> List[dict]:
         if not input_artifacts:

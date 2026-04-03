@@ -1,4 +1,4 @@
-﻿// frontend/src/components/layout/InspectorPanel.tsx
+// frontend/src/components/layout/InspectorPanel.tsx
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { fetchArtifacts, deleteArtifact, updateArtifactSync, setCurrentArtifact } from '../../store/slices/artifactsSlice';
@@ -6,6 +6,7 @@ import { artifactApi, pluginApi, domainModelApi } from '../../services/api';
 import type { ApiPlugin, ApiArtifact, PluginExecutionContext, DomainModelConfig } from '../../types/api';
 import type { SelectedElement } from '../../store/slices/uiSlice';
 import './InspectorPanel.css';
+import { collectPluginParamsWithPrompts, groupPluginsByMenuPath } from '../../utils/pluginParams';
 
 interface InspectorPanelProps {
   onApplyGraphData?: (newData: any, description: string, actionType: string) => Promise<void> | void;
@@ -147,7 +148,7 @@ type EdgeTypeSelectProps = {
   emptyLabel?: string;
 };
 
-const EdgeTypeSelect: React.FC<EdgeTypeSelectProps> = ({ value, onChange, options, placeholder, allowEmpty = false, emptyLabel = 'Без изменений' }) => {
+const EdgeTypeSelect: React.FC<EdgeTypeSelectProps> = ({ value, onChange, options, placeholder, allowEmpty = false, emptyLabel = 'Р вЂР ВµР В· Р С‘Р В·Р СР ВµР Р…Р ВµР Р…Р С‘Р в„–' }) => {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const selected = options.find((item) => item.id === value) || null;
@@ -183,7 +184,7 @@ const EdgeTypeSelect: React.FC<EdgeTypeSelectProps> = ({ value, onChange, option
         ) : (
           <span className="edge-type-select-label edge-type-select-placeholder">{placeholder}</span>
         )}
-        <span className="edge-type-select-caret">▾</span>
+        <span className="edge-type-select-caret">РІвЂ“С•</span>
       </button>
 
       {open && (
@@ -268,6 +269,11 @@ const InspectorPanel: React.FC<InspectorPanelProps> = ({ onApplyGraphData, onSta
 
     return {};
   }, [selectedArtifact, selectedElements]);
+  const getNodeTypeDefaultVisual = useCallback((nodeData: any) => {
+    const typeId = String(nodeData?.type || '');
+    const found = nodeTypeDefinitions.find((item) => item.id === typeId);
+    return (found?.defaultVisual || {}) as Record<string, any>;
+  }, [nodeTypeDefinitions]);
 
   const graphNodes = useMemo(() => {
     if (!selectedArtifact || selectedArtifact.type !== 'graph') return [] as any[];
@@ -318,7 +324,7 @@ const pluginContextKey = useMemo(() => {
 
         const nodeTypes = (model?.node_types || []).map((node) => ({
           id: String(node?.id || ''),
-          label: normalizeDisplayLabel(String(node?.label || ''), String(node?.id || 'Узел')),
+          label: normalizeDisplayLabel(String(node?.label || ''), String(node?.id || 'Р Р€Р В·Р ВµР В»')),
           icon: String(node?.icon || '').trim(),
           defaultVisual: ((node as any)?.default_visual || {}) as Record<string, any>
         })).filter((node) => !!node.id);
@@ -326,7 +332,7 @@ const pluginContextKey = useMemo(() => {
 
         const edgeTypes = (model?.edge_types || []).map((edge) => ({
           id: String((edge as any)?.id || ''),
-          label: normalizeDisplayLabel(String((edge as any)?.label || ''), String((edge as any)?.id || 'Связь')),
+          label: normalizeDisplayLabel(String((edge as any)?.label || ''), String((edge as any)?.id || 'Р РЋР Р†РЎРЏР В·РЎРЉ')),
           color: String((edge as any)?.default_visual?.color || '#64748b'),
           defaultVisual: (((edge as any)?.default_visual || {}) as Record<string, any>),
           allowedFrom: Array.isArray((edge as any)?.allowed_from) ? (edge as any).allowed_from.map((v: any) => String(v)) : ['*'],
@@ -441,9 +447,18 @@ const pluginContextKey = useMemo(() => {
       const label = getCommonValue(graphSelection.nodes, item => item.data?.label || item.data?.attributes?.visual?.label || item.data?.attributes?.label);
       const color = getCommonValue(graphSelection.nodes, item => item.data?.attributes?.visual?.color || item.data?.attributes?.color);
       const icon = getCommonValue(graphSelection.nodes, item => item.data?.attributes?.visual?.icon || item.data?.attributes?.icon);
-      const scale = getCommonValue(graphSelection.nodes, item => item.data?.attributes?.visual?.iconScale ?? item.data?.attributes?.iconScale);
-      const ringEnabled = getCommonValue(graphSelection.nodes, item => item.data?.attributes?.visual?.ringEnabled ?? item.data?.attributes?.ringEnabled);
-      const ringWidth = getCommonValue(graphSelection.nodes, item => item.data?.attributes?.visual?.ringWidth ?? item.data?.attributes?.ringWidth);
+      const scale = getCommonValue(graphSelection.nodes, item => {
+        const fallback = getNodeTypeDefaultVisual(item.data);
+        return item.data?.attributes?.visual?.iconScale ?? item.data?.attributes?.iconScale ?? fallback.iconScale ?? 2;
+      });
+      const ringEnabled = getCommonValue(graphSelection.nodes, item => {
+        const fallback = getNodeTypeDefaultVisual(item.data);
+        return item.data?.attributes?.visual?.ringEnabled ?? item.data?.attributes?.ringEnabled ?? fallback.ringEnabled ?? true;
+      });
+      const ringWidth = getCommonValue(graphSelection.nodes, item => {
+        const fallback = getNodeTypeDefaultVisual(item.data);
+        return item.data?.attributes?.visual?.ringWidth ?? item.data?.attributes?.ringWidth ?? fallback.ringWidth ?? 2;
+      });
 
       setElementLabel(label === undefined ? '' : String(label));
       setElementColor(color === undefined ? '' : String(color));
@@ -475,7 +490,7 @@ const pluginContextKey = useMemo(() => {
     setElementEdgeDirection(direction === undefined ? '' : String(direction));
     setElementEdgeStyle(dashed === undefined ? 'unchanged' : (dashed ? 'dashed' : 'solid'));
     setElementEdgeType(edgeType === undefined ? '' : String(edgeType));
-  }, [graphSelection]);
+  }, [graphSelection, getNodeTypeDefaultVisual]);
   useEffect(() => {
     if (!selectedArtifact || selectedArtifact.type !== 'graph') return;
 
@@ -487,6 +502,7 @@ const pluginContextKey = useMemo(() => {
     }
   }, [selectedArtifact, nodeTypeDefinitions, edgeTypeDefinitions, builderNodeType, builderEdgeType]);
   const applicablePlugins = useMemo(() => plugins, [plugins]);
+  const groupedPlugins = useMemo(() => groupPluginsByMenuPath(applicablePlugins), [applicablePlugins]);
 
   const handleRunPlugin = useCallback(async (plugin: ApiPlugin) => {
     if (!selectedArtifact) return;
@@ -495,7 +511,12 @@ const pluginContextKey = useMemo(() => {
     setPluginsError(null);
     try {
       const targetProjectId = selectedArtifact.project_id;
-      const response = await pluginApi.execute(plugin.id, targetProjectId, [selectedArtifact.id], {}, pluginContext);
+      const params = await collectPluginParamsWithPrompts(plugin, targetProjectId);
+      if (params === null) {
+        setRunningPluginId(null);
+        return;
+      }
+      const response = await pluginApi.execute(plugin.id, targetProjectId, [selectedArtifact.id], params, pluginContext);
       await dispatch(fetchArtifacts(targetProjectId));
       const created = response?.created || [];
       if (created.length === 1) {
@@ -609,7 +630,7 @@ const handleCreateNode = useCallback(() => {
 
       const conflictInSelected = Array.from(selectedTypeGroups.values()).some((count) => count > 1);
       if (conflictInSelected) {
-        window.alert('Нельзя задать одинаковую подпись для нескольких узлов одного типа');
+        window.alert('Р СњР ВµР В»РЎРЉР В·РЎРЏ Р В·Р В°Р Т‘Р В°РЎвЂљРЎРЉ Р С•Р Т‘Р С‘Р Р…Р В°Р С”Р С•Р Р†РЎС“РЎР‹ Р С—Р С•Р Т‘Р С—Р С‘РЎРѓРЎРЉ Р Т‘Р В»РЎРЏ Р Р…Р ВµРЎРѓР С”Р С•Р В»РЎРЉР С”Р С‘РЎвЂ¦ РЎС“Р В·Р В»Р С•Р Р† Р С•Р Т‘Р Р…Р С•Р С–Р С• РЎвЂљР С‘Р С—Р В°');
         return;
       }
 
@@ -623,7 +644,7 @@ const handleCreateNode = useCallback(() => {
       });
 
       if (conflictWithExisting) {
-        window.alert('Узел с таким типом и подписью уже существует');
+        window.alert('Р Р€Р В·Р ВµР В» РЎРѓ РЎвЂљР В°Р С”Р С‘Р С РЎвЂљР С‘Р С—Р С•Р С Р С‘ Р С—Р С•Р Т‘Р С—Р С‘РЎРѓРЎРЉРЎР‹ РЎС“Р В¶Р Вµ РЎРѓРЎС“РЎвЂ°Р ВµРЎРѓРЎвЂљР Р†РЎС“Р ВµРЎвЂљ');
         return;
       }
     }
@@ -964,15 +985,19 @@ const handleCreateNode = useCallback(() => {
               {!pluginsLoading && !pluginsError && applicablePlugins.length === 0 && (
                 <div className="property-value">{labels.noPlugins}</div>
               )}
-              {applicablePlugins.map((plugin) => (
-                <div key={plugin.id} className="property-value" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <button
-                    className="tab-btn"
-                    onClick={() => handleRunPlugin(plugin)}
-                    disabled={!!runningPluginId}
-                  >
-                    {runningPluginId === plugin.id ? labels.pluginRunning : `${labels.pluginRun}: ${plugin.name}`}
-                  </button>
+              {groupedPlugins.map((group) => (
+                <div key={group.path} className="property-value" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div style={{ fontSize: '12px', opacity: 0.8 }}>{group.path}</div>
+                  {group.items.map((plugin) => (
+                    <button
+                      key={plugin.id}
+                      className="tab-btn"
+                      onClick={() => handleRunPlugin(plugin)}
+                      disabled={!!runningPluginId}
+                    >
+                      {runningPluginId === plugin.id ? labels.pluginRunning : `${labels.pluginRun}: ${plugin.name}`}
+                    </button>
+                  ))}
                 </div>
               ))}
             </div>
@@ -1242,6 +1267,9 @@ const handleCreateNode = useCallback(() => {
 };
 
 export default InspectorPanel;
+
+
+
 
 
 
