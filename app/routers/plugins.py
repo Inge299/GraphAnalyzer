@@ -166,72 +166,145 @@ async def execute_plugin(
 
     valid_types = {"graph", "table", "map", "chart", "document"}
     created = []
+    updated = []
     cache = HistoryCache(redis_client)
 
     try:
-        for spec in outputs:
+        output_mode = str((getattr(plugin, "output_strategy", {}) or {}).get("mode", "create_new"))
+
+        if output_mode in {"update_current", "replace_input", "merge_into_current"}:
+            if len(outputs) != 1:
+                raise HTTPException(status_code=400, detail="Update mode plugin must return exactly one artifact spec")
+
+            spec = outputs[0]
             if not isinstance(spec, dict):
                 raise HTTPException(status_code=500, detail="Plugin returned invalid artifact spec")
             if spec.get("type") not in valid_types:
                 raise HTTPException(status_code=400, detail="Invalid artifact type from plugin")
-            if not spec.get("name"):
-                raise HTTPException(status_code=400, detail="Artifact name is required")
             if spec.get("data") is None:
                 raise HTTPException(status_code=400, detail="Artifact data is required")
 
-            artifact = Artifact(
-                project_id=request.project_id,
-                type=spec["type"],
-                name=spec["name"],
-                description=spec.get("description"),
-                data=spec["data"],
-                artifact_metadata=spec.get("metadata", {})
+            target = artifacts[0]
+            if spec.get("type") != target.type:
+                raise HTTPException(status_code=400, detail="Update mode requires matching artifact type")
+
+            latest_version_result = await db.execute(
+                select(ArtifactVersion)
+                .where(ArtifactVersion.artifact_id == target.id)
+                .order_by(ArtifactVersion.version.desc())
+                .limit(1)
             )
-            db.add(artifact)
-            await db.flush()
+            latest_version = latest_version_result.scalar_one_or_none()
+            current_version = latest_version.version if latest_version else 1
+            new_version_value = current_version + 1
+
+            before_state = target.data
+            target.data = spec["data"]
+            target.name = spec.get("name") or target.name
+            target.description = spec.get("description", target.description)
+            target.artifact_metadata = {
+                **(target.artifact_metadata or {}),
+                **(spec.get("metadata") or {}),
+                "source_plugin": plugin_id,
+            }
 
             version = ArtifactVersion(
-                artifact_id=artifact.id,
-                version=1,
-                data=artifact.data,
+                artifact_id=target.id,
+                version=new_version_value,
+                data=target.data,
                 changed_by=plugin_id
             )
             db.add(version)
+            await db.flush()
 
-            for src in artifacts:
-                db.add(ArtifactRelation(
-                    source_id=src.id,
-                    target_id=artifact.id,
-                    relation_type="derived_from"
-                ))
-
+            action_type = str((getattr(plugin, "output_strategy", {}) or {}).get("history_action", "plugin_execute"))
             action = GraphAction(
-                artifact_id=artifact.id,
-                action_type="plugin_execute",
-                before_state={},
-                after_state=artifact.data,
-                description=f"Plugin {plugin_id} created artifact",
+                artifact_id=target.id,
+                action_type=action_type,
+                before_state=before_state,
+                after_state=target.data,
+                description=f"Plugin {plugin_id} updated artifact",
                 user_type="plugin",
                 plugin_id=plugin_id
             )
             db.add(action)
             await db.flush()
+            await cache.push_action(target.id, action.to_dict())
 
-            await cache.push_action(artifact.id, action.to_dict())
-
-            created.append({
-                "id": artifact.id,
-                "project_id": artifact.project_id,
-                "type": artifact.type,
-                "name": artifact.name,
-                "description": artifact.description,
-                "data": artifact.data,
-                "metadata": artifact.artifact_metadata,
-                "version": 1
+            updated.append({
+                "id": target.id,
+                "project_id": target.project_id,
+                "type": target.type,
+                "name": target.name,
+                "description": target.description,
+                "data": target.data,
+                "metadata": target.artifact_metadata,
+                "version": new_version_value
             })
+        else:
+            for spec in outputs:
+                if not isinstance(spec, dict):
+                    raise HTTPException(status_code=500, detail="Plugin returned invalid artifact spec")
+                if spec.get("type") not in valid_types:
+                    raise HTTPException(status_code=400, detail="Invalid artifact type from plugin")
+                if not spec.get("name"):
+                    raise HTTPException(status_code=400, detail="Artifact name is required")
+                if spec.get("data") is None:
+                    raise HTTPException(status_code=400, detail="Artifact data is required")
+
+                artifact = Artifact(
+                    project_id=request.project_id,
+                    type=spec["type"],
+                    name=spec["name"],
+                    description=spec.get("description"),
+                    data=spec["data"],
+                    artifact_metadata=spec.get("metadata", {})
+                )
+                db.add(artifact)
+                await db.flush()
+
+                version = ArtifactVersion(
+                    artifact_id=artifact.id,
+                    version=1,
+                    data=artifact.data,
+                    changed_by=plugin_id
+                )
+                db.add(version)
+
+                for src in artifacts:
+                    db.add(ArtifactRelation(
+                        source_id=src.id,
+                        target_id=artifact.id,
+                        relation_type="derived_from"
+                    ))
+
+                action = GraphAction(
+                    artifact_id=artifact.id,
+                    action_type="plugin_execute",
+                    before_state={},
+                    after_state=artifact.data,
+                    description=f"Plugin {plugin_id} created artifact",
+                    user_type="plugin",
+                    plugin_id=plugin_id
+                )
+                db.add(action)
+                await db.flush()
+
+                await cache.push_action(artifact.id, action.to_dict())
+
+                created.append({
+                    "id": artifact.id,
+                    "project_id": artifact.project_id,
+                    "type": artifact.type,
+                    "name": artifact.name,
+                    "description": artifact.description,
+                    "data": artifact.data,
+                    "metadata": artifact.artifact_metadata,
+                    "version": 1
+                })
 
         await db.commit()
-        return {"created": created}
+        return {"created": created, "updated": updated}
 
     except HTTPException:
         await db.rollback()
