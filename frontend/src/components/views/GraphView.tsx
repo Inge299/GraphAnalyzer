@@ -140,44 +140,92 @@ type NodeAttributePreviewRuntime = {
   enabled: boolean;
   maxLinesPerField: number;
   defaultMarker: string;
-  fields: Record<string, { marker?: string; maxLines?: number }>;
+  fields: Record<string, { marker?: string; maxLines?: number; visibleOnGraph?: boolean; label?: string }>;
 };
 
-const getNodeAttributePreviewLines = (node: any, preview: NodeAttributePreviewRuntime) => {
+type NodeTypeAttributeRuntime = {
+  label: string;
+  type: string;
+};
+
+const NODE_SYSTEM_KEYS = new Set(['visual', 'label', 'color', 'icon', 'iconScale', 'ringEnabled', 'ringWidth']);
+
+const getNodeAttributePreviewLines = (
+  node: any,
+  preview: NodeAttributePreviewRuntime,
+  nodeTypeAttributesMap: Record<string, Record<string, NodeTypeAttributeRuntime>>
+) => {
   if (!preview.enabled) return [] as string[];
   const attributes = (node?.attributes || {}) as Record<string, any>;
-  const entries = Object.entries(preview.fields || {});
-  const lines: string[] = [];
+  const typeId = String(node?.type || '');
+  const typeAttributes = nodeTypeAttributesMap[typeId] || {};
+  const visibleAttributesRaw = node?.attributes?.visual?.visibleAttributes;
+  const visibleAttributesOverride = Array.isArray(visibleAttributesRaw)
+    ? new Set(visibleAttributesRaw.map((item: any) => String(item)))
+    : null;
 
-  for (const [key, cfg] of entries) {
+  const keySet = new Set<string>();
+  Object.entries(attributes).forEach(([key, value]) => {
+    if (NODE_SYSTEM_KEYS.has(key)) return;
+    if (value === undefined || value === null || value === '') return;
+    keySet.add(key);
+  });
+  Object.keys(preview.fields || {}).forEach((key) => keySet.add(key));
+
+  const keys = Array.from(keySet);
+  keys.sort((left, right) => {
+    const leftType = String(typeAttributes[left]?.type || 'string').toLowerCase();
+    const rightType = String(typeAttributes[right]?.type || 'string').toLowerCase();
+    const leftPriority = leftType === 'string' || leftType === 'text' ? 1 : leftType === 'number' || leftType === 'integer' || leftType === 'float' ? 2 : leftType === 'date' || leftType === 'datetime' ? 3 : leftType === 'boolean' ? 4 : 99;
+    const rightPriority = rightType === 'string' || rightType === 'text' ? 1 : rightType === 'number' || rightType === 'integer' || rightType === 'float' ? 2 : rightType === 'date' || rightType === 'datetime' ? 3 : rightType === 'boolean' ? 4 : 99;
+    if (leftPriority !== rightPriority) return leftPriority - rightPriority;
+    const leftLabel = String(typeAttributes[left]?.label || left);
+    const rightLabel = String(typeAttributes[right]?.label || right);
+    return leftLabel.localeCompare(rightLabel, 'ru');
+  });
+
+  const lines: string[] = [];
+  for (const key of keys) {
+    const cfg = preview.fields?.[key] || {};
+    const isVisible = visibleAttributesOverride
+      ? visibleAttributesOverride.has(key)
+      : (cfg.visibleOnGraph === true);
+    if (!isVisible) continue;
+
     const rawValue = attributes[key];
     const values = Array.isArray(rawValue) ? rawValue : (rawValue ? [rawValue] : []);
     if (values.length === 0) continue;
 
-    const marker = String(cfg?.marker || preview.defaultMarker || '*').trim() || '*';
+    const marker = String(cfg?.marker || preview.defaultMarker || '•').trim() || '•';
     const maxLines = Number.isFinite(Number(cfg?.maxLines)) ? Math.max(1, Number(cfg?.maxLines)) : preview.maxLinesPerField;
+    const fieldLabel = String(cfg?.label || typeAttributes[key]?.label || key);
 
     for (const item of values.slice(0, maxLines)) {
-      const text = String(item || '').trim();
+      const text = String(item || '').replace(/\\n/g, '\n').trim();
       if (!text) continue;
-      lines.push(`${marker} ${text}`.trim());
+      lines.push(`${marker} ${fieldLabel}: ${text}`.trim());
     }
   }
 
   return lines;
 };
 
-const getNodeLabel = (node: any, preview: NodeAttributePreviewRuntime) => {
+const getNodeLabel = (
+  node: any,
+  preview: NodeAttributePreviewRuntime,
+  nodeTypeAttributesMap: Record<string, Record<string, NodeTypeAttributeRuntime>> = {}
+) => {
   const base = wrapLabel(getNodeBaseLabel(node), 22);
-  const extra = getNodeAttributePreviewLines(node, preview);
+  const extra = getNodeAttributePreviewLines(node, preview, nodeTypeAttributesMap);
   if (extra.length === 0) return base;
-  return [base, ...extra.map((line) => wrapLabel(line, 28))].join('\\n');
+  return [base, ...extra.map((line) => wrapLabel(line, 34))].join('\n');
 };
 
 const getNodeTooltip = (node: any, scale: number) => {
   const maxScale = Number((layoutConfig as any)?.interaction?.nodeTooltipMaxScale ?? 0.75);
   if (!Number.isFinite(maxScale) || scale > maxScale) return '';
-  return getNodeBaseLabel(node);
+  const base = getNodeBaseLabel(node).trim();
+  return base || String(node?.type || getNodeId(node) || '');
 };
 
 const getEdgeBaseLabel = (edge: any) => String(edge.label || edge.attributes?.visual?.label || edge.attributes?.label || edge.type || '');
@@ -534,11 +582,12 @@ export const GraphView: React.FC<GraphViewProps> = ({
   const edgeTypesRef = useRef<Array<any>>([]);
   const rulesRef = useRef<{ allow_parallel_edges: boolean }>({ allow_parallel_edges: true });
   const nodeTypeIconsRef = useRef<Record<string, string>>({});
+  const nodeTypeAttributesRef = useRef<Record<string, Record<string, { label: string; type: string }>>>({});
   const nodeAttributePreviewRef = useRef<NodeAttributePreviewRuntime>({
     enabled: Boolean((nodeAttributePreviewConfig as any)?.enabled),
     maxLinesPerField: Number((nodeAttributePreviewConfig as any)?.maxLinesPerField ?? 3),
     defaultMarker: String((nodeAttributePreviewConfig as any)?.defaultMarker || '*'),
-    fields: ((nodeAttributePreviewConfig as any)?.fields || {}) as Record<string, { marker?: string; maxLines?: number }>,
+    fields: ((nodeAttributePreviewConfig as any)?.fields || {}) as Record<string, { marker?: string; maxLines?: number; visibleOnGraph?: boolean; label?: string }>,
   });
   const artifactDataRef = useRef<any>(artifact.data || {});
   const onAddEdgeRef = useRef(onAddEdge);
@@ -636,6 +685,23 @@ export const GraphView: React.FC<GraphViewProps> = ({
               return acc;
             }, {} as Record<string, string>)
           : {};
+        nodeTypeAttributesRef.current = Array.isArray(model?.node_types)
+          ? model.node_types.reduce((acc, item: any) => {
+              const nodeTypeId = String(item?.id || '');
+              if (!nodeTypeId) return acc;
+              const attributes = Array.isArray(item?.attributes) ? item.attributes : [];
+              acc[nodeTypeId] = attributes.reduce((attributeAcc: Record<string, { label: string; type: string }>, attribute: any) => {
+                const key = String(attribute?.key || '').trim();
+                if (!key) return attributeAcc;
+                attributeAcc[key] = {
+                  label: String(attribute?.label || key),
+                  type: String(attribute?.type || 'string').toLowerCase(),
+                };
+                return attributeAcc;
+              }, {} as Record<string, { label: string; type: string }>);
+              return acc;
+            }, {} as Record<string, Record<string, { label: string; type: string }>>)
+          : {};
         rulesRef.current = {
           allow_parallel_edges: model?.rules?.allow_parallel_edges !== false,
         };
@@ -645,6 +711,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
         if (cancelled) return;
         edgeTypesRef.current = [];
         nodeTypeIconsRef.current = {};
+        nodeTypeAttributesRef.current = {};
         rulesRef.current = { allow_parallel_edges: true };
         lastReduxStateRef.current = '';
         setDomainModelRevision((value) => value + 1);
@@ -735,7 +802,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
 
       return {
         id,
-        label: getNodeLabel(node, nodeAttributePreviewRef.current),
+        label: getNodeLabel(node, nodeAttributePreviewRef.current, nodeTypeAttributesRef.current),
         color: dimmed ? {
           background: withAlpha(String(colors.background || '#94a3b8'), 0.2),
           border: withAlpha(String(colors.border || '#94a3b8'), 0.25)
@@ -867,7 +934,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
     const nodesData = new DataSet(
       nodes.map((node: any) => ({
         id: getNodeId(node),
-        label: getNodeLabel(node, nodeAttributePreviewRef.current),
+        label: getNodeLabel(node, nodeAttributePreviewRef.current, nodeTypeAttributesRef.current),
         title: getNodeTooltip(node, 1),
         x: node.position_x,
         y: node.position_y,
@@ -1236,7 +1303,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
     );
     const nodesData = resolvedNodes.map((node: any) => ({
       id: getNodeId(node),
-      label: getNodeLabel(node, nodeAttributePreviewRef.current),
+      label: getNodeLabel(node, nodeAttributePreviewRef.current, nodeTypeAttributesRef.current),
       title: getNodeTooltip(node, currentScale),
       x: node.position_x,
       y: node.position_y,
@@ -1328,7 +1395,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
 
   const estimateNodeFootprint = (node: any) => {
     const nodeSize = Number(getNodeSize(node) || 24);
-    const wrapped = getNodeLabel(node, nodeAttributePreviewRef.current) || String(node?.label || '');
+    const wrapped = getNodeLabel(node, nodeAttributePreviewRef.current, nodeTypeAttributesRef.current) || String(node?.label || '');
     const lines = wrapped.split('\n').filter(Boolean);
     const maxLineLength = lines.reduce((acc: number, line: string) => Math.max(acc, line.length), 0);
     const labelWidth = Math.max(0, maxLineLength * 7);
@@ -1945,5 +2012,19 @@ export const GraphView: React.FC<GraphViewProps> = ({
 };
 
 export default GraphView;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

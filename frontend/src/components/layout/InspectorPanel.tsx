@@ -1,4 +1,4 @@
-// frontend/src/components/layout/InspectorPanel.tsx
+﻿// frontend/src/components/layout/InspectorPanel.tsx
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { fetchArtifacts, deleteArtifact, updateArtifactSync, setCurrentArtifact } from '../../store/slices/artifactsSlice';
@@ -85,12 +85,19 @@ const labels = {
   solid: '\u0421\u043f\u043b\u043e\u0448\u043d\u0430\u044f',
   dashed: '\u041f\u0443\u043d\u043a\u0442\u0438\u0440\u043d\u0430\u044f'
 };
+type DomainNodeAttributeOption = {
+  key: string;
+  label: string;
+  type: string;
+  visibleOnGraph?: boolean;
+};
 
 type DomainNodeTypeOption = {
   id: string;
   label: string;
   icon?: string;
   defaultVisual?: Record<string, any>;
+  attributes?: DomainNodeAttributeOption[];
 };
 
 type DomainEdgeTypeOption = {
@@ -119,7 +126,7 @@ const fallbackIconOptions = [
 const iconScaleOptions = ['1', '2', '3', '4', '5'];
 const nodeColorPalette = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#a855f7', '#06b6d4', '#14b8a6', '#84cc16', '#f43f5e', '#eab308', '#000000'];
 const defaultEdgeDirectionOptions = ['from', 'to', 'both'];
-const isLikelyMojibake = (value: string) => /[\u00D0\u00D1][\u0080-\u00BF]|[\uFFFD]/.test(value);
+const isLikelyMojibake = (value: string) => /[\u00D0\u00D1][\u0080-\u00BF]|[\uFFFD]|(?:Р.|С.){2,}/.test(value);
 
 const normalizeDisplayLabel = (candidate: string, fallback: string) => {
   const trimmed = candidate.trim();
@@ -138,6 +145,42 @@ const getCommonValue = <T,>(items: SelectedElement[], getter: (item: SelectedEle
   return first;
 };
 
+const NODE_SYSTEM_ATTRIBUTE_KEYS = new Set(['visual', 'label', 'color', 'icon', 'iconScale', 'ringEnabled', 'ringWidth']);
+
+type NodeExtraAttributeState = {
+  key: string;
+  label: string;
+  type: string;
+  value: string;
+  mixed: boolean;
+  visibleOnGraph: 'on' | 'off' | 'mixed';
+};
+
+const attributeTypePriority: Record<string, number> = {
+  string: 1,
+  text: 1,
+  number: 2,
+  integer: 2,
+  float: 2,
+  date: 3,
+  datetime: 3,
+  boolean: 4,
+};
+
+const attributeLabelAliases: Record<string, string> = {
+  operator: 'Оператор',
+  ownership: 'Оформлен',
+};
+
+const normalizeAttributeValue = (value: unknown) => {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item ?? '').trim()).filter(Boolean).join('\n');
+  }
+  if (value !== undefined && value !== null && typeof value === 'object') {
+    return JSON.stringify(value, null, 2);
+  }
+  return value === undefined || value === null ? '' : String(value).replace(/\\n/g, '\n');
+};
 
 type EdgeTypeSelectProps = {
   value: string;
@@ -148,7 +191,7 @@ type EdgeTypeSelectProps = {
   emptyLabel?: string;
 };
 
-const EdgeTypeSelect: React.FC<EdgeTypeSelectProps> = ({ value, onChange, options, placeholder, allowEmpty = false, emptyLabel = 'Р вЂР ВµР В· Р С‘Р В·Р СР ВµР Р…Р ВµР Р…Р С‘Р в„–' }) => {
+const EdgeTypeSelect: React.FC<EdgeTypeSelectProps> = ({ value, onChange, options, placeholder, allowEmpty = false, emptyLabel = 'Без изменений' }) => {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const selected = options.find((item) => item.id === value) || null;
@@ -184,7 +227,7 @@ const EdgeTypeSelect: React.FC<EdgeTypeSelectProps> = ({ value, onChange, option
         ) : (
           <span className="edge-type-select-label edge-type-select-placeholder">{placeholder}</span>
         )}
-        <span className="edge-type-select-caret">РІвЂ“С•</span>
+        <span className="edge-type-select-caret">▼</span>
       </button>
 
       {open && (
@@ -236,6 +279,7 @@ const InspectorPanel: React.FC<InspectorPanelProps> = ({ onApplyGraphData, onSta
   const [elementEdgeDirection, setElementEdgeDirection] = useState('');
   const [elementEdgeStyle, setElementEdgeStyle] = useState<'unchanged' | 'solid' | 'dashed'>('unchanged');
   const [elementEdgeType, setElementEdgeType] = useState('');
+  const [nodeExtraAttributes, setNodeExtraAttributes] = useState<NodeExtraAttributeState[]>([]);
   const [elementsSaving, setElementsSaving] = useState(false);
   const [nodeTypeDefinitions, setNodeTypeDefinitions] = useState<DomainNodeTypeOption[]>([]);
   const [edgeTypeDefinitions, setEdgeTypeDefinitions] = useState<DomainEdgeTypeOption[]>([]);
@@ -273,6 +317,12 @@ const InspectorPanel: React.FC<InspectorPanelProps> = ({ onApplyGraphData, onSta
     const typeId = String(nodeData?.type || '');
     const found = nodeTypeDefinitions.find((item) => item.id === typeId);
     return (found?.defaultVisual || {}) as Record<string, any>;
+  }, [nodeTypeDefinitions]);
+
+  const getNodeTypeAttributeDefinitions = useCallback((nodeData: any) => {
+    const typeId = String(nodeData?.type || '');
+    const found = nodeTypeDefinitions.find((item) => item.id === typeId);
+    return Array.isArray(found?.attributes) ? found.attributes : [];
   }, [nodeTypeDefinitions]);
 
   const graphNodes = useMemo(() => {
@@ -324,15 +374,29 @@ const pluginContextKey = useMemo(() => {
 
         const nodeTypes = (model?.node_types || []).map((node) => ({
           id: String(node?.id || ''),
-          label: normalizeDisplayLabel(String(node?.label || ''), String(node?.id || 'Р Р€Р В·Р ВµР В»')),
+          label: normalizeDisplayLabel(String(node?.label || ''), String(node?.id || 'Узел')),
           icon: String(node?.icon || '').trim(),
-          defaultVisual: ((node as any)?.default_visual || {}) as Record<string, any>
+          defaultVisual: ((node as any)?.default_visual || {}) as Record<string, any>,
+          attributes: Array.isArray((node as any)?.attributes)
+            ? (node as any).attributes
+                .map((attribute: any) => {
+                  const key = String(attribute?.key || '').trim();
+                  if (!key) return null;
+                  return {
+                    key,
+                    label: normalizeDisplayLabel(String(attribute?.label || ''), key),
+                    type: String(attribute?.type || 'string').toLowerCase(),
+                    visibleOnGraph: Boolean(attribute?.visible_on_graph),
+                  } as DomainNodeAttributeOption;
+                })
+                .filter(Boolean) as DomainNodeAttributeOption[]
+            : []
         })).filter((node) => !!node.id);
         setNodeTypeDefinitions(nodeTypes);
 
         const edgeTypes = (model?.edge_types || []).map((edge) => ({
           id: String((edge as any)?.id || ''),
-          label: normalizeDisplayLabel(String((edge as any)?.label || ''), String((edge as any)?.id || 'Р РЋР Р†РЎРЏР В·РЎРЉ')),
+          label: normalizeDisplayLabel(String((edge as any)?.label || ''), String((edge as any)?.id || 'Связь')),
           color: String((edge as any)?.default_visual?.color || '#64748b'),
           defaultVisual: (((edge as any)?.default_visual || {}) as Record<string, any>),
           allowedFrom: Array.isArray((edge as any)?.allowed_from) ? (edge as any).allowed_from.map((v: any) => String(v)) : ['*'],
@@ -440,6 +504,7 @@ const pluginContextKey = useMemo(() => {
       setElementEdgeDirection('');
       setElementEdgeStyle('unchanged');
       setElementEdgeType('');
+      setNodeExtraAttributes([]);
       return;
     }
 
@@ -470,6 +535,63 @@ const pluginContextKey = useMemo(() => {
       setElementEdgeDirection('');
       setElementEdgeStyle('unchanged');
       setElementEdgeType('');
+            const knownAttributeMap = new Map<string, DomainNodeAttributeOption>();
+      graphSelection.nodes.forEach((nodeItem) => {
+        getNodeTypeAttributeDefinitions(nodeItem.data).forEach((attribute) => {
+          if (!knownAttributeMap.has(attribute.key)) {
+            knownAttributeMap.set(attribute.key, attribute);
+          }
+        });
+      });
+
+      const keySet = new Set<string>();
+      graphSelection.nodes.forEach((nodeItem) => {
+        const nodeAttributes = (nodeItem.data?.attributes || {}) as Record<string, any>;
+        Object.keys(nodeAttributes).forEach((key) => {
+          if (!NODE_SYSTEM_ATTRIBUTE_KEYS.has(key)) keySet.add(key);
+        });
+      });
+      knownAttributeMap.forEach((_, key) => keySet.add(key));
+
+      const fields: NodeExtraAttributeState[] = Array.from(keySet).map((key) => {
+        const descriptor = knownAttributeMap.get(key);
+        const rawValues = graphSelection.nodes.map((nodeItem) => {
+          const nodeAttributes = (nodeItem.data?.attributes || {}) as Record<string, any>;
+          return normalizeAttributeValue(nodeAttributes[key]);
+        });
+        const firstValue = rawValues[0] || '';
+        const mixedValue = rawValues.some((value) => value !== firstValue);
+
+        const visibleValues = graphSelection.nodes.map((nodeItem) => {
+          const visibleAttributes = nodeItem.data?.attributes?.visual?.visibleAttributes;
+          if (Array.isArray(visibleAttributes)) return visibleAttributes.includes(key);
+          return descriptor?.visibleOnGraph === true;
+        });
+        const firstVisible = visibleValues[0];
+        const mixedVisible = visibleValues.some((value) => value !== firstVisible);
+
+        return {
+          key,
+          label: normalizeDisplayLabel(String(descriptor?.label || ''), attributeLabelAliases[key] || key),
+          type: String(descriptor?.type || 'string').toLowerCase(),
+          value: mixedValue ? '' : firstValue,
+          mixed: mixedValue,
+          visibleOnGraph: mixedVisible ? 'mixed' : (firstVisible ? 'on' : 'off'),
+        };
+      });
+
+      fields.sort((left, right) => {
+        const typePriorityLeft = attributeTypePriority[left.type] ?? 99;
+        const typePriorityRight = attributeTypePriority[right.type] ?? 99;
+        if (typePriorityLeft !== typePriorityRight) return typePriorityLeft - typePriorityRight;
+        return left.label.localeCompare(right.label, 'ru');
+      });
+
+      const fieldsForPanel = graphSelection.nodes.length === 1
+        ? fields.filter((field) => field.mixed || field.visibleOnGraph !== 'off' || String(field.value || '').trim().length > 0)
+        : fields;
+
+      setNodeExtraAttributes(fieldsForPanel);
       return;
     }
 
@@ -490,7 +612,8 @@ const pluginContextKey = useMemo(() => {
     setElementEdgeDirection(direction === undefined ? '' : String(direction));
     setElementEdgeStyle(dashed === undefined ? 'unchanged' : (dashed ? 'dashed' : 'solid'));
     setElementEdgeType(edgeType === undefined ? '' : String(edgeType));
-  }, [graphSelection, getNodeTypeDefaultVisual]);
+    setNodeExtraAttributes([]);
+  }, [graphSelection, getNodeTypeDefaultVisual, getNodeTypeAttributeDefinitions]);
   useEffect(() => {
     if (!selectedArtifact || selectedArtifact.type !== 'graph') return;
 
@@ -630,7 +753,7 @@ const handleCreateNode = useCallback(() => {
 
       const conflictInSelected = Array.from(selectedTypeGroups.values()).some((count) => count > 1);
       if (conflictInSelected) {
-        window.alert('Р СњР ВµР В»РЎРЉР В·РЎРЏ Р В·Р В°Р Т‘Р В°РЎвЂљРЎРЉ Р С•Р Т‘Р С‘Р Р…Р В°Р С”Р С•Р Р†РЎС“РЎР‹ Р С—Р С•Р Т‘Р С—Р С‘РЎРѓРЎРЉ Р Т‘Р В»РЎРЏ Р Р…Р ВµРЎРѓР С”Р С•Р В»РЎРЉР С”Р С‘РЎвЂ¦ РЎС“Р В·Р В»Р С•Р Р† Р С•Р Т‘Р Р…Р С•Р С–Р С• РЎвЂљР С‘Р С—Р В°');
+        window.alert('Узел с таким типом и подписью уже существует');
         return;
       }
 
@@ -644,7 +767,7 @@ const handleCreateNode = useCallback(() => {
       });
 
       if (conflictWithExisting) {
-        window.alert('Р Р€Р В·Р ВµР В» РЎРѓ РЎвЂљР В°Р С”Р С‘Р С РЎвЂљР С‘Р С—Р С•Р С Р С‘ Р С—Р С•Р Т‘Р С—Р С‘РЎРѓРЎРЉРЎР‹ РЎС“Р В¶Р Вµ РЎРѓРЎС“РЎвЂ°Р ВµРЎРѓРЎвЂљР Р†РЎС“Р ВµРЎвЂљ');
+        window.alert('Узел с таким типом и подписью уже существует');
         return;
       }
     }
@@ -689,6 +812,39 @@ const handleCreateNode = useCallback(() => {
           if (!Number.isNaN(ringWidth) && ringWidth >= 0) {
             visual.ringWidth = ringWidth;
             attributes.ringWidth = ringWidth;
+          }
+        }
+
+                if (graphSelection.mode === 'nodes' && nodeExtraAttributes.length > 0) {
+          const visibleAttributesRaw = visual.visibleAttributes;
+          let visibleAttributes = Array.isArray(visibleAttributesRaw)
+            ? [...visibleAttributesRaw].map((key: any) => String(key))
+            : null;
+
+          nodeExtraAttributes.forEach((field) => {
+            if (NODE_SYSTEM_ATTRIBUTE_KEYS.has(field.key)) return;
+
+            if (!field.mixed) {
+              const previousValue = attributes[field.key];
+              if (Array.isArray(previousValue)) {
+                attributes[field.key] = String(field.value || '').split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+              } else {
+                attributes[field.key] = field.value;
+              }
+            }
+
+            if (field.visibleOnGraph !== 'mixed') {
+              if (!visibleAttributes) visibleAttributes = [];
+              if (field.visibleOnGraph === 'on') {
+                if (!visibleAttributes.includes(field.key)) visibleAttributes.push(field.key);
+              } else {
+                visibleAttributes = visibleAttributes.filter((item) => item !== field.key);
+              }
+            }
+          });
+
+          if (visibleAttributes) {
+            visual.visibleAttributes = visibleAttributes;
           }
         }
 
@@ -788,6 +944,7 @@ const handleCreateNode = useCallback(() => {
     elementEdgeDirection,
     elementEdgeStyle,
     elementEdgeType,
+    nodeExtraAttributes,
     edgeTypeDefinitions,
     dispatch,
     onApplyGraphData
@@ -1118,6 +1275,7 @@ const handleCreateNode = useCallback(() => {
                               style={{ width: 18, height: 18, borderRadius: 4, border: '1px solid #475569', background: color, cursor: 'pointer' }}
                               title={color}
                             />
+                          </div>
                           ))}
                         </div>
                       </div>
@@ -1152,6 +1310,39 @@ const handleCreateNode = useCallback(() => {
                       <label>{labels.ringWidth}</label>
                       <input className="property-input" value={elementRingWidth} onChange={(e) => setElementRingWidth(e.target.value)} placeholder="2" />
                     </div>
+
+                    {nodeExtraAttributes.length > 0 && (
+                      <div className="node-attributes-editor">
+                        {nodeExtraAttributes.map((field) => (
+                          <div key={field.key} className="node-attribute-row">
+                            <label className="node-attribute-title">
+                              <input
+                                type="checkbox"
+                                checked={field.visibleOnGraph === 'on'}
+                                ref={(el) => {
+                                  if (el) el.indeterminate = field.visibleOnGraph === 'mixed';
+                                }}
+                                onChange={(event) => {
+                                  const visibleOnGraph = event.target.checked ? 'on' : 'off';
+                                  setNodeExtraAttributes((prev) => prev.map((item) => item.key === field.key ? { ...item, visibleOnGraph } : item));
+                                }}
+                              />
+                              <span>{field.label}</span>
+                            </label>
+                            <textarea
+                              className="property-input node-attribute-value"
+                              value={field.value}
+                              placeholder={field.mixed ? labels.unchanged : ''}
+                              onChange={(event) => {
+                                const nextValue = event.target.value;
+                                setNodeExtraAttributes((prev) => prev.map((item) => item.key === field.key ? { ...item, value: nextValue, mixed: false } : item));
+                              }}
+                              rows={Math.max(2, Math.min(6, String(field.value || '').split(/\r?\n/).length || 2))}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </>
                 )}
 
@@ -1267,6 +1458,43 @@ const handleCreateNode = useCallback(() => {
 };
 
 export default InspectorPanel;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

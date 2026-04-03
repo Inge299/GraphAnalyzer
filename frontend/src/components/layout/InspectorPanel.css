@@ -379,3 +379,31 @@
   margin-left: auto;
   color: #64748b;
 }
+
+.node-attributes-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.node-attribute-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.node-attribute-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #475569;
+}
+
+.node-attribute-value {
+  width: 100%;
+  min-height: 56px;
+  resize: vertical;
+}
+
