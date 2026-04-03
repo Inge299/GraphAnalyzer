@@ -1275,8 +1275,8 @@ const handleCreateNode = useCallback(() => {
                               style={{ width: 18, height: 18, borderRadius: 4, border: '1px solid #475569', background: color, cursor: 'pointer' }}
                               title={color}
                             />
-                          </div>
                           ))}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1458,6 +1458,7 @@ const handleCreateNode = useCallback(() => {
 };
 
 export default InspectorPanel;
+
 
 
 
