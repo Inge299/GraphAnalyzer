@@ -168,8 +168,8 @@ const attributeTypePriority: Record<string, number> = {
 };
 
 const attributeLabelAliases: Record<string, string> = {
-  operator: 'Оператор',
-  ownership: 'Оформлен',
+  operator: 'оператор',
+  ownership: 'оформлен',
 };
 
 const normalizeAttributeValue = (value: unknown) => {
@@ -1279,7 +1279,6 @@ const handleCreateNode = useCallback(() => {
                           </div>
                         </div>
                       </div>
-                    </div>
                     <div className="property-group">
                       <label>{labels.elementIcon}</label>
                       <select className="property-input" value={elementIcon} onChange={(e) => setElementIcon(e.target.value)}>
@@ -1458,6 +1457,8 @@ const handleCreateNode = useCallback(() => {
 };
 
 export default InspectorPanel;
+
+
 
 
 
