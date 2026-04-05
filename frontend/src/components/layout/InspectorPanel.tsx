@@ -7,6 +7,8 @@ import type { ApiPlugin, ApiArtifact, PluginExecutionContext, DomainModelConfig 
 import type { SelectedElement } from '../../store/slices/uiSlice';
 import './InspectorPanel.css';
 import { collectPluginParamsWithPrompts, groupPluginsByMenuPath } from '../../utils/pluginParams';
+import { nodeAttributePreviewConfig } from '../../config/nodeAttributePreview';
+import { layoutConfig } from '../../config/layout';
 
 interface InspectorPanelProps {
   onApplyGraphData?: (newData: any, description: string, actionType: string) => Promise<void> | void;
@@ -126,7 +128,7 @@ const fallbackIconOptions = [
 const iconScaleOptions = ['1', '2', '3', '4', '5'];
 const nodeColorPalette = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#a855f7', '#06b6d4', '#14b8a6', '#84cc16', '#f43f5e', '#eab308', '#000000'];
 const defaultEdgeDirectionOptions = ['from', 'to', 'both'];
-const isLikelyMojibake = (value: string) => /[\u00D0\u00D1][\u0080-\u00BF]|[\uFFFD]|(?:Р.|С.){2,}/.test(value);
+const isLikelyMojibake = (value: string) => /[\u00D0\u00D1][\u0080-\u00BF]|[\uFFFD]|(?:Р В .|Р РЋ.){2,}/.test(value);
 
 const normalizeDisplayLabel = (candidate: string, fallback: string) => {
   const trimmed = candidate.trim();
@@ -146,8 +148,18 @@ const getCommonValue = <T,>(items: SelectedElement[], getter: (item: SelectedEle
 };
 
 const NODE_SYSTEM_ATTRIBUTE_KEYS = new Set(['visual', 'label', 'color', 'icon', 'iconScale', 'ringEnabled', 'ringWidth']);
+const EDGE_SYSTEM_ATTRIBUTE_KEYS = new Set(['visual', 'label', 'color', 'width', 'direction', 'dashed']);
 
 type NodeExtraAttributeState = {
+  key: string;
+  label: string;
+  type: string;
+  value: string;
+  mixed: boolean;
+  visibleOnGraph: 'on' | 'off' | 'mixed';
+};
+
+type EdgeExtraAttributeState = {
   key: string;
   label: string;
   type: string;
@@ -168,8 +180,16 @@ const attributeTypePriority: Record<string, number> = {
 };
 
 const attributeLabelAliases: Record<string, string> = {
-  operator: 'оператор',
-  ownership: 'оформлен',
+  operator: '\u043e\u043f\u0435\u0440\u0430\u0442\u043e\u0440',
+  ownership: '\u043e\u0444\u043e\u0440\u043c\u043b\u0435\u043d',
+};
+
+const edgeAttributeLabelAliases: Record<string, string> = {
+  period_start: '\u041d\u0430\u0447\u0430\u043b\u043e \u043f\u0435\u0440\u0438\u043e\u0434\u0430',
+  period_end: '\u041a\u043e\u043d\u0435\u0446 \u043f\u0435\u0440\u0438\u043e\u0434\u0430',
+  calls_count: '\u041a\u043e\u043b\u0438\u0447\u0435\u0441\u0442\u0432\u043e \u0441\u0432\u044f\u0437\u0435\u0439',
+  contacts: '\u041a\u043e\u043d\u0442\u0430\u043a\u0442\u043e\u0432',
+  period: '\u041f\u0435\u0440\u0438\u043e\u0434',
 };
 
 const normalizeAttributeValue = (value: unknown) => {
@@ -182,6 +202,16 @@ const normalizeAttributeValue = (value: unknown) => {
   return value === undefined || value === null ? '' : String(value).replace(/\\n/g, '\n');
 };
 
+const buildEdgeLabelFromAttributes = (attributes: Record<string, any>, visibleKeys?: string[]) => {
+  const visibleSet = Array.isArray(visibleKeys) ? new Set(visibleKeys.map((item) => String(item))) : null;
+  const contactsLine = String(attributes.contacts || (attributes.calls_count !== undefined ? `контактов: ${attributes.calls_count}` : '')).trim();
+  const periodLine = String(attributes.period || '').trim();
+
+  const lines: string[] = [];
+  if ((!visibleSet || visibleSet.has('contacts')) && contactsLine) lines.push(contactsLine);
+  if ((!visibleSet || visibleSet.has('period')) && periodLine) lines.push(periodLine);
+  return lines.join('\n').trim();
+};
 type EdgeTypeSelectProps = {
   value: string;
   onChange: (value: string) => void;
@@ -191,7 +221,7 @@ type EdgeTypeSelectProps = {
   emptyLabel?: string;
 };
 
-const EdgeTypeSelect: React.FC<EdgeTypeSelectProps> = ({ value, onChange, options, placeholder, allowEmpty = false, emptyLabel = 'Без изменений' }) => {
+const EdgeTypeSelect: React.FC<EdgeTypeSelectProps> = ({ value, onChange, options, placeholder, allowEmpty = false, emptyLabel = 'Р вЂР ВµР В· Р С‘Р В·Р СР ВµР Р…Р ВµР Р…Р С‘Р в„–' }) => {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const selected = options.find((item) => item.id === value) || null;
@@ -227,7 +257,7 @@ const EdgeTypeSelect: React.FC<EdgeTypeSelectProps> = ({ value, onChange, option
         ) : (
           <span className="edge-type-select-label edge-type-select-placeholder">{placeholder}</span>
         )}
-        <span className="edge-type-select-caret">▼</span>
+        <span className="edge-type-select-caret">РІвЂ“С</span>
       </button>
 
       {open && (
@@ -280,6 +310,7 @@ const InspectorPanel: React.FC<InspectorPanelProps> = ({ onApplyGraphData, onSta
   const [elementEdgeStyle, setElementEdgeStyle] = useState<'unchanged' | 'solid' | 'dashed'>('unchanged');
   const [elementEdgeType, setElementEdgeType] = useState('');
   const [nodeExtraAttributes, setNodeExtraAttributes] = useState<NodeExtraAttributeState[]>([]);
+  const [edgeExtraAttributes, setEdgeExtraAttributes] = useState<EdgeExtraAttributeState[]>([]);
   const [elementsSaving, setElementsSaving] = useState(false);
   const [nodeTypeDefinitions, setNodeTypeDefinitions] = useState<DomainNodeTypeOption[]>([]);
   const [edgeTypeDefinitions, setEdgeTypeDefinitions] = useState<DomainEdgeTypeOption[]>([]);
@@ -374,7 +405,7 @@ const pluginContextKey = useMemo(() => {
 
         const nodeTypes = (model?.node_types || []).map((node) => ({
           id: String(node?.id || ''),
-          label: normalizeDisplayLabel(String(node?.label || ''), String(node?.id || 'Узел')),
+          label: normalizeDisplayLabel(String(node?.label || ''), String(node?.id || 'Р Р€Р В·Р ВµР В»')),
           icon: String(node?.icon || '').trim(),
           defaultVisual: ((node as any)?.default_visual || {}) as Record<string, any>,
           attributes: Array.isArray((node as any)?.attributes)
@@ -396,7 +427,7 @@ const pluginContextKey = useMemo(() => {
 
         const edgeTypes = (model?.edge_types || []).map((edge) => ({
           id: String((edge as any)?.id || ''),
-          label: normalizeDisplayLabel(String((edge as any)?.label || ''), String((edge as any)?.id || 'Связь')),
+          label: normalizeDisplayLabel(String((edge as any)?.label || ''), String((edge as any)?.id || 'Р РЋР Р†РЎРЏР В·РЎРЉ')),
           color: String((edge as any)?.default_visual?.color || '#64748b'),
           defaultVisual: (((edge as any)?.default_visual || {}) as Record<string, any>),
           allowedFrom: Array.isArray((edge as any)?.allowed_from) ? (edge as any).allowed_from.map((v: any) => String(v)) : ['*'],
@@ -505,6 +536,7 @@ const pluginContextKey = useMemo(() => {
       setElementEdgeStyle('unchanged');
       setElementEdgeType('');
       setNodeExtraAttributes([]);
+      setEdgeExtraAttributes([]);
       return;
     }
 
@@ -565,7 +597,11 @@ const pluginContextKey = useMemo(() => {
         const visibleValues = graphSelection.nodes.map((nodeItem) => {
           const visibleAttributes = nodeItem.data?.attributes?.visual?.visibleAttributes;
           if (Array.isArray(visibleAttributes)) return visibleAttributes.includes(key);
-          return descriptor?.visibleOnGraph === true;
+          const previewField = (nodeAttributePreviewConfig as any)?.fields?.[key];
+          if (typeof previewField?.visibleOnGraph === 'boolean') {
+            return Boolean(previewField.visibleOnGraph);
+          }
+          return false;
         });
         const firstVisible = visibleValues[0];
         const mixedVisible = visibleValues.some((value) => value !== firstVisible);
@@ -592,6 +628,7 @@ const pluginContextKey = useMemo(() => {
         : fields;
 
       setNodeExtraAttributes(fieldsForPanel);
+      setEdgeExtraAttributes([]);
       return;
     }
 
@@ -612,7 +649,48 @@ const pluginContextKey = useMemo(() => {
     setElementEdgeDirection(direction === undefined ? '' : String(direction));
     setElementEdgeStyle(dashed === undefined ? 'unchanged' : (dashed ? 'dashed' : 'solid'));
     setElementEdgeType(edgeType === undefined ? '' : String(edgeType));
+
+    const edgeKeySet = new Set<string>();
+    graphSelection.edges.forEach((edgeItem) => {
+      const edgeAttributes = (edgeItem.data?.attributes || {}) as Record<string, any>;
+      Object.keys(edgeAttributes).forEach((key) => {
+        if (!EDGE_SYSTEM_ATTRIBUTE_KEYS.has(key)) edgeKeySet.add(key);
+      });
+    });
+
+        const edgeFields: EdgeExtraAttributeState[] = Array.from(edgeKeySet).map((key) => {
+      const rawValues = graphSelection.edges.map((edgeItem) => {
+        const edgeAttributes = (edgeItem.data?.attributes || {}) as Record<string, any>;
+        return normalizeAttributeValue(edgeAttributes[key]);
+      });
+      const firstValue = rawValues[0] || "";
+      const mixedValue = rawValues.some((value) => value !== firstValue);
+      const fallbackLabel = edgeAttributeLabelAliases[key] || key;
+      const sampleValue = ((graphSelection.edges[0]?.data?.attributes || {}) as Record<string, any>)[key];
+      const inferredType = typeof sampleValue === 'number' ? 'number' : 'string';
+
+      const visibleValues = graphSelection.edges.map((edgeItem) => {
+        const visibleAttributes = edgeItem.data?.attributes?.visual?.visibleAttributes;
+        if (Array.isArray(visibleAttributes)) return visibleAttributes.includes(key);
+        return true;
+      });
+      const firstVisible = visibleValues[0];
+      const mixedVisible = visibleValues.some((value) => value !== firstVisible);
+
+      return {
+        key,
+        label: normalizeDisplayLabel(fallbackLabel, fallbackLabel),
+        type: inferredType,
+        value: mixedValue ? "" : firstValue,
+        mixed: mixedValue,
+        visibleOnGraph: mixedVisible ? 'mixed' : (firstVisible ? 'on' : 'off'),
+      };
+    });
+
+    const visibleEdgeFields = edgeFields.filter((field) => !["period_start", "period_end", "calls_count"].includes(field.key));
+    visibleEdgeFields.sort((left, right) => left.label.localeCompare(right.label, "ru"));
     setNodeExtraAttributes([]);
+    setEdgeExtraAttributes(visibleEdgeFields);
   }, [graphSelection, getNodeTypeDefaultVisual, getNodeTypeAttributeDefinitions]);
   useEffect(() => {
     if (!selectedArtifact || selectedArtifact.type !== 'graph') return;
@@ -639,6 +717,7 @@ const pluginContextKey = useMemo(() => {
         setRunningPluginId(null);
         return;
       }
+      const beforeNodeIds = new Set((selectedArtifact.data?.nodes || []).map((node: any) => String(node.id ?? node.node_id ?? '')));
       const response = await pluginApi.execute(plugin.id, targetProjectId, [selectedArtifact.id], params, pluginContext);
       await dispatch(fetchArtifacts(targetProjectId));
       const created = response?.created || [];
@@ -648,6 +727,23 @@ const pluginContextKey = useMemo(() => {
         setCreatedArtifacts(created);
       }
       setPluginsMessage(labels.pluginDone.replace('{name}', plugin.name));
+
+      const updatedCurrent = (response as any)?.updated?.find((item: any) => Number(item?.id) === Number(selectedArtifact.id));
+      const nextNodes = Array.isArray(updatedCurrent?.data?.nodes) ? updatedCurrent.data.nodes : [];
+      const newNodeIds = nextNodes
+        .map((node: any) => String(node?.id ?? node?.node_id ?? ''))
+        .filter((id: string) => id && !beforeNodeIds.has(id));
+
+      const updatedMeta = updatedCurrent?.metadata || {};
+      if (updatedMeta?.communications_selection_limited) {
+        const limit = Number(updatedMeta?.communications_selection_limit || 0);
+        setPluginsMessage(`Обработано только первые ${limit} абонентов из выделения. Для остальных запустите плагин повторно.`);
+      }
+      if (newNodeIds.length > 0) {
+        const maxAutoLayout = Number(layoutConfig.pluginAutoLayout?.maxNewNodes || 80);
+        const autoLayout = newNodeIds.length <= maxAutoLayout;
+        window.dispatchEvent(new CustomEvent("graph:run-physics-layout", { detail: { newNodeIds, autoLayout } }));
+      }
     } catch (error: any) {
       if (error?.response?.status === 404 && selectedArtifact) {
         try {
@@ -753,7 +849,7 @@ const handleCreateNode = useCallback(() => {
 
       const conflictInSelected = Array.from(selectedTypeGroups.values()).some((count) => count > 1);
       if (conflictInSelected) {
-        window.alert('Узел с таким типом и подписью уже существует');
+        window.alert('Р Р€Р В·Р ВµР В» РЎРѓ РЎвЂљР В°Р С”Р С‘Р С РЎвЂљР С‘Р С—Р С•Р С Р С‘ Р С—Р С•Р Т‘Р С—Р С‘РЎРѓРЎРЉРЎР‹ РЎС“Р В¶Р Вµ РЎРѓРЎС“РЎвЂ°Р ВµРЎРѓРЎвЂљР Р†РЎС“Р ВµРЎвЂљ');
         return;
       }
 
@@ -767,7 +863,7 @@ const handleCreateNode = useCallback(() => {
       });
 
       if (conflictWithExisting) {
-        window.alert('Узел с таким типом и подписью уже существует');
+        window.alert('Р Р€Р В·Р ВµР В» РЎРѓ РЎвЂљР В°Р С”Р С‘Р С РЎвЂљР С‘Р С—Р С•Р С Р С‘ Р С—Р С•Р Т‘Р С—Р С‘РЎРѓРЎРЉРЎР‹ РЎС“Р В¶Р Вµ РЎРѓРЎС“РЎвЂ°Р ВµРЎРѓРЎвЂљР Р†РЎС“Р ВµРЎвЂљ');
         return;
       }
     }
@@ -817,7 +913,8 @@ const handleCreateNode = useCallback(() => {
 
                 if (graphSelection.mode === 'nodes' && nodeExtraAttributes.length > 0) {
           const visibleAttributesRaw = visual.visibleAttributes;
-          let visibleAttributes = Array.isArray(visibleAttributesRaw)
+          const hasExplicitVisibleAttributes = Array.isArray(visibleAttributesRaw);
+          let visibleAttributes = hasExplicitVisibleAttributes
             ? [...visibleAttributesRaw].map((key: any) => String(key))
             : null;
 
@@ -842,6 +939,7 @@ const handleCreateNode = useCallback(() => {
               }
             }
           });
+
 
           if (visibleAttributes) {
             visual.visibleAttributes = visibleAttributes;
@@ -907,6 +1005,41 @@ const handleCreateNode = useCallback(() => {
           attributes.dashed = dashed;
         }
 
+        if (graphSelection.mode === 'edges' && edgeExtraAttributes.length > 0) {
+          const nextVisibleAttributes = new Set<string>(
+            Array.isArray(visual.visibleAttributes)
+              ? visual.visibleAttributes.map((item: any) => String(item))
+              : edgeExtraAttributes.filter((item) => item.visibleOnGraph !== 'off').map((item) => item.key)
+          );
+
+          edgeExtraAttributes.forEach((field) => {
+            if (EDGE_SYSTEM_ATTRIBUTE_KEYS.has(field.key)) return;
+
+            if (field.visibleOnGraph === 'on') nextVisibleAttributes.add(field.key);
+            if (field.visibleOnGraph === 'off') nextVisibleAttributes.delete(field.key);
+
+            if (field.mixed) return;
+            const previousValue = attributes[field.key];
+            if (Array.isArray(previousValue)) {
+              attributes[field.key] = String(field.value || '').split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+              return;
+            }
+            if (field.type === 'number' || field.type === 'integer' || field.type === 'float') {
+              const numeric = Number(field.value);
+              attributes[field.key] = Number.isNaN(numeric) ? field.value : numeric;
+              return;
+            }
+            attributes[field.key] = field.value;
+          });
+
+          visual.visibleAttributes = Array.from(nextVisibleAttributes);
+          const nextEdgeLabel = buildEdgeLabelFromAttributes(attributes, visual.visibleAttributes);
+          if (nextEdgeLabel) {
+            nextEdge.label = nextEdgeLabel;
+            visual.label = nextEdgeLabel;
+            attributes.label = nextEdgeLabel;
+          }
+        }
         attributes.visual = visual;
         nextEdge.attributes = attributes;
         return nextEdge;
@@ -945,6 +1078,7 @@ const handleCreateNode = useCallback(() => {
     elementEdgeStyle,
     elementEdgeType,
     nodeExtraAttributes,
+    edgeExtraAttributes,
     edgeTypeDefinitions,
     dispatch,
     onApplyGraphData
@@ -1381,10 +1515,43 @@ const handleCreateNode = useCallback(() => {
                         <option value="dashed">{labels.dashed}</option>
                       </select>
                     </div>
+
+                    {edgeExtraAttributes.length > 0 && (
+                      <div className="node-attributes-editor">
+                        {edgeExtraAttributes.map((field) => (
+                          <div key={field.key} className="node-attribute-row">
+                            <label className="node-attribute-title">
+                              <input
+                                type="checkbox"
+                                checked={field.visibleOnGraph === 'on'}
+                                ref={(el) => {
+                                  if (el) el.indeterminate = field.visibleOnGraph === 'mixed';
+                                }}
+                                onChange={(event) => {
+                                  const visibleOnGraph = event.target.checked ? 'on' : 'off';
+                                  setEdgeExtraAttributes((prev) => prev.map((item) => item.key === field.key ? { ...item, visibleOnGraph } : item));
+                                }}
+                              />
+                              <span>{field.label}</span>
+                            </label>
+                            <textarea
+                              className="property-input node-attribute-value"
+                              value={field.value}
+                              placeholder={field.mixed ? labels.unchanged : ""}
+                              onChange={(event) => {
+                                const nextValue = event.target.value;
+                                setEdgeExtraAttributes((prev) => prev.map((item) => item.key === field.key ? { ...item, value: nextValue, mixed: false } : item));
+                              }}
+                              rows={Math.max(2, Math.min(6, String(field.value || "").split(/\r?\n/).length || 2))}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </>
                 )}
 
-                <div className="property-group">
+                <div className="property-group apply-group">
                   <button className="property-action" onClick={applyElementEdits} disabled={elementsSaving}>
                     {elementsSaving ? labels.loading : labels.apply}
                   </button>
@@ -1457,86 +1624,6 @@ const handleCreateNode = useCallback(() => {
 };
 
 export default InspectorPanel;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

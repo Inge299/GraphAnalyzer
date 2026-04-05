@@ -123,3 +123,26 @@
   background: var(--bg-hover, #e6ecf5);
   color: var(--text-primary, #0f172a);
 }
+
+.tab-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding-right: 8px;
+  margin-right: 4px;
+  border-right: 1px solid var(--border-color, #d7deea);
+}
+
+.tab-brand-logo {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+}
+
+.tab-brand-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary, #0f172a);
+  letter-spacing: 0.1px;
+}

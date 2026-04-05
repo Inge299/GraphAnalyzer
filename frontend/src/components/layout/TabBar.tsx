@@ -1,4 +1,4 @@
-// frontend/src/components/layout/TabBar.tsx
+﻿// frontend/src/components/layout/TabBar.tsx
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAppDispatch } from '../../store';
 import { fetchArtifacts, setCurrentArtifact } from '../../store/slices/artifactsSlice';
@@ -28,7 +28,8 @@ const labels = {
   projectNotSelected: "\u041f\u0440\u043e\u0435\u043a\u0442 \u043d\u0435 \u0432\u044b\u0431\u0440\u0430\u043d",
   loading: "\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430...",
   noPlugins: "\u041d\u0435\u0442 \u0434\u043e\u0441\u0442\u0443\u043f\u043d\u044b\u0445 \u043f\u043b\u0430\u0433\u0438\u043d\u043e\u0432",
-  running: "\u0417\u0430\u043f\u0443\u0441\u043a..."
+  running: "\u0417\u0430\u043f\u0443\u0441\u043a...",
+  appName: "Nodex"
 };
 const TabBar: React.FC<TabBarProps> = ({
   tabs,
@@ -135,6 +136,10 @@ const TabBar: React.FC<TabBarProps> = ({
 
   return (
     <div className="tab-bar">
+      <div className="tab-brand" title={labels.appName}>
+        <img className="tab-brand-logo" src="/favicon-nodex-tab-32.png" alt={labels.appName} />
+        <span className="tab-brand-name">{labels.appName}</span>
+      </div>
       {createdArtifacts && (
         <div
           style={{
@@ -257,7 +262,7 @@ const TabBar: React.FC<TabBarProps> = ({
                 onTabClose(tab.id);
               }}
               aria-label="Close tab"
-              title="Close"
+              title="Закрыть"
             >
               <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
                 <path
@@ -274,6 +279,7 @@ const TabBar: React.FC<TabBarProps> = ({
 };
 
 export default TabBar;
+
 
 
 

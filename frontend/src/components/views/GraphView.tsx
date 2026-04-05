@@ -133,7 +133,8 @@ const wrapLabel = (value: string, maxChars = 22) => {
 
 const getNodeBaseLabel = (node: any) => {
   const visual = node.attributes?.visual || {};
-  return String(node.label || visual.label || node.attributes?.label || node.attributes?.name || node.attributes?.title || getNodeId(node) || '');
+  const raw = String(node.label || visual.label || node.attributes?.label || node.attributes?.name || node.attributes?.title || getNodeId(node) || '');
+  return raw.replace(/\\n/g, '\n').split(/\r?\n/)[0].trim();
 };
 
 type NodeAttributePreviewRuntime = {
@@ -196,7 +197,7 @@ const getNodeAttributePreviewLines = (
     const values = Array.isArray(rawValue) ? rawValue : (rawValue ? [rawValue] : []);
     if (values.length === 0) continue;
 
-    const marker = String(cfg?.marker || preview.defaultMarker || '•').trim() || '•';
+    const marker = String(cfg?.marker || preview.defaultMarker || 'вЂў').trim() || 'вЂў';
     const maxLines = Number.isFinite(Number(cfg?.maxLines)) ? Math.max(1, Number(cfg?.maxLines)) : preview.maxLinesPerField;
     const fieldLabel = String(cfg?.label || typeAttributes[key]?.label || key);
 
@@ -228,9 +229,32 @@ const getNodeTooltip = (node: any, scale: number) => {
   return base || String(node?.type || getNodeId(node) || '');
 };
 
-const getEdgeBaseLabel = (edge: any) => String(edge.label || edge.attributes?.visual?.label || edge.attributes?.label || edge.type || '');
+const getEdgeComputedLines = (edge: any) => {
+  const attrs = edge?.attributes || {};
+  const visual = attrs?.visual || {};
+  const visibleRaw = visual?.visibleAttributes;
+  const visible = Array.isArray(visibleRaw) ? new Set(visibleRaw.map((item: any) => String(item))) : null;
 
-const getEdgeLabel = (edge: any) => wrapLabel(getEdgeBaseLabel(edge), 24);
+  const contactsLine = String(attrs?.contacts || (attrs?.calls_count !== undefined ? `контактов: ${attrs.calls_count}` : '')).trim();
+  const periodLine = String(attrs?.period || '').trim();
+
+  const lines: string[] = [];
+  if ((!visible || visible.has('contacts')) && contactsLine) lines.push(contactsLine);
+  if ((!visible || visible.has('period')) && periodLine) lines.push(periodLine);
+
+  return lines;
+};
+
+const getEdgeBaseLabel = (edge: any) => {
+  const computedLines = getEdgeComputedLines(edge);
+  if (computedLines.length > 0) return computedLines.join('\n');
+  return String(edge.label || edge.attributes?.visual?.label || edge.attributes?.label || edge.type || '');
+};
+
+const getEdgeLabel = (edge: any) => {
+  const base = getEdgeBaseLabel(edge);
+  return String(base || '').split(/\r?\n/).map((line) => wrapLabel(line, 44)).join('\n');
+};
 
 const getEdgeTooltip = (edge: any, scale: number) => {
   const maxScale = Number((layoutConfig as any)?.interaction?.nodeTooltipMaxScale ?? 0.75);
@@ -575,6 +599,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
   const viewPositionRef = useRef<{ scale: number; position: { x: number; y: number } } | null>(null);
   const isFirstLoadRef = useRef(true);
   const [domainModelRevision, setDomainModelRevision] = useState(0);
+  const [previewConfigRevision, setPreviewConfigRevision] = useState(0);
   const [connectMode, setConnectMode] = useState(false);
   const [edgeSourceId, setEdgeSourceId] = useState<string | null>(null);
   const connectModeRef = useRef(false);
@@ -589,6 +614,16 @@ export const GraphView: React.FC<GraphViewProps> = ({
     defaultMarker: String((nodeAttributePreviewConfig as any)?.defaultMarker || '*'),
     fields: ((nodeAttributePreviewConfig as any)?.fields || {}) as Record<string, { marker?: string; maxLines?: number; visibleOnGraph?: boolean; label?: string }>,
   });
+  useEffect(() => {
+    nodeAttributePreviewRef.current = {
+      enabled: Boolean((nodeAttributePreviewConfig as any)?.enabled),
+      maxLinesPerField: Number((nodeAttributePreviewConfig as any)?.maxLinesPerField ?? 3),
+      defaultMarker: String((nodeAttributePreviewConfig as any)?.defaultMarker || '*'),
+      fields: ((nodeAttributePreviewConfig as any)?.fields || {}) as Record<string, { marker?: string; maxLines?: number; visibleOnGraph?: boolean; label?: string }>,
+    };
+    setPreviewConfigRevision((value) => value + 1);
+  }, [JSON.stringify(nodeAttributePreviewConfig)]);
+
   const artifactDataRef = useRef<any>(artifact.data || {});
   const onAddEdgeRef = useRef(onAddEdge);
   const onDeleteSelectionRef = useRef(onDeleteSelection);
@@ -598,6 +633,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
   const connectTypeRef = useRef<string | null>(connectType || null);
   const onConnectCompleteRef = useRef(onConnectComplete);
   const [pluginMenu, setPluginMenu] = useState<PluginContextMenuState | null>(null);
+  const [pendingPluginNodeIds, setPendingPluginNodeIds] = useState<string[]>([]);
   const pluginMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -899,6 +935,8 @@ export const GraphView: React.FC<GraphViewProps> = ({
       const params = await collectPluginParamsWithPrompts(plugin, artifact.project_id);
       if (params === null) return;
 
+      const beforeNodeIds = new Set(((artifact.data?.nodes || []) as any[]).map((node: any) => String(node?.id ?? node?.node_id ?? '')));
+
       const response = await pluginApi.execute(
         plugin.id,
         artifact.project_id,
@@ -912,6 +950,23 @@ export const GraphView: React.FC<GraphViewProps> = ({
       const created = response?.created || [];
       if (created.length > 0) {
         dispatch(setCurrentArtifact(created[0].id));
+      }
+
+      const updatedCurrent = (response as any)?.updated?.find((item: any) => Number(item?.id) === Number(artifact.id));
+      const nextNodes = Array.isArray(updatedCurrent?.data?.nodes) ? updatedCurrent.data.nodes : [];
+      const newNodeIds = nextNodes
+        .map((node: any) => String(node?.id ?? node?.node_id ?? ''))
+        .filter((id: string) => id && !beforeNodeIds.has(id));
+
+      const updatedMeta = updatedCurrent?.metadata || {};
+      if (updatedMeta?.communications_selection_limited) {
+        const limit = Number(updatedMeta?.communications_selection_limit || 0);
+        window.alert(`Обработано только первые ${limit} абонентов из выделения. Для остальных запустите плагин повторно.`);
+      }
+      if (newNodeIds.length > 0) {
+        const maxAutoLayout = Number(layoutConfig.pluginAutoLayout?.maxNewNodes || 80);
+        const autoLayout = newNodeIds.length <= maxAutoLayout;
+        window.dispatchEvent(new CustomEvent("graph:run-physics-layout", { detail: { newNodeIds, autoLayout } }));
       }
     } catch (error: any) {
       const detail = error?.response?.data?.detail || error?.message || '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0437\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u044c \u043f\u043b\u0430\u0433\u0438\u043d.';
@@ -1344,7 +1399,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
       animation: false
     });
     applyConnectPreview();
-  }, [artifact.data, artifact.version, domainModelRevision]);
+  }, [artifact.data, artifact.version, domainModelRevision, previewConfigRevision]);
 
   useEffect(() => {
     applyConnectPreview();
@@ -1469,7 +1524,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
 
     return next;
   };
-  const handleBalancedLayoutClick = useCallback(async () => {
+  const handleBalancedLayoutClick = useCallback(async (forceAll = false, explicitIds?: string[]) => {
     if (!networkRef.current || !nodesDataSetRef.current) return;
 
     const data = artifactDataRef.current || {};
@@ -1477,9 +1532,11 @@ export const GraphView: React.FC<GraphViewProps> = ({
     if (!allNodes.length) return;
 
     const selectedIds = networkRef.current.getSelectedNodes().map((id) => String(id));
-    const targetIds = selectedIds.length
-      ? selectedIds
-      : allNodes.map((node: any) => String(getNodeId(node)));
+    const targetIds = (explicitIds && explicitIds.length)
+      ? explicitIds
+      : ((!forceAll && selectedIds.length)
+          ? selectedIds
+          : allNodes.map((node: any) => String(getNodeId(node))));
 
     if (targetIds.length <= 1) return;
 
@@ -1556,9 +1613,39 @@ export const GraphView: React.FC<GraphViewProps> = ({
     networkRef.current.selectNodes(targetIds, false);
     updateSelectionFromNetwork();
   }, [onNodeMove, onNodesMove, updateSelectionFromNetwork]);
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<any>)?.detail || {};
+      const newNodeIds = Array.isArray(detail.newNodeIds) ? detail.newNodeIds.map((id: any) => String(id)).filter(Boolean) : [];
+      if (newNodeIds.length === 0) return;
+      const autoLayout = detail.autoLayout !== false;
+      setPendingPluginNodeIds((prev) => Array.from(new Set([...prev, ...newNodeIds])));
+      if (!autoLayout) return;
+
+      const tryRun = (attempt = 0) => {
+        const ds = nodesDataSetRef.current;
+        const availableIds = newNodeIds.filter((id) => Boolean(ds?.get(id)));
+        if (!availableIds.length) {
+          if (attempt < 12) {
+            window.setTimeout(() => tryRun(attempt + 1), 150);
+          }
+          return;
+        }
+        networkRef.current?.selectNodes(availableIds, false);
+        void handleBalancedLayoutClick(false, availableIds).then(() => {
+          setPendingPluginNodeIds((prev) => prev.filter((id) => !availableIds.includes(id)));
+        });
+      };
+      tryRun();
+    };
+
+    window.addEventListener("graph:run-physics-layout", handler as EventListener);
+    return () => window.removeEventListener("graph:run-physics-layout", handler as EventListener);
+  }, [handleBalancedLayoutClick]);
+
   const handleAutoLayoutClick = useCallback(async () => {
     if (!networkRef.current || !nodesDataSetRef.current) return;
-
     const data = artifactDataRef.current || {};
     const allNodes = data.nodes || [];
     if (!allNodes.length) return;
@@ -1692,6 +1779,23 @@ export const GraphView: React.FC<GraphViewProps> = ({
     networkRef.current.fit({ animation: true, duration: 250 });
   }, []);
 
+
+  const handleLayoutNewNodesClick = useCallback(async () => {
+    if (pendingPluginNodeIds.length === 0) return;
+    const ds = nodesDataSetRef.current;
+    const availableIds = pendingPluginNodeIds.filter((id) => Boolean(ds?.get(id)));
+    if (availableIds.length === 0) {
+      setPendingPluginNodeIds([]);
+      return;
+    }
+    networkRef.current?.selectNodes(availableIds, false);
+    await handleBalancedLayoutClick(false, availableIds);
+    setPendingPluginNodeIds((prev) => prev.filter((id) => !availableIds.includes(id)));
+  }, [handleBalancedLayoutClick, pendingPluginNodeIds]);
+
+  useEffect(() => {
+    setPendingPluginNodeIds([]);
+  }, [artifact.id]);
   const handleHistoryJump = useCallback((state: any) => {
     console.log('[GraphView] History jump');
 
@@ -1794,7 +1898,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
         <button 
           onClick={handleUndoClick} 
           disabled={!canUndo}
-          title="Undo (Ctrl+Z)"
+          title="Отменить (Ctrl+Z)"
           style={{
             padding: '6px 12px',
             background: '#2563eb',
@@ -1810,7 +1914,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
         <button 
           onClick={handleRedoClick} 
           disabled={!canRedo}
-          title="Redo (Ctrl+Y)"
+          title="Повторить (Ctrl+Y)"
           style={{
             padding: '6px 12px',
             background: '#2563eb',
@@ -1822,6 +1926,22 @@ export const GraphView: React.FC<GraphViewProps> = ({
           }}
         >
           {'\u21B7'}
+        </button>
+        <button
+          onClick={handleLayoutNewNodesClick}
+          disabled={pendingPluginNodeIds.length === 0}
+          title={"Разложить новые узлы"}
+          style={{
+            padding: "6px 10px",
+            background: pendingPluginNodeIds.length > 0 ? "#0ea5e9" : "#94a3b8",
+            border: "1px solid " + (pendingPluginNodeIds.length > 0 ? "#0284c7" : "#94a3b8"),
+            borderRadius: "4px",
+            color: "#ffffff",
+            cursor: pendingPluginNodeIds.length > 0 ? "pointer" : "not-allowed",
+            opacity: pendingPluginNodeIds.length > 0 ? 1 : 0.65
+          }}
+        >
+          {`N+${pendingPluginNodeIds.length}`}
         </button>
         <button
           onClick={handleAutoLayoutClick}
@@ -1839,7 +1959,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
         </button>
         <button
           onClick={handleBalancedLayoutClick}
-          title={"Physics layout"}
+          title={"Физическая раскладка"}
           style={{
             padding: '6px 10px',
             background: '#2563eb',
@@ -1853,7 +1973,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
         </button>
         <button
           onClick={handleFitClick}
-          title="Fit to screen"
+          title="Показать целиком"
           style={{
             padding: '6px 10px',
             background: '#2563eb',
@@ -2012,6 +2132,17 @@ export const GraphView: React.FC<GraphViewProps> = ({
 };
 
 export default GraphView;
+
+
+
+
+
+
+
+
+
+
+
 
 
 

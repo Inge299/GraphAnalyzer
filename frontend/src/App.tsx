@@ -31,7 +31,7 @@ interface NodeCreationSpec {
 }
 
 const labels = {
-  loadingProjects: 'Loading projects...',
+  loadingProjects: 'Загрузка проектов...',
   noProjectsTitle: '\u041f\u0440\u043e\u0435\u043a\u0442\u043e\u0432 \u043f\u043e\u043a\u0430 \u043d\u0435\u0442',
   noProjectsHint: '\u0421\u043e\u0437\u0434\u0430\u0439 \u043f\u0435\u0440\u0432\u044b\u0439 \u043f\u0440\u043e\u0435\u043a\u0442, \u0447\u0442\u043e\u0431\u044b \u043d\u0430\u0447\u0430\u0442\u044c \u0440\u0430\u0431\u043e\u0442\u0443',
   projectNamePlaceholder: '\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435 \u043f\u0440\u043e\u0435\u043a\u0442\u0430',
@@ -756,6 +756,7 @@ function App() {
 }
 
 export default App;
+
 
 
 
