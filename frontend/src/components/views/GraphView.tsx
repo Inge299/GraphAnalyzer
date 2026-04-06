@@ -1,4 +1,4 @@
-﻿// frontend/src/components/views/GraphView.tsx
+// frontend/src/components/views/GraphView.tsx
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useAppDispatch } from '../../store';
 import { setSelectedElements } from '../../store/slices/uiSlice';
@@ -197,7 +197,7 @@ const getNodeAttributePreviewLines = (
     const values = Array.isArray(rawValue) ? rawValue : (rawValue ? [rawValue] : []);
     if (values.length === 0) continue;
 
-    const marker = String(cfg?.marker || preview.defaultMarker || 'вЂў').trim() || 'вЂў';
+    const marker = String(cfg?.marker || preview.defaultMarker || 'Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р вЂ Р В РІР‚С™Р вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В Р Р‹Р Р†РІР‚С›РЎС›Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р В Р вЂ№Р В Р вЂ Р В РІР‚С™Р РЋРІР‚Сњ').trim() || 'Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р вЂ Р В РІР‚С™Р вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В Р Р‹Р Р†РІР‚С›РЎС›Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р В Р вЂ№Р В Р вЂ Р В РІР‚С™Р РЋРІР‚Сњ';
     const maxLines = Number.isFinite(Number(cfg?.maxLines)) ? Math.max(1, Number(cfg?.maxLines)) : preview.maxLinesPerField;
     const fieldLabel = String(cfg?.label || typeAttributes[key]?.label || key);
 
@@ -235,7 +235,7 @@ const getEdgeComputedLines = (edge: any) => {
   const visibleRaw = visual?.visibleAttributes;
   const visible = Array.isArray(visibleRaw) ? new Set(visibleRaw.map((item: any) => String(item))) : null;
 
-  const contactsLine = String(attrs?.contacts || (attrs?.calls_count !== undefined ? `контактов: ${attrs.calls_count}` : '')).trim();
+  const contactsLine = String(attrs?.contacts || (attrs?.calls_count !== undefined ? `Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р В Р вЂ№Р В Р вЂ Р В РІР‚С™Р РЋРЎС™Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р В Р вЂ№Р В Р вЂ Р В РІР‚С™Р РЋРЎвЂєР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р вЂ Р В РІР‚С™Р вЂ™Р’В¦Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В Р Р‹Р Р†РІР‚С›РЎС›Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В°Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р В Р вЂ№Р В Р вЂ Р В РІР‚С™Р РЋРЎС™Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В Р Р‹Р Р†РІР‚С›РЎС›Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р В Р вЂ№Р В Р вЂ Р В РІР‚С™Р РЋРЎвЂєР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р вЂ Р В РІР‚С™Р вЂ™Р’В : ${attrs.calls_count}` : '')).trim();
   const periodLine = String(attrs?.period || '').trim();
 
   const lines: string[] = [];
@@ -936,13 +936,19 @@ export const GraphView: React.FC<GraphViewProps> = ({
       if (params === null) return;
 
       const beforeNodeIds = new Set(((artifact.data?.nodes || []) as any[]).map((node: any) => String(node?.id ?? node?.node_id ?? '')));
+      const liveContext = networkRef.current
+        ? buildPluginContextFromSelection(
+            networkRef.current.getSelectedNodes().map((id: any) => String(id)),
+            networkRef.current.getSelectedEdges().map((id: any) => String(id))
+          )
+        : context;
 
       const response = await pluginApi.execute(
         plugin.id,
         artifact.project_id,
         [artifact.id],
         params,
-        context
+        liveContext
       );
 
       await dispatch(fetchArtifacts(artifact.project_id));
@@ -959,9 +965,13 @@ export const GraphView: React.FC<GraphViewProps> = ({
         .filter((id: string) => id && !beforeNodeIds.has(id));
 
       const updatedMeta = updatedCurrent?.metadata || {};
-      if (updatedMeta?.communications_selection_limited) {
+      if (updatedMeta?.communications_selection_exceeded) {
+        const limit = Number(updatedMeta?.communications_selection_limit || 150);
+        const total = Number(updatedMeta?.communications_selected_total || 0);
+        window.alert(`\u0412\u044b\u0434\u0435\u043b\u0435\u043d\u043e ${total} \u0430\u0431\u043e\u043d\u0435\u043d\u0442\u043e\u0432. \u041b\u0438\u043c\u0438\u0442 \u0434\u043b\u044f \u0437\u0430\u043f\u0443\u0441\u043a\u0430 \u043f\u043b\u0430\u0433\u0438\u043d\u0430: ${limit}. \u041f\u043e\u0436\u0430\u043b\u0443\u0439\u0441\u0442\u0430, \u0437\u0430\u043f\u0443\u0441\u043a\u0430\u0439\u0442\u0435 \u0440\u0430\u0441\u0448\u0438\u0440\u0435\u043d\u0438\u0435 \u0447\u0430\u0441\u0442\u044f\u043c\u0438.`);
+      } else if (updatedMeta?.communications_selection_limited) {
         const limit = Number(updatedMeta?.communications_selection_limit || 0);
-        window.alert(`Обработано только первые ${limit} абонентов из выделения. Для остальных запустите плагин повторно.`);
+        window.alert(`\u041e\u0431\u0440\u0430\u0431\u043e\u0442\u0430\u043d\u043e \u0442\u043e\u043b\u044c\u043a\u043e \u043f\u0435\u0440\u0432\u044b\u0435 ${limit} \u0430\u0431\u043e\u043d\u0435\u043d\u0442\u043e\u0432 \u0438\u0437 \u0432\u044b\u0434\u0435\u043b\u0435\u043d\u0438\u044f. \u0414\u043b\u044f \u043e\u0441\u0442\u0430\u043b\u044c\u043d\u044b\u0445 \u0437\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u0435 \u043f\u043b\u0430\u0433\u0438\u043d \u043f\u043e\u0432\u0442\u043e\u0440\u043d\u043e.`);
       }
       if (newNodeIds.length > 0) {
         const maxAutoLayout = Number(layoutConfig.pluginAutoLayout?.maxNewNodes || 80);
@@ -1162,9 +1172,9 @@ export const GraphView: React.FC<GraphViewProps> = ({
         const openPluginMenuAt = async (domPoint: { x: number; y: number }) => {
       const nodeAtPoint = network.getNodeAt(domPoint);
       const edgeAtPoint = network.getEdgeAt(domPoint);
-
-      if (nodeAtPoint && network.getSelectedNodes().length === 0) {
-        network.selectNodes([String(nodeAtPoint)]);
+      const selectedNodeIdsBeforeContext = network.getSelectedNodes().map((id: any) => String(id));
+      if (nodeAtPoint && !selectedNodeIdsBeforeContext.includes(String(nodeAtPoint))) {
+        network.setSelection({ nodes: [String(nodeAtPoint)], edges: [] }, { unselectAll: true, highlightEdges: false });
       }
       if (edgeAtPoint && network.getSelectedEdges().length === 0) {
         network.selectEdges([String(edgeAtPoint)]);
@@ -1412,9 +1422,20 @@ export const GraphView: React.FC<GraphViewProps> = ({
     };
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Delete') return;
       if (isTypingTarget(event.target)) return;
       if (!networkRef.current) return;
+      if (!nodesDataSetRef.current) return;
+
+      const isSelectAll = (event.ctrlKey || event.metaKey) && (event.code === 'KeyA' || event.key.toLowerCase() === 'a' || event.key.toLowerCase() === 'Р В Р Р‹Р Р†Р вЂљРЎвЂє');
+      if (isSelectAll) {
+        event.preventDefault();
+        const allNodeIds = nodesDataSetRef.current.getIds().map((id: any) => String(id));
+        if (!allNodeIds.length) return;
+        networkRef.current.setSelection({ nodes: allNodeIds, edges: [] }, { unselectAll: true, highlightEdges: false });
+        return;
+      }
+
+      if (event.key !== 'Delete') return;
 
       const selectedNodeIds = networkRef.current.getSelectedNodes().map((id) => String(id));
       const selectedEdgeIds = networkRef.current.getSelectedEdges().map((id) => String(id));
@@ -1644,6 +1665,21 @@ export const GraphView: React.FC<GraphViewProps> = ({
     return () => window.removeEventListener("graph:run-physics-layout", handler as EventListener);
   }, [handleBalancedLayoutClick]);
 
+  useEffect(() => {
+    const handler = (event: Event) => {
+      if (!networkRef.current) return;
+      const detail = (event as CustomEvent<any>)?.detail || {};
+      const nodeIds = Array.isArray(detail.nodeIds) ? detail.nodeIds.map((id: any) => String(id)) : [];
+      const edgeIds = Array.isArray(detail.edgeIds) ? detail.edgeIds.map((id: any) => String(id)) : [];
+      networkRef.current.setSelection({ nodes: nodeIds, edges: edgeIds }, { unselectAll: true, highlightEdges: false });
+      updateSelectionFromNetwork();
+    };
+
+    window.addEventListener('graph:set-selection', handler as EventListener);
+    return () => window.removeEventListener('graph:set-selection', handler as EventListener);
+  }, [updateSelectionFromNetwork]);
+
+
   const handleAutoLayoutClick = useCallback(async () => {
     if (!networkRef.current || !nodesDataSetRef.current) return;
     const data = artifactDataRef.current || {};
@@ -1779,6 +1815,45 @@ export const GraphView: React.FC<GraphViewProps> = ({
     networkRef.current.fit({ animation: true, duration: 250 });
   }, []);
 
+  const handleFitSelectionClick = useCallback(() => {
+    if (!networkRef.current) return;
+
+    const selectedNodeIds = networkRef.current.getSelectedNodes().map((id) => String(id));
+    const selectedEdgeIds = networkRef.current.getSelectedEdges().map((id) => String(id));
+    const targetNodes = new Set<string>(selectedNodeIds);
+
+    if (selectedEdgeIds.length > 0) {
+      const edges = (artifactDataRef.current?.edges || []) as any[];
+      edges.forEach((edge: any) => {
+        if (!selectedEdgeIds.includes(String(edge.id))) return;
+        targetNodes.add(String(edge.from || edge.source_node || ''));
+        targetNodes.add(String(edge.to || edge.target_node || ''));
+      });
+    }
+
+    const nodeIds = Array.from(targetNodes).filter(Boolean);
+    if (!nodeIds.length) return;
+
+    networkRef.current.fit({
+      nodes: nodeIds,
+      animation: { duration: 250, easingFunction: 'easeInOutQuad' }
+    });
+  }, []);
+
+  const handleInvertSelectionClick = useCallback(() => {
+    if (!networkRef.current || !nodesDataSetRef.current || !edgesDataSetRef.current) return;
+
+    const allNodeIds = nodesDataSetRef.current.getIds().map((id: any) => String(id));
+    const allEdgeIds = edgesDataSetRef.current.getIds().map((id: any) => String(id));
+    const selectedNodeIds = new Set(networkRef.current.getSelectedNodes().map((id: any) => String(id)));
+    const selectedEdgeIds = new Set(networkRef.current.getSelectedEdges().map((id: any) => String(id)));
+
+    const nextNodeIds = allNodeIds.filter((id) => !selectedNodeIds.has(id));
+    const nextEdgeIds = allEdgeIds.filter((id) => !selectedEdgeIds.has(id));
+
+    networkRef.current.setSelection({ nodes: nextNodeIds, edges: nextEdgeIds }, { unselectAll: true, highlightEdges: false });
+    updateSelectionFromNetwork();
+  }, [updateSelectionFromNetwork]);
 
   const handleLayoutNewNodesClick = useCallback(async () => {
     if (pendingPluginNodeIds.length === 0) return;
@@ -1898,7 +1973,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
         <button 
           onClick={handleUndoClick} 
           disabled={!canUndo}
-          title="Отменить (Ctrl+Z)"
+          title="Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р В Р вЂ№Р В Р вЂ Р В РІР‚С™Р РЋРІР‚СњР В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В Р Р‹Р Р†РІР‚С›РЎС›Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р В Р вЂ№Р В РІР‚в„ўР вЂ™Р’ВР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’ВµР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р вЂ Р В РІР‚С™Р вЂ™Р’В¦Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р В Р вЂ№Р В Р вЂ Р В РІР‚С™Р вЂ™Р’ВР В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В Р Р‹Р Р†РІР‚С›РЎС›Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р вЂ™Р’В Р В Р’В Р Р†Р вЂљР’В° (Ctrl+Z)"
           style={{
             padding: '6px 12px',
             background: '#2563eb',
@@ -1914,7 +1989,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
         <button 
           onClick={handleRedoClick} 
           disabled={!canRedo}
-          title="Повторить (Ctrl+Y)"
+          title="Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р В Р вЂ№Р В Р Р‹Р РЋРЎСџР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р В Р вЂ№Р В Р вЂ Р В РІР‚С™Р РЋРЎвЂєР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р вЂ Р В РІР‚С™Р вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В Р Р‹Р Р†РІР‚С›РЎС›Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р В Р вЂ№Р В Р вЂ Р В РІР‚С™Р РЋРЎвЂєР В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р вЂ™Р’В Р В Р вЂ Р В РІР‚С™Р РЋРІвЂћСћР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р В Р вЂ№Р В Р вЂ Р В РІР‚С™Р вЂ™Р’ВР В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В Р Р‹Р Р†РІР‚С›РЎС›Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р вЂ™Р’В Р В Р’В Р Р†Р вЂљР’В° (Ctrl+Y)"
           style={{
             padding: '6px 12px',
             background: '#2563eb',
@@ -1927,22 +2002,22 @@ export const GraphView: React.FC<GraphViewProps> = ({
         >
           {'\u21B7'}
         </button>
-        <button
-          onClick={handleLayoutNewNodesClick}
-          disabled={pendingPluginNodeIds.length === 0}
-          title={"Разложить новые узлы"}
-          style={{
-            padding: "6px 10px",
-            background: pendingPluginNodeIds.length > 0 ? "#0ea5e9" : "#94a3b8",
-            border: "1px solid " + (pendingPluginNodeIds.length > 0 ? "#0284c7" : "#94a3b8"),
-            borderRadius: "4px",
-            color: "#ffffff",
-            cursor: pendingPluginNodeIds.length > 0 ? "pointer" : "not-allowed",
-            opacity: pendingPluginNodeIds.length > 0 ? 1 : 0.65
-          }}
-        >
-          {`N+${pendingPluginNodeIds.length}`}
-        </button>
+        {pendingPluginNodeIds.length > 0 && (
+          <button
+            onClick={handleLayoutNewNodesClick}
+            title={"��������� ������ ����� ����"}
+            style={{
+              padding: "6px 10px",
+              background: "#0ea5e9",
+              border: "1px solid #0284c7",
+              borderRadius: "4px",
+              color: "#ffffff",
+              cursor: "pointer"
+            }}
+          >
+            {`N+${pendingPluginNodeIds.length}`}
+          </button>
+        )}
         <button
           onClick={handleAutoLayoutClick}
           title={"\u0410\u0432\u0442\u043e\u0440\u0430\u0437\u043c\u0435\u0449\u0435\u043d\u0438\u0435"}
@@ -1959,7 +2034,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
         </button>
         <button
           onClick={handleBalancedLayoutClick}
-          title={"Физическая раскладка"}
+          title={"Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В¤Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р В Р вЂ№Р В Р вЂ Р В РІР‚С™Р вЂ™Р’ВР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В·Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р В Р вЂ№Р В Р вЂ Р В РІР‚С™Р вЂ™Р’ВР В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В Р’В Р В РІР‚в„–Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’ВµР В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р вЂ™Р’В Р В Р Р‹Р Р†Р вЂљРЎС™Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р В Р вЂ№Р В Р вЂ Р В РІР‚С™Р РЋРЎС™Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В°Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р вЂ™Р’В Р В Р’В Р В Р РЏ Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р вЂ™Р’В Р В Р вЂ Р В РІР‚С™Р РЋРІвЂћСћР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В°Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р вЂ™Р’В Р В Р Р‹Р Р†Р вЂљРЎС™Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р В Р вЂ№Р В Р вЂ Р В РІР‚С™Р РЋРЎС™Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В»Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В°Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р РЋРЎвЂєР В Р вЂ Р В РІР‚С™Р вЂ™Р’ВР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р В Р вЂ№Р В Р вЂ Р В РІР‚С™Р РЋРЎС™Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В°"}
           style={{
             padding: '6px 10px',
             background: '#2563eb',
@@ -1973,7 +2048,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
         </button>
         <button
           onClick={handleFitClick}
-          title="Показать целиком"
+          title="Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р В Р вЂ№Р В Р Р‹Р РЋРЎСџР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р В Р вЂ№Р В Р вЂ Р В РІР‚С™Р РЋРЎвЂєР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р В Р вЂ№Р В Р вЂ Р В РІР‚С™Р РЋРЎС™Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В°Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В·Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В°Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В Р Р‹Р Р†РІР‚С›РЎС›Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р вЂ™Р’В Р В Р’В Р Р†Р вЂљР’В° Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’ВµР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В»Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р В Р вЂ№Р В Р вЂ Р В РІР‚С™Р вЂ™Р’ВР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р В Р вЂ№Р В Р вЂ Р В РІР‚С™Р РЋРЎС™Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р В Р вЂ№Р В Р вЂ Р В РІР‚С™Р РЋРЎвЂєР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р В Р вЂ№Р В РІР‚в„ўР вЂ™Р’В"
           style={{
             padding: '6px 10px',
             background: '#2563eb',
@@ -1984,6 +2059,34 @@ export const GraphView: React.FC<GraphViewProps> = ({
           }}
         >
           {'\u2922'}
+        </button>
+        <button
+          onClick={handleFitSelectionClick}
+          title={"��������������� ����� �� ���������� ���������"}
+          style={{
+            padding: '6px 10px',
+            background: '#2563eb',
+            border: '1px solid #2563eb',
+            borderRadius: '4px',
+            color: '#ffffff',
+            cursor: 'pointer'
+          }}
+        >
+          {'??'}
+        </button>
+        <button
+          onClick={handleInvertSelectionClick}
+          title={"������������� ���������"}
+          style={{
+            padding: '6px 10px',
+            background: '#2563eb',
+            border: '1px solid #2563eb',
+            borderRadius: '4px',
+            color: '#ffffff',
+            cursor: 'pointer'
+          }}
+        >
+          {'?'}
         </button>
         <div style={{ fontSize: '12px', color: '#475569', marginLeft: '8px', padding: '6px 0' }}>
           v{artifact.version}
@@ -2132,6 +2235,9 @@ export const GraphView: React.FC<GraphViewProps> = ({
 };
 
 export default GraphView;
+
+
+
 
 
 
