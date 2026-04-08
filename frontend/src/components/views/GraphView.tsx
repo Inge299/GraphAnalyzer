@@ -256,6 +256,12 @@ const getEdgeLabel = (edge: any) => {
   return String(base || '').split(/\r?\n/).map((line) => wrapLabel(line, 44)).join('\n');
 };
 
+const getNodeLabelMinScale = () => Number((layoutConfig as any)?.interaction?.nodeLabelMinScale ?? 0.6);
+const getEdgeLabelMinScale = () => Number((layoutConfig as any)?.interaction?.edgeLabelMinScale ?? 0.8);
+const shouldShowNodeLabel = (scale: number) => scale >= getNodeLabelMinScale();
+const shouldShowEdgeLabel = (scale: number) => scale >= getEdgeLabelMinScale();
+const GRAPH_TOOLBAR_HEIGHT = 54;
+
 const getEdgeTooltip = (edge: any, scale: number) => {
   const maxScale = Number((layoutConfig as any)?.interaction?.nodeTooltipMaxScale ?? 0.75);
   if (!Number.isFinite(maxScale) || scale > maxScale) return '';
@@ -529,10 +535,10 @@ const buildEdgeCurveMap = (edges: any[]) => {
 
   return curveMap;
 };
-const buildEdgeForVis = (edge: any, nodeRadiusById: Record<string, number>, curveMap: Map<string, EdgeCurveMeta>, scale: number) => {
+const buildEdgeForVis = (edge: any, nodeRadiusById: Record<string, number>, curveMap: Map<string, EdgeCurveMeta>, scale: number, suppressLabels = false) => {
   const visual = edge.attributes?.visual || {};
   const edgeColor = visual.color || edge.attributes?.color || '#848484';
-  const edgeLabel = getEdgeLabel(edge);
+  const edgeLabel = (!suppressLabels && shouldShowEdgeLabel(scale)) ? getEdgeLabel(edge) : "";
   const edgeWidth = Number(visual.width || edge.attributes?.width || 2);
   const direction = visual.direction || edge.attributes?.direction || 'to';
   const dashed = Boolean(visual.dashed ?? edge.attributes?.dashed);
@@ -635,6 +641,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
   const [pluginMenu, setPluginMenu] = useState<PluginContextMenuState | null>(null);
   const [pendingPluginNodeIds, setPendingPluginNodeIds] = useState<string[]>([]);
   const pluginMenuRef = useRef<HTMLDivElement | null>(null);
+  const labelsSuppressedRef = useRef(false);
 
   useEffect(() => {
     connectModeRef.current = connectMode;
@@ -829,6 +836,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
     const allowedNodeIds = requestedEdgeType
       ? getAllowedNodeIdsForConnectType(data, requestedEdgeType, edgeSourceIdRef.current)
       : null;
+    const currentScale = networkRef.current ? networkRef.current.getScale() : 1;
 
     const nodeUpdates = resolvedNodes.map((node: any) => {
       const id = String(getNodeId(node));
@@ -838,7 +846,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
 
       return {
         id,
-        label: getNodeLabel(node, nodeAttributePreviewRef.current, nodeTypeAttributesRef.current),
+        label: (!labelsSuppressedRef.current && shouldShowNodeLabel(currentScale)) ? getNodeLabel(node, nodeAttributePreviewRef.current, nodeTypeAttributesRef.current) : "",
         color: dimmed ? {
           background: withAlpha(String(colors.background || '#94a3b8'), 0.2),
           border: withAlpha(String(colors.border || '#94a3b8'), 0.25)
@@ -876,7 +884,8 @@ export const GraphView: React.FC<GraphViewProps> = ({
     );
     const nodeUpdates = resolvedNodes.map((node: any) => ({
       id: getNodeId(node),
-      title: getNodeTooltip(node, scale)
+      title: getNodeTooltip(node, scale),
+      label: (!labelsSuppressedRef.current && shouldShowNodeLabel(scale)) ? getNodeLabel(node, nodeAttributePreviewRef.current, nodeTypeAttributesRef.current) : ""
     }));
     if (nodeUpdates.length > 0) {
       nodesDataSetRef.current.update(nodeUpdates);
@@ -884,12 +893,20 @@ export const GraphView: React.FC<GraphViewProps> = ({
 
     const edgeUpdates = (artifactDataRef.current?.edges || []).map((edge: any) => ({
       id: String(edge.id),
-      title: getEdgeTooltip(edge, scale)
+      title: getEdgeTooltip(edge, scale),
+      label: (!labelsSuppressedRef.current && shouldShowEdgeLabel(scale)) ? getEdgeLabel(edge) : ""
     }));
     if (edgeUpdates.length > 0) {
       edgesDataSetRef.current.update(edgeUpdates);
     }
   }, []);
+
+  const setLabelsSuppressed = useCallback((suppressed: boolean) => {
+    labelsSuppressedRef.current = suppressed;
+    const scale = networkRef.current ? networkRef.current.getScale() : 1;
+    updateNodeTooltipsByScale(scale);
+    applyConnectPreview();
+  }, [applyConnectPreview, updateNodeTooltipsByScale]);
 
   const updateSelectionFromNetwork = useCallback(() => {
     if (!networkRef.current) return;
@@ -936,12 +953,20 @@ export const GraphView: React.FC<GraphViewProps> = ({
       if (params === null) return;
 
       const beforeNodeIds = new Set(((artifact.data?.nodes || []) as any[]).map((node: any) => String(node?.id ?? node?.node_id ?? '')));
-      const liveContext = networkRef.current
-        ? buildPluginContextFromSelection(
-            networkRef.current.getSelectedNodes().map((id: any) => String(id)),
-            networkRef.current.getSelectedEdges().map((id: any) => String(id))
-          )
-        : context;
+
+      const hasMenuSelection =
+        (Array.isArray(context?.selected_nodes) && context.selected_nodes.length > 0) ||
+        (Array.isArray(context?.selected_edges) && context.selected_edges.length > 0);
+      const liveContext = hasMenuSelection
+        ? context
+        : (
+          networkRef.current
+            ? buildPluginContextFromSelection(
+                networkRef.current.getSelectedNodes().map((id: any) => String(id)),
+                networkRef.current.getSelectedEdges().map((id: any) => String(id))
+              )
+            : context
+        );
 
       const response = await pluginApi.execute(
         plugin.id,
@@ -999,7 +1024,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
     const nodesData = new DataSet(
       nodes.map((node: any) => ({
         id: getNodeId(node),
-        label: getNodeLabel(node, nodeAttributePreviewRef.current, nodeTypeAttributesRef.current),
+        label: (!labelsSuppressedRef.current && shouldShowNodeLabel(1)) ? getNodeLabel(node, nodeAttributePreviewRef.current, nodeTypeAttributesRef.current) : "",
         title: getNodeTooltip(node, 1),
         x: node.position_x,
         y: node.position_y,
@@ -1018,7 +1043,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
     const nodeRadiusById = buildNodeRadiusById(nodes);
     const edgeCurveMap = buildEdgeCurveMap(edges);
     const edgesData = new DataSet(
-      edges.map((edge: any) => buildEdgeForVis(edge, nodeRadiusById, edgeCurveMap, 1))
+      edges.map((edge: any) => buildEdgeForVis(edge, nodeRadiusById, edgeCurveMap, 1, labelsSuppressedRef.current))
     );
 
     nodesDataSetRef.current = nodesData;
@@ -1116,15 +1141,24 @@ export const GraphView: React.FC<GraphViewProps> = ({
       });
     };
 
-    network.on('dragStart', (params) => {
+    network.on('dragStart', (params: any) => {
       if (params.nodes && params.nodes.length > 0) {
         if (params.nodes.length === 1) {
-          network.selectNodes([String(params.nodes[0])], false);
-          updateSelectionFromNetwork();
+          const draggedNodeId = String(params.nodes[0]);
+          const selected = new Set(network.getSelectedNodes().map((id: any) => String(id)));
+          if (!selected.has(draggedNodeId)) {
+            const additive = Boolean(
+              params?.event?.srcEvent?.shiftKey ||
+              params?.event?.srcEvent?.ctrlKey ||
+              params?.event?.srcEvent?.metaKey
+            );
+            network.selectNodes([draggedNodeId], additive);
+            updateSelectionFromNetwork();
+          }
         }
         isDraggingRef.current = true;
         batchGroupIdRef.current = createBatchGroup();
-        console.log(`[GraphView] Started drag batch for ${params.nodes.length} nodes`);
+        console.log('[GraphView] Started drag batch for ' + params.nodes.length + ' nodes');
       }
     });
 
@@ -1169,22 +1203,30 @@ export const GraphView: React.FC<GraphViewProps> = ({
     network.on('deselectEdge', updateSelectionFromNetwork);
 
     
-        const openPluginMenuAt = async (domPoint: { x: number; y: number }) => {
-      const nodeAtPoint = network.getNodeAt(domPoint);
-      const edgeAtPoint = network.getEdgeAt(domPoint);
-      const selectedNodeIdsBeforeContext = network.getSelectedNodes().map((id: any) => String(id));
-      if (nodeAtPoint && !selectedNodeIdsBeforeContext.includes(String(nodeAtPoint))) {
-        network.setSelection({ nodes: [String(nodeAtPoint)], edges: [] }, { unselectAll: true, highlightEdges: false });
-      }
-      if (edgeAtPoint && network.getSelectedEdges().length === 0) {
-        network.selectEdges([String(edgeAtPoint)]);
+    const openPluginMenuAt = async (
+      domPoint: { x: number; y: number },
+      clickedNodes: string[] = [],
+      clickedEdges: string[] = []
+    ) => {
+      let contextNodes = clickedNodes;
+      let contextEdges = clickedEdges;
+
+      if (contextNodes.length > 0) {
+        contextNodes = [String(contextNodes[0])];
+        contextEdges = [];
+        network.setSelection({ nodes: contextNodes, edges: contextEdges }, { unselectAll: true, highlightEdges: false });
+      } else if (contextEdges.length > 0) {
+        contextNodes = [];
+        contextEdges = [String(contextEdges[0])];
+        network.setSelection({ nodes: contextNodes, edges: contextEdges }, { unselectAll: true, highlightEdges: false });
+      } else {
+        contextNodes = network.getSelectedNodes().map((id: any) => String(id));
+        contextEdges = network.getSelectedEdges().map((id: any) => String(id));
       }
 
       updateSelectionFromNetwork();
 
-      const selectedNodes = network.getSelectedNodes().map((id: any) => String(id));
-      const selectedEdges = network.getSelectedEdges().map((id: any) => String(id));
-      const context = buildPluginContextFromSelection(selectedNodes, selectedEdges);
+      const context = buildPluginContextFromSelection(contextNodes, contextEdges);
 
       setPluginMenu({
         x: Number(domPoint.x || 0),
@@ -1211,18 +1253,19 @@ export const GraphView: React.FC<GraphViewProps> = ({
     network.on('oncontext', async (params: any) => {
       params?.event?.preventDefault?.();
       const domPoint = params?.pointer?.DOM || params?.event?.center || { x: 0, y: 0 };
-      await openPluginMenuAt(domPoint);
+      const clickedNodes = Array.isArray(params?.nodes) ? params.nodes.map((id: any) => String(id)) : [];
+      const clickedEdges = Array.isArray(params?.edges) ? params.edges.map((id: any) => String(id)) : [];
+      if (clickedNodes.length === 0 && clickedEdges.length === 0) {
+        const hoveredNode = network.getNodeAt(domPoint as any);
+        const hoveredEdge = network.getEdgeAt(domPoint as any);
+        if (hoveredNode !== undefined && hoveredNode !== null) {
+          clickedNodes.push(String(hoveredNode));
+        } else if (hoveredEdge !== undefined && hoveredEdge !== null) {
+          clickedEdges.push(String(hoveredEdge));
+        }
+      }
+      await openPluginMenuAt(domPoint, clickedNodes, clickedEdges);
     });
-
-    const onDomContextMenu = async (event: MouseEvent) => {
-      event.preventDefault();
-      if (!containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      const domPoint = { x: event.clientX - rect.left, y: event.clientY - rect.top };
-      await openPluginMenuAt(domPoint);
-    };
-
-    containerRef.current?.addEventListener('contextmenu', onDomContextMenu);
 
     network.on('click', (params: any) => {
       const pendingNode = nodeCreateSpecRef.current;
@@ -1248,7 +1291,34 @@ export const GraphView: React.FC<GraphViewProps> = ({
         return;
       }
 
-      if (!connectModeRef.current) return;
+      if (!connectModeRef.current) {
+        const clickedNodes = Array.isArray(params?.nodes) ? params.nodes.map((id: any) => String(id)) : [];
+        const clickedEdges = Array.isArray(params?.edges) ? params.edges.map((id: any) => String(id)) : [];
+        const additive = Boolean(
+          params?.event?.srcEvent?.shiftKey ||
+          params?.event?.srcEvent?.ctrlKey ||
+          params?.event?.srcEvent?.metaKey
+        );
+
+        if (clickedNodes.length === 0 && clickedEdges.length === 0) {
+          network.unselectAll();
+          updateSelectionFromNetwork();
+          return;
+        }
+
+        if (additive) {
+          const nodeSet = new Set(network.getSelectedNodes().map((id: any) => String(id)));
+          const edgeSet = new Set(network.getSelectedEdges().map((id: any) => String(id)));
+          clickedNodes.forEach((id: string) => nodeSet.add(id));
+          clickedEdges.forEach((id: string) => edgeSet.add(id));
+          network.setSelection({ nodes: Array.from(nodeSet), edges: Array.from(edgeSet) }, { unselectAll: true, highlightEdges: false });
+        } else {
+          network.setSelection({ nodes: clickedNodes, edges: clickedEdges }, { unselectAll: true, highlightEdges: false });
+        }
+
+        updateSelectionFromNetwork();
+        return;
+      }
       if (!params.nodes || params.nodes.length === 0) return;
 
       const clickedNodeId = String(params.nodes[0]);
@@ -1342,7 +1412,6 @@ export const GraphView: React.FC<GraphViewProps> = ({
 
     return () => {
       if (moveTimeoutRef.current) clearTimeout(moveTimeoutRef.current);
-      containerRef.current?.removeEventListener('contextmenu', onDomContextMenu);
       network.off('zoom', onZoom);
       network.destroy();
       isInitializedRef.current = false;
@@ -1368,7 +1437,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
     );
     const nodesData = resolvedNodes.map((node: any) => ({
       id: getNodeId(node),
-      label: getNodeLabel(node, nodeAttributePreviewRef.current, nodeTypeAttributesRef.current),
+        label: (!labelsSuppressedRef.current && shouldShowNodeLabel(currentScale)) ? getNodeLabel(node, nodeAttributePreviewRef.current, nodeTypeAttributesRef.current) : "",
       title: getNodeTooltip(node, currentScale),
       x: node.position_x,
       y: node.position_y,
@@ -1390,7 +1459,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
 
     const nodeRadiusById = buildNodeRadiusById(resolvedNodes);
     const edgeCurveMap = buildEdgeCurveMap(artifact.data?.edges || []);
-    const edgesData = (artifact.data?.edges || []).map((edge: any) => buildEdgeForVis(edge, nodeRadiusById, edgeCurveMap, currentScale));
+    const edgesData = (artifact.data?.edges || []).map((edge: any) => buildEdgeForVis(edge, nodeRadiusById, edgeCurveMap, currentScale, labelsSuppressedRef.current));
 
     edgesDataSetRef.current?.clear();
     if (edgesData.length > 0) {
@@ -1561,6 +1630,8 @@ export const GraphView: React.FC<GraphViewProps> = ({
 
     if (targetIds.length <= 1) return;
 
+    setLabelsSuppressed(true);
+    try {
     const targetSet = new Set(targetIds);
     const allIds = allNodes.map((node: any) => String(getNodeId(node)));
     const physicsFlags = allIds.map((id) => ({ id, physics: targetSet.has(id) }));
@@ -1633,7 +1704,10 @@ export const GraphView: React.FC<GraphViewProps> = ({
 
     networkRef.current.selectNodes(targetIds, false);
     updateSelectionFromNetwork();
-  }, [onNodeMove, onNodesMove, updateSelectionFromNetwork]);
+    } finally {
+      setLabelsSuppressed(false);
+    }
+  }, [onNodeMove, onNodesMove, setLabelsSuppressed, updateSelectionFromNetwork]);
 
   useEffect(() => {
     const handler = (event: Event) => {
@@ -1693,6 +1767,8 @@ export const GraphView: React.FC<GraphViewProps> = ({
 
     if (targetIds.length <= 1) return;
 
+    setLabelsSuppressed(true);
+    try {
     const targetSet = new Set(targetIds);
     const allIds = allNodes.map((node: any) => String(getNodeId(node)));
     const nodeById = new Map(allNodes.map((node: any) => [String(getNodeId(node)), node]));
@@ -1766,7 +1842,10 @@ export const GraphView: React.FC<GraphViewProps> = ({
 
     networkRef.current.selectNodes(targetIds, false);
     updateSelectionFromNetwork();
-  }, [onNodeMove, onNodesMove, updateSelectionFromNetwork]);
+    } finally {
+      setLabelsSuppressed(false);
+    }
+  }, [onNodeMove, onNodesMove, setLabelsSuppressed, updateSelectionFromNetwork]);
 
   const handleSelectConnectedEdges = useCallback(() => {
     if (!networkRef.current) return;
@@ -1879,7 +1958,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
   const menuMaxWidth = 360;
   const menuMaxHeight = 440;
   const pluginMenuLeft = pluginMenu ? Math.max(8, Math.min(pluginMenu.x + 8, (containerRef.current?.clientWidth || 800) - menuMaxWidth - 8)) : 8;
-  const pluginMenuTop = pluginMenu ? Math.max(8, Math.min(pluginMenu.y + 8, (containerRef.current?.clientHeight || 600) - menuMaxHeight - 8)) : 8;
+  const pluginMenuTop = pluginMenu ? Math.max(GRAPH_TOOLBAR_HEIGHT + 8, Math.min(pluginMenu.y + GRAPH_TOOLBAR_HEIGHT + 8, GRAPH_TOOLBAR_HEIGHT + (containerRef.current?.clientHeight || 600) - menuMaxHeight - 8)) : GRAPH_TOOLBAR_HEIGHT + 8;
   const getPluginMenuEntries = useCallback((node: PluginMenuNode | null): PluginMenuEntry[] => {
     const folders = (node ? node.children : pluginMenuTree).map((child) => ({
       kind: 'folder' as const,
@@ -1955,12 +2034,12 @@ export const GraphView: React.FC<GraphViewProps> = ({
   const isGraphEmpty = !artifact.data || (!(artifact.data.nodes?.length) && !(artifact.data.edges?.length));
 
   return (
-    <div className="graph-view" style={{ height: '100%', position: 'relative', background: '#f8fafc' }}>
+    <div className="graph-view" style={{ height: '100%', position: 'relative', background: '#ffffff', overflow: 'hidden' }}>
       
       <div style={{ 
         position: 'absolute', 
-        top: 10, 
-        left: 10, 
+        top: 8,
+        left: 8,
         zIndex: 10, 
         display: 'flex', 
         gap: '8px',
@@ -2072,7 +2151,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
             cursor: 'pointer'
           }}
         >
-          {'??'}
+          {'?'}
         </button>
         <button
           onClick={handleInvertSelectionClick}
@@ -2227,14 +2306,23 @@ export const GraphView: React.FC<GraphViewProps> = ({
           <p style={{ margin: 0 }}>{'\u041a\u043b\u0438\u043a\u043d\u0438\u0442\u0435 \u043f\u043e \u043f\u043e\u043b\u044e, \u0447\u0442\u043e\u0431\u044b \u0441\u043e\u0437\u0434\u0430\u0442\u044c \u043f\u0435\u0440\u0432\u0443\u044e \u0432\u0435\u0440\u0448\u0438\u043d\u0443'}</p>
         </div>
       )}
-
-      <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+      <div ref={containerRef} style={{ width: '100%', height: `calc(100% - ${GRAPH_TOOLBAR_HEIGHT}px)`, marginTop: `${GRAPH_TOOLBAR_HEIGHT}px` }} />
 
     </div>
   );
 };
 
 export default GraphView;
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -66,13 +66,23 @@ function App() {
   const [nodeSortDir, setNodeSortDir] = useState<'asc' | 'desc'>('asc');
   const [edgeSortKey, setEdgeSortKey] = useState<string>('label');
   const [edgeSortDir, setEdgeSortDir] = useState<'asc' | 'desc'>('asc');
-
+  const [isSidebarVisible, setIsSidebarVisible] = useState(true);
+  const [isInspectorVisible, setIsInspectorVisible] = useState(true);
+  const [isFocusMode, setIsFocusMode] = useState(false);
+  const [bottomPanelHeight, setBottomPanelHeight] = useState(260);
+  const [isBottomResizing, setIsBottomResizing] = useState(false);
+  const contentAreaRef = useRef<HTMLDivElement | null>(null);
+  const [bottomPanelBounds, setBottomPanelBounds] = useState({ left: 8, width: 320 });
 
   const lastNodesStateRef = useRef<any>(null);
   const lastNodeRowIndexRef = useRef<number | null>(null);
   const lastEdgeRowIndexRef = useRef<number | null>(null);
+  const nodeRowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
+  const edgeRowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
   const [edgeCreationType, setEdgeCreationType] = useState<string | null>(null);
   const [nodeCreationSpec, setNodeCreationSpec] = useState<NodeCreationSpec | null>(null);
+  const bottomResizeStartYRef = useRef(0);
+  const bottomResizeStartHeightRef = useRef(260);
   const [edgeTypeVisuals, setEdgeTypeVisuals] = useState<Record<string, { color: string; width: number; direction: string; dashed: boolean; label: string }>>({});
   const [nodeTypeVisuals, setNodeTypeVisuals] = useState<Record<string, { icon: string; color: string; iconScale: number; ringEnabled: boolean; ringWidth: number; label: string }>>({});
 
@@ -265,6 +275,16 @@ function App() {
     });
     return result;
   }, [graphEdgesForPanel]);
+  const getNormalizedEdgeAttributes = useCallback((edge: any) => {
+    const attrs = { ...(edge?.attributes || {}) } as Record<string, any>;
+    const currentDirection = String(attrs.direction ?? '').trim();
+    if (!currentDirection) {
+      const typeId = String(edge?.type || '');
+      const fallbackDirection = edgeTypeVisuals[typeId]?.direction;
+      if (fallbackDirection) attrs.direction = fallbackDirection;
+    }
+    return attrs;
+  }, [edgeTypeVisuals]);
 
   const nodeAttributeColumns = useMemo(() => {
     const keys = new Set<string>();
@@ -280,19 +300,40 @@ function App() {
   const edgeAttributeColumns = useMemo(() => {
     const keys = new Set<string>();
     graphEdgesForPanel.forEach((edge: any) => {
-      Object.keys(edge?.attributes || {}).forEach((key) => {
+      const attrs = getNormalizedEdgeAttributes(edge);
+      Object.keys(attrs).forEach((key) => {
         if (key === 'visual' || key === 'label') return;
         keys.add(key);
       });
     });
     return Array.from(keys);
-  }, [graphEdgesForPanel]);
+  }, [graphEdgesForPanel, getNormalizedEdgeAttributes]);
 
   const valueToSortableString = useCallback((value: any): string => {
     if (Array.isArray(value)) return value.join(', ');
     if (value === null || value === undefined) return '';
     return String(value);
   }, []);
+
+  const attributeHeaderAliases = useMemo(() => ({
+    operator: '\u043e\u043f\u0435\u0440\u0430\u0442\u043e\u0440',
+    ownership: '\u043e\u0444\u043e\u0440\u043c\u043b\u0435\u043d',
+    color: '\u0446\u0432\u0435\u0442',
+    iconScale: '\u0440\u0430\u0437\u043c\u0435\u0440 \u0438\u043a\u043e\u043d\u043a\u0438',
+    ringWidth: '\u0442\u043e\u043b\u0449\u0438\u043d\u0430 \u0440\u0430\u043c\u043a\u0438',
+    ringEnabled: '\u0440\u0430\u043c\u043a\u0430',
+    period_start: '\u043d\u0430\u0447\u0430\u043b\u043e \u043f\u0435\u0440\u0438\u043e\u0434\u0430',
+    period_end: '\u043a\u043e\u043d\u0435\u0446 \u043f\u0435\u0440\u0438\u043e\u0434\u0430',
+    calls_count: '\u043a\u043e\u043b\u0438\u0447\u0435\u0441\u0442\u0432\u043e \u0441\u0432\u044f\u0437\u0435\u0439',
+  }), []);
+
+  const formatAttributeHeader = useCallback((rawKey: string) => {
+    const cleaned = String(rawKey || '')
+      .replace(/\uFFFD/g, '')
+      .replace(/[\u0000-\u001F\u007F]/g, '')
+      .trim();
+    return attributeHeaderAliases[cleaned as keyof typeof attributeHeaderAliases] || cleaned || rawKey;
+  }, [attributeHeaderAliases]);
 
   const sortedGraphNodesForPanel = useMemo(() => {
     const items = [...graphNodesForPanel];
@@ -333,14 +374,14 @@ function App() {
         aValue = String(a?.label || '');
         bValue = String(b?.label || '');
       } else {
-        aValue = valueToSortableString(a?.attributes?.[edgeSortKey]);
-        bValue = valueToSortableString(b?.attributes?.[edgeSortKey]);
+        aValue = valueToSortableString(getNormalizedEdgeAttributes(a)?.[edgeSortKey]);
+        bValue = valueToSortableString(getNormalizedEdgeAttributes(b)?.[edgeSortKey]);
       }
       const result = aValue.localeCompare(bValue, 'ru', { sensitivity: 'base', numeric: true });
       return edgeSortDir === 'asc' ? result : -result;
     });
     return items;
-  }, [graphEdgesForPanel, edgeSortKey, edgeSortDir, nodeLabelById, valueToSortableString]);
+  }, [graphEdgesForPanel, edgeSortKey, edgeSortDir, nodeLabelById, valueToSortableString, getNormalizedEdgeAttributes]);
 
   const toggleNodeSort = useCallback((key: string) => {
     if (nodeSortKey === key) {
@@ -363,7 +404,7 @@ function App() {
   const renderSortIndicator = useCallback((active: boolean, dir: 'asc' | 'desc') => {
     return (
       <span className={`bottom-sort-indicator ${active ? 'active' : ''}`} aria-hidden="true">
-        {active ? (dir === 'asc' ? '^' : 'v') : '·'}
+        {active ? (dir === 'asc' ? '\u2191' : '\u2193') : '\u2195'}
       </span>
     );
   }, []);
@@ -450,6 +491,28 @@ function App() {
     dispatch(setSelectedElements(buildSelectedElements(nodeIds, edgeIds)));
     syncGraphSelection(nodeIds, edgeIds);
   }, [buildSelectedElements, dispatch, selectedEdgeIds, selectedNodeIds, sortedGraphEdgesForPanel, syncGraphSelection]);
+  useEffect(() => {
+    if (!isBottomPanelOpen) return;
+
+    if (bottomTab === 'nodes' && selectedNodeIds.size > 0) {
+      const firstId = sortedGraphNodesForPanel
+        .map((node: any) => String(node?.id ?? node?.node_id ?? ''))
+        .find((id) => id && selectedNodeIds.has(id));
+      if (firstId) {
+        nodeRowRefs.current[firstId]?.scrollIntoView({ block: 'nearest' });
+      }
+      return;
+    }
+
+    if (bottomTab === 'edges' && selectedEdgeIds.size > 0) {
+      const firstId = sortedGraphEdgesForPanel
+        .map((edge: any) => String(edge?.id ?? ''))
+        .find((id) => id && selectedEdgeIds.has(id));
+      if (firstId) {
+        edgeRowRefs.current[firstId]?.scrollIntoView({ block: 'nearest' });
+      }
+    }
+  }, [isBottomPanelOpen, bottomTab, selectedNodeIds, selectedEdgeIds, sortedGraphNodesForPanel, sortedGraphEdgesForPanel]);
 
   useEffect(() => {
     if (!activeArtifact || activeArtifact.type !== 'graph') {
@@ -875,6 +938,75 @@ function App() {
     setIsSidebarCollapsed((prev) => !prev);
   }, []);
 
+  useEffect(() => {
+    if (isFocusMode) {
+      setIsSidebarVisible(false);
+      setIsInspectorVisible(false);
+      setIsBottomPanelOpen(false);
+    }
+  }, [isFocusMode]);
+  const handleBottomResizerMouseDown = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    bottomResizeStartYRef.current = event.clientY;
+    bottomResizeStartHeightRef.current = bottomPanelHeight;
+    setIsBottomResizing(true);
+  }, [bottomPanelHeight]);
+
+  useEffect(() => {
+    if (!isBottomResizing) return;
+
+    const onMouseMove = (event: MouseEvent) => {
+      const delta = bottomResizeStartYRef.current - event.clientY;
+      const maxHeight = Math.max(180, Math.floor(window.innerHeight * 0.34));
+      const nextHeight = Math.max(170, Math.min(maxHeight, bottomResizeStartHeightRef.current + delta));
+      setBottomPanelHeight(nextHeight);
+    };
+
+    const onMouseUp = () => {
+      setIsBottomResizing(false);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+  }, [isBottomResizing]);
+  useEffect(() => {
+    const updateBounds = () => {
+      const el = contentAreaRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      setBottomPanelBounds({
+        left: Math.max(8, Math.round(rect.left)),
+        width: Math.max(320, Math.round(rect.width))
+      });
+    };
+
+    updateBounds();
+
+    const target = contentAreaRef.current;
+    let observer: ResizeObserver | null = null;
+    if (target && typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(() => updateBounds());
+      observer.observe(target);
+    }
+
+    window.addEventListener('resize', updateBounds);
+    return () => {
+      window.removeEventListener('resize', updateBounds);
+      observer?.disconnect();
+    };
+  }, [isSidebarVisible, isInspectorVisible, isFocusMode, currentArtifactId]);
+
+  const bottomPanelStyle = useMemo<React.CSSProperties>(() => ({
+    left: `${bottomPanelBounds.left + 8}px`,
+    width: `${Math.max(320, bottomPanelBounds.width - 16)}px`,
+    transform: 'none',
+    ...(isBottomPanelOpen ? { height: `${bottomPanelHeight}px` } : {}),
+  }), [bottomPanelBounds, isBottomPanelOpen, bottomPanelHeight]);
+
   const handleCreateProject = useCallback(async () => {
     if (!newProjectName.trim()) {
       setCreateProjectError(labels.emptyNameError);
@@ -951,16 +1083,62 @@ function App() {
         projectId={currentProject?.id || null}
       />
       <div className="main-layout">
-        <Sidebar
-          isCollapsed={isSidebarCollapsed}
-          onToggleCollapse={handleToggleCollapse}
-          onArtifactSelect={handleArtifactSelect}
-        />
-        <div className="content-area">
+        {isSidebarVisible && (
+          <Sidebar
+            isCollapsed={isSidebarCollapsed}
+            onToggleCollapse={handleToggleCollapse}
+            onArtifactSelect={handleArtifactSelect}
+          />
+        )}
+        <div className="content-area" ref={contentAreaRef}>
+          <div className="focus-controls">
+            <button
+              type="button"
+              className="focus-btn"
+              title={isSidebarVisible ? '\u0421\u043a\u0440\u044b\u0442\u044c \u043f\u0430\u043d\u0435\u043b\u044c \u0430\u0440\u0442\u0435\u0444\u0430\u043a\u0442\u043e\u0432' : '\u041f\u043e\u043a\u0430\u0437\u0430\u0442\u044c \u043f\u0430\u043d\u0435\u043b\u044c \u0430\u0440\u0442\u0435\u0444\u0430\u043a\u0442\u043e\u0432'}
+              onClick={() => setIsSidebarVisible((prev) => !prev)}
+            >
+              {isSidebarVisible ? '\u25c2 \u0421\u043f\u0438\u0441\u043e\u043a' : '\u25b8 \u0421\u043f\u0438\u0441\u043e\u043a'}
+            </button>
+            <button
+              type="button"
+              className="focus-btn"
+              title={isInspectorVisible ? '\u0421\u043a\u0440\u044b\u0442\u044c \u0438\u043d\u0441\u043f\u0435\u043a\u0442\u043e\u0440' : '\u041f\u043e\u043a\u0430\u0437\u0430\u0442\u044c \u0438\u043d\u0441\u043f\u0435\u043a\u0442\u043e\u0440'}
+              onClick={() => setIsInspectorVisible((prev) => !prev)}
+            >
+              {isInspectorVisible ? '\u0418\u043d\u0441\u043f\u0435\u043a\u0442\u043e\u0440 \u25b8' : '\u0418\u043d\u0441\u043f\u0435\u043a\u0442\u043e\u0440 \u25c2'}
+            </button>
+            {activeArtifact?.type === 'graph' && !isFocusMode && (
+              <button
+                type="button"
+                className="focus-btn"
+                title={isBottomPanelOpen ? '\u0421\u043a\u0440\u044b\u0442\u044c \u043d\u0438\u0436\u043d\u0438\u0435 \u0441\u043f\u0438\u0441\u043a\u0438' : '\u041f\u043e\u043a\u0430\u0437\u0430\u0442\u044c \u043d\u0438\u0436\u043d\u0438\u0435 \u0441\u043f\u0438\u0441\u043a\u0438'}
+                onClick={() => setIsBottomPanelOpen((prev) => !prev)}
+              >
+                {isBottomPanelOpen ? '\u25be \u0421\u043f\u0438\u0441\u043a\u0438' : '\u25b4 \u0421\u043f\u0438\u0441\u043a\u0438'}
+              </button>
+            )}
+            <button
+              type="button"
+              className={`focus-btn ${isFocusMode ? 'active' : ''}`}
+              onClick={() => {
+                setIsFocusMode((prev) => {
+                  const next = !prev;
+                  if (!next) {
+                    setIsSidebarVisible(true);
+                    setIsInspectorVisible(true);
+                  }
+                  return next;
+                });
+              }}
+            >
+              {isFocusMode ? '\u0412\u044b\u0439\u0442\u0438 \u0438\u0437 \u0444\u043e\u043a\u0443\u0441\u0430' : '\u0424\u043e\u043a\u0443\u0441-\u0440\u0435\u0436\u0438\u043c'}
+            </button>
+          </div>
+
           {activeArtifact ? (
             activeArtifact.type === 'graph' ? (
               <GraphView
-                key={activeArtifact.id}
                 artifact={activeArtifact}
                 onNodeMove={handleNodeMove}
                 onNodesMove={handleNodesMove}
@@ -996,90 +1174,97 @@ function App() {
             </div>
           )}
         </div>
-        <InspectorPanel onApplyGraphData={handleGraphUpdate} onStartNodeCreation={handleStartNodeCreation} onStartEdgeCreation={handleStartEdgeCreation} nodeCreationSpec={nodeCreationSpec} edgeCreationType={edgeCreationType} />
+        {isInspectorVisible && (
+          <InspectorPanel onApplyGraphData={handleGraphUpdate} onStartNodeCreation={handleStartNodeCreation} onStartEdgeCreation={handleStartEdgeCreation} nodeCreationSpec={nodeCreationSpec} edgeCreationType={edgeCreationType} />
+        )}
       </div>
-      {activeArtifact?.type === 'graph' && (
-        <div className={`bottom-panel ${isBottomPanelOpen ? 'open' : 'collapsed'}`}>
+      {activeArtifact?.type === 'graph' && !isFocusMode && (
+        <div className={`bottom-panel ${isBottomPanelOpen ? 'open' : 'collapsed'}`} style={bottomPanelStyle}>
           <button
             type="button"
             className="bottom-panel-handle"
             onClick={() => setIsBottomPanelOpen((prev) => !prev)}
             title={isBottomPanelOpen ? '\u0421\u043a\u0440\u044b\u0442\u044c \u0441\u043f\u0438\u0441\u043a\u0438' : '\u041f\u043e\u043a\u0430\u0437\u0430\u0442\u044c \u0441\u043f\u0438\u0441\u043a\u0438'}
           >
-            {isBottomPanelOpen ? '\u25bc' : '\u25b2'} {isBottomPanelOpen ? '\u0421\u043a\u0440\u044b\u0442\u044c' : '\u0421\u043f\u0438\u0441\u043a\u0438'}
+            {isBottomPanelOpen ? '\u25be' : '\u25b4'}
           </button>
           {isBottomPanelOpen && (
-            <div className="bottom-panel-body">
-              <div className="bottom-panel-tabs">
-                <button type="button" className={`bottom-panel-tab ${bottomTab === 'nodes' ? 'active' : ''}`} onClick={() => setBottomTab('nodes')}>{'\u0423\u0437\u043b\u044b'} ({graphNodesForPanel.length})</button>
-                <button type="button" className={`bottom-panel-tab ${bottomTab === 'edges' ? 'active' : ''}`} onClick={() => setBottomTab('edges')}>{'\u0421\u0432\u044f\u0437\u0438'} ({graphEdgesForPanel.length})</button>
+            <>
+              <div className="bottom-panel-resizer" onMouseDown={handleBottomResizerMouseDown} title="\u041f\u043e\u0442\u044f\u043d\u0438\u0442\u0435, \u0447\u0442\u043e\u0431\u044b \u0438\u0437\u043c\u0435\u043d\u0438\u0442\u044c \u0432\u044b\u0441\u043e\u0442\u0443" />
+              <div className="bottom-panel-body">
+                <div className="bottom-panel-tabs">
+                  <button type="button" className={`bottom-panel-tab ${bottomTab === 'nodes' ? 'active' : ''}`} onClick={() => setBottomTab('nodes')}>{'\u0423\u0437\u043b\u044b'} ({graphNodesForPanel.length})</button>
+                  <button type="button" className={`bottom-panel-tab ${bottomTab === 'edges' ? 'active' : ''}`} onClick={() => setBottomTab('edges')}>{'\u0421\u0432\u044f\u0437\u0438'} ({graphEdgesForPanel.length})</button>
+                </div>
+                <div className="bottom-panel-list">
+                  {bottomTab === 'nodes' ? (
+                    <table className="bottom-table">
+                      <thead>
+                        <tr>
+                          <th><button type="button" className="bottom-sort-btn" onClick={() => toggleNodeSort('type')}>{'\u0422\u0438\u043f'}{renderSortIndicator(nodeSortKey === 'type', nodeSortDir)}</button></th>
+                          <th><button type="button" className="bottom-sort-btn" onClick={() => toggleNodeSort('label')}>{'\u041f\u043e\u0434\u043f\u0438\u0441\u044c'}{renderSortIndicator(nodeSortKey === 'label', nodeSortDir)}</button></th>
+                          {nodeAttributeColumns.map((key) => (<th key={key}><button type="button" className="bottom-sort-btn" onClick={() => toggleNodeSort(key)}>{formatAttributeHeader(key)}{renderSortIndicator(nodeSortKey === key, nodeSortDir)}</button></th>))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sortedGraphNodesForPanel.map((node: any, rowIndex: number) => {
+                          const nodeId = String(node?.id ?? node?.node_id ?? '');
+                          const attrs = node?.attributes || {};
+                          const isSelected = selectedNodeIds.has(nodeId);
+                          return (
+                            <tr
+                              key={nodeId || String(Math.random())}
+                              className={isSelected ? 'selected-row' : ''}
+                              onClick={(event) => handleNodeRowClick(event, node, rowIndex)}
+                              ref={(el) => { if (nodeId) nodeRowRefs.current[nodeId] = el; }}
+                            >
+                              <td>{String(node?.type || '-')}</td>
+                              <td>{String(node?.label || node?.attributes?.label || nodeId)}</td>
+                              {nodeAttributeColumns.map((key) => (<td key={key}>{Array.isArray(attrs[key]) ? attrs[key].join(', ') : String(attrs[key] ?? '')}</td>))}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <table className="bottom-table">
+                      <thead>
+                        <tr>
+                          <th><button type="button" className="bottom-sort-btn" onClick={() => toggleEdgeSort('type')}>{'\u0422\u0438\u043f'}{renderSortIndicator(edgeSortKey === 'type', edgeSortDir)}</button></th>
+                          <th><button type="button" className="bottom-sort-btn" onClick={() => toggleEdgeSort('from')}>{'\u041e\u0442\u043a\u0443\u0434\u0430'}{renderSortIndicator(edgeSortKey === 'from', edgeSortDir)}</button></th>
+                          <th><button type="button" className="bottom-sort-btn" onClick={() => toggleEdgeSort('to')}>{'\u041a\u0443\u0434\u0430'}{renderSortIndicator(edgeSortKey === 'to', edgeSortDir)}</button></th>
+                          <th><button type="button" className="bottom-sort-btn" onClick={() => toggleEdgeSort('label')}>{'\u041f\u043e\u0434\u043f\u0438\u0441\u044c'}{renderSortIndicator(edgeSortKey === 'label', edgeSortDir)}</button></th>
+                          {edgeAttributeColumns.map((key) => (<th key={key}><button type="button" className="bottom-sort-btn" onClick={() => toggleEdgeSort(key)}>{formatAttributeHeader(key)}{renderSortIndicator(edgeSortKey === key, edgeSortDir)}</button></th>))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sortedGraphEdgesForPanel.map((edge: any, rowIndex: number) => {
+                          const edgeId = String(edge?.id ?? '');
+                          const fromId = String(edge?.from || edge?.source_node || '');
+                          const toId = String(edge?.to || edge?.target_node || '');
+                          const attrs = getNormalizedEdgeAttributes(edge);
+                          const isSelected = selectedEdgeIds.has(edgeId);
+                          return (
+                            <tr
+                              key={edgeId || String(Math.random())}
+                              className={isSelected ? 'selected-row' : ''}
+                              onClick={(event) => handleEdgeRowClick(event, edge, rowIndex)}
+                              ref={(el) => { if (edgeId) edgeRowRefs.current[edgeId] = el; }}
+                            >
+                              <td>{String(edge?.type || '-')}</td>
+                              <td>{nodeLabelById[fromId] || fromId}</td>
+                              <td>{nodeLabelById[toId] || toId}</td>
+                              <td>{String(edge?.label || '')}</td>
+                              {edgeAttributeColumns.map((key) => (<td key={key}>{Array.isArray(attrs[key]) ? attrs[key].join(', ') : String(attrs[key] ?? '')}</td>))}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
               </div>
-              <div className="bottom-panel-list">
-                {bottomTab === 'nodes' ? (
-                  <table className="bottom-table">
-                    <thead>
-                      <tr>
-                        <th><button type="button" className="bottom-sort-btn" onClick={() => toggleNodeSort('type')}>{'\u0422\u0438\u043f'}{renderSortIndicator(nodeSortKey === 'type', nodeSortDir)}</button></th>
-                        <th><button type="button" className="bottom-sort-btn" onClick={() => toggleNodeSort('label')}>{'\u041f\u043e\u0434\u043f\u0438\u0441\u044c'}{renderSortIndicator(nodeSortKey === 'label', nodeSortDir)}</button></th>
-                        {nodeAttributeColumns.map((key) => (<th key={key}><button type="button" className="bottom-sort-btn" onClick={() => toggleNodeSort(key)}>{key}{renderSortIndicator(nodeSortKey === key, nodeSortDir)}</button></th>))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sortedGraphNodesForPanel.map((node: any, rowIndex: number) => {
-                        const nodeId = String(node?.id ?? node?.node_id ?? '');
-                        const attrs = node?.attributes || {};
-                        const isSelected = selectedNodeIds.has(nodeId);
-                        return (
-                          <tr
-                            key={nodeId || String(Math.random())}
-                            className={isSelected ? 'selected-row' : ''}
-                            onClick={(event) => handleNodeRowClick(event, node, rowIndex)}
-                          >
-                            <td>{String(node?.type || '-')}</td>
-                            <td>{String(node?.label || node?.attributes?.label || nodeId)}</td>
-                            {nodeAttributeColumns.map((key) => (<td key={key}>{Array.isArray(attrs[key]) ? attrs[key].join(', ') : String(attrs[key] ?? '')}</td>))}
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                ) : (
-                  <table className="bottom-table">
-                    <thead>
-                      <tr>
-                        <th><button type="button" className="bottom-sort-btn" onClick={() => toggleEdgeSort('type')}>{'\u0422\u0438\u043f'}{renderSortIndicator(edgeSortKey === 'type', edgeSortDir)}</button></th>
-                        <th><button type="button" className="bottom-sort-btn" onClick={() => toggleEdgeSort('from')}>{'\u041e\u0442\u043a\u0443\u0434\u0430'}{renderSortIndicator(edgeSortKey === 'from', edgeSortDir)}</button></th>
-                        <th><button type="button" className="bottom-sort-btn" onClick={() => toggleEdgeSort('to')}>{'\u041a\u0443\u0434\u0430'}{renderSortIndicator(edgeSortKey === 'to', edgeSortDir)}</button></th>
-                        <th><button type="button" className="bottom-sort-btn" onClick={() => toggleEdgeSort('label')}>{'\u041f\u043e\u0434\u043f\u0438\u0441\u044c'}{renderSortIndicator(edgeSortKey === 'label', edgeSortDir)}</button></th>
-                        {edgeAttributeColumns.map((key) => (<th key={key}><button type="button" className="bottom-sort-btn" onClick={() => toggleEdgeSort(key)}>{key}{renderSortIndicator(edgeSortKey === key, edgeSortDir)}</button></th>))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sortedGraphEdgesForPanel.map((edge: any, rowIndex: number) => {
-                        const edgeId = String(edge?.id ?? '');
-                        const fromId = String(edge?.from || edge?.source_node || '');
-                        const toId = String(edge?.to || edge?.target_node || '');
-                        const attrs = edge?.attributes || {};
-                        const isSelected = selectedEdgeIds.has(edgeId);
-                        return (
-                          <tr
-                            key={edgeId || String(Math.random())}
-                            className={isSelected ? 'selected-row' : ''}
-                            onClick={(event) => handleEdgeRowClick(event, edge, rowIndex)}
-                          >
-                            <td>{String(edge?.type || '-')}</td>
-                            <td>{nodeLabelById[fromId] || fromId}</td>
-                            <td>{nodeLabelById[toId] || toId}</td>
-                            <td>{String(edge?.label || '')}</td>
-                            {edgeAttributeColumns.map((key) => (<td key={key}>{Array.isArray(attrs[key]) ? attrs[key].join(', ') : String(attrs[key] ?? '')}</td>))}
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            </div>
+            </>
           )}
         </div>
       )}
@@ -1088,52 +1273,5 @@ function App() {
 }
 
 export default App;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 

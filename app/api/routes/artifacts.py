@@ -4,7 +4,7 @@ Artifact management endpoints (API v2).
 """
 from fastapi import APIRouter, HTTPException, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, and_, or_
+from sqlalchemy import select, delete, and_, or_, func
 from typing import List, Dict, Any, Optional
 import logging
 from datetime import datetime
@@ -61,6 +61,22 @@ async def create_artifact(
                 status_code=400, 
                 detail=f"Invalid type. Must be one of: {valid_types}"
             )
+
+        normalized_name = str(artifact_data["name"] or "").strip()
+        if not normalized_name:
+            raise HTTPException(status_code=400, detail="Field 'name' must not be empty")
+
+        duplicate_result = await db.execute(
+            select(Artifact.id).where(
+                Artifact.project_id == project_id,
+                Artifact.type == artifact_data["type"],
+                func.lower(Artifact.name) == normalized_name.lower()
+            ).limit(1)
+        )
+        if duplicate_result.scalar_one_or_none() is not None:
+            raise HTTPException(status_code=409, detail="Artifact with this type and name already exists in this project")
+
+        artifact_data["name"] = normalized_name
         
         # Создаем артефакт
         artifact = Artifact(
@@ -281,7 +297,22 @@ async def update_artifact(
         
         # Обновляем поля
         if "name" in update_data:
-            artifact.name = update_data["name"]
+            normalized_name = str(update_data["name"] or "").strip()
+            if not normalized_name:
+                raise HTTPException(status_code=400, detail="Field 'name' must not be empty")
+
+            duplicate_result = await db.execute(
+                select(Artifact.id).where(
+                    Artifact.project_id == project_id,
+                    Artifact.type == artifact.type,
+                    func.lower(Artifact.name) == normalized_name.lower(),
+                    Artifact.id != artifact_id,
+                ).limit(1)
+            )
+            if duplicate_result.scalar_one_or_none() is not None:
+                raise HTTPException(status_code=409, detail="Artifact with this type and name already exists in this project")
+
+            artifact.name = normalized_name
         if "description" in update_data:
             artifact.description = update_data["description"]
         if "metadata" in update_data:
@@ -725,3 +756,4 @@ async def delete_artifact_relation(
         logger.error(f"Error deleting artifact relation: {e}")
         await db.rollback()
         raise HTTPException(status_code=500, detail="Internal server error")
+

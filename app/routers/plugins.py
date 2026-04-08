@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel, Field
 import logging
@@ -76,7 +76,13 @@ async def list_applicable_plugins(
                 input_artifacts=[payload],
                 params={},
                 context=context,
+                check_required_params=False,
             )
+            plugin_applicability = getattr(plugin, "is_applicable_with_context", None)
+            if callable(plugin_applicability):
+                is_applicable = bool(plugin_applicability([payload], context))
+                if not is_applicable:
+                    continue
             applicable.append(metadata)
         except Exception:
             continue
@@ -252,10 +258,24 @@ async def execute_plugin(
                 if spec.get("data") is None:
                     raise HTTPException(status_code=400, detail="Artifact data is required")
 
+                normalized_name = str(spec["name"] or "").strip()
+                if not normalized_name:
+                    raise HTTPException(status_code=400, detail="Artifact name is required")
+
+                duplicate_result = await db.execute(
+                    select(Artifact.id).where(
+                        Artifact.project_id == request.project_id,
+                        Artifact.type == spec["type"],
+                        func.lower(Artifact.name) == normalized_name.lower()
+                    ).limit(1)
+                )
+                if duplicate_result.scalar_one_or_none() is not None:
+                    raise HTTPException(status_code=409, detail=f"Artifact '{normalized_name}' of type '{spec['type']}' already exists in this project")
+
                 artifact = Artifact(
                     project_id=request.project_id,
                     type=spec["type"],
-                    name=spec["name"],
+                    name=normalized_name,
                     description=spec.get("description"),
                     data=spec["data"],
                     artifact_metadata=spec.get("metadata", {})
@@ -313,3 +333,10 @@ async def execute_plugin(
         await db.rollback()
         logger.error(f"Failed to persist plugin artifacts: {e}")
         raise HTTPException(status_code=500, detail="Failed to store plugin results")
+
+
+
+
+
+
+
