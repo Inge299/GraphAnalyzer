@@ -19,7 +19,7 @@ router = APIRouter(prefix="/projects/{project_id}/artifacts", tags=["artifacts"]
 logger = logging.getLogger(__name__)
 
 # ============================================================================
-# Базовые CRUD операции
+# Р‘Р°Р·РѕРІС‹Рµ CRUD РѕРїРµСЂР°С†РёРё
 # ============================================================================
 
 @router.post("", response_model=Dict[str, Any])
@@ -46,7 +46,7 @@ async def create_artifact(
         Created artifact
     """
     try:
-        # Валидация обязательных полей
+        # Р’Р°Р»РёРґР°С†РёСЏ РѕР±СЏР·Р°С‚РµР»СЊРЅС‹С… РїРѕР»РµР№
         if "type" not in artifact_data:
             raise HTTPException(status_code=400, detail="Field 'type' is required")
         if "name" not in artifact_data:
@@ -54,7 +54,7 @@ async def create_artifact(
         if "data" not in artifact_data:
             raise HTTPException(status_code=400, detail="Field 'data' is required")
         
-        # Валидация типа
+        # Р’Р°Р»РёРґР°С†РёСЏ С‚РёРїР°
         valid_types = ["graph", "table", "map", "chart", "document"]
         if artifact_data["type"] not in valid_types:
             raise HTTPException(
@@ -78,7 +78,7 @@ async def create_artifact(
 
         artifact_data["name"] = normalized_name
         
-        # Создаем артефакт
+        # РЎРѕР·РґР°РµРј Р°СЂС‚РµС„Р°РєС‚
         artifact = Artifact(
             project_id=project_id,
             type=artifact_data["type"],
@@ -92,7 +92,7 @@ async def create_artifact(
         await db.commit()
         await db.refresh(artifact)
         
-        # Создаем первую версию
+        # РЎРѕР·РґР°РµРј РїРµСЂРІСѓСЋ РІРµСЂСЃРёСЋ
         version = ArtifactVersion(
             artifact_id=artifact.id,
             version=1,
@@ -138,11 +138,11 @@ async def list_artifacts(
     try:
         query = select(Artifact).where(Artifact.project_id == project_id)
         
-        # Фильтр по типу
+        # Р¤РёР»СЊС‚СЂ РїРѕ С‚РёРїСѓ
         if type:
             query = query.where(Artifact.type == type)
         
-        # Поиск по имени и описанию
+        # РџРѕРёСЃРє РїРѕ РёРјРµРЅРё Рё РѕРїРёСЃР°РЅРёСЋ
         if search:
             query = query.where(
                 or_(
@@ -151,13 +151,13 @@ async def list_artifacts(
                 )
             )
         
-        # Пагинация
+        # РџР°РіРёРЅР°С†РёСЏ
         query = query.order_by(Artifact.updated_at.desc()).limit(limit).offset(offset)
         
         result = await db.execute(query)
         artifacts = result.scalars().all()
         
-        # Получаем последнюю версию для каждого артефакта
+        # РџРѕР»СѓС‡Р°РµРј РїРѕСЃР»РµРґРЅСЋСЋ РІРµСЂСЃРёСЋ РґР»СЏ РєР°Р¶РґРѕРіРѕ Р°СЂС‚РµС„Р°РєС‚Р°
         response = []
         for artifact in artifacts:
             latest_version = await db.execute(
@@ -199,7 +199,7 @@ async def get_artifact(
     Get a specific artifact, optionally at a specific version.
     """
     try:
-        # Проверяем существование артефакта
+        # РџСЂРѕРІРµСЂСЏРµРј СЃСѓС‰РµСЃС‚РІРѕРІР°РЅРёРµ Р°СЂС‚РµС„Р°РєС‚Р°
         result = await db.execute(
             select(Artifact).where(
                 Artifact.id == artifact_id,
@@ -211,7 +211,7 @@ async def get_artifact(
         if not artifact:
             raise HTTPException(status_code=404, detail="Artifact not found")
         
-        # Если запрошена конкретная версия
+        # Р•СЃР»Рё Р·Р°РїСЂРѕС€РµРЅР° РєРѕРЅРєСЂРµС‚РЅР°СЏ РІРµСЂСЃРёСЏ
         if version:
             version_result = await db.execute(
                 select(ArtifactVersion)
@@ -232,7 +232,7 @@ async def get_artifact(
             current_version = version
         else:
             data = artifact.data
-            # Получаем последнюю версию
+            # РџРѕР»СѓС‡Р°РµРј РїРѕСЃР»РµРґРЅСЋСЋ РІРµСЂСЃРёСЋ
             version_result = await db.execute(
                 select(ArtifactVersion)
                 .where(ArtifactVersion.artifact_id == artifact_id)
@@ -273,7 +273,7 @@ async def update_artifact(
     Update an artifact (creates a new version).
     """
     try:
-        # Проверяем существование артефакта
+        # РџСЂРѕРІРµСЂСЏРµРј СЃСѓС‰РµСЃС‚РІРѕРІР°РЅРёРµ Р°СЂС‚РµС„Р°РєС‚Р°
         result = await db.execute(
             select(Artifact).where(
                 Artifact.id == artifact_id,
@@ -285,7 +285,7 @@ async def update_artifact(
         if not artifact:
             raise HTTPException(status_code=404, detail="Artifact not found")
         
-        # Получаем текущую версию
+        # РџРѕР»СѓС‡Р°РµРј С‚РµРєСѓС‰СѓСЋ РІРµСЂСЃРёСЋ
         version_result = await db.execute(
             select(ArtifactVersion)
             .where(ArtifactVersion.artifact_id == artifact_id)
@@ -295,7 +295,7 @@ async def update_artifact(
         latest_version = version_result.scalar_one_or_none()
         current_version = latest_version.version if latest_version else 1
         
-        # Обновляем поля
+        # РћР±РЅРѕРІР»СЏРµРј РїРѕР»СЏ
         if "name" in update_data:
             normalized_name = str(update_data["name"] or "").strip()
             if not normalized_name:
@@ -321,9 +321,9 @@ async def update_artifact(
                 **update_data["metadata"]
             }
         
-        # Если обновляются данные, создаем новую версию
+        # Р•СЃР»Рё РѕР±РЅРѕРІР»СЏСЋС‚СЃСЏ РґР°РЅРЅС‹Рµ, СЃРѕР·РґР°РµРј РЅРѕРІСѓСЋ РІРµСЂСЃРёСЋ
         if "data" in update_data:
-            # Создаем новую версию
+            # РЎРѕР·РґР°РµРј РЅРѕРІСѓСЋ РІРµСЂСЃРёСЋ
             new_version = ArtifactVersion(
                 artifact_id=artifact_id,
                 version=current_version + 1,
@@ -332,14 +332,14 @@ async def update_artifact(
             )
             db.add(new_version)
             
-            # Обновляем основные данные артефакта
+            # РћР±РЅРѕРІР»СЏРµРј РѕСЃРЅРѕРІРЅС‹Рµ РґР°РЅРЅС‹Рµ Р°СЂС‚РµС„Р°РєС‚Р°
             artifact.data = update_data["data"]
             artifact.updated_at = datetime.utcnow()
         
         await db.commit()
         await db.refresh(artifact)
         
-        # Получаем обновленную версию
+        # РџРѕР»СѓС‡Р°РµРј РѕР±РЅРѕРІР»РµРЅРЅСѓСЋ РІРµСЂСЃРёСЋ
         final_version = current_version + 1 if "data" in update_data else current_version
         
         return {
@@ -373,7 +373,7 @@ async def delete_artifact(
     Delete an artifact and all its versions and relations.
     """
     try:
-        # Проверяем существование артефакта
+        # РџСЂРѕРІРµСЂСЏРµРј СЃСѓС‰РµСЃС‚РІРѕРІР°РЅРёРµ Р°СЂС‚РµС„Р°РєС‚Р°
         result = await db.execute(
             select(Artifact).where(
                 Artifact.id == artifact_id,
@@ -385,7 +385,7 @@ async def delete_artifact(
         if not artifact:
             raise HTTPException(status_code=404, detail="Artifact not found")
         
-        # Удаляем (каскадно удалятся все версии и связи благодаря ondelete=CASCADE)
+        # РЈРґР°Р»СЏРµРј (РєР°СЃРєР°РґРЅРѕ СѓРґР°Р»СЏС‚СЃСЏ РІСЃРµ РІРµСЂСЃРёРё Рё СЃРІСЏР·Рё Р±Р»Р°РіРѕРґР°СЂСЏ ondelete=CASCADE)
         await db.delete(artifact)
         await db.commit()
         
@@ -399,7 +399,7 @@ async def delete_artifact(
 
 
 # ============================================================================
-# Операции с версиями
+# РћРїРµСЂР°С†РёРё СЃ РІРµСЂСЃРёСЏРјРё
 # ============================================================================
 
 @router.get("/{artifact_id}/versions", response_model=List[Dict[str, Any]])
@@ -415,7 +415,7 @@ async def get_artifact_versions(
     Get all versions of an artifact.
     """
     try:
-        # Проверяем существование артефакта
+        # РџСЂРѕРІРµСЂСЏРµРј СЃСѓС‰РµСЃС‚РІРѕРІР°РЅРёРµ Р°СЂС‚РµС„Р°РєС‚Р°
         result = await db.execute(
             select(Artifact).where(
                 Artifact.id == artifact_id,
@@ -427,7 +427,7 @@ async def get_artifact_versions(
         if not artifact:
             raise HTTPException(status_code=404, detail="Artifact not found")
         
-        # Получаем версии
+        # РџРѕР»СѓС‡Р°РµРј РІРµСЂСЃРёРё
         versions_result = await db.execute(
             select(ArtifactVersion)
             .where(ArtifactVersion.artifact_id == artifact_id)
@@ -465,7 +465,7 @@ async def restore_artifact_version(
     Restore an artifact to a previous version.
     """
     try:
-        # Проверяем существование артефакта
+        # РџСЂРѕРІРµСЂСЏРµРј СЃСѓС‰РµСЃС‚РІРѕРІР°РЅРёРµ Р°СЂС‚РµС„Р°РєС‚Р°
         result = await db.execute(
             select(Artifact).where(
                 Artifact.id == artifact_id,
@@ -477,7 +477,7 @@ async def restore_artifact_version(
         if not artifact:
             raise HTTPException(status_code=404, detail="Artifact not found")
         
-        # Получаем версию для восстановления
+        # РџРѕР»СѓС‡Р°РµРј РІРµСЂСЃРёСЋ РґР»СЏ РІРѕСЃСЃС‚Р°РЅРѕРІР»РµРЅРёСЏ
         version_result = await db.execute(
             select(ArtifactVersion)
             .where(
@@ -490,7 +490,7 @@ async def restore_artifact_version(
         if not old_version:
             raise HTTPException(status_code=404, detail=f"Version {version} not found")
         
-        # Получаем текущую версию
+        # РџРѕР»СѓС‡Р°РµРј С‚РµРєСѓС‰СѓСЋ РІРµСЂСЃРёСЋ
         latest_result = await db.execute(
             select(ArtifactVersion)
             .where(ArtifactVersion.artifact_id == artifact_id)
@@ -500,7 +500,7 @@ async def restore_artifact_version(
         latest_version = latest_result.scalar_one_or_none()
         current_version = latest_version.version if latest_version else 1
         
-        # Создаем новую версию с данными из старой
+        # РЎРѕР·РґР°РµРј РЅРѕРІСѓСЋ РІРµСЂСЃРёСЋ СЃ РґР°РЅРЅС‹РјРё РёР· СЃС‚Р°СЂРѕР№
         new_version = ArtifactVersion(
             artifact_id=artifact_id,
             version=current_version + 1,
@@ -509,7 +509,7 @@ async def restore_artifact_version(
         )
         db.add(new_version)
         
-        # Обновляем основные данные артефакта
+        # РћР±РЅРѕРІР»СЏРµРј РѕСЃРЅРѕРІРЅС‹Рµ РґР°РЅРЅС‹Рµ Р°СЂС‚РµС„Р°РєС‚Р°
         artifact.data = old_version.data
         artifact.updated_at = datetime.utcnow()
         
@@ -529,7 +529,7 @@ async def restore_artifact_version(
 
 
 # ============================================================================
-# Операции со связями
+# РћРїРµСЂР°С†РёРё СЃРѕ СЃРІСЏР·СЏРјРё
 # ============================================================================
 
 @router.post("/{artifact_id}/relations")
@@ -550,7 +550,7 @@ async def create_artifact_relation(
         }
     """
     try:
-        # Проверяем существование исходного артефакта
+        # РџСЂРѕРІРµСЂСЏРµРј СЃСѓС‰РµСЃС‚РІРѕРІР°РЅРёРµ РёСЃС…РѕРґРЅРѕРіРѕ Р°СЂС‚РµС„Р°РєС‚Р°
         source_result = await db.execute(
             select(Artifact).where(
                 Artifact.id == artifact_id,
@@ -562,13 +562,13 @@ async def create_artifact_relation(
         if not source:
             raise HTTPException(status_code=404, detail="Source artifact not found")
         
-        # Проверяем обязательные поля
+        # РџСЂРѕРІРµСЂСЏРµРј РѕР±СЏР·Р°С‚РµР»СЊРЅС‹Рµ РїРѕР»СЏ
         if "target_id" not in relation_data:
             raise HTTPException(status_code=400, detail="Field 'target_id' is required")
         if "relation_type" not in relation_data:
             raise HTTPException(status_code=400, detail="Field 'relation_type' is required")
         
-        # Проверяем существование целевого артефакта
+        # РџСЂРѕРІРµСЂСЏРµРј СЃСѓС‰РµСЃС‚РІРѕРІР°РЅРёРµ С†РµР»РµРІРѕРіРѕ Р°СЂС‚РµС„Р°РєС‚Р°
         target_result = await db.execute(
             select(Artifact).where(
                 Artifact.id == relation_data["target_id"],
@@ -580,7 +580,7 @@ async def create_artifact_relation(
         if not target:
             raise HTTPException(status_code=404, detail="Target artifact not found")
         
-        # Проверяем валидность типа связи
+        # РџСЂРѕРІРµСЂСЏРµРј РІР°Р»РёРґРЅРѕСЃС‚СЊ С‚РёРїР° СЃРІСЏР·Рё
         valid_relation_types = ["derived_from", "attached_to", "references"]
         if relation_data["relation_type"] not in valid_relation_types:
             raise HTTPException(
@@ -588,7 +588,7 @@ async def create_artifact_relation(
                 detail=f"Invalid relation_type. Must be one of: {valid_relation_types}"
             )
         
-        # Проверяем, не существует ли уже такая связь
+        # РџСЂРѕРІРµСЂСЏРµРј, РЅРµ СЃСѓС‰РµСЃС‚РІСѓРµС‚ Р»Рё СѓР¶Рµ С‚Р°РєР°СЏ СЃРІСЏР·СЊ
         existing = await db.execute(
             select(ArtifactRelation).where(
                 ArtifactRelation.source_id == artifact_id,
@@ -602,7 +602,7 @@ async def create_artifact_relation(
                 detail="Relation already exists"
             )
         
-        # Создаем связь
+        # РЎРѕР·РґР°РµРј СЃРІСЏР·СЊ
         relation = ArtifactRelation(
             source_id=artifact_id,
             target_id=relation_data["target_id"],
@@ -643,7 +643,7 @@ async def get_artifact_relations(
         relation_type: Optional filter by relation type
     """
     try:
-        # Проверяем существование артефакта
+        # РџСЂРѕРІРµСЂСЏРµРј СЃСѓС‰РµСЃС‚РІРѕРІР°РЅРёРµ Р°СЂС‚РµС„Р°РєС‚Р°
         result = await db.execute(
             select(Artifact).where(
                 Artifact.id == artifact_id,
@@ -657,7 +657,7 @@ async def get_artifact_relations(
         
         relations = []
         
-        # Исходящие связи
+        # РСЃС…РѕРґСЏС‰РёРµ СЃРІСЏР·Рё
         if direction in ["out", "both"]:
             out_query = select(ArtifactRelation).where(
                 ArtifactRelation.source_id == artifact_id
@@ -667,7 +667,7 @@ async def get_artifact_relations(
             
             out_result = await db.execute(out_query)
             for rel in out_result.scalars().all():
-                # Получаем информацию о целевом артефакте
+                # РџРѕР»СѓС‡Р°РµРј РёРЅС„РѕСЂРјР°С†РёСЋ Рѕ С†РµР»РµРІРѕРј Р°СЂС‚РµС„Р°РєС‚Рµ
                 target_result = await db.execute(
                     select(Artifact).where(Artifact.id == rel.target_id)
                 )
@@ -683,7 +683,7 @@ async def get_artifact_relations(
                     "created_at": rel.created_at.isoformat() if rel.created_at else None
                 })
         
-        # Входящие связи
+        # Р’С…РѕРґСЏС‰РёРµ СЃРІСЏР·Рё
         if direction in ["in", "both"]:
             in_query = select(ArtifactRelation).where(
                 ArtifactRelation.target_id == artifact_id
@@ -693,7 +693,7 @@ async def get_artifact_relations(
             
             in_result = await db.execute(in_query)
             for rel in in_result.scalars().all():
-                # Получаем информацию об исходном артефакте
+                # РџРѕР»СѓС‡Р°РµРј РёРЅС„РѕСЂРјР°С†РёСЋ РѕР± РёСЃС…РѕРґРЅРѕРј Р°СЂС‚РµС„Р°РєС‚Рµ
                 source_result = await db.execute(
                     select(Artifact).where(Artifact.id == rel.source_id)
                 )
@@ -730,7 +730,7 @@ async def delete_artifact_relation(
     Delete a relation between artifacts.
     """
     try:
-        # Проверяем существование связи
+        # РџСЂРѕРІРµСЂСЏРµРј СЃСѓС‰РµСЃС‚РІРѕРІР°РЅРёРµ СЃРІСЏР·Рё
         result = await db.execute(
             select(ArtifactRelation).where(
                 ArtifactRelation.source_id == artifact_id,
