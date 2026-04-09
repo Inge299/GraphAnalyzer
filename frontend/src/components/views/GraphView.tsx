@@ -1,4 +1,4 @@
-// frontend/src/components/views/GraphView.tsx
+﻿// frontend/src/components/views/GraphView.tsx
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useAppDispatch } from '../../store';
 import { setSelectedElements } from '../../store/slices/uiSlice';
@@ -554,9 +554,9 @@ const buildEdgeForVis = (edge: any, nodeRadiusById: Record<string, number>, curv
   const curve = curveMap.get(String(edge.id)) || { type: 'dynamic', roundness: 0 };
 
   return {
-    id: edge.id,
-    from: edge.from || edge.source_node,
-    to: edge.to || edge.target_node,
+    id: String(edge.id),
+    from: String(edge.from || edge.source_node),
+    to: String(edge.to || edge.target_node),
     label: edgeLabel,
     title: getEdgeTooltip(edge, scale),
     arrows,
@@ -878,24 +878,50 @@ export const GraphView: React.FC<GraphViewProps> = ({
 
   const updateNodeTooltipsByScale = useCallback((scale: number) => {
     if (!nodesDataSetRef.current || !edgesDataSetRef.current) return;
+    const selectedNodeIds = new Set<string>((networkRef.current?.getSelectedNodes() || []).map((id: any) => String(id)));
+    const selectedEdgeIds = new Set<string>((networkRef.current?.getSelectedEdges() || []).map((id: any) => String(id)));
 
     const resolvedNodes = (artifactDataRef.current?.nodes || []).map((node: any) =>
       resolveNodeWithDomainIcon(node, nodeTypeIconsRef.current)
     );
-    const nodeUpdates = resolvedNodes.map((node: any) => ({
-      id: getNodeId(node),
-      title: getNodeTooltip(node, scale),
-      label: (!labelsSuppressedRef.current && shouldShowNodeLabel(scale)) ? getNodeLabel(node, nodeAttributePreviewRef.current, nodeTypeAttributesRef.current) : ""
-    }));
+    const nodeUpdates = resolvedNodes.map((node: any) => {
+      const id = String(getNodeId(node));
+      const isSelected = selectedNodeIds.has(id);
+      const showLabel = isSelected || (!labelsSuppressedRef.current && shouldShowNodeLabel(scale));
+      const baseColors = getNodeColors(node);
+      const ringEnabled = getNodeRingEnabled(node);
+      const ringWidth = getNodeRingWidth(node);
+      return {
+        id,
+        title: getNodeTooltip(node, scale),
+        label: showLabel ? getNodeLabel(node, nodeAttributePreviewRef.current, nodeTypeAttributesRef.current) : "",
+        color: isSelected ? { ...baseColors, border: "#000000" } : baseColors,
+        borderWidth: isSelected ? Math.max(ringEnabled ? ringWidth : 1, 2) : (ringEnabled ? ringWidth : 0),
+        shadow: isSelected
+          ? { enabled: true, size: 18, x: 0, y: 0, color: "rgba(0, 0, 0, 0.35)" }
+          : (getNodeIcon(node) ? { enabled: true, size: 18, x: 0, y: 4, color: "rgba(15, 23, 42, 0.35)" } : false)
+      };
+    });
     if (nodeUpdates.length > 0) {
       nodesDataSetRef.current.update(nodeUpdates);
     }
 
-    const edgeUpdates = (artifactDataRef.current?.edges || []).map((edge: any) => ({
-      id: String(edge.id),
-      title: getEdgeTooltip(edge, scale),
-      label: (!labelsSuppressedRef.current && shouldShowEdgeLabel(scale)) ? getEdgeLabel(edge) : ""
-    }));
+    const edgeUpdates = (artifactDataRef.current?.edges || []).map((edge: any) => {
+      const id = String(edge.id);
+      const isSelected = selectedEdgeIds.has(id);
+      const showLabel = isSelected || (!labelsSuppressedRef.current && shouldShowEdgeLabel(scale));
+      const visual = edge.attributes?.visual || {};
+      const baseColor = String(visual.color || edge.attributes?.color || "#848484");
+      const baseWidth = Number(visual.width || edge.attributes?.width || 2);
+      return {
+        id,
+        title: getEdgeTooltip(edge, scale),
+        label: showLabel ? getEdgeLabel(edge) : "",
+        width: isSelected ? Math.max(baseWidth, 4) : baseWidth,
+        color: { color: isSelected ? "#2563eb" : baseColor, highlight: "#2563eb" },
+        shadow: isSelected ? { enabled: true, size: 12, x: 0, y: 0, color: "rgba(37, 99, 235, 0.35)" } : false
+      };
+    });
     if (edgeUpdates.length > 0) {
       edgesDataSetRef.current.update(edgeUpdates);
     }
@@ -990,13 +1016,14 @@ export const GraphView: React.FC<GraphViewProps> = ({
         .filter((id: string) => id && !beforeNodeIds.has(id));
 
       const updatedMeta = updatedCurrent?.metadata || {};
-      if (updatedMeta?.communications_selection_exceeded) {
-        const limit = Number(updatedMeta?.communications_selection_limit || 150);
-        const total = Number(updatedMeta?.communications_selected_total || 0);
-        window.alert(`\u0412\u044b\u0434\u0435\u043b\u0435\u043d\u043e ${total} \u0430\u0431\u043e\u043d\u0435\u043d\u0442\u043e\u0432. \u041b\u0438\u043c\u0438\u0442 \u0434\u043b\u044f \u0437\u0430\u043f\u0443\u0441\u043a\u0430 \u043f\u043b\u0430\u0433\u0438\u043d\u0430: ${limit}. \u041f\u043e\u0436\u0430\u043b\u0443\u0439\u0441\u0442\u0430, \u0437\u0430\u043f\u0443\u0441\u043a\u0430\u0439\u0442\u0435 \u0440\u0430\u0441\u0448\u0438\u0440\u0435\u043d\u0438\u0435 \u0447\u0430\u0441\u0442\u044f\u043c\u0438.`);
-      } else if (updatedMeta?.communications_selection_limited) {
-        const limit = Number(updatedMeta?.communications_selection_limit || 0);
-        window.alert(`\u041e\u0431\u0440\u0430\u0431\u043e\u0442\u0430\u043d\u043e \u0442\u043e\u043b\u044c\u043a\u043e \u043f\u0435\u0440\u0432\u044b\u0435 ${limit} \u0430\u0431\u043e\u043d\u0435\u043d\u0442\u043e\u0432 \u0438\u0437 \u0432\u044b\u0434\u0435\u043b\u0435\u043d\u0438\u044f. \u0414\u043b\u044f \u043e\u0441\u0442\u0430\u043b\u044c\u043d\u044b\u0445 \u0437\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u0435 \u043f\u043b\u0430\u0433\u0438\u043d \u043f\u043e\u0432\u0442\u043e\u0440\u043d\u043e.`);
+      const liveSelectedNodeCount = Array.isArray(liveContext?.selected_nodes) ? liveContext.selected_nodes.length : 0;
+      const limit = Number(updatedMeta?.communications_selection_limit || 150);
+      const shouldWarnExceeded = Boolean(updatedMeta?.communications_selection_exceeded) && liveSelectedNodeCount > limit;
+      const shouldWarnLimited = Boolean(updatedMeta?.communications_selection_limited) && liveSelectedNodeCount > limit;
+      if (shouldWarnExceeded) {
+        window.alert(`Выделено ${liveSelectedNodeCount} абонентов. Лимит для запуска плагина: ${limit}. Пожалуйста, запускайте расширение частями.`);
+      } else if (shouldWarnLimited) {
+        window.alert(`Обработано только первые ${limit} абонентов из выделения. Для остальных запустите плагин повторно.`);
       }
       if (newNodeIds.length > 0) {
         const maxAutoLayout = Number(layoutConfig.pluginAutoLayout?.maxNewNodes || 80);
@@ -1023,7 +1050,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
 
     const nodesData = new DataSet(
       nodes.map((node: any) => ({
-        id: getNodeId(node),
+        id: String(getNodeId(node)),
         label: (!labelsSuppressedRef.current && shouldShowNodeLabel(1)) ? getNodeLabel(node, nodeAttributePreviewRef.current, nodeTypeAttributesRef.current) : "",
         title: getNodeTooltip(node, 1),
         x: node.position_x,
@@ -1061,7 +1088,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
         chosen: {
           node: (values: any) => {
             const background = 'rgba(255,255,255,0)';
-            const accent = '#60a5fa';
+            const accent = '#111827';
             values.color = {
               border: accent,
               background,
@@ -1080,7 +1107,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
               size: 18,
               x: 0,
               y: 0,
-              color: 'rgba(96, 165, 250, 0.45)'
+              color: 'rgba(17, 24, 39, 0.45)'
             };
           },
         },
@@ -1130,6 +1157,10 @@ export const GraphView: React.FC<GraphViewProps> = ({
 
     const onZoom = () => {
       updateNodeTooltipsByScale(network.getScale());
+      const selected = network.getSelection();
+      if ((selected.nodes?.length || 0) > 0 || (selected.edges?.length || 0) > 0) {
+        network.setSelection({ nodes: selected.nodes || [], edges: selected.edges || [] }, { unselectAll: true, highlightEdges: false });
+      }
     };
     network.on('zoom', onZoom);
 
@@ -1211,17 +1242,24 @@ export const GraphView: React.FC<GraphViewProps> = ({
       let contextNodes = clickedNodes;
       let contextEdges = clickedEdges;
 
+      const selectedNodes = network.getSelectedNodes().map((id: any) => String(id));
+      const selectedEdges = network.getSelectedEdges().map((id: any) => String(id));
+
       if (contextNodes.length > 0) {
-        contextNodes = [String(contextNodes[0])];
-        contextEdges = [];
-        network.setSelection({ nodes: contextNodes, edges: contextEdges }, { unselectAll: true, highlightEdges: false });
+        const clickedNodeId = String(contextNodes[0]);
+        if (selectedNodes.length > 1 && selectedNodes.includes(clickedNodeId)) {
+          contextNodes = selectedNodes;
+          contextEdges = [];
+        } else {
+          contextNodes = [clickedNodeId];
+          contextEdges = [];
+        }
       } else if (contextEdges.length > 0) {
         contextNodes = [];
         contextEdges = [String(contextEdges[0])];
-        network.setSelection({ nodes: contextNodes, edges: contextEdges }, { unselectAll: true, highlightEdges: false });
       } else {
-        contextNodes = network.getSelectedNodes().map((id: any) => String(id));
-        contextEdges = network.getSelectedEdges().map((id: any) => String(id));
+        contextNodes = selectedNodes;
+        contextEdges = selectedEdges;
       }
 
       updateSelectionFromNetwork();
@@ -1436,7 +1474,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
       resolveNodeWithDomainIcon(node, nodeTypeIconsRef.current)
     );
     const nodesData = resolvedNodes.map((node: any) => ({
-      id: getNodeId(node),
+      id: String(getNodeId(node)),
         label: (!labelsSuppressedRef.current && shouldShowNodeLabel(currentScale)) ? getNodeLabel(node, nodeAttributePreviewRef.current, nodeTypeAttributesRef.current) : "",
       title: getNodeTooltip(node, currentScale),
       x: node.position_x,
@@ -1873,22 +1911,25 @@ export const GraphView: React.FC<GraphViewProps> = ({
 
     const data = artifactDataRef.current || {};
     const selectedNodeIds = new Set<string>(networkRef.current.getSelectedNodes().map((id) => String(id)));
+    if (selectedNodeIds.size === 0) return;
+
     const selectedEdgeIds = new Set<string>(networkRef.current.getSelectedEdges().map((id) => String(id)));
-    if (selectedEdgeIds.size === 0) return;
 
     (data.edges || []).forEach((edge: any) => {
-      const edgeId = String(edge.id);
-      if (!selectedEdgeIds.has(edgeId)) return;
-
-      const fromId = String(edge.from || edge.source_node || '');
-      const toId = String(edge.to || edge.target_node || '');
-      selectedNodeIds.add(fromId);
-      selectedNodeIds.add(toId);
+      const fromId = String(edge.from || edge.source_node || "");
+      const toId = String(edge.to || edge.target_node || "");
+      if (selectedNodeIds.has(fromId) || selectedNodeIds.has(toId)) {
+        selectedNodeIds.add(fromId);
+        selectedNodeIds.add(toId);
+        selectedEdgeIds.add(String(edge.id));
+      }
     });
 
     networkRef.current.setSelection({ nodes: Array.from(selectedNodeIds), edges: Array.from(selectedEdgeIds) }, { unselectAll: true, highlightEdges: false });
     updateSelectionFromNetwork();
   }, [updateSelectionFromNetwork]);
+
+
   const handleFitClick = useCallback(() => {
     if (!networkRef.current) return;
     networkRef.current.fit({ animation: true, duration: 250 });
@@ -2052,7 +2093,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
         <button 
           onClick={handleUndoClick} 
           disabled={!canUndo}
-          title="Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В Р Р‹Р Р†Р вЂљРЎСљР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћвЂ“Р В Р’В Р вЂ™Р’В Р В Р’В Р Р†Р вЂљР’В Р В Р’В Р вЂ™Р’В Р В Р вЂ Р В РІР‚С™Р РЋРІвЂћСћР В Р’В Р В Р вЂ№Р В Р вЂ Р Р†Р вЂљРЎвЂєР РЋРЎвЂєР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’ВР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р вЂ Р В РІР‚С™Р Р†РІР‚С›РЎС›Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’ВµР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В РІР‚в„ўР вЂ™Р’В¦Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В РІР‚в„ўР вЂ™Р’ВР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћвЂ“Р В Р’В Р вЂ™Р’В Р В Р’В Р Р†Р вЂљР’В Р В Р’В Р вЂ™Р’В Р В Р вЂ Р В РІР‚С™Р РЋРІвЂћСћР В Р’В Р В Р вЂ№Р В Р вЂ Р Р†Р вЂљРЎвЂєР РЋРЎвЂєР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћвЂ“Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р вЂ Р В РІР‚С™Р вЂ™Р’В° (Ctrl+Z)"
+          title="Отменить (Ctrl+Z)"
           style={{
             padding: '6px 12px',
             background: '#2563eb',
@@ -2068,7 +2109,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
         <button 
           onClick={handleRedoClick} 
           disabled={!canRedo}
-          title="Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р В Р вЂ№Р В Р Р‹Р РЋРЎСџР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В Р Р‹Р РЋРІР‚С”Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћвЂ“Р В Р’В Р вЂ™Р’В Р В Р’В Р Р†Р вЂљР’В Р В Р’В Р вЂ™Р’В Р В Р вЂ Р В РІР‚С™Р РЋРІвЂћСћР В Р’В Р В Р вЂ№Р В Р вЂ Р Р†Р вЂљРЎвЂєР РЋРЎвЂєР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В Р Р‹Р РЋРІР‚С”Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћвЂ“Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В Р Р‹Р Р†РІР‚С›РЎС›Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В РІР‚в„ўР вЂ™Р’ВР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћвЂ“Р В Р’В Р вЂ™Р’В Р В Р’В Р Р†Р вЂљР’В Р В Р’В Р вЂ™Р’В Р В Р вЂ Р В РІР‚С™Р РЋРІвЂћСћР В Р’В Р В Р вЂ№Р В Р вЂ Р Р†Р вЂљРЎвЂєР РЋРЎвЂєР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћвЂ“Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р вЂ Р В РІР‚С™Р вЂ™Р’В° (Ctrl+Y)"
+          title="Повторить (Ctrl+Y)"
           style={{
             padding: '6px 12px',
             background: '#2563eb',
@@ -2081,25 +2122,9 @@ export const GraphView: React.FC<GraphViewProps> = ({
         >
           {'\u21B7'}
         </button>
-        {pendingPluginNodeIds.length > 0 && (
-          <button
-            onClick={handleLayoutNewNodesClick}
-            title={"Разложить только новые узлы"}
-            style={{
-              padding: "6px 10px",
-              background: "#0ea5e9",
-              border: "1px solid #0284c7",
-              borderRadius: "4px",
-              color: "#ffffff",
-              cursor: "pointer"
-            }}
-          >
-            {`N+${pendingPluginNodeIds.length}`}
-          </button>
-        )}
         <button
           onClick={handleAutoLayoutClick}
-          title={"\u0410\u0432\u0442\u043e\u0440\u0430\u0437\u043c\u0435\u0449\u0435\u043d\u0438\u0435"}
+          title="Авторазмещение"
           style={{
             padding: '6px 10px',
             background: '#2563eb',
@@ -2113,7 +2138,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
         </button>
         <button
           onClick={handleBalancedLayoutClick}
-          title={"Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р вЂ Р В РІР‚С™Р Р†РІР‚С›РЎС›Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В¤Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В РІР‚в„ўР вЂ™Р’ВР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р вЂ Р В РІР‚С™Р Р†РІР‚С›РЎС›Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В·Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В РІР‚в„ўР вЂ™Р’ВР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћвЂ“Р В Р’В Р вЂ™Р’В Р В Р’В Р Р†Р вЂљР’В Р В Р’В Р вЂ™Р’В Р В Р вЂ Р В РІР‚С™Р РЋРІвЂћСћР В Р’В Р вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћвЂ“Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р вЂ Р В РІР‚С™Р Р†РІР‚С›РЎС›Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’ВµР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћвЂ“Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р В Р вЂ№Р В Р вЂ Р В РІР‚С™Р РЋРЎв„ўР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В Р Р‹Р РЋРЎв„ўР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р вЂ Р В РІР‚С™Р Р†РІР‚С›РЎС›Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В°Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћвЂ“Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р В Р РЏ Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћвЂ“Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В Р Р‹Р Р†РІР‚С›РЎС›Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р вЂ Р В РІР‚С™Р Р†РІР‚С›РЎС›Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В°Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћвЂ“Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р В Р вЂ№Р В Р вЂ Р В РІР‚С™Р РЋРЎв„ўР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В Р Р‹Р РЋРЎв„ўР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р вЂ Р В РІР‚С™Р Р†РІР‚С›РЎС›Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В»Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р вЂ Р В РІР‚С™Р Р†РІР‚С›РЎС›Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В°Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р Р‹Р РЋРІР‚С”Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В РІР‚в„ўР вЂ™Р’ВР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В Р Р‹Р РЋРЎв„ўР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р вЂ Р В РІР‚С™Р Р†РІР‚С›РЎС›Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В°"}
+          title="Оптимальная раскладка"
           style={{
             padding: '6px 10px',
             background: '#2563eb',
@@ -2127,7 +2152,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
         </button>
         <button
           onClick={handleFitClick}
-          title="Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р В Р вЂ№Р В Р Р‹Р РЋРЎСџР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В Р Р‹Р РЋРІР‚С”Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В Р Р‹Р РЋРЎв„ўР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р вЂ Р В РІР‚С™Р Р†РІР‚С›РЎС›Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В°Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р вЂ Р В РІР‚С™Р Р†РІР‚С›РЎС›Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В·Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р вЂ Р В РІР‚С™Р Р†РІР‚С›РЎС›Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В°Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћвЂ“Р В Р’В Р вЂ™Р’В Р В Р’В Р Р†Р вЂљР’В Р В Р’В Р вЂ™Р’В Р В Р вЂ Р В РІР‚С™Р РЋРІвЂћСћР В Р’В Р В Р вЂ№Р В Р вЂ Р Р†Р вЂљРЎвЂєР РЋРЎвЂєР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћвЂ“Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р вЂ Р В РІР‚С™Р вЂ™Р’В° Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћвЂ“Р В Р’В Р вЂ™Р’В Р В Р’В Р Р†Р вЂљР’В Р В Р’В Р вЂ™Р’В Р В Р вЂ Р В РІР‚С™Р РЋРІвЂћСћР В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р вЂ Р В РІР‚С™Р Р†РІР‚С›РЎС›Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’ВµР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р вЂ Р В РІР‚С™Р Р†РІР‚С›РЎС›Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В»Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В РІР‚в„ўР вЂ™Р’ВР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В Р Р‹Р РЋРЎв„ўР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В Р Р‹Р РЋРІР‚С”Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В"
+          title="Показать весь граф"
           style={{
             padding: '6px 10px',
             background: '#2563eb',
@@ -2137,7 +2162,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
             cursor: 'pointer'
           }}
         >
-          {'\u2922'}
+          {'◎'}
         </button>
         <button
           onClick={handleFitSelectionClick}
@@ -2151,7 +2176,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
             cursor: 'pointer'
           }}
         >
-          {'?'}
+          {'⌖'}
         </button>
         <button
           onClick={handleInvertSelectionClick}
@@ -2165,7 +2190,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
             cursor: 'pointer'
           }}
         >
-          {'?'}
+          {'↔'}
         </button>
         <div style={{ fontSize: '12px', color: '#475569', marginLeft: '8px', padding: '6px 0' }}>
           v{artifact.version}
@@ -2261,7 +2286,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
               handleSelectEndpoints();
               closePluginMenu();
             }}
-            disabled={!pluginMenu.context.selected_edges || pluginMenu.context.selected_edges.length === 0}
+            disabled={!pluginMenu.context.selected_nodes || pluginMenu.context.selected_nodes.length === 0}
             style={{
               width: '100%',
               textAlign: 'left',
@@ -2270,8 +2295,8 @@ export const GraphView: React.FC<GraphViewProps> = ({
               color: '#0f172a',
               borderRadius: 4,
               padding: '5px 8px',
-              cursor: (!pluginMenu.context.selected_edges || pluginMenu.context.selected_edges.length === 0) ? 'not-allowed' : 'pointer',
-              opacity: (!pluginMenu.context.selected_edges || pluginMenu.context.selected_edges.length === 0) ? 0.5 : 1,
+              cursor: (!pluginMenu.context.selected_nodes || pluginMenu.context.selected_nodes.length === 0) ? 'not-allowed' : 'pointer',
+              opacity: (!pluginMenu.context.selected_nodes || pluginMenu.context.selected_nodes.length === 0) ? 0.5 : 1,
               fontSize: 12,
               lineHeight: '16px'
             }}

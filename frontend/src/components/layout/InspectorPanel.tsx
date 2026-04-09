@@ -2,7 +2,7 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { fetchArtifacts, deleteArtifact, updateArtifactSync, setCurrentArtifact } from '../../store/slices/artifactsSlice';
-import { artifactApi, pluginApi, domainModelApi } from '../../services/api';
+import { artifactApi, pluginApi, domainModelApi, projectDataApi } from '../../services/api';
 import type { ApiPlugin, ApiArtifact, PluginExecutionContext, DomainModelConfig } from '../../types/api';
 import type { SelectedElement } from '../../store/slices/uiSlice';
 import './InspectorPanel.css';
@@ -50,6 +50,17 @@ const labels = {
   renameConfirm: '\u041f\u0435\u0440\u0435\u0438\u043c\u0435\u043d\u043e\u0432\u0430\u0442\u044c \u0430\u0440\u0442\u0435\u0444\u0430\u043a\u0442? \u042d\u0442\u043e \u0438\u0437\u043c\u0435\u043d\u0438\u0442 \u0435\u0433\u043e \u043d\u0430\u0437\u0432\u0430\u043d\u0438\u0435.',
   delete: '\u0423\u0434\u0430\u043b\u0438\u0442\u044c',
   deleteConfirm: '\u0423\u0434\u0430\u043b\u0438\u0442\u044c \u0430\u0440\u0442\u0435\u0444\u0430\u043a\u0442? \u042d\u0442\u043e \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u0435 \u043d\u0435\u043e\u0431\u0440\u0430\u0442\u0438\u043c\u043e.',
+  loadData: '\u0417\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c \u0434\u0430\u043d\u043d\u044b\u0435',
+  clearProjectData: '\u041e\u0447\u0438\u0441\u0442\u0438\u0442\u044c \u0434\u0430\u043d\u043d\u044b\u0435 \u043f\u0440\u043e\u0435\u043a\u0442\u0430',
+  dataManagement: '\u0423\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u0438\u0435 \u0434\u0430\u043d\u043d\u044b\u043c\u0438',
+  loadDataPrompt: '\u0423\u043a\u0430\u0436\u0438\u0442\u0435 \u043f\u0443\u0442\u044c \u043a \u043f\u0430\u043f\u043a\u0435 \u0432\u043d\u0443\u0442\u0440\u0438 /app/data (\u043d\u0430\u043f\u0440\u0438\u043c\u0435\u0440: imports/raw_batch_1)',
+  clearDataConfirm: '\u041e\u0447\u0438\u0441\u0442\u0438\u0442\u044c \u0432\u0441\u0435 \u0434\u0430\u043d\u043d\u044b\u0435 \u0442\u0435\u043b\u0435\u043a\u043e\u043c-\u0442\u0430\u0431\u043b\u0438\u0446 \u0434\u043b\u044f \u044d\u0442\u043e\u0433\u043e \u043f\u0440\u043e\u0435\u043a\u0442\u0430? \u042d\u0442\u043e \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u0435 \u043d\u0435 \u0437\u0430\u0442\u0440\u043e\u043d\u0435\u0442 \u0434\u0440\u0443\u0433\u0438\u0435 \u043f\u0440\u043e\u0435\u043a\u0442\u044b.',
+  dataActionSuccess: '\u0413\u043e\u0442\u043e\u0432\u043e',
+  dataActionError: '\u041e\u0448\u0438\u0431\u043a\u0430 \u043e\u043f\u0435\u0440\u0430\u0446\u0438\u0438',
+  viewLoadReport: '\u041f\u043e\u043a\u0430\u0437\u0430\u0442\u044c \u043e\u0442\u0447\u0435\u0442 \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0438',
+  loadReportTitle: '\u041e\u0442\u0447\u0435\u0442 \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0438',
+  communicationsCount: '\u0421\u0432\u044f\u0437\u0438 \u0430\u0431\u043e\u043d\u0435\u043d\u0442\u043e\u0432',
+  deviceHistoryCount: '\u0421\u043c\u0435\u043d\u044b \u0430\u043f\u043f\u0430\u0440\u0430\u0442\u043e\u0432',
   cancel: '\u041e\u0442\u043c\u0435\u043d\u0430',
   save: '\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c',
   selectResult: '\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0440\u0435\u0437\u0443\u043b\u044c\u0442\u0430\u0442',
@@ -128,7 +139,7 @@ const fallbackIconOptions = [
 const iconScaleOptions = ['1', '2', '3', '4', '5'];
 const nodeColorPalette = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#a855f7', '#06b6d4', '#14b8a6', '#84cc16', '#f43f5e', '#eab308', '#000000'];
 const defaultEdgeDirectionOptions = ['from', 'to', 'both'];
-const isLikelyMojibake = (value: string) => /[\u00D0\u00D1][\u0080-\u00BF]|[\uFFFD]|(?:Р В .|Р РЋ.){2,}/.test(value);
+const isLikelyMojibake = (value: string) => /[\u00D0\u00D1][\u0080-\u00BF]|[\uFFFD]|(?:Р В Р’В .|Р В Р Р‹.){2,}/.test(value);
 
 const normalizeDisplayLabel = (candidate: string, fallback: string) => {
   const trimmed = candidate.trim();
@@ -204,7 +215,7 @@ const normalizeAttributeValue = (value: unknown) => {
 
 const buildEdgeLabelFromAttributes = (attributes: Record<string, any>, visibleKeys?: string[]) => {
   const visibleSet = Array.isArray(visibleKeys) ? new Set(visibleKeys.map((item) => String(item))) : null;
-  const contactsLine = String(attributes.contacts || (attributes.calls_count !== undefined ? `контактов: ${attributes.calls_count}` : '')).trim();
+  const contactsLine = String(attributes.contacts || (attributes.calls_count !== undefined ? `РєРѕРЅС‚Р°РєС‚РѕРІ: ${attributes.calls_count}` : '')).trim();
   const periodLine = String(attributes.period || '').trim();
 
   const lines: string[] = [];
@@ -221,7 +232,7 @@ type EdgeTypeSelectProps = {
   emptyLabel?: string;
 };
 
-const EdgeTypeSelect: React.FC<EdgeTypeSelectProps> = ({ value, onChange, options, placeholder, allowEmpty = false, emptyLabel = 'Р вЂР ВµР В· Р С‘Р В·Р СР ВµР Р…Р ВµР Р…Р С‘Р в„–' }) => {
+const EdgeTypeSelect: React.FC<EdgeTypeSelectProps> = ({ value, onChange, options, placeholder, allowEmpty = false, emptyLabel = 'Без изменений' }) => {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const selected = options.find((item) => item.id === value) || null;
@@ -257,7 +268,7 @@ const EdgeTypeSelect: React.FC<EdgeTypeSelectProps> = ({ value, onChange, option
         ) : (
           <span className="edge-type-select-label edge-type-select-placeholder">{placeholder}</span>
         )}
-        <span className="edge-type-select-caret">РІвЂ“С</span>
+        <span className="edge-type-select-caret">▾</span>
       </button>
 
       {open && (
@@ -295,6 +306,15 @@ const InspectorPanel: React.FC<InspectorPanelProps> = ({ onApplyGraphData, onSta
   const [renameValue, setRenameValue] = useState('');
   const [renaming, setRenaming] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [dataLoading, setDataLoading] = useState(false);
+  const [dataClearing, setDataClearing] = useState(false);
+  const [dataActionMessage, setDataActionMessage] = useState<string | null>(null);
+  const [dataActionError, setDataActionError] = useState<string | null>(null);
+  const [dataActionLog, setDataActionLog] = useState<string>('');
+  const [isLoadReportOpen, setIsLoadReportOpen] = useState(false);
+  const [dataStatsLoading, setDataStatsLoading] = useState(false);
+  const [dataStats, setDataStats] = useState<{ communications: number; deviceHistory: number }>({ communications: 0, deviceHistory: 0 });
+  const loadFilesInputRef = useRef<HTMLInputElement | null>(null);
   const [createdArtifacts, setCreatedArtifacts] = useState<ApiArtifact[] | null>(null);
   const [iconOptions, setIconOptions] = useState(fallbackIconOptions);
   const [edgeDirectionOptions, setEdgeDirectionOptions] = useState(defaultEdgeDirectionOptions);
@@ -328,22 +348,37 @@ const InspectorPanel: React.FC<InspectorPanelProps> = ({ onApplyGraphData, onSta
   const selectedElements = useAppSelector(state => state.ui.selectedElements);
   const currentProject = useAppSelector(state => state.projects.currentProject);
 
+  const graphNodeIdSet = useMemo(() => {
+    if (!selectedArtifact || selectedArtifact.type !== 'graph') return new Set<string>();
+    const nodes = Array.isArray(selectedArtifact.data?.nodes) ? selectedArtifact.data.nodes : [];
+    return new Set(nodes.map((node: any) => String(node?.id ?? node?.node_id ?? '')));
+  }, [selectedArtifact]);
+
+  const graphEdgeIdSet = useMemo(() => {
+    if (!selectedArtifact || selectedArtifact.type !== 'graph') return new Set<string>();
+    const edges = Array.isArray(selectedArtifact.data?.edges) ? selectedArtifact.data.edges : [];
+    return new Set(edges.map((edge: any) => String(edge?.id ?? '')));
+  }, [selectedArtifact]);
+
+
   const pluginContext = useMemo<PluginExecutionContext>(() => {
     if (!selectedArtifact) return {};
 
     if (selectedArtifact.type === 'graph') {
       const selected_nodes = selectedElements
         .filter(item => item.type === 'node')
-        .map(item => String(item.id));
+        .map(item => String(item.id))
+        .filter((id) => graphNodeIdSet.has(id));
       const selected_edges = selectedElements
         .filter(item => item.type === 'edge')
-        .map(item => String(item.id));
+        .map(item => String(item.id))
+        .filter((id) => graphEdgeIdSet.has(id));
 
       return { selected_nodes, selected_edges };
     }
 
     return {};
-  }, [selectedArtifact, selectedElements]);
+  }, [selectedArtifact, selectedElements, graphNodeIdSet, graphEdgeIdSet]);
   const getNodeTypeDefaultVisual = useCallback((nodeData: any) => {
     const typeId = String(nodeData?.type || '');
     const found = nodeTypeDefinitions.find((item) => item.id === typeId);
@@ -405,7 +440,7 @@ const pluginContextKey = useMemo(() => {
 
         const nodeTypes = (model?.node_types || []).map((node) => ({
           id: String(node?.id || ''),
-          label: normalizeDisplayLabel(String(node?.label || ''), String(node?.id || 'Р Р€Р В·Р ВµР В»')),
+          label: normalizeDisplayLabel(String(node?.label || ''), String(node?.id || 'Р В Р в‚¬Р В Р’В·Р В Р’ВµР В Р’В»')),
           icon: String(node?.icon || '').trim(),
           defaultVisual: ((node as any)?.default_visual || {}) as Record<string, any>,
           attributes: Array.isArray((node as any)?.attributes)
@@ -427,7 +462,7 @@ const pluginContextKey = useMemo(() => {
 
         const edgeTypes = (model?.edge_types || []).map((edge) => ({
           id: String((edge as any)?.id || ''),
-          label: normalizeDisplayLabel(String((edge as any)?.label || ''), String((edge as any)?.id || 'Р РЋР Р†РЎРЏР В·РЎРЉ')),
+          label: normalizeDisplayLabel(String((edge as any)?.label || ''), String((edge as any)?.id || 'Р В Р Р‹Р В Р вЂ Р РЋР РЏР В Р’В·Р РЋР Р‰')),
           color: String((edge as any)?.default_visual?.color || '#64748b'),
           defaultVisual: (((edge as any)?.default_visual || {}) as Record<string, any>),
           allowedFrom: Array.isArray((edge as any)?.allowed_from) ? (edge as any).allowed_from.map((v: any) => String(v)) : ['*'],
@@ -460,6 +495,30 @@ const pluginContextKey = useMemo(() => {
   const handleTabChange = useCallback((tab: 'properties' | 'builder' | 'elements' | 'metadata') => {
     setActiveTab(tab);
   }, []);
+
+  const refreshProjectDataStats = useCallback(async (projectId: number) => {
+    setDataStatsLoading(true);
+    try {
+      const stats = await projectDataApi.stats(projectId);
+      setDataStats({
+        communications: Number(stats?.communications_count || 0),
+        deviceHistory: Number(stats?.device_history_count || 0),
+      });
+    } catch {
+      setDataStats({ communications: 0, deviceHistory: 0 });
+    } finally {
+      setDataStatsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!currentProject?.id) {
+      setDataStats({ communications: 0, deviceHistory: 0 });
+      return;
+    }
+    refreshProjectDataStats(currentProject.id);
+  }, [currentProject?.id, refreshProjectDataStats]);
+
 
   useEffect(() => {
     if (!selectedArtifact) {
@@ -737,7 +796,7 @@ const pluginContextKey = useMemo(() => {
       const updatedMeta = updatedCurrent?.metadata || {};
       if (updatedMeta?.communications_selection_limited) {
         const limit = Number(updatedMeta?.communications_selection_limit || 0);
-        setPluginsMessage(`Обработано только первые ${limit} абонентов из выделения. Для остальных запустите плагин повторно.`);
+        setPluginsMessage(`Обработаны только первые ${limit} абонентов из выделения. Для остальных запустите плагин повторно.`);
       }
       if (newNodeIds.length > 0) {
         const maxAutoLayout = Number(layoutConfig.pluginAutoLayout?.maxNewNodes || 80);
@@ -807,6 +866,68 @@ const pluginContextKey = useMemo(() => {
       setDeleting(false);
     }
   }, [selectedArtifact, currentProject, deleting, dispatch]);
+
+  const handleLoadProjectData = useCallback(() => {
+    loadFilesInputRef.current?.click();
+  }, []);
+
+  const handleLoadProjectDataFiles = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!currentProject) return;
+    const fileList = event.target.files;
+    if (!fileList || fileList.length === 0) return;
+    const files = Array.from(fileList);
+
+    setDataLoading(true);
+    setDataActionError(null);
+    setDataActionMessage(null);
+    setDataActionLog('');
+    setIsLoadReportOpen(false);
+    try {
+      const result = await projectDataApi.loadFromFiles(currentProject.id, files);
+      const readComm = Number(result.communications_rows || 0);
+      const readDevice = Number(result.device_history_rows || 0);
+      const insertedComm = Number(result.inserted_communications || 0);
+      const insertedDevice = Number(result.inserted_device_history || 0);
+      setDataActionMessage(
+        `${labels.dataActionSuccess}:\n- прочитано ${readComm}/${readDevice}\n- добавлено ${insertedComm}/${insertedDevice}\n(communications/device_history)`
+      );
+      if (result.load_log) {
+        setDataActionLog(JSON.stringify(result.load_log, null, 2));
+      }
+      await refreshProjectDataStats(currentProject.id);
+    } catch (error: any) {
+      const detail = error?.response?.data?.detail || error?.message || labels.dataActionError;
+      setDataActionError(String(detail));
+    } finally {
+      setDataLoading(false);
+      event.target.value = '';
+    }
+  }, [currentProject, refreshProjectDataStats]);
+
+  const handleClearProjectData = useCallback(async () => {
+    if (!currentProject) return;
+    const ok = window.confirm(`${labels.clearDataConfirm}\n\nProject ID: ${currentProject.id}`);
+    if (!ok) return;
+
+    setDataClearing(true);
+    setDataActionError(null);
+    setDataActionMessage(null);
+    setDataActionLog('');
+    setIsLoadReportOpen(false);
+    try {
+      const result = await projectDataApi.clear(currentProject.id);
+      setDataActionMessage(
+        `${labels.dataActionSuccess}: \u0443\u0434\u0430\u043b\u0435\u043d\u043e ${result.communications_deleted || 0} \u0437\u0430\u043f\u0438\u0441\u0435\u0439 communications \u0438 ${result.device_history_deleted || 0} \u0437\u0430\u043f\u0438\u0441\u0435\u0439 device_history.`
+      );
+      await refreshProjectDataStats(currentProject.id);
+    } catch (error: any) {
+      const detail = error?.response?.data?.detail || error?.message || labels.dataActionError;
+      setDataActionError(String(detail));
+    } finally {
+      setDataClearing(false);
+    }
+  }, [currentProject, refreshProjectDataStats]);
+
 const handleCreateNode = useCallback(() => {
     if (!selectedArtifact || selectedArtifact.type !== 'graph') return;
     const label = builderNodeLabel.trim();
@@ -849,7 +970,7 @@ const handleCreateNode = useCallback(() => {
 
       const conflictInSelected = Array.from(selectedTypeGroups.values()).some((count) => count > 1);
       if (conflictInSelected) {
-        window.alert('Р Р€Р В·Р ВµР В» РЎРѓ РЎвЂљР В°Р С”Р С‘Р С РЎвЂљР С‘Р С—Р С•Р С Р С‘ Р С—Р С•Р Т‘Р С—Р С‘РЎРѓРЎРЉРЎР‹ РЎС“Р В¶Р Вµ РЎРѓРЎС“РЎвЂ°Р ВµРЎРѓРЎвЂљР Р†РЎС“Р ВµРЎвЂљ');
+        window.alert('Р В Р в‚¬Р В Р’В·Р В Р’ВµР В Р’В» Р РЋР С“ Р РЋРІР‚С™Р В Р’В°Р В РЎвЂќР В РЎвЂР В РЎВ Р РЋРІР‚С™Р В РЎвЂР В РЎвЂ”Р В РЎвЂўР В РЎВ Р В РЎвЂ Р В РЎвЂ”Р В РЎвЂўР В РўвЂР В РЎвЂ”Р В РЎвЂР РЋР С“Р РЋР Р‰Р РЋР вЂ№ Р РЋРЎвЂњР В Р’В¶Р В Р’Вµ Р РЋР С“Р РЋРЎвЂњР РЋРІР‚В°Р В Р’ВµР РЋР С“Р РЋРІР‚С™Р В Р вЂ Р РЋРЎвЂњР В Р’ВµР РЋРІР‚С™');
         return;
       }
 
@@ -863,7 +984,7 @@ const handleCreateNode = useCallback(() => {
       });
 
       if (conflictWithExisting) {
-        window.alert('Р Р€Р В·Р ВµР В» РЎРѓ РЎвЂљР В°Р С”Р С‘Р С РЎвЂљР С‘Р С—Р С•Р С Р С‘ Р С—Р С•Р Т‘Р С—Р С‘РЎРѓРЎРЉРЎР‹ РЎС“Р В¶Р Вµ РЎРѓРЎС“РЎвЂ°Р ВµРЎРѓРЎвЂљР Р†РЎС“Р ВµРЎвЂљ');
+        window.alert('Р В Р в‚¬Р В Р’В·Р В Р’ВµР В Р’В» Р РЋР С“ Р РЋРІР‚С™Р В Р’В°Р В РЎвЂќР В РЎвЂР В РЎВ Р РЋРІР‚С™Р В РЎвЂР В РЎвЂ”Р В РЎвЂўР В РЎВ Р В РЎвЂ Р В РЎвЂ”Р В РЎвЂўР В РўвЂР В РЎвЂ”Р В РЎвЂР РЋР С“Р РЋР Р‰Р РЋР вЂ№ Р РЋРЎвЂњР В Р’В¶Р В Р’Вµ Р РЋР С“Р РЋРЎвЂњР РЋРІР‚В°Р В Р’ВµР РЋР С“Р РЋРІР‚С™Р В Р вЂ Р РЋРЎвЂњР В Р’ВµР РЋРІР‚С™');
         return;
       }
     }
@@ -1117,8 +1238,8 @@ const handleCreateNode = useCallback(() => {
         >
           <div
             style={{
-              background: '#1f2937',
-              border: '1px solid #2f3b4a',
+              background: '#ffffff',
+              border: '1px solid #d7deea',
               borderRadius: 8,
               padding: 12,
               minWidth: 260,
@@ -1133,8 +1254,8 @@ const handleCreateNode = useCallback(() => {
                 style={{
                   width: '100%',
                   textAlign: 'left',
-                  background: '#111827',
-                  border: '1px solid #2f3b4a',
+                  background: '#f8fafc',
+                  border: '1px solid #d7deea',
                   color: '#e5e7eb',
                   padding: '6px 8px',
                   borderRadius: 6,
@@ -1153,6 +1274,64 @@ const handleCreateNode = useCallback(() => {
                 border: 'none',
                 color: '#9ca3af',
                 padding: '6px 4px',
+                cursor: 'pointer'
+              }}
+            >
+              {labels.cancel}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {isLoadReportOpen && dataActionLog && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000
+          }}
+          onClick={() => setIsLoadReportOpen(false)}
+        >
+          <div
+            style={{
+              background: '#ffffff',
+              border: '1px solid #d7deea',
+              borderRadius: 8,
+              padding: 12,
+              width: 'min(92vw, 820px)',
+              maxHeight: '80vh',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 10
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>{labels.loadReportTitle}</div>
+            <pre style={{
+              margin: 0,
+              whiteSpace: 'pre-wrap',
+              overflow: 'auto',
+              maxHeight: '64vh',
+              background: '#f8fafc',
+              color: '#0f172a',
+              border: '1px solid #d7deea',
+              borderRadius: 6,
+              padding: 10,
+              fontSize: 12
+            }}>{dataActionLog}</pre>
+            <button
+              onClick={() => setIsLoadReportOpen(false)}
+              style={{
+                alignSelf: 'flex-end',
+                background: '#2563eb',
+                border: '1px solid #3b82f6',
+                color: '#fff',
+                padding: '6px 12px',
+                borderRadius: 6,
                 cursor: 'pointer'
               }}
             >
@@ -1205,119 +1384,146 @@ const handleCreateNode = useCallback(() => {
       <div className="inspector-content">
         {activeTab === 'properties' && (
           <div className="properties-tab">
-            <div className="property-group">
-              <label>{labels.name}</label>
-              {!isRenaming ? (
-                <div className="property-inline">
-                  <div className="property-value">{selectedArtifact.name}</div>
-                  <button
-                    className="property-action"
-                    onClick={() => setIsRenaming(true)}
-                  >
-                    {labels.rename}
-                  </button>
+            <details className="inspector-section" open>
+              <summary>{'\u041e\u0431\u0437\u043e\u0440'}</summary>
+              <div className="inspector-section-body">
+                <div className="property-group">
+                  <label>{labels.name}</label>
+                  {!isRenaming ? (
+                    <div className="property-inline">
+                      <div className="property-value">{selectedArtifact.name}</div>
+                      <button
+                        className="property-action"
+                        onClick={() => setIsRenaming(true)}
+                      >
+                        {labels.rename}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="property-inline">
+                      <input
+                        className="property-input"
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                      />
+                      <button
+                        className="property-action"
+                        onClick={handleRename}
+                        disabled={renaming}
+                      >
+                        {labels.save}
+                      </button>
+                      <button
+                        className="property-action secondary"
+                        onClick={() => {
+                          setIsRenaming(false);
+                          setRenameValue(selectedArtifact.name);
+                        }}
+                      >
+                        {labels.cancel}
+                      </button>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="property-inline">
-                  <input
-                    className="property-input"
-                    value={renameValue}
-                    onChange={(e) => setRenameValue(e.target.value)}
-                  />
-                  <button
-                    className="property-action"
-                    onClick={handleRename}
-                    disabled={renaming}
-                  >
-                    {labels.save}
-                  </button>
+
+                <div className="property-group property-row-inline">
+                  <label>{labels.created}</label>
+                  <div className="property-value">
+                    {new Date(selectedArtifact.created_at).toLocaleString()}
+                  </div>
+                </div>
+
+                <div className="property-group property-row-inline">
+                  <label>{labels.updated}</label>
+                  <div className="property-value">
+                    {new Date(selectedArtifact.updated_at).toLocaleString()}
+                  </div>
+                </div>
+              </div>
+            </details>
+
+            <details className="inspector-section">
+              <summary>{labels.dataManagement}</summary>
+              <div className="inspector-section-body">
+                <input
+                  ref={loadFilesInputRef}
+                  type="file"
+                  multiple
+                  style={{ display: 'none' }}
+                  onChange={handleLoadProjectDataFiles}
+                  {...({ webkitdirectory: '' } as any)}
+                />
+
+                <div className="data-stats-grid">
+                  <div className="data-stat-card">
+                    <div className="data-stat-label">{labels.communicationsCount}</div>
+                    <div className="data-stat-value">{dataStatsLoading ? '...' : dataStats.communications}</div>
+                  </div>
+                  <div className="data-stat-card">
+                    <div className="data-stat-label">{labels.deviceHistoryCount}</div>
+                    <div className="data-stat-value">{dataStatsLoading ? '...' : dataStats.deviceHistory}</div>
+                  </div>
+                </div>
+
+                <div className="property-group">
+                  <label>{labels.loadData}</label>
+                  <div className="property-inline">
+                    <button
+                      className="property-action"
+                      onClick={handleLoadProjectData}
+                      disabled={dataLoading || dataClearing}
+                    >
+                      {dataLoading ? labels.loading : labels.loadData}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="property-group">
+                  <label>{labels.clearProjectData}</label>
+                  <div className="property-inline">
+                    <button
+                      className="property-action danger"
+                      onClick={handleClearProjectData}
+                      disabled={dataLoading || dataClearing}
+                    >
+                      {dataClearing ? labels.loading : labels.clearProjectData}
+                    </button>
+                  </div>
+                </div>
+                {dataActionMessage && <div className="property-value" style={{ whiteSpace: 'pre-line' }}>{dataActionMessage}</div>}
+                {dataActionError && <div className="property-value" style={{ color: '#b91c1c' }}>{dataActionError}</div>}
+                {dataActionLog && (
                   <button
                     className="property-action secondary"
-                    onClick={() => {
-                      setIsRenaming(false);
-                      setRenameValue(selectedArtifact.name);
-                    }}
+                    type="button"
+                    onClick={() => setIsLoadReportOpen(true)}
                   >
-                    {labels.cancel}
+                    {labels.viewLoadReport}
                   </button>
-                </div>
-              )}
-            </div>
-
-            <div className="property-group property-row-inline">
-              <label>{labels.created}</label>
-              <div className="property-value">
-                {new Date(selectedArtifact.created_at).toLocaleString()}
+                )}
               </div>
-            </div>
+            </details>
 
-            <div className="property-group property-row-inline">
-              <label>{labels.updated}</label>
-              <div className="property-value">
-                {new Date(selectedArtifact.updated_at).toLocaleString()}
-              </div>
-            </div>
-
-            <div className="property-group">
-              <label>{labels.plugins}</label>
-              {pluginsLoading && (
-                <div className="property-value">{labels.loading}</div>
-              )}
-              {pluginsError && (
-                <div className="property-value" style={{ color: '#ff6b6b' }}>
-                  {pluginsError}
-                </div>
-              )}
-              {pluginsMessage && (
-                <div className="property-value" style={{ color: '#81c784' }}>
-                  {pluginsMessage}
-                </div>
-              )}
-              {!pluginsLoading && !pluginsError && applicablePlugins.length === 0 && (
-                <div className="property-value">{labels.noPlugins}</div>
-              )}
-              {groupedPlugins.map((group) => (
-                <div key={group.path} className="property-value" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <div style={{ fontSize: '12px', opacity: 0.8 }}>{group.path}</div>
-                  {group.items.map((plugin) => (
+            <details className="inspector-section">
+              <summary>{'\u0414\u0435\u0439\u0441\u0442\u0432\u0438\u044f'}</summary>
+              <div className="inspector-section-body">
+                <div className="property-group">
+                  <label>{labels.delete}</label>
+                  <div className="property-inline">
                     <button
-                      key={plugin.id}
-                      className="tab-btn"
-                      onClick={() => handleRunPlugin(plugin)}
-                      disabled={!!runningPluginId}
+                      className="property-action danger"
+                      onClick={handleDelete}
+                      disabled={deleting || dataLoading || dataClearing}
                     >
-                      {runningPluginId === plugin.id ? labels.pluginRunning : `${labels.pluginRun}: ${plugin.name}`}
+                      {labels.delete}
                     </button>
-                  ))}
-                </div>
-              ))}
-            </div>
-
-            <div className="property-group">
-              <label>{labels.delete}</label>
-              <div className="property-inline">
-                <button
-                  className="property-action danger"
-                  onClick={handleDelete}
-                  disabled={deleting}
-                >
-                  {labels.delete}
-                </button>
-              </div>
-            </div>
-
-            {selectedArtifact.metadata && Object.entries(selectedArtifact.metadata).map(([key, value]) => (
-              <div key={key} className="property-group">
-                <label>{key}</label>
-                <div className="property-value">
-                  {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                  </div>
                 </div>
               </div>
-            ))}
+            </details>
           </div>
         )}
-
-                {activeTab === 'builder' && selectedArtifact.type === 'graph' && (
+        {activeTab === 'builder' && selectedArtifact.type === 'graph' && (
           <div className="properties-tab elements-tab builder-tab">
             <div className="property-group">
               <label>{labels.nodeLabel}</label>
@@ -1624,6 +1830,45 @@ const handleCreateNode = useCallback(() => {
 };
 
 export default InspectorPanel;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
