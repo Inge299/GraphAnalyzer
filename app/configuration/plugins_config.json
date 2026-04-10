@@ -1,23 +1,65 @@
 ﻿{
-  "version": 1,
-  "plugins": {
-    "abonent_period_enricher": {
-      "connection": {
-        "url": "",
-        "db": {
-          "driver": "mssql+pymssql",
-          "host": "localhost",
-          "instance": "",
-          "port": 1433,
-          "database": "TestData",
-          "auth_type": "sql",
-          "username": "sa",
-          "password": ""
-        }
-      },
-      "query": {
-        "table": "[TestData].[dbo].[abonents_list]"
-      }
-    }
-  }
+    "version":  1,
+    "plugins":  {
+                    "abonent_period_enricher":  {
+                                                    "connection":  {
+                                                                       "url":  "mssql+pymssql://AI:31415927pi@host.docker.internal:1433/TestData",
+                                                                       "db":  {
+                                                                                  "driver":  "mssql+pymssql",
+                                                                                  "host":  "host.docker.internal",
+                                                                                  "instance":  "SQL_LOCAL",
+                                                                                  "port":  1433,
+                                                                                  "database":  "TestData",
+                                                                                  "auth_type":  "sql",
+                                                                                  "username":  "AI",
+                                                                                  "password":  "31415927pi"
+                                                                              }
+                                                                   },
+                                                    "query":  {
+                                                                  "table":  "[TestData].[dbo].[abonents_list]"
+                                                              }
+                                                },
+                    "abonent_communications":  {
+                                                   "connection":  {
+                                                                      "url":  "mssql+pymssql://AI:31415927pi@host.docker.internal:1433/TestData",
+                                                                      "db":  {
+                                                                                 "driver":  "mssql+pymssql",
+                                                                                 "host":  "host.docker.internal",
+                                                                                 "instance":  "SQL_LOCAL",
+                                                                                 "port":  1433,
+                                                                                 "database":  "TestData",
+                                                                                 "auth_type":  "sql",
+                                                                                 "username":  "AI",
+                                                                                 "password":  "31415927pi"
+                                                                             }
+                                                                  },
+                                                   "query":  {
+                                                                 "table":  "[dbo].[communications]"
+                                                             }
+                                               },
+                    "rag_health_check":  {
+                                             "rag":  {
+                                                         "base_url":  "http://host.docker.internal:8011",
+                                                         "health_endpoint":  "/api/rag/admin",
+                                                         "timeout_sec":  20,
+                                                         "query_endpoint":  "/api/rag/analyze/evidence"
+                                                     }
+                                         },
+                    "rag_search_documents":  {
+                                                 "rag":  {
+                                                             "base_url":  "http://host.docker.internal:8011",
+                                                             "query_endpoint":  "/api/rag/analyze/evidence",
+                                                             "timeout_sec":  60,
+                                                             "topic":  "open-source"
+                                                         }
+                                             },
+                    "rag_extract_objects":  {
+                                                "rag":  {
+                                                            "base_url":  "http://host.docker.internal:8011",
+                                                            "query_endpoint":  "/api/rag/analyze/evidence",
+                                                            "timeout_sec":  60,
+                                                            "topic":  "open-source"
+                                                        }
+                                            }
+                }
 }
