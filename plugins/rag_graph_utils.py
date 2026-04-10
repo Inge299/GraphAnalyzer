@@ -183,14 +183,22 @@ def ensure_document_node(nodes: List[Dict[str, Any]], document_id: str, title: s
 
 def ensure_object_node(nodes: List[Dict[str, Any]], object_type: str, label: str, attrs: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     effective_type = object_type if has_node_type(object_type) else "person"
+    attrs = attrs or {}
+    incoming_visual = attrs.get("visual") if isinstance(attrs.get("visual"), dict) else {}
+
     existing = find_node_by_type_and_label(nodes, effective_type, label)
     if existing:
         existing_attrs = existing.setdefault("attributes", {})
-        if attrs:
-            for key, value in attrs.items():
-                if key not in existing_attrs and value not in (None, ""):
-                    existing_attrs[key] = value
+        for key, value in attrs.items():
+            if key == "visual":
+                continue
+            if key not in existing_attrs and value not in (None, ""):
+                existing_attrs[key] = value
+
         visual = existing_attrs.setdefault("visual", {})
+        for key, value in incoming_visual.items():
+            if value not in (None, ""):
+                visual[key] = value
         visual.setdefault("ringEnabled", False)
         visual.setdefault("ringWidth", 0)
         return existing
@@ -202,6 +210,11 @@ def ensure_object_node(nodes: List[Dict[str, Any]], object_type: str, label: str
         "ringEnabled": False,
         "ringWidth": 0,
     }
+    for key, value in incoming_visual.items():
+        if value not in (None, ""):
+            visual[key] = value
+
+    plain_attrs = {k: v for k, v in attrs.items() if k != "visual"}
 
     node = {
         "id": next_node_id(nodes),
@@ -211,7 +224,7 @@ def ensure_object_node(nodes: List[Dict[str, Any]], object_type: str, label: str
         "position_y": 0,
         "attributes": {
             "label": label,
-            **(attrs or {}),
+            **plain_attrs,
             "visual": visual,
         },
     }
@@ -369,6 +382,7 @@ def relation_document_excerpt(relation: Dict[str, Any]) -> str:
         or doc.get("snippet")
         or ""
     ).strip()
+
 
 
 
