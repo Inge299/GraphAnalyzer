@@ -1,4 +1,4 @@
-"""
+﻿"""
 Main FastAPI application module for OSINT Graph Analyzer.
 """
 from fastapi import FastAPI
@@ -11,7 +11,7 @@ from app.config import settings
 from app.database import engine, Base
 
 # Import all routers
-from app.api.routes import projects, schema, nodes, edges, graphs
+from app.api.routes import projects, schema, nodes, edges, graphs, project_data, console
 from app.routers import plugins, analytics, domain_model
 from app.api.routes import artifacts
 from app.api.routes import history
@@ -114,6 +114,9 @@ app.include_router(schema.router, prefix="/api/v1", tags=["schema"])
 app.include_router(nodes.router, prefix="/api/v1", tags=["nodes"])
 app.include_router(edges.router, prefix="/api/v1", tags=["edges"])
 app.include_router(graphs.router, prefix="/api/v1", tags=["graphs"])
+app.include_router(project_data.router, prefix="/api/v1", tags=["project-data"])
+app.include_router(console.profiles_router, prefix="/api/v1", tags=["console"])
+app.include_router(console.router, prefix="/api/v1", tags=["console"])
 app.include_router(plugins.router, prefix="/api/v1/plugins", tags=["plugins"])
 app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["analytics"])
 app.include_router(domain_model.router, prefix="/api/v1/config", tags=["domain-model"])
@@ -143,6 +146,10 @@ async def custom_500_handler(request, exc):
         status_code=500,
         content={"message": "Internal server error", "detail": "An unexpected error occurred"}
     )
+
+
+
+
 
 
 

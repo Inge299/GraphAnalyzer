@@ -1,4 +1,4 @@
-# app/api/routes/artifacts.py
+﻿# app/api/routes/artifacts.py
 """
 Artifact management endpoints (API v2).
 """
@@ -19,7 +19,7 @@ router = APIRouter(prefix="/projects/{project_id}/artifacts", tags=["artifacts"]
 logger = logging.getLogger(__name__)
 
 # ============================================================================
-# Р‘Р°Р·РѕРІС‹Рµ CRUD РѕРїРµСЂР°С†РёРё
+# Р вЂР В°Р В·Р С•Р Р†РЎвЂ№Р Вµ CRUD Р С•Р С—Р ВµРЎР‚Р В°РЎвЂ Р С‘Р С‘
 # ============================================================================
 
 @router.post("", response_model=Dict[str, Any])
@@ -46,7 +46,7 @@ async def create_artifact(
         Created artifact
     """
     try:
-        # Р’Р°Р»РёРґР°С†РёСЏ РѕР±СЏР·Р°С‚РµР»СЊРЅС‹С… РїРѕР»РµР№
+        # Р вЂ™Р В°Р В»Р С‘Р Т‘Р В°РЎвЂ Р С‘РЎРЏ Р С•Р В±РЎРЏР В·Р В°РЎвЂљР ВµР В»РЎРЉР Р…РЎвЂ№РЎвЂ¦ Р С—Р С•Р В»Р ВµР в„–
         if "type" not in artifact_data:
             raise HTTPException(status_code=400, detail="Field 'type' is required")
         if "name" not in artifact_data:
@@ -54,8 +54,8 @@ async def create_artifact(
         if "data" not in artifact_data:
             raise HTTPException(status_code=400, detail="Field 'data' is required")
         
-        # Р’Р°Р»РёРґР°С†РёСЏ С‚РёРїР°
-        valid_types = ["graph", "table", "map", "chart", "document"]
+        # Р вЂ™Р В°Р В»Р С‘Р Т‘Р В°РЎвЂ Р С‘РЎРЏ РЎвЂљР С‘Р С—Р В°
+        valid_types = ["graph", "table", "map", "chart", "document", "console"]
         if artifact_data["type"] not in valid_types:
             raise HTTPException(
                 status_code=400, 
@@ -78,7 +78,7 @@ async def create_artifact(
 
         artifact_data["name"] = normalized_name
         
-        # РЎРѕР·РґР°РµРј Р°СЂС‚РµС„Р°РєС‚
+        # Р РЋР С•Р В·Р Т‘Р В°Р ВµР С Р В°РЎР‚РЎвЂљР ВµРЎвЂћР В°Р С”РЎвЂљ
         artifact = Artifact(
             project_id=project_id,
             type=artifact_data["type"],
@@ -92,7 +92,7 @@ async def create_artifact(
         await db.commit()
         await db.refresh(artifact)
         
-        # РЎРѕР·РґР°РµРј РїРµСЂРІСѓСЋ РІРµСЂСЃРёСЋ
+        # Р РЋР С•Р В·Р Т‘Р В°Р ВµР С Р С—Р ВµРЎР‚Р Р†РЎС“РЎР‹ Р Р†Р ВµРЎР‚РЎРѓР С‘РЎР‹
         version = ArtifactVersion(
             artifact_id=artifact.id,
             version=1,
@@ -138,11 +138,11 @@ async def list_artifacts(
     try:
         query = select(Artifact).where(Artifact.project_id == project_id)
         
-        # Р¤РёР»СЊС‚СЂ РїРѕ С‚РёРїСѓ
+        # Р В¤Р С‘Р В»РЎРЉРЎвЂљРЎР‚ Р С—Р С• РЎвЂљР С‘Р С—РЎС“
         if type:
             query = query.where(Artifact.type == type)
         
-        # РџРѕРёСЃРє РїРѕ РёРјРµРЅРё Рё РѕРїРёСЃР°РЅРёСЋ
+        # Р СџР С•Р С‘РЎРѓР С” Р С—Р С• Р С‘Р СР ВµР Р…Р С‘ Р С‘ Р С•Р С—Р С‘РЎРѓР В°Р Р…Р С‘РЎР‹
         if search:
             query = query.where(
                 or_(
@@ -151,13 +151,13 @@ async def list_artifacts(
                 )
             )
         
-        # РџР°РіРёРЅР°С†РёСЏ
+        # Р СџР В°Р С–Р С‘Р Р…Р В°РЎвЂ Р С‘РЎРЏ
         query = query.order_by(Artifact.updated_at.desc()).limit(limit).offset(offset)
         
         result = await db.execute(query)
         artifacts = result.scalars().all()
         
-        # РџРѕР»СѓС‡Р°РµРј РїРѕСЃР»РµРґРЅСЋСЋ РІРµСЂСЃРёСЋ РґР»СЏ РєР°Р¶РґРѕРіРѕ Р°СЂС‚РµС„Р°РєС‚Р°
+        # Р СџР С•Р В»РЎС“РЎвЂЎР В°Р ВµР С Р С—Р С•РЎРѓР В»Р ВµР Т‘Р Р…РЎР‹РЎР‹ Р Р†Р ВµРЎР‚РЎРѓР С‘РЎР‹ Р Т‘Р В»РЎРЏ Р С”Р В°Р В¶Р Т‘Р С•Р С–Р С• Р В°РЎР‚РЎвЂљР ВµРЎвЂћР В°Р С”РЎвЂљР В°
         response = []
         for artifact in artifacts:
             latest_version = await db.execute(
@@ -199,7 +199,7 @@ async def get_artifact(
     Get a specific artifact, optionally at a specific version.
     """
     try:
-        # РџСЂРѕРІРµСЂСЏРµРј СЃСѓС‰РµСЃС‚РІРѕРІР°РЅРёРµ Р°СЂС‚РµС„Р°РєС‚Р°
+        # Р СџРЎР‚Р С•Р Р†Р ВµРЎР‚РЎРЏР ВµР С РЎРѓРЎС“РЎвЂ°Р ВµРЎРѓРЎвЂљР Р†Р С•Р Р†Р В°Р Р…Р С‘Р Вµ Р В°РЎР‚РЎвЂљР ВµРЎвЂћР В°Р С”РЎвЂљР В°
         result = await db.execute(
             select(Artifact).where(
                 Artifact.id == artifact_id,
@@ -211,7 +211,7 @@ async def get_artifact(
         if not artifact:
             raise HTTPException(status_code=404, detail="Artifact not found")
         
-        # Р•СЃР»Рё Р·Р°РїСЂРѕС€РµРЅР° РєРѕРЅРєСЂРµС‚РЅР°СЏ РІРµСЂСЃРёСЏ
+        # Р вЂўРЎРѓР В»Р С‘ Р В·Р В°Р С—РЎР‚Р С•РЎв‚¬Р ВµР Р…Р В° Р С”Р С•Р Р…Р С”РЎР‚Р ВµРЎвЂљР Р…Р В°РЎРЏ Р Р†Р ВµРЎР‚РЎРѓР С‘РЎРЏ
         if version:
             version_result = await db.execute(
                 select(ArtifactVersion)
@@ -232,7 +232,7 @@ async def get_artifact(
             current_version = version
         else:
             data = artifact.data
-            # РџРѕР»СѓС‡Р°РµРј РїРѕСЃР»РµРґРЅСЋСЋ РІРµСЂСЃРёСЋ
+            # Р СџР С•Р В»РЎС“РЎвЂЎР В°Р ВµР С Р С—Р С•РЎРѓР В»Р ВµР Т‘Р Р…РЎР‹РЎР‹ Р Р†Р ВµРЎР‚РЎРѓР С‘РЎР‹
             version_result = await db.execute(
                 select(ArtifactVersion)
                 .where(ArtifactVersion.artifact_id == artifact_id)
@@ -273,7 +273,7 @@ async def update_artifact(
     Update an artifact (creates a new version).
     """
     try:
-        # РџСЂРѕРІРµСЂСЏРµРј СЃСѓС‰РµСЃС‚РІРѕРІР°РЅРёРµ Р°СЂС‚РµС„Р°РєС‚Р°
+        # Р СџРЎР‚Р С•Р Р†Р ВµРЎР‚РЎРЏР ВµР С РЎРѓРЎС“РЎвЂ°Р ВµРЎРѓРЎвЂљР Р†Р С•Р Р†Р В°Р Р…Р С‘Р Вµ Р В°РЎР‚РЎвЂљР ВµРЎвЂћР В°Р С”РЎвЂљР В°
         result = await db.execute(
             select(Artifact).where(
                 Artifact.id == artifact_id,
@@ -285,7 +285,7 @@ async def update_artifact(
         if not artifact:
             raise HTTPException(status_code=404, detail="Artifact not found")
         
-        # РџРѕР»СѓС‡Р°РµРј С‚РµРєСѓС‰СѓСЋ РІРµСЂСЃРёСЋ
+        # Р СџР С•Р В»РЎС“РЎвЂЎР В°Р ВµР С РЎвЂљР ВµР С”РЎС“РЎвЂ°РЎС“РЎР‹ Р Р†Р ВµРЎР‚РЎРѓР С‘РЎР‹
         version_result = await db.execute(
             select(ArtifactVersion)
             .where(ArtifactVersion.artifact_id == artifact_id)
@@ -295,7 +295,7 @@ async def update_artifact(
         latest_version = version_result.scalar_one_or_none()
         current_version = latest_version.version if latest_version else 1
         
-        # РћР±РЅРѕРІР»СЏРµРј РїРѕР»СЏ
+        # Р С›Р В±Р Р…Р С•Р Р†Р В»РЎРЏР ВµР С Р С—Р С•Р В»РЎРЏ
         if "name" in update_data:
             normalized_name = str(update_data["name"] or "").strip()
             if not normalized_name:
@@ -321,9 +321,9 @@ async def update_artifact(
                 **update_data["metadata"]
             }
         
-        # Р•СЃР»Рё РѕР±РЅРѕРІР»СЏСЋС‚СЃСЏ РґР°РЅРЅС‹Рµ, СЃРѕР·РґР°РµРј РЅРѕРІСѓСЋ РІРµСЂСЃРёСЋ
+        # Р вЂўРЎРѓР В»Р С‘ Р С•Р В±Р Р…Р С•Р Р†Р В»РЎРЏРЎР‹РЎвЂљРЎРѓРЎРЏ Р Т‘Р В°Р Р…Р Р…РЎвЂ№Р Вµ, РЎРѓР С•Р В·Р Т‘Р В°Р ВµР С Р Р…Р С•Р Р†РЎС“РЎР‹ Р Р†Р ВµРЎР‚РЎРѓР С‘РЎР‹
         if "data" in update_data:
-            # РЎРѕР·РґР°РµРј РЅРѕРІСѓСЋ РІРµСЂСЃРёСЋ
+            # Р РЋР С•Р В·Р Т‘Р В°Р ВµР С Р Р…Р С•Р Р†РЎС“РЎР‹ Р Р†Р ВµРЎР‚РЎРѓР С‘РЎР‹
             new_version = ArtifactVersion(
                 artifact_id=artifact_id,
                 version=current_version + 1,
@@ -332,14 +332,14 @@ async def update_artifact(
             )
             db.add(new_version)
             
-            # РћР±РЅРѕРІР»СЏРµРј РѕСЃРЅРѕРІРЅС‹Рµ РґР°РЅРЅС‹Рµ Р°СЂС‚РµС„Р°РєС‚Р°
+            # Р С›Р В±Р Р…Р С•Р Р†Р В»РЎРЏР ВµР С Р С•РЎРѓР Р…Р С•Р Р†Р Р…РЎвЂ№Р Вµ Р Т‘Р В°Р Р…Р Р…РЎвЂ№Р Вµ Р В°РЎР‚РЎвЂљР ВµРЎвЂћР В°Р С”РЎвЂљР В°
             artifact.data = update_data["data"]
             artifact.updated_at = datetime.utcnow()
         
         await db.commit()
         await db.refresh(artifact)
         
-        # РџРѕР»СѓС‡Р°РµРј РѕР±РЅРѕРІР»РµРЅРЅСѓСЋ РІРµСЂСЃРёСЋ
+        # Р СџР С•Р В»РЎС“РЎвЂЎР В°Р ВµР С Р С•Р В±Р Р…Р С•Р Р†Р В»Р ВµР Р…Р Р…РЎС“РЎР‹ Р Р†Р ВµРЎР‚РЎРѓР С‘РЎР‹
         final_version = current_version + 1 if "data" in update_data else current_version
         
         return {
@@ -373,7 +373,7 @@ async def delete_artifact(
     Delete an artifact and all its versions and relations.
     """
     try:
-        # РџСЂРѕРІРµСЂСЏРµРј СЃСѓС‰РµСЃС‚РІРѕРІР°РЅРёРµ Р°СЂС‚РµС„Р°РєС‚Р°
+        # Р СџРЎР‚Р С•Р Р†Р ВµРЎР‚РЎРЏР ВµР С РЎРѓРЎС“РЎвЂ°Р ВµРЎРѓРЎвЂљР Р†Р С•Р Р†Р В°Р Р…Р С‘Р Вµ Р В°РЎР‚РЎвЂљР ВµРЎвЂћР В°Р С”РЎвЂљР В°
         result = await db.execute(
             select(Artifact).where(
                 Artifact.id == artifact_id,
@@ -385,7 +385,7 @@ async def delete_artifact(
         if not artifact:
             raise HTTPException(status_code=404, detail="Artifact not found")
         
-        # РЈРґР°Р»СЏРµРј (РєР°СЃРєР°РґРЅРѕ СѓРґР°Р»СЏС‚СЃСЏ РІСЃРµ РІРµСЂСЃРёРё Рё СЃРІСЏР·Рё Р±Р»Р°РіРѕРґР°СЂСЏ ondelete=CASCADE)
+        # Р Р€Р Т‘Р В°Р В»РЎРЏР ВµР С (Р С”Р В°РЎРѓР С”Р В°Р Т‘Р Р…Р С• РЎС“Р Т‘Р В°Р В»РЎРЏРЎвЂљРЎРѓРЎРЏ Р Р†РЎРѓР Вµ Р Р†Р ВµРЎР‚РЎРѓР С‘Р С‘ Р С‘ РЎРѓР Р†РЎРЏР В·Р С‘ Р В±Р В»Р В°Р С–Р С•Р Т‘Р В°РЎР‚РЎРЏ ondelete=CASCADE)
         await db.delete(artifact)
         await db.commit()
         
@@ -399,7 +399,7 @@ async def delete_artifact(
 
 
 # ============================================================================
-# РћРїРµСЂР°С†РёРё СЃ РІРµСЂСЃРёСЏРјРё
+# Р С›Р С—Р ВµРЎР‚Р В°РЎвЂ Р С‘Р С‘ РЎРѓ Р Р†Р ВµРЎР‚РЎРѓР С‘РЎРЏР СР С‘
 # ============================================================================
 
 @router.get("/{artifact_id}/versions", response_model=List[Dict[str, Any]])
@@ -415,7 +415,7 @@ async def get_artifact_versions(
     Get all versions of an artifact.
     """
     try:
-        # РџСЂРѕРІРµСЂСЏРµРј СЃСѓС‰РµСЃС‚РІРѕРІР°РЅРёРµ Р°СЂС‚РµС„Р°РєС‚Р°
+        # Р СџРЎР‚Р С•Р Р†Р ВµРЎР‚РЎРЏР ВµР С РЎРѓРЎС“РЎвЂ°Р ВµРЎРѓРЎвЂљР Р†Р С•Р Р†Р В°Р Р…Р С‘Р Вµ Р В°РЎР‚РЎвЂљР ВµРЎвЂћР В°Р С”РЎвЂљР В°
         result = await db.execute(
             select(Artifact).where(
                 Artifact.id == artifact_id,
@@ -427,7 +427,7 @@ async def get_artifact_versions(
         if not artifact:
             raise HTTPException(status_code=404, detail="Artifact not found")
         
-        # РџРѕР»СѓС‡Р°РµРј РІРµСЂСЃРёРё
+        # Р СџР С•Р В»РЎС“РЎвЂЎР В°Р ВµР С Р Р†Р ВµРЎР‚РЎРѓР С‘Р С‘
         versions_result = await db.execute(
             select(ArtifactVersion)
             .where(ArtifactVersion.artifact_id == artifact_id)
@@ -465,7 +465,7 @@ async def restore_artifact_version(
     Restore an artifact to a previous version.
     """
     try:
-        # РџСЂРѕРІРµСЂСЏРµРј СЃСѓС‰РµСЃС‚РІРѕРІР°РЅРёРµ Р°СЂС‚РµС„Р°РєС‚Р°
+        # Р СџРЎР‚Р С•Р Р†Р ВµРЎР‚РЎРЏР ВµР С РЎРѓРЎС“РЎвЂ°Р ВµРЎРѓРЎвЂљР Р†Р С•Р Р†Р В°Р Р…Р С‘Р Вµ Р В°РЎР‚РЎвЂљР ВµРЎвЂћР В°Р С”РЎвЂљР В°
         result = await db.execute(
             select(Artifact).where(
                 Artifact.id == artifact_id,
@@ -477,7 +477,7 @@ async def restore_artifact_version(
         if not artifact:
             raise HTTPException(status_code=404, detail="Artifact not found")
         
-        # РџРѕР»СѓС‡Р°РµРј РІРµСЂСЃРёСЋ РґР»СЏ РІРѕСЃСЃС‚Р°РЅРѕРІР»РµРЅРёСЏ
+        # Р СџР С•Р В»РЎС“РЎвЂЎР В°Р ВµР С Р Р†Р ВµРЎР‚РЎРѓР С‘РЎР‹ Р Т‘Р В»РЎРЏ Р Р†Р С•РЎРѓРЎРѓРЎвЂљР В°Р Р…Р С•Р Р†Р В»Р ВµР Р…Р С‘РЎРЏ
         version_result = await db.execute(
             select(ArtifactVersion)
             .where(
@@ -490,7 +490,7 @@ async def restore_artifact_version(
         if not old_version:
             raise HTTPException(status_code=404, detail=f"Version {version} not found")
         
-        # РџРѕР»СѓС‡Р°РµРј С‚РµРєСѓС‰СѓСЋ РІРµСЂСЃРёСЋ
+        # Р СџР С•Р В»РЎС“РЎвЂЎР В°Р ВµР С РЎвЂљР ВµР С”РЎС“РЎвЂ°РЎС“РЎР‹ Р Р†Р ВµРЎР‚РЎРѓР С‘РЎР‹
         latest_result = await db.execute(
             select(ArtifactVersion)
             .where(ArtifactVersion.artifact_id == artifact_id)
@@ -500,7 +500,7 @@ async def restore_artifact_version(
         latest_version = latest_result.scalar_one_or_none()
         current_version = latest_version.version if latest_version else 1
         
-        # РЎРѕР·РґР°РµРј РЅРѕРІСѓСЋ РІРµСЂСЃРёСЋ СЃ РґР°РЅРЅС‹РјРё РёР· СЃС‚Р°СЂРѕР№
+        # Р РЋР С•Р В·Р Т‘Р В°Р ВµР С Р Р…Р С•Р Р†РЎС“РЎР‹ Р Р†Р ВµРЎР‚РЎРѓР С‘РЎР‹ РЎРѓ Р Т‘Р В°Р Р…Р Р…РЎвЂ№Р СР С‘ Р С‘Р В· РЎРѓРЎвЂљР В°РЎР‚Р С•Р в„–
         new_version = ArtifactVersion(
             artifact_id=artifact_id,
             version=current_version + 1,
@@ -509,7 +509,7 @@ async def restore_artifact_version(
         )
         db.add(new_version)
         
-        # РћР±РЅРѕРІР»СЏРµРј РѕСЃРЅРѕРІРЅС‹Рµ РґР°РЅРЅС‹Рµ Р°СЂС‚РµС„Р°РєС‚Р°
+        # Р С›Р В±Р Р…Р С•Р Р†Р В»РЎРЏР ВµР С Р С•РЎРѓР Р…Р С•Р Р†Р Р…РЎвЂ№Р Вµ Р Т‘Р В°Р Р…Р Р…РЎвЂ№Р Вµ Р В°РЎР‚РЎвЂљР ВµРЎвЂћР В°Р С”РЎвЂљР В°
         artifact.data = old_version.data
         artifact.updated_at = datetime.utcnow()
         
@@ -529,7 +529,7 @@ async def restore_artifact_version(
 
 
 # ============================================================================
-# РћРїРµСЂР°С†РёРё СЃРѕ СЃРІСЏР·СЏРјРё
+# Р С›Р С—Р ВµРЎР‚Р В°РЎвЂ Р С‘Р С‘ РЎРѓР С• РЎРѓР Р†РЎРЏР В·РЎРЏР СР С‘
 # ============================================================================
 
 @router.post("/{artifact_id}/relations")
@@ -550,7 +550,7 @@ async def create_artifact_relation(
         }
     """
     try:
-        # РџСЂРѕРІРµСЂСЏРµРј СЃСѓС‰РµСЃС‚РІРѕРІР°РЅРёРµ РёСЃС…РѕРґРЅРѕРіРѕ Р°СЂС‚РµС„Р°РєС‚Р°
+        # Р СџРЎР‚Р С•Р Р†Р ВµРЎР‚РЎРЏР ВµР С РЎРѓРЎС“РЎвЂ°Р ВµРЎРѓРЎвЂљР Р†Р С•Р Р†Р В°Р Р…Р С‘Р Вµ Р С‘РЎРѓРЎвЂ¦Р С•Р Т‘Р Р…Р С•Р С–Р С• Р В°РЎР‚РЎвЂљР ВµРЎвЂћР В°Р С”РЎвЂљР В°
         source_result = await db.execute(
             select(Artifact).where(
                 Artifact.id == artifact_id,
@@ -562,13 +562,13 @@ async def create_artifact_relation(
         if not source:
             raise HTTPException(status_code=404, detail="Source artifact not found")
         
-        # РџСЂРѕРІРµСЂСЏРµРј РѕР±СЏР·Р°С‚РµР»СЊРЅС‹Рµ РїРѕР»СЏ
+        # Р СџРЎР‚Р С•Р Р†Р ВµРЎР‚РЎРЏР ВµР С Р С•Р В±РЎРЏР В·Р В°РЎвЂљР ВµР В»РЎРЉР Р…РЎвЂ№Р Вµ Р С—Р С•Р В»РЎРЏ
         if "target_id" not in relation_data:
             raise HTTPException(status_code=400, detail="Field 'target_id' is required")
         if "relation_type" not in relation_data:
             raise HTTPException(status_code=400, detail="Field 'relation_type' is required")
         
-        # РџСЂРѕРІРµСЂСЏРµРј СЃСѓС‰РµСЃС‚РІРѕРІР°РЅРёРµ С†РµР»РµРІРѕРіРѕ Р°СЂС‚РµС„Р°РєС‚Р°
+        # Р СџРЎР‚Р С•Р Р†Р ВµРЎР‚РЎРЏР ВµР С РЎРѓРЎС“РЎвЂ°Р ВµРЎРѓРЎвЂљР Р†Р С•Р Р†Р В°Р Р…Р С‘Р Вµ РЎвЂ Р ВµР В»Р ВµР Р†Р С•Р С–Р С• Р В°РЎР‚РЎвЂљР ВµРЎвЂћР В°Р С”РЎвЂљР В°
         target_result = await db.execute(
             select(Artifact).where(
                 Artifact.id == relation_data["target_id"],
@@ -580,7 +580,7 @@ async def create_artifact_relation(
         if not target:
             raise HTTPException(status_code=404, detail="Target artifact not found")
         
-        # РџСЂРѕРІРµСЂСЏРµРј РІР°Р»РёРґРЅРѕСЃС‚СЊ С‚РёРїР° СЃРІСЏР·Рё
+        # Р СџРЎР‚Р С•Р Р†Р ВµРЎР‚РЎРЏР ВµР С Р Р†Р В°Р В»Р С‘Р Т‘Р Р…Р С•РЎРѓРЎвЂљРЎРЉ РЎвЂљР С‘Р С—Р В° РЎРѓР Р†РЎРЏР В·Р С‘
         valid_relation_types = ["derived_from", "attached_to", "references"]
         if relation_data["relation_type"] not in valid_relation_types:
             raise HTTPException(
@@ -588,7 +588,7 @@ async def create_artifact_relation(
                 detail=f"Invalid relation_type. Must be one of: {valid_relation_types}"
             )
         
-        # РџСЂРѕРІРµСЂСЏРµРј, РЅРµ СЃСѓС‰РµСЃС‚РІСѓРµС‚ Р»Рё СѓР¶Рµ С‚Р°РєР°СЏ СЃРІСЏР·СЊ
+        # Р СџРЎР‚Р С•Р Р†Р ВµРЎР‚РЎРЏР ВµР С, Р Р…Р Вµ РЎРѓРЎС“РЎвЂ°Р ВµРЎРѓРЎвЂљР Р†РЎС“Р ВµРЎвЂљ Р В»Р С‘ РЎС“Р В¶Р Вµ РЎвЂљР В°Р С”Р В°РЎРЏ РЎРѓР Р†РЎРЏР В·РЎРЉ
         existing = await db.execute(
             select(ArtifactRelation).where(
                 ArtifactRelation.source_id == artifact_id,
@@ -602,7 +602,7 @@ async def create_artifact_relation(
                 detail="Relation already exists"
             )
         
-        # РЎРѕР·РґР°РµРј СЃРІСЏР·СЊ
+        # Р РЋР С•Р В·Р Т‘Р В°Р ВµР С РЎРѓР Р†РЎРЏР В·РЎРЉ
         relation = ArtifactRelation(
             source_id=artifact_id,
             target_id=relation_data["target_id"],
@@ -643,7 +643,7 @@ async def get_artifact_relations(
         relation_type: Optional filter by relation type
     """
     try:
-        # РџСЂРѕРІРµСЂСЏРµРј СЃСѓС‰РµСЃС‚РІРѕРІР°РЅРёРµ Р°СЂС‚РµС„Р°РєС‚Р°
+        # Р СџРЎР‚Р С•Р Р†Р ВµРЎР‚РЎРЏР ВµР С РЎРѓРЎС“РЎвЂ°Р ВµРЎРѓРЎвЂљР Р†Р С•Р Р†Р В°Р Р…Р С‘Р Вµ Р В°РЎР‚РЎвЂљР ВµРЎвЂћР В°Р С”РЎвЂљР В°
         result = await db.execute(
             select(Artifact).where(
                 Artifact.id == artifact_id,
@@ -657,7 +657,7 @@ async def get_artifact_relations(
         
         relations = []
         
-        # РСЃС…РѕРґСЏС‰РёРµ СЃРІСЏР·Рё
+        # Р ВРЎРѓРЎвЂ¦Р С•Р Т‘РЎРЏРЎвЂ°Р С‘Р Вµ РЎРѓР Р†РЎРЏР В·Р С‘
         if direction in ["out", "both"]:
             out_query = select(ArtifactRelation).where(
                 ArtifactRelation.source_id == artifact_id
@@ -667,7 +667,7 @@ async def get_artifact_relations(
             
             out_result = await db.execute(out_query)
             for rel in out_result.scalars().all():
-                # РџРѕР»СѓС‡Р°РµРј РёРЅС„РѕСЂРјР°С†РёСЋ Рѕ С†РµР»РµРІРѕРј Р°СЂС‚РµС„Р°РєС‚Рµ
+                # Р СџР С•Р В»РЎС“РЎвЂЎР В°Р ВµР С Р С‘Р Р…РЎвЂћР С•РЎР‚Р СР В°РЎвЂ Р С‘РЎР‹ Р С• РЎвЂ Р ВµР В»Р ВµР Р†Р С•Р С Р В°РЎР‚РЎвЂљР ВµРЎвЂћР В°Р С”РЎвЂљР Вµ
                 target_result = await db.execute(
                     select(Artifact).where(Artifact.id == rel.target_id)
                 )
@@ -683,7 +683,7 @@ async def get_artifact_relations(
                     "created_at": rel.created_at.isoformat() if rel.created_at else None
                 })
         
-        # Р’С…РѕРґСЏС‰РёРµ СЃРІСЏР·Рё
+        # Р вЂ™РЎвЂ¦Р С•Р Т‘РЎРЏРЎвЂ°Р С‘Р Вµ РЎРѓР Р†РЎРЏР В·Р С‘
         if direction in ["in", "both"]:
             in_query = select(ArtifactRelation).where(
                 ArtifactRelation.target_id == artifact_id
@@ -693,7 +693,7 @@ async def get_artifact_relations(
             
             in_result = await db.execute(in_query)
             for rel in in_result.scalars().all():
-                # РџРѕР»СѓС‡Р°РµРј РёРЅС„РѕСЂРјР°С†РёСЋ РѕР± РёСЃС…РѕРґРЅРѕРј Р°СЂС‚РµС„Р°РєС‚Рµ
+                # Р СџР С•Р В»РЎС“РЎвЂЎР В°Р ВµР С Р С‘Р Р…РЎвЂћР С•РЎР‚Р СР В°РЎвЂ Р С‘РЎР‹ Р С•Р В± Р С‘РЎРѓРЎвЂ¦Р С•Р Т‘Р Р…Р С•Р С Р В°РЎР‚РЎвЂљР ВµРЎвЂћР В°Р С”РЎвЂљР Вµ
                 source_result = await db.execute(
                     select(Artifact).where(Artifact.id == rel.source_id)
                 )
@@ -730,7 +730,7 @@ async def delete_artifact_relation(
     Delete a relation between artifacts.
     """
     try:
-        # РџСЂРѕРІРµСЂСЏРµРј СЃСѓС‰РµСЃС‚РІРѕРІР°РЅРёРµ СЃРІСЏР·Рё
+        # Р СџРЎР‚Р С•Р Р†Р ВµРЎР‚РЎРЏР ВµР С РЎРѓРЎС“РЎвЂ°Р ВµРЎРѓРЎвЂљР Р†Р С•Р Р†Р В°Р Р…Р С‘Р Вµ РЎРѓР Р†РЎРЏР В·Р С‘
         result = await db.execute(
             select(ArtifactRelation).where(
                 ArtifactRelation.source_id == artifact_id,
@@ -756,4 +756,5 @@ async def delete_artifact_relation(
         logger.error(f"Error deleting artifact relation: {e}")
         await db.rollback()
         raise HTTPException(status_code=500, detail="Internal server error")
+
 

@@ -269,7 +269,10 @@ const getEdgeTooltip = (edge: any, scale: number) => {
 };
 const getNodeIcon = (node: any) => {
   const visual = node.attributes?.visual || {};
-  return visual.icon || node.attributes?.icon || '';
+  const explicitIcon = visual.icon || node.attributes?.icon;
+  if (explicitIcon) return explicitIcon;
+  if (String(node?.type || '') === 'document') return 'file';
+  return '';
 };
 
 const getNodeRingEnabled = (node: any) => {
@@ -385,18 +388,32 @@ const getNodeShape = (node: any) => {
 
 const iconAliasMap: Record<string, string> = {
   smartphone: 'smartphone',
+  'mobile-phone': 'smartphone',
   phone: 'smartphone',
   mobile: 'smartphone',
   simcard: 'sim',
-  person: 'person_phone',
+  'sim-card': 'sim',
+  person: 'persona',
+  persona: 'persona',
+  abonent: 'abonent',
   social_id: 'social',
+  'social-network': 'social',
   email: 'mail',
-  car_number: 'car'
+  'e-mail': 'mail',
+  'ip-address': 'ip',
+  'bank-card': 'bank_card',
+  car_number: 'car',
+  doc: 'document'
 };
 
 const normalizeIconName = (icon: string) => {
-  const trimmed = icon.trim();
-  return iconAliasMap[trimmed] || trimmed;
+  const trimmed = String(icon || '').trim().toLowerCase();
+  if (!trimmed) return '';
+
+  const slash = Math.max(trimmed.lastIndexOf('/'), trimmed.lastIndexOf('\\'));
+  const base = slash >= 0 ? trimmed.slice(slash + 1) : trimmed;
+  const withoutExt = base.replace(/\.(svg|png|jpg|jpeg|webp)$/i, '');
+  return iconAliasMap[withoutExt] || withoutExt;
 };
 
 const isValidIconName = (icon: string) => {
@@ -409,16 +426,25 @@ const isValidIconName = (icon: string) => {
 
 const printOsintIconMap: Record<string, string> = {
   person_phone: 'abonent',
+  person: 'persona',
+  persona: 'persona',
+  abonent: 'abonent',
   smartphone: 'mobile-phone',
+  phone: 'mobile-phone',
+  mobile: 'mobile-phone',
   sim: 'sim-card',
   ip: 'ip-address',
   mail: 'e-mail',
+  email: 'e-mail',
   social: 'social-network',
+  social_id: 'social-network',
   bank_card: 'bank-card',
   car: 'car',
   address: 'address',
   location: 'location',
-  passport: 'passport'
+  passport: 'passport',
+  document: 'file',
+  file: 'file'
 };
 
 const getNodeImage = (node: any) => {
@@ -640,6 +666,8 @@ export const GraphView: React.FC<GraphViewProps> = ({
   const onConnectCompleteRef = useRef(onConnectComplete);
   const [pluginMenu, setPluginMenu] = useState<PluginContextMenuState | null>(null);
   const [pendingPluginNodeIds, setPendingPluginNodeIds] = useState<string[]>([]);
+  const [pluginExecutionMessage, setPluginExecutionMessage] = useState<string | null>(null);
+  const pluginExecutionRef = useRef(false);
   const pluginMenuRef = useRef<HTMLDivElement | null>(null);
   const labelsSuppressedRef = useRef(false);
 
@@ -974,9 +1002,12 @@ export const GraphView: React.FC<GraphViewProps> = ({
   }, []);
 
   const runPluginFromMenu = useCallback(async (plugin: ApiPlugin, context: PluginExecutionContext) => {
+    if (pluginExecutionRef.current) return;
     try {
       const params = await collectPluginParamsWithPrompts(plugin, artifact.project_id);
       if (params === null) return;
+      pluginExecutionRef.current = true;
+      setPluginExecutionMessage(`Выполняется плагин: ${plugin.name}...`);
 
       const beforeNodeIds = new Set(((artifact.data?.nodes || []) as any[]).map((node: any) => String(node?.id ?? node?.node_id ?? '')));
 
@@ -1018,8 +1049,9 @@ export const GraphView: React.FC<GraphViewProps> = ({
       const updatedMeta = updatedCurrent?.metadata || {};
       const liveSelectedNodeCount = Array.isArray(liveContext?.selected_nodes) ? liveContext.selected_nodes.length : 0;
       const limit = Number(updatedMeta?.communications_selection_limit || 150);
-      const shouldWarnExceeded = Boolean(updatedMeta?.communications_selection_exceeded) && liveSelectedNodeCount > limit;
-      const shouldWarnLimited = Boolean(updatedMeta?.communications_selection_limited) && liveSelectedNodeCount > limit;
+      const isCommunicationsPlugin = plugin.id === 'abonent_communications';
+      const shouldWarnExceeded = isCommunicationsPlugin && Boolean(updatedMeta?.communications_selection_exceeded) && liveSelectedNodeCount > limit;
+      const shouldWarnLimited = isCommunicationsPlugin && Boolean(updatedMeta?.communications_selection_limited) && liveSelectedNodeCount > limit;
       if (shouldWarnExceeded) {
         window.alert(`Выделено ${liveSelectedNodeCount} абонентов. Лимит для запуска плагина: ${limit}. Пожалуйста, запускайте расширение частями.`);
       } else if (shouldWarnLimited) {
@@ -1034,6 +1066,8 @@ export const GraphView: React.FC<GraphViewProps> = ({
       const detail = error?.response?.data?.detail || error?.message || '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0437\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u044c \u043f\u043b\u0430\u0433\u0438\u043d.';
       window.alert(detail);
     } finally {
+      pluginExecutionRef.current = false;
+      setPluginExecutionMessage(null);
       closePluginMenu();
     }
   }, [artifact.id, artifact.project_id, closePluginMenu, dispatch]);
@@ -1229,9 +1263,13 @@ export const GraphView: React.FC<GraphViewProps> = ({
       }, 500);
     });
 
-    network.on('select', updateSelectionFromNetwork);
-    network.on('deselectNode', updateSelectionFromNetwork);
-    network.on('deselectEdge', updateSelectionFromNetwork);
+    const refreshSelectionVisuals = () => {
+      updateSelectionFromNetwork();
+      updateNodeTooltipsByScale(network.getScale());
+    };
+    network.on('select', refreshSelectionVisuals);
+    network.on('deselectNode', refreshSelectionVisuals);
+    network.on('deselectEdge', refreshSelectionVisuals);
 
     
     const openPluginMenuAt = async (
@@ -1239,6 +1277,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
       clickedNodes: string[] = [],
       clickedEdges: string[] = []
     ) => {
+      if (pluginExecutionRef.current) return;
       let contextNodes = clickedNodes;
       let contextEdges = clickedEdges;
 
@@ -1290,6 +1329,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
 
     network.on('oncontext', async (params: any) => {
       params?.event?.preventDefault?.();
+      if (pluginExecutionRef.current) return;
       const domPoint = params?.pointer?.DOM || params?.event?.center || { x: 0, y: 0 };
       const clickedNodes = Array.isArray(params?.nodes) ? params.nodes.map((id: any) => String(id)) : [];
       const clickedEdges = Array.isArray(params?.edges) ? params.edges.map((id: any) => String(id)) : [];
@@ -1341,6 +1381,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
         if (clickedNodes.length === 0 && clickedEdges.length === 0) {
           network.unselectAll();
           updateSelectionFromNetwork();
+          updateNodeTooltipsByScale(network.getScale());
           return;
         }
 
@@ -1355,6 +1396,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
         }
 
         updateSelectionFromNetwork();
+        updateNodeTooltipsByScale(network.getScale());
         return;
       }
       if (!params.nodes || params.nodes.length === 0) return;
@@ -2237,6 +2279,25 @@ export const GraphView: React.FC<GraphViewProps> = ({
       </div>
 
       
+
+      {pluginExecutionMessage && (
+        <div style={{
+          position: 'absolute',
+          top: GRAPH_TOOLBAR_HEIGHT + 10,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 1100,
+          background: 'rgba(37, 99, 235, 0.95)',
+          color: '#ffffff',
+          border: '1px solid #1d4ed8',
+          borderRadius: 8,
+          padding: '8px 12px',
+          fontSize: 12,
+          boxShadow: '0 8px 18px rgba(15, 23, 42, 0.2)'
+        }}>
+          {pluginExecutionMessage}
+        </div>
+      )}
       {pluginMenu && (
         <div
           ref={pluginMenuRef}
@@ -2312,6 +2373,9 @@ export const GraphView: React.FC<GraphViewProps> = ({
           {!pluginMenu.loading && pluginMenuTree.length === 0 && (
             <div style={{ fontSize: 12, color: '#64748b', padding: '6px 8px' }}>{'\u041d\u0435\u0442 \u0434\u043e\u0441\u0442\u0443\u043f\u043d\u044b\u0445 \u043f\u043b\u0430\u0433\u0438\u043d\u043e\u0432'}</div>
           )}
+          {!pluginMenu.loading && pluginExecutionMessage && (
+            <div style={{ fontSize: 12, color: '#2563eb', padding: '6px 8px' }}>Идет выполнение плагина. Запуск новых плагинов временно заблокирован.</div>
+          )}
           {!pluginMenu.loading && renderPluginMenuRows(getPluginMenuEntries(null))}
         </div>
       )}
@@ -2338,6 +2402,29 @@ export const GraphView: React.FC<GraphViewProps> = ({
 };
 
 export default GraphView;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

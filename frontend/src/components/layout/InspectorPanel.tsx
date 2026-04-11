@@ -16,6 +16,7 @@ interface InspectorPanelProps {
   onStartEdgeCreation?: (edgeType: string) => void;
   nodeCreationSpec?: { typeId: string; label: string } | null;
   edgeCreationType?: string | null;
+  onRefreshConsole?: () => Promise<void> | void;
 }
 
 const labels = {
@@ -41,7 +42,8 @@ const labels = {
   typeTable: '\u0422\u0430\u0431\u043b\u0438\u0446\u0430',
   typeMap: '\u041a\u0430\u0440\u0442\u0430',
   typeChart: '\u0414\u0438\u0430\u0433\u0440\u0430\u043c\u043c\u0430',
-  typeDocument: '\u0414\u043e\u043a\u0443\u043c\u0435\u043d\u0442',
+  typeDocument: 'Документ',
+  typeConsole: 'Консоль',
   historyPlaceholder: '\u0418\u0441\u0442\u043e\u0440\u0438\u044f \u0438\u0437\u043c\u0435\u043d\u0435\u043d\u0438\u0439',
   artifactId: 'ID \u0430\u0440\u0442\u0435\u0444\u0430\u043a\u0442\u0430',
   projectId: 'ID \u043f\u0440\u043e\u0435\u043a\u0442\u0430',
@@ -61,6 +63,9 @@ const labels = {
   loadReportTitle: '\u041e\u0442\u0447\u0435\u0442 \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0438',
   communicationsCount: '\u0421\u0432\u044f\u0437\u0438 \u0430\u0431\u043e\u043d\u0435\u043d\u0442\u043e\u0432',
   deviceHistoryCount: '\u0421\u043c\u0435\u043d\u044b \u0430\u043f\u043f\u0430\u0440\u0430\u0442\u043e\u0432',
+  ragAdmin: 'Nodex RAG Admin',
+  openRagAdmin: 'Открыть RAG Admin',
+  refreshConsole: 'Обновить консоль',
   cancel: '\u041e\u0442\u043c\u0435\u043d\u0430',
   save: '\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c',
   selectResult: '\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0440\u0435\u0437\u0443\u043b\u044c\u0442\u0430\u0442',
@@ -294,7 +299,7 @@ const EdgeTypeSelect: React.FC<EdgeTypeSelectProps> = ({ value, onChange, option
     </div>
   );
 };
-const InspectorPanel: React.FC<InspectorPanelProps> = ({ onApplyGraphData, onStartNodeCreation, onStartEdgeCreation, nodeCreationSpec = null, edgeCreationType = null }) => {
+const InspectorPanel: React.FC<InspectorPanelProps> = ({ onApplyGraphData, onStartNodeCreation, onStartEdgeCreation, nodeCreationSpec = null, edgeCreationType = null, onRefreshConsole }) => {
   const dispatch = useAppDispatch();
   const [activeTab, setActiveTab] = useState<'properties' | 'builder' | 'elements' | 'metadata'>('properties');
   const [plugins, setPlugins] = useState<ApiPlugin[]>([]);
@@ -928,6 +933,13 @@ const pluginContextKey = useMemo(() => {
     }
   }, [currentProject, refreshProjectDataStats]);
 
+  const handleOpenRagAdmin = useCallback(() => {
+    const protocol = window.location.protocol || 'http:';
+    const host = window.location.hostname || 'localhost';
+    const url = protocol + '//' + host + ':8011/api/rag/admin';
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }, []);
+
 const handleCreateNode = useCallback(() => {
     if (!selectedArtifact || selectedArtifact.type !== 'graph') return;
     const label = builderNodeLabel.trim();
@@ -1466,6 +1478,19 @@ const handleCreateNode = useCallback(() => {
                 </div>
 
                 <div className="property-group">
+                  <label>{labels.ragAdmin}</label>
+                  <div className="property-inline">
+                    <button
+                      className="property-action secondary"
+                      onClick={handleOpenRagAdmin}
+                      type="button"
+                    >
+                      {labels.openRagAdmin}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="property-group">
                   <label>{labels.loadData}</label>
                   <div className="property-inline">
                     <button
@@ -1507,6 +1532,21 @@ const handleCreateNode = useCallback(() => {
             <details className="inspector-section">
               <summary>{'\u0414\u0435\u0439\u0441\u0442\u0432\u0438\u044f'}</summary>
               <div className="inspector-section-body">
+                {selectedArtifact.type === 'console' && onRefreshConsole && (
+                  <div className="property-group">
+                    <label>{labels.refreshConsole}</label>
+                    <div className="property-inline">
+                      <button
+                        className="property-action"
+                        onClick={() => void onRefreshConsole()}
+                        disabled={dataLoading || dataClearing || deleting}
+                      >
+                        {labels.refreshConsole}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <div className="property-group">
                   <label>{labels.delete}</label>
                   <div className="property-inline">
@@ -1774,7 +1814,8 @@ const handleCreateNode = useCallback(() => {
                 {selectedArtifact.type === 'graph' ? labels.typeGraph :
                  selectedArtifact.type === 'table' ? labels.typeTable :
                  selectedArtifact.type === 'map' ? labels.typeMap :
-                 selectedArtifact.type === 'chart' ? labels.typeChart : labels.typeDocument}
+                 selectedArtifact.type === 'chart' ? labels.typeChart :
+                 selectedArtifact.type === 'console' ? labels.typeConsole : labels.typeDocument}
               </div>
             </div>
 
@@ -1830,6 +1871,15 @@ const handleCreateNode = useCallback(() => {
 };
 
 export default InspectorPanel;
+
+
+
+
+
+
+
+
+
 
 
 

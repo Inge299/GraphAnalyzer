@@ -1,4 +1,4 @@
-// frontend/src/services/api.ts
+﻿// frontend/src/services/api.ts
 import axios from 'axios';
 import type { PluginExecutionContext } from '../types/api';
 
@@ -94,11 +94,49 @@ export const pluginApi = {
       input_artifact_ids: inputArtifactIds,
       params,
       context,
-    }).then(res => res.data),
+    }, { timeout: 300000 }).then(res => res.data),
 };
 
+export const projectDataApi = {
+  load: (projectId: number, sourcePath: string) =>
+    api.post(`/api/v1/projects/${projectId}/data/load`, { source_path: sourcePath }).then(res => res.data),
+  loadFromFiles: (projectId: number, files: File[]) => {
+    const formData = new FormData();
+    files.forEach((file) => {
+      const relativeName = (file as any).webkitRelativePath || file.name;
+      formData.append('files', file, relativeName);
+    });
+    return api.post(`/api/v1/projects/${projectId}/data/load-upload`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 300000,
+    }).then(res => res.data);
+  },
+  clear: (projectId: number) =>
+    api.post(`/api/v1/projects/${projectId}/data/clear`).then(res => res.data),
+  stats: (projectId: number) =>
+    api.get(`/api/v1/projects/${projectId}/data/stats`).then(res => res.data),
+};
+
+export const consoleApi = {
+  profiles: () => api.get('/api/v1/console/profiles').then(res => res.data),
+  refresh: (projectId: number, artifactId: number, profileId: string, params: Record<string, any> = {}) =>
+    api.post(`/api/v1/projects/${projectId}/console/refresh`, {
+      artifact_id: artifactId,
+      profile_id: profileId,
+      params,
+    }, { timeout: 120000 }).then(res => res.data),
+};
 export const domainModelApi = {
   get: () => api.get('/api/v1/config/domain-model').then(res => res.data),
 };
 
 export default api;
+
+
+
+
+
+
+
+
+

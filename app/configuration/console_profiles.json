@@ -1,0 +1,34 @@
+﻿{
+  "profiles": [
+    {
+      "id": "communications",
+      "name": "Связи абонентов (проект)",
+      "description": "Данные из project_communications с фильтром по номеру.",
+      "default_limit": 500,
+      "params": [
+        { "key": "phone", "label": "Номер телефона (опц.)", "type": "string", "required": false },
+        { "key": "limit", "label": "Лимит строк", "type": "number", "required": false, "default": 500 }
+      ],
+      "defaults": {
+        "phone": "",
+        "limit": 500
+      },
+      "query": "SELECT id, abon1, abon2, operator1, operator2, address1, address2, time_start, time_end, calls_count, total_duration, calls_count_approx FROM project_communications WHERE project_id = :project_id AND (:phone = '' OR abon1 = :phone OR abon2 = :phone) ORDER BY time_start DESC NULLS LAST LIMIT :limit"
+    },
+    {
+      "id": "device_history",
+      "name": "Смены аппаратов (проект)",
+      "description": "Данные из project_device_history с фильтром по номеру.",
+      "default_limit": 500,
+      "params": [
+        { "key": "phone", "label": "Номер телефона (опц.)", "type": "string", "required": false },
+        { "key": "limit", "label": "Лимит строк", "type": "number", "required": false, "default": 500 }
+      ],
+      "defaults": {
+        "phone": "",
+        "limit": 500
+      },
+      "query": "SELECT id, abon, imsi, imei, period_start, period_end FROM project_device_history WHERE project_id = :project_id AND (:phone = '' OR abon = :phone) ORDER BY period_start DESC NULLS LAST LIMIT :limit"
+    }
+  ]
+}
