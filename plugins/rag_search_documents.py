@@ -25,7 +25,7 @@ from plugins.rag_graph_utils import (
 class RagSearchDocumentsPlugin(PluginBase):
     id = "rag_search_documents"
     name = "Поиск в документах"
-    version = "0.4.0"
+    version = "0.5.1"
     description = "Находит документы для выделенных объектов и добавляет связи объект-документ"
     menu_path = "Функции RAG"
     input_types = ["graph"]
@@ -49,18 +49,45 @@ class RagSearchDocumentsPlugin(PluginBase):
             "label": "Лимит результатов",
             "type": "number",
             "required": False,
-            "default": 20,
+            "default": 6,
             "min": 1,
-            "max": 100,
+            "max": 20,
         },
         {
             "name": "parallel",
             "label": "Параллельные запросы",
             "type": "number",
             "required": False,
-            "default": 6,
+            "default": 1,
             "min": 1,
-            "max": 16,
+            "max": 3,
+        },
+        {
+            "name": "max_docs_per_object",
+            "label": "Макс. документов на объект",
+            "type": "number",
+            "required": False,
+            "default": 5,
+            "min": 1,
+            "max": 15,
+        },
+        {
+            "name": "max_total_documents",
+            "label": "Макс. документов за запуск",
+            "type": "number",
+            "required": False,
+            "default": 60,
+            "min": 10,
+            "max": 250,
+        },
+        {
+            "name": "selected_limit",
+            "label": "Макс. выделенных объектов",
+            "type": "number",
+            "required": False,
+            "default": 25,
+            "min": 1,
+            "max": 100,
         },
     ]
 
@@ -157,20 +184,18 @@ class RagSearchDocumentsPlugin(PluginBase):
         top_k: int,
         semaphore: asyncio.Semaphore,
         topic: Optional[str],
-    ) -> Tuple[str, Dict[str, Any], Optional[str]]:
+    ) -> Tuple[str, List[Dict[str, Any]], int, Optional[str]]:
         query_text = node_label(source_node)
+        source_key = node_id(source_node)
         if not query_text:
-            return node_id(source_node), {}, None
+            return source_key, [], 0, None
 
-        digits_only = ''.join(ch for ch in query_text if ch.isdigit())
-        is_exact_numeric = len(digits_only) >= 10 and len(digits_only) == len(query_text)
-
-        payload = {
+        payload: Dict[str, Any] = {
             "query": query_text,
             "top_k": top_k,
-            "search_mode": "strict" if is_exact_numeric else "hybrid",
-            "rewrite_query": False if is_exact_numeric else True,
-            "exact_entity_only": True if is_exact_numeric else False,
+            "search_mode": "hybrid",
+            "rewrite_query": True,
+            "exact_entity_only": False,
             "include_trace": False,
         }
         if topic:
@@ -179,11 +204,25 @@ class RagSearchDocumentsPlugin(PluginBase):
         async with semaphore:
             try:
                 response = await rag.query(payload)
-                if isinstance(response, dict):
-                    return node_id(source_node), response, None
-                return node_id(source_node), {}, None
+                if not isinstance(response, dict):
+                    return source_key, [], 0, None
+
+                documents = self._extract_documents(response)
+                hits = int(response.get("hits_count") or len(response.get("hits") or []))
+                if documents or not topic:
+                    return source_key, documents, hits, None
+
+                retry_payload = dict(payload)
+                retry_payload.pop("topic", None)
+                retry = await rag.query(retry_payload)
+                if not isinstance(retry, dict):
+                    return source_key, documents, hits, None
+
+                retry_documents = self._extract_documents(retry)
+                retry_hits = int(retry.get("hits_count") or len(retry.get("hits") or []))
+                return source_key, retry_documents, retry_hits, None
             except Exception as exc:
-                return node_id(source_node), {}, str(exc)
+                return source_key, [], 0, str(exc)
 
     async def execute(
         self,
@@ -220,48 +259,53 @@ class RagSearchDocumentsPlugin(PluginBase):
                 "metadata": metadata,
             }]
 
-        rag = RagIntegrationService(plugin_id=self.id)
-        top_k = int(params.get("top_k") or 20)
-        top_k = max(1, min(top_k, 100))
-        parallel = int(params.get("parallel") or 6)
-        parallel = max(1, min(parallel, 16))
-        topic = self._resolve_topic()
+        top_k = int(params.get("top_k") or 6)
+        top_k = max(1, min(top_k, 20))
+        parallel = int(params.get("parallel") or 1)
+        parallel = max(1, min(parallel, 3))
+        max_docs_per_object = int(params.get("max_docs_per_object") or 5)
+        max_docs_per_object = max(1, min(max_docs_per_object, 15))
+        max_total_documents = int(params.get("max_total_documents") or 60)
+        max_total_documents = max(10, min(max_total_documents, 250))
+        selected_limit = int(params.get("selected_limit") or 25)
+        selected_limit = max(1, min(selected_limit, 100))
 
+        selected_limited = len(selected_nodes) > selected_limit
+        if selected_limited:
+            selected_nodes = selected_nodes[:selected_limit]
+
+        rag = RagIntegrationService(plugin_id=self.id)
+        topic = self._resolve_topic()
         semaphore = asyncio.Semaphore(parallel)
+
         tasks = [self._query_for_node(rag, source_node, top_k, semaphore, topic) for source_node in selected_nodes]
         results = await asyncio.gather(*tasks)
 
-        result_by_id: Dict[str, Dict[str, Any]] = {}
+        docs_by_source: Dict[str, List[Dict[str, Any]]] = {}
+        total_hits = 0
         errors: List[str] = []
-        for node_key, response, error in results:
-            result_by_id[node_key] = response
+        for source_key, documents, hits, error in results:
+            docs_by_source[source_key] = documents
+            total_hits += hits
             if error:
                 errors.append(error)
 
         added_docs = 0
         added_edges = 0
-        total_hits = 0
+        total_docs_linked = 0
+        docs_limited = False
 
         for source_node in selected_nodes:
             source_id = node_id(source_node)
-            response = result_by_id.get(source_id) or {}
-            total_hits += int(response.get("hits_count") or len(response.get("hits") or []))
-            documents = self._extract_documents(response)
-            if not documents and topic:
-                _, retry_response, retry_error = await self._query_for_node(
-                    rag,
-                    source_node,
-                    top_k,
-                    asyncio.Semaphore(1),
-                    None,
-                )
-                if retry_error:
-                    errors.append(retry_error)
-                if isinstance(retry_response, dict):
-                    response = retry_response
-                    documents = self._extract_documents(response)
+            source_docs = docs_by_source.get(source_id) or []
+            if max_docs_per_object > 0:
+                source_docs = source_docs[:max_docs_per_object]
 
-            for raw_doc in documents:
+            for raw_doc in source_docs:
+                if total_docs_linked >= max_total_documents:
+                    docs_limited = True
+                    break
+
                 doc_id = relation_document_id(raw_doc)
                 title = relation_document_title(raw_doc)
                 source = relation_document_source(raw_doc)
@@ -290,17 +334,29 @@ class RagSearchDocumentsPlugin(PluginBase):
                 if len(edges) > before_edges:
                     added_edges += 1
 
+                total_docs_linked += 1
+
+            if docs_limited:
+                break
+
         status = "ok" if (added_docs > 0 or added_edges > 0 or total_hits > 0) else "no_results"
         metadata.update(
             {
                 "source_plugin": self.id,
                 "rag_documents_status": status,
                 "rag_documents_selected": len(selected_nodes),
+                "rag_documents_selected_limited": selected_limited,
+                "rag_documents_selected_limit": selected_limit,
                 "rag_documents_hits": total_hits,
                 "rag_documents_added_nodes": added_docs,
                 "rag_documents_added_edges": added_edges,
                 "rag_documents_parallel": parallel,
                 "rag_documents_topic": topic,
+                "rag_documents_top_k": top_k,
+                "rag_documents_max_docs_per_object": max_docs_per_object,
+                "rag_documents_max_total_documents": max_total_documents,
+                "rag_documents_total_docs_linked": total_docs_linked,
+                "rag_documents_docs_limited": docs_limited,
             }
         )
         if errors and status != "ok":
@@ -313,25 +369,3 @@ class RagSearchDocumentsPlugin(PluginBase):
             "data": {**data, "nodes": nodes, "edges": edges},
             "metadata": metadata,
         }]
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

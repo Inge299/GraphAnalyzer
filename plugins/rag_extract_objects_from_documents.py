@@ -331,9 +331,9 @@ class RagExtractObjectsFromDocumentsPlugin(PluginBase):
         attrs: Dict[str, Any] = {}
         visual: Dict[str, Any] = {}
 
-        # UX правило от пользователя:
-        # - ФИО (person) -> иконка persona
-        # - номер телефона (phone) -> иконка abonent
+        # UX РїСЂР°РІРёР»Рѕ РѕС‚ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ:
+        # - Р¤РРћ (person) -> РёРєРѕРЅРєР° persona
+        # - РЅРѕРјРµСЂ С‚РµР»РµС„РѕРЅР° (phone) -> РёРєРѕРЅРєР° abonent
         if object_type == "person":
             attrs["name"] = object_value
             visual["icon"] = "persona"
@@ -510,6 +510,8 @@ class RagExtractObjectsFromDocumentsPlugin(PluginBase):
         total_hits = 0
         docs_with_objects = 0
         last_error = None
+        max_added_nodes_total = int(params.get("max_added_nodes_total") or 120)
+        max_added_nodes_total = max(10, min(max_added_nodes_total, 1000))
 
         for doc_node in selected_docs:
             attrs = doc_node.get("attributes") if isinstance(doc_node.get("attributes"), dict) else {}
@@ -519,6 +521,8 @@ class RagExtractObjectsFromDocumentsPlugin(PluginBase):
             current_doc_id = node_id(doc_node)
 
             seed_queries: List[str] = []
+            # 1) Prefer explicit RAG query that created the document edge.
+            # This avoids query explosion from all already-expanded neighbors.
             for graph_edge in edges:
                 if not isinstance(graph_edge, dict):
                     continue
@@ -526,15 +530,31 @@ class RagExtractObjectsFromDocumentsPlugin(PluginBase):
                 to_id = str(graph_edge.get("to") or graph_edge.get("target_node") or "")
                 if from_id != current_doc_id and to_id != current_doc_id:
                     continue
-                other_id = to_id if from_id == current_doc_id else from_id
-                other_node = node_index.get(other_id)
-                if not other_node:
-                    continue
-                if str(other_node.get("type") or "") == "document":
-                    continue
-                other_label = node_label(other_node)
-                if other_label:
-                    seed_queries.append(other_label)
+                edge_attrs = graph_edge.get("attributes") if isinstance(graph_edge.get("attributes"), dict) else {}
+                edge_query = str(edge_attrs.get("query") or "").strip()
+                if edge_query:
+                    seed_queries.append(edge_query)
+
+            # 2) Fallback: use a small number of non-document neighbor labels.
+            if not seed_queries:
+                for graph_edge in edges:
+                    if not isinstance(graph_edge, dict):
+                        continue
+                    from_id = str(graph_edge.get("from") or graph_edge.get("source_node") or "")
+                    to_id = str(graph_edge.get("to") or graph_edge.get("target_node") or "")
+                    if from_id != current_doc_id and to_id != current_doc_id:
+                        continue
+                    other_id = to_id if from_id == current_doc_id else from_id
+                    other_node = node_index.get(other_id)
+                    if not other_node:
+                        continue
+                    if str(other_node.get("type") or "") == "document":
+                        continue
+                    other_label = node_label(other_node)
+                    if other_label:
+                        seed_queries.append(other_label)
+                    if len(seed_queries) >= 3:
+                        break
 
             if not seed_queries:
                 fallback_query = selected_doc_source or selected_doc_id or selected_doc_label
@@ -552,19 +572,16 @@ class RagExtractObjectsFromDocumentsPlugin(PluginBase):
                     continue
                 seen_seed.add(key)
                 dedup_seed.append(item.strip())
-            seed_queries = dedup_seed[:12]
+            seed_queries = dedup_seed[:3]
 
             responses: List[Dict[str, Any]] = []
             for seed_query in seed_queries:
-                digits_only = ''.join(ch for ch in seed_query if ch.isdigit())
-                is_exact_numeric = len(digits_only) >= 10 and len(digits_only) == len(seed_query)
-
                 payload: Dict[str, Any] = {
                     "query": seed_query,
                     "top_k": top_k,
-                    "search_mode": "strict" if is_exact_numeric else "hybrid",
-                    "rewrite_query": False if is_exact_numeric else True,
-                    "exact_entity_only": True if is_exact_numeric else False,
+                    "search_mode": "hybrid",
+                    "rewrite_query": True,
+                    "exact_entity_only": False,
                     "include_trace": False,
                 }
                 if topic:
@@ -605,6 +622,8 @@ class RagExtractObjectsFromDocumentsPlugin(PluginBase):
 
             docs_with_objects += 1
             for object_value in sorted(found_objects.keys())[:max_objects_per_document]:
+                if added_nodes >= max_added_nodes_total:
+                    break
                 object_data = found_objects[object_value]
                 object_type = str(object_data.get("type") or "person")
 
@@ -646,6 +665,7 @@ class RagExtractObjectsFromDocumentsPlugin(PluginBase):
                 "rag_extract_added_edges": added_edges,
                 "rag_extract_topic": topic,
                 "rag_extract_max_objects_per_document": max_objects_per_document,
+                "rag_extract_max_added_nodes_total": max_added_nodes_total,
             }
         )
         if last_error and status != "ok":
@@ -660,4 +680,7 @@ class RagExtractObjectsFromDocumentsPlugin(PluginBase):
                 "metadata": metadata,
             }
         ]
+
+
+
 

@@ -1,15 +1,27 @@
 ﻿// frontend/src/components/views/GraphView.tsx
-import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useAppDispatch } from '../../store';
 import { setSelectedElements } from '../../store/slices/uiSlice';
 import { Network } from 'vis-network/standalone';
 import { DataSet } from 'vis-data/standalone';
-import { domainModelApi, pluginApi } from '../../services/api';
+import { domainModelApi } from '../../services/api';
 import type { ApiArtifact, ApiPlugin, DomainModelConfig, PluginExecutionContext } from '../../types/api';
 import { layoutConfig } from '../../config/layout';
 import { nodeAttributePreviewConfig } from '../../config/nodeAttributePreview';
-import { fetchArtifacts, setCurrentArtifact } from '../../store/slices/artifactsSlice';
-import { collectPluginParamsWithPrompts } from '../../utils/pluginParams';
+import { usePluginRunner } from '../../hooks/usePluginRunner';
+import { useGraphViewportSelectionActions } from '../../hooks/useGraphViewportSelectionActions';
+import { useGraphSelectionActions } from '../../hooks/useGraphSelectionActions';
+import { useGraphPluginContextMenu } from '../../hooks/useGraphPluginContextMenu';
+import { useGraphInteractionState } from '../../hooks/useGraphInteractionState';
+import { useGraphKeyboardShortcuts } from '../../hooks/useGraphKeyboardShortcuts';
+import { useGraphExternalEvents } from '../../hooks/useGraphExternalEvents';
+import { useGraphLayoutActions } from '../../hooks/useGraphLayoutActions';
+import { buildPluginContext, resolvePluginMenuTargets } from './graphPluginMenu';
+import { applyRegularSelectionClick, handleConnectClick, handleNodeCreateClick } from './graphClickHandlers';
+import { PluginContextMenu } from './PluginContextMenu';
+import { GraphStatusOverlays } from './GraphStatusOverlays';
+import { GraphToolbar } from './GraphToolbar';
+import { GraphEmptyState } from './GraphEmptyState';
 import 'vis-network/styles/vis-network.css';
 import './GraphView.css';
 
@@ -37,74 +49,6 @@ interface PendingMove {
   x: number;
   y: number;
 }
-
-interface PluginContextMenuState {
-  x: number;
-  y: number;
-  context: PluginExecutionContext;
-  plugins: ApiPlugin[];
-  loading: boolean;
-}
-
-interface PluginMenuNode {
-  key: string;
-  label: string;
-  depth: number;
-  children: PluginMenuNode[];
-  plugins: ApiPlugin[];
-}
-
-interface PluginMenuEntry {
-  kind: 'folder' | 'plugin';
-  key: string;
-  label: string;
-  node?: PluginMenuNode;
-  plugin?: ApiPlugin;
-}
-
-const buildPluginMenuTree = (plugins: ApiPlugin[]): PluginMenuNode[] => {
-  const root: PluginMenuNode[] = [];
-  const nodeByPath = new Map<string, PluginMenuNode>();
-
-  const ensureNode = (segments: string[]) => {
-    let parentPath = '';
-    let siblings = root;
-
-    segments.forEach((segment, index) => {
-      const safe = segment.trim() || '\u041f\u0440\u043e\u0447\u0435\u0435';
-      const path = parentPath ? `${parentPath}/${safe}` : safe;
-      let node = nodeByPath.get(path);
-      if (!node) {
-        node = { key: path, label: safe, depth: index, children: [], plugins: [] };
-        siblings.push(node);
-        nodeByPath.set(path, node);
-      }
-      siblings = node.children;
-      parentPath = path;
-    });
-
-    return nodeByPath.get(parentPath);
-  };
-
-  plugins.forEach((plugin) => {
-    const rawPath = String(plugin.menu_path || '\u041f\u0440\u043e\u0447\u0435\u0435').trim() || '\u041f\u0440\u043e\u0447\u0435\u0435';
-    const segments = rawPath.split('/').map((s) => s.trim()).filter(Boolean);
-    const target = ensureNode(segments.length > 0 ? segments : ['\u041f\u0440\u043e\u0447\u0435\u0435']);
-    if (target) target.plugins.push(plugin);
-  });
-
-  const sortTree = (nodes: PluginMenuNode[]) => {
-    nodes.sort((a, b) => a.label.localeCompare(b.label, 'ru'));
-    nodes.forEach((node) => {
-      node.plugins.sort((a, b) => a.name.localeCompare(b.name, 'ru'));
-      sortTree(node.children);
-    });
-  };
-
-  sortTree(root);
-  return root;
-};
-
 const getNodeId = (node: any) => node.id || node.node_id;
 
 const wrapLabel = (value: string, maxChars = 22) => {
@@ -197,14 +141,23 @@ const getNodeAttributePreviewLines = (
     const values = Array.isArray(rawValue) ? rawValue : (rawValue ? [rawValue] : []);
     if (values.length === 0) continue;
 
-    const marker = String(cfg?.marker || preview.defaultMarker || 'Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р Р†Р вЂљР’В Р В Р’В Р вЂ™Р’В Р В Р вЂ Р В РІР‚С™Р РЋРІвЂћСћР В Р’В Р В Р вЂ№Р В Р вЂ Р Р†Р вЂљРЎвЂєР РЋРЎвЂєР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћвЂ“Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В Р Р‹Р Р†Р вЂљРЎСљ').trim() || 'Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р Р†Р вЂљР’В Р В Р’В Р вЂ™Р’В Р В Р вЂ Р В РІР‚С™Р РЋРІвЂћСћР В Р’В Р В Р вЂ№Р В Р вЂ Р Р†Р вЂљРЎвЂєР РЋРЎвЂєР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћвЂ“Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В Р Р‹Р Р†Р вЂљРЎСљ';
-    const maxLines = Number.isFinite(Number(cfg?.maxLines)) ? Math.max(1, Number(cfg?.maxLines)) : preview.maxLinesPerField;
-    const fieldLabel = String(cfg?.label || typeAttributes[key]?.label || key);
+    const marker = String(cfg?.marker || preview.defaultMarker || '*').trim() || '*';
+    const maxLines = Number(cfg?.maxLines ?? preview.maxLinesPerField ?? 3);
+    const safeLimit = Number.isFinite(maxLines) && maxLines > 0 ? maxLines : 3;
 
-    for (const item of values.slice(0, maxLines)) {
-      const text = String(item || '').replace(/\\n/g, '\n').trim();
-      if (!text) continue;
-      lines.push(`${marker} ${fieldLabel}: ${text}`.trim());
+    for (let index = 0; index < values.length; index += 1) {
+      const value = values[index];
+      if (value === undefined || value === null) continue;
+      const chunks = String(value)
+        .replace(/\r/g, '')
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .slice(0, safeLimit);
+      chunks.forEach((line) => lines.push(`${marker} ${line}`));
+      if (index > 0 && chunks.length === 0) {
+        lines.push(`${marker} ${String(value)}`.trim());
+      }
     }
   }
 
@@ -235,7 +188,10 @@ const getEdgeComputedLines = (edge: any) => {
   const visibleRaw = visual?.visibleAttributes;
   const visible = Array.isArray(visibleRaw) ? new Set(visibleRaw.map((item: any) => String(item))) : null;
 
-  const contactsLine = String(attrs?.contacts || (attrs?.calls_count !== undefined ? `Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В Р Р‹Р РЋРЎв„ўР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В Р Р‹Р РЋРІР‚С”Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В РІР‚в„ўР вЂ™Р’В¦Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћвЂ“Р В Р’В Р вЂ™Р’В Р В Р’В Р Р†Р вЂљР’В Р В Р’В Р вЂ™Р’В Р В Р вЂ Р В РІР‚С™Р РЋРІвЂћСћР В Р’В Р В Р вЂ№Р В Р вЂ Р Р†Р вЂљРЎвЂєР РЋРЎвЂєР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р вЂ Р В РІР‚С™Р Р†РІР‚С›РЎС›Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В°Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В Р Р‹Р РЋРЎв„ўР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћвЂ“Р В Р’В Р вЂ™Р’В Р В Р’В Р Р†Р вЂљР’В Р В Р’В Р вЂ™Р’В Р В Р вЂ Р В РІР‚С™Р РЋРІвЂћСћР В Р’В Р В Р вЂ№Р В Р вЂ Р Р†Р вЂљРЎвЂєР РЋРЎвЂєР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В Р Р‹Р РЋРІР‚С”Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В РІР‚в„ўР вЂ™Р’В : ${attrs.calls_count}` : '')).trim();
+  const contactsLine = String(
+    attrs?.contacts ||
+      (attrs?.calls_count !== undefined ? `contacts: ${attrs.calls_count}` : '')
+  ).trim();
   const periodLine = String(attrs?.period || '').trim();
 
   const lines: string[] = [];
@@ -627,15 +583,11 @@ export const GraphView: React.FC<GraphViewProps> = ({
   const batchGroupIdRef = useRef<string | null>(null);
   const isInitializedRef = useRef(false);
   const isDraggingRef = useRef(false);
+  const labelsSuppressedStateRef = useRef(false);
   const lastReduxStateRef = useRef<string>(JSON.stringify(artifact.data));
-  const viewPositionRef = useRef<{ scale: number; position: { x: number; y: number } } | null>(null);
   const isFirstLoadRef = useRef(true);
   const [domainModelRevision, setDomainModelRevision] = useState(0);
   const [previewConfigRevision, setPreviewConfigRevision] = useState(0);
-  const [connectMode, setConnectMode] = useState(false);
-  const [edgeSourceId, setEdgeSourceId] = useState<string | null>(null);
-  const connectModeRef = useRef(false);
-  const edgeSourceIdRef = useRef<string | null>(null);
   const edgeTypesRef = useRef<Array<any>>([]);
   const rulesRef = useRef<{ allow_parallel_edges: boolean }>({ allow_parallel_edges: true });
   const nodeTypeIconsRef = useRef<Record<string, string>>({});
@@ -657,87 +609,29 @@ export const GraphView: React.FC<GraphViewProps> = ({
   }, [JSON.stringify(nodeAttributePreviewConfig)]);
 
   const artifactDataRef = useRef<any>(artifact.data || {});
-  const onAddEdgeRef = useRef(onAddEdge);
-  const onDeleteSelectionRef = useRef(onDeleteSelection);
-  const onAddNodeAtPositionRef = useRef(onAddNodeAtPosition);
-  const nodeCreateSpecRef = useRef<{ typeId: string; label: string } | null>(nodeCreateSpec || null);
-  const onNodeCreateCompleteRef = useRef(onNodeCreateComplete);
-  const connectTypeRef = useRef<string | null>(connectType || null);
-  const onConnectCompleteRef = useRef(onConnectComplete);
-  const [pluginMenu, setPluginMenu] = useState<PluginContextMenuState | null>(null);
-  const [pendingPluginNodeIds, setPendingPluginNodeIds] = useState<string[]>([]);
-  const [pluginExecutionMessage, setPluginExecutionMessage] = useState<string | null>(null);
-  const pluginExecutionRef = useRef(false);
-  const pluginMenuRef = useRef<HTMLDivElement | null>(null);
-  const labelsSuppressedRef = useRef(false);
+  const {
+    setConnectMode,
+    edgeSourceId,
+    setEdgeSourceId,
+    connectModeRef,
+    edgeSourceIdRef,
+    onAddEdgeRef,
+    onDeleteSelectionRef,
+    onAddNodeAtPositionRef,
+    nodeCreateSpecRef,
+    onNodeCreateCompleteRef,
+    connectTypeRef,
+    onConnectCompleteRef,
+  } = useGraphInteractionState({
+    connectType,
+    onAddEdge,
+    onDeleteSelection,
+    onAddNodeAtPosition,
+    nodeCreateSpec,
+    onNodeCreateComplete,
+    onConnectComplete,
+  });
 
-  useEffect(() => {
-    connectModeRef.current = connectMode;
-  }, [connectMode]);
-
-  useEffect(() => {
-    if (connectType) {
-      setConnectMode(true);
-      return;
-    }
-    setConnectMode(false);
-    setEdgeSourceId(null);
-  }, [connectType]);
-
-  useEffect(() => {
-    edgeSourceIdRef.current = edgeSourceId;
-  }, [edgeSourceId]);
-
-  useEffect(() => {
-    onAddEdgeRef.current = onAddEdge;
-  }, [onAddEdge]);
-  useEffect(() => {
-    onDeleteSelectionRef.current = onDeleteSelection;
-  }, [onDeleteSelection]);
-  useEffect(() => {
-    onAddNodeAtPositionRef.current = onAddNodeAtPosition;
-  }, [onAddNodeAtPosition]);
-
-  useEffect(() => {
-    nodeCreateSpecRef.current = nodeCreateSpec || null;
-    if (nodeCreateSpec) {
-      setConnectMode(false);
-      setEdgeSourceId(null);
-    }
-  }, [nodeCreateSpec]);
-
-  useEffect(() => {
-    onNodeCreateCompleteRef.current = onNodeCreateComplete;
-  }, [onNodeCreateComplete]);
-
-  useEffect(() => {
-    connectTypeRef.current = connectType || null;
-  }, [connectType]);
-
-  useEffect(() => {
-    onConnectCompleteRef.current = onConnectComplete;
-  }, [onConnectComplete]);
-  useEffect(() => {
-    const onMouseDown = (event: MouseEvent) => {
-      if (event.button !== 0) return;
-      if (!pluginMenuRef.current) return;
-      if (event.target instanceof Node && pluginMenuRef.current.contains(event.target)) return;
-      setPluginMenu(null);
-    };
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setPluginMenu(null);
-      }
-    };
-
-    document.addEventListener('mousedown', onMouseDown);
-    window.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('mousedown', onMouseDown);
-      window.removeEventListener('keydown', onKeyDown);
-    };
-  }, []);
 
   useEffect(() => {
     artifactDataRef.current = artifact.data || {};
@@ -827,7 +721,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
     if (!edgeType) return new Set<string>();
 
     const nodes = data?.nodes || [];
-    const nodeById = new Map(nodes.map((node: any) => [String(getNodeId(node)), node]));
+    const nodeById = new Map<string, any>(nodes.map((node: any) => [String(getNodeId(node)), node]));
 
     if (!sourceNodeId) {
       return new Set<string>(
@@ -874,7 +768,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
 
       return {
         id,
-        label: (!labelsSuppressedRef.current && shouldShowNodeLabel(currentScale)) ? getNodeLabel(node, nodeAttributePreviewRef.current, nodeTypeAttributesRef.current) : "",
+        label: (!labelsSuppressedStateRef.current && shouldShowNodeLabel(currentScale)) ? getNodeLabel(node, nodeAttributePreviewRef.current, nodeTypeAttributesRef.current) : "",
         color: dimmed ? {
           background: withAlpha(String(colors.background || '#94a3b8'), 0.2),
           border: withAlpha(String(colors.border || '#94a3b8'), 0.25)
@@ -915,7 +809,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
     const nodeUpdates = resolvedNodes.map((node: any) => {
       const id = String(getNodeId(node));
       const isSelected = selectedNodeIds.has(id);
-      const showLabel = isSelected || (!labelsSuppressedRef.current && shouldShowNodeLabel(scale));
+      const showLabel = isSelected || (!labelsSuppressedStateRef.current && shouldShowNodeLabel(scale));
       const baseColors = getNodeColors(node);
       const ringEnabled = getNodeRingEnabled(node);
       const ringWidth = getNodeRingWidth(node);
@@ -937,7 +831,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
     const edgeUpdates = (artifactDataRef.current?.edges || []).map((edge: any) => {
       const id = String(edge.id);
       const isSelected = selectedEdgeIds.has(id);
-      const showLabel = isSelected || (!labelsSuppressedRef.current && shouldShowEdgeLabel(scale));
+      const showLabel = isSelected || (!labelsSuppressedStateRef.current && shouldShowEdgeLabel(scale));
       const visual = edge.attributes?.visual || {};
       const baseColor = String(visual.color || edge.attributes?.color || "#848484");
       const baseWidth = Number(visual.width || edge.attributes?.width || 2);
@@ -956,7 +850,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
   }, []);
 
   const setLabelsSuppressed = useCallback((suppressed: boolean) => {
-    labelsSuppressedRef.current = suppressed;
+    labelsSuppressedStateRef.current = suppressed;
     const scale = networkRef.current ? networkRef.current.getScale() : 1;
     updateNodeTooltipsByScale(scale);
     applyConnectPreview();
@@ -966,111 +860,65 @@ export const GraphView: React.FC<GraphViewProps> = ({
     if (!networkRef.current) return;
     const selectedNodeIds = networkRef.current.getSelectedNodes().map(id => String(id));
     const selectedEdgeIds = networkRef.current.getSelectedEdges().map(id => String(id));
-    const data = artifactDataRef.current || {};
 
-    const nodes = (data.nodes || [])
-      .filter((node: any) => selectedNodeIds.includes(String(getNodeId(node))))
-      .map((node: any) => ({
-        type: 'node',
-        id: String(getNodeId(node)),
-        data: node
-      }));
+    const nodes = selectedNodeIds.map((id: string) => ({
+      type: 'node',
+      id,
+      data: null,
+    }));
 
-    const edges = (data.edges || [])
-      .filter((edge: any) => selectedEdgeIds.includes(String(edge.id)))
-      .map((edge: any) => ({
-        type: 'edge',
-        id: String(edge.id),
-        data: edge
-      }));
+    const edges = selectedEdgeIds.map((id: string) => ({
+      type: 'edge',
+      id,
+      data: null,
+    }));
+
 
     dispatch(setSelectedElements([...nodes, ...edges]));
   }, [dispatch]);
+  const {
+    pluginMenu,
+    pluginMenuRef,
+    closePluginMenu,
+    openPluginMenuAt,
+    pluginMenuTree,
+    pluginMenuLeft,
+    pluginMenuTop,
+    getPluginMenuEntries,
+  } = useGraphPluginContextMenu({
+    projectId: artifact.project_id,
+    artifactId: artifact.id,
+    networkRef,
+    containerRef,
+    updateSelectionFromNetwork,
+    toolbarHeight: GRAPH_TOOLBAR_HEIGHT,
+  });
 
-  const buildPluginContextFromSelection = useCallback((
-    selectedNodes: string[],
-    selectedEdges: string[]
-  ): PluginExecutionContext => {
-    return {
-      selected_nodes: selectedNodes,
-      selected_edges: selectedEdges
-    };
-  }, []);
-
-  const closePluginMenu = useCallback(() => {
-    setPluginMenu(null);
-  }, []);
+  const {
+    runPlugin,
+    isPluginExecutingRef: pluginExecutionRef,
+    pluginExecutionMessage,
+  } = usePluginRunner({
+    artifactId: artifact.id,
+    projectId: artifact.project_id,
+    getCurrentGraphNodeIds: () => ((artifactDataRef.current?.nodes || []) as any[]).map((node: any) => String(node?.id ?? node?.node_id ?? '')),
+    buildLiveContext: (fallback: PluginExecutionContext) => {
+      const hasMenuSelection =
+        (Array.isArray(fallback?.selected_nodes) && fallback.selected_nodes.length > 0) ||
+        (Array.isArray(fallback?.selected_edges) && fallback.selected_edges.length > 0);
+      if (hasMenuSelection) return fallback;
+      if (!networkRef.current) return fallback;
+      return buildPluginContext(
+        networkRef.current.getSelectedNodes().map((id: any) => String(id)),
+        networkRef.current.getSelectedEdges().map((id: any) => String(id)),
+      );
+    },
+    onFinally: closePluginMenu,
+  });
 
   const runPluginFromMenu = useCallback(async (plugin: ApiPlugin, context: PluginExecutionContext) => {
-    if (pluginExecutionRef.current) return;
-    try {
-      const params = await collectPluginParamsWithPrompts(plugin, artifact.project_id);
-      if (params === null) return;
-      pluginExecutionRef.current = true;
-      setPluginExecutionMessage(`Выполняется плагин: ${plugin.name}...`);
-
-      const beforeNodeIds = new Set(((artifact.data?.nodes || []) as any[]).map((node: any) => String(node?.id ?? node?.node_id ?? '')));
-
-      const hasMenuSelection =
-        (Array.isArray(context?.selected_nodes) && context.selected_nodes.length > 0) ||
-        (Array.isArray(context?.selected_edges) && context.selected_edges.length > 0);
-      const liveContext = hasMenuSelection
-        ? context
-        : (
-          networkRef.current
-            ? buildPluginContextFromSelection(
-                networkRef.current.getSelectedNodes().map((id: any) => String(id)),
-                networkRef.current.getSelectedEdges().map((id: any) => String(id))
-              )
-            : context
-        );
-
-      const response = await pluginApi.execute(
-        plugin.id,
-        artifact.project_id,
-        [artifact.id],
-        params,
-        liveContext
-      );
-
-      await dispatch(fetchArtifacts(artifact.project_id));
-
-      const created = response?.created || [];
-      if (created.length > 0) {
-        dispatch(setCurrentArtifact(created[0].id));
-      }
-
-      const updatedCurrent = (response as any)?.updated?.find((item: any) => Number(item?.id) === Number(artifact.id));
-      const nextNodes = Array.isArray(updatedCurrent?.data?.nodes) ? updatedCurrent.data.nodes : [];
-      const newNodeIds = nextNodes
-        .map((node: any) => String(node?.id ?? node?.node_id ?? ''))
-        .filter((id: string) => id && !beforeNodeIds.has(id));
-
-      const updatedMeta = updatedCurrent?.metadata || {};
-      const liveSelectedNodeCount = Array.isArray(liveContext?.selected_nodes) ? liveContext.selected_nodes.length : 0;
-      const limit = Number(updatedMeta?.communications_selection_limit || 150);
-      const isCommunicationsPlugin = plugin.id === 'abonent_communications';
-      const shouldWarnExceeded = isCommunicationsPlugin && Boolean(updatedMeta?.communications_selection_exceeded) && liveSelectedNodeCount > limit;
-      const shouldWarnLimited = isCommunicationsPlugin && Boolean(updatedMeta?.communications_selection_limited) && liveSelectedNodeCount > limit;
-      if (shouldWarnExceeded) {
-        window.alert(`Выделено ${liveSelectedNodeCount} абонентов. Лимит для запуска плагина: ${limit}. Пожалуйста, запускайте расширение частями.`);
-      } else if (shouldWarnLimited) {
-        window.alert(`Обработано только первые ${limit} абонентов из выделения. Для остальных запустите плагин повторно.`);
-      }
-      if (newNodeIds.length > 0) {
-        const maxAutoLayout = Number(layoutConfig.pluginAutoLayout?.maxNewNodes || 80);
-        const autoLayout = newNodeIds.length <= maxAutoLayout;
-        window.dispatchEvent(new CustomEvent("graph:run-physics-layout", { detail: { newNodeIds, autoLayout } }));
-      }
-    } catch (error: any) {
-      const detail = error?.response?.data?.detail || error?.message || '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0437\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u044c \u043f\u043b\u0430\u0433\u0438\u043d.';
-      window.alert(detail);
-    } finally {
-      pluginExecutionRef.current = false;
-      setPluginExecutionMessage(null);
-      closePluginMenu();
-    }
-  }, [artifact.id, artifact.project_id, closePluginMenu, dispatch]);
+    await runPlugin(plugin, context, dispatch);
+  }, [dispatch, runPlugin]);
 
   useEffect(() => {
     if (!containerRef.current || isInitializedRef.current) return;
@@ -1085,7 +933,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
     const nodesData = new DataSet(
       nodes.map((node: any) => ({
         id: String(getNodeId(node)),
-        label: (!labelsSuppressedRef.current && shouldShowNodeLabel(1)) ? getNodeLabel(node, nodeAttributePreviewRef.current, nodeTypeAttributesRef.current) : "",
+        label: (!labelsSuppressedStateRef.current && shouldShowNodeLabel(1)) ? getNodeLabel(node, nodeAttributePreviewRef.current, nodeTypeAttributesRef.current) : "",
         title: getNodeTooltip(node, 1),
         x: node.position_x,
         y: node.position_y,
@@ -1104,13 +952,13 @@ export const GraphView: React.FC<GraphViewProps> = ({
     const nodeRadiusById = buildNodeRadiusById(nodes);
     const edgeCurveMap = buildEdgeCurveMap(edges);
     const edgesData = new DataSet(
-      edges.map((edge: any) => buildEdgeForVis(edge, nodeRadiusById, edgeCurveMap, 1, labelsSuppressedRef.current))
+      edges.map((edge: any) => buildEdgeForVis(edge, nodeRadiusById, edgeCurveMap, 1, labelsSuppressedStateRef.current))
     );
 
     nodesDataSetRef.current = nodesData;
     edgesDataSetRef.current = edgesData;
 
-    const options = {
+    const options: any = {
       physics: { enabled: false, stabilization: false },
       nodes: {
         shape: 'dot',
@@ -1182,7 +1030,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
 
     const network = new Network(
       containerRef.current,
-      { nodes: nodesData, edges: edgesData },
+      { nodes: nodesData as any, edges: edgesData as any },
       options
     );
 
@@ -1271,217 +1119,47 @@ export const GraphView: React.FC<GraphViewProps> = ({
     network.on('deselectNode', refreshSelectionVisuals);
     network.on('deselectEdge', refreshSelectionVisuals);
 
-    
-    const openPluginMenuAt = async (
-      domPoint: { x: number; y: number },
-      clickedNodes: string[] = [],
-      clickedEdges: string[] = []
-    ) => {
-      if (pluginExecutionRef.current) return;
-      let contextNodes = clickedNodes;
-      let contextEdges = clickedEdges;
-
-      const selectedNodes = network.getSelectedNodes().map((id: any) => String(id));
-      const selectedEdges = network.getSelectedEdges().map((id: any) => String(id));
-
-      if (contextNodes.length > 0) {
-        const clickedNodeId = String(contextNodes[0]);
-        if (selectedNodes.length > 1 && selectedNodes.includes(clickedNodeId)) {
-          contextNodes = selectedNodes;
-          contextEdges = [];
-        } else {
-          contextNodes = [clickedNodeId];
-          contextEdges = [];
-        }
-      } else if (contextEdges.length > 0) {
-        contextNodes = [];
-        contextEdges = [String(contextEdges[0])];
-      } else {
-        contextNodes = selectedNodes;
-        contextEdges = selectedEdges;
-      }
-
-      updateSelectionFromNetwork();
-
-      const context = buildPluginContextFromSelection(contextNodes, contextEdges);
-
-      setPluginMenu({
-        x: Number(domPoint.x || 0),
-        y: Number(domPoint.y || 0),
-        context,
-        plugins: [],
-        loading: true,
-      });
-
-      try {
-        const response = await pluginApi.applicable(artifact.project_id, artifact.id, context);
-        setPluginMenu((prev) => {
-          if (!prev) return prev;
-          return { ...prev, loading: false, plugins: response?.plugins || [] };
-        });
-      } catch {
-        setPluginMenu((prev) => {
-          if (!prev) return prev;
-          return { ...prev, loading: false, plugins: [] };
-        });
-      }
-    };
-
     network.on('oncontext', async (params: any) => {
       params?.event?.preventDefault?.();
       if (pluginExecutionRef.current) return;
-      const domPoint = params?.pointer?.DOM || params?.event?.center || { x: 0, y: 0 };
-      const clickedNodes = Array.isArray(params?.nodes) ? params.nodes.map((id: any) => String(id)) : [];
-      const clickedEdges = Array.isArray(params?.edges) ? params.edges.map((id: any) => String(id)) : [];
-      if (clickedNodes.length === 0 && clickedEdges.length === 0) {
-        const hoveredNode = network.getNodeAt(domPoint as any);
-        const hoveredEdge = network.getEdgeAt(domPoint as any);
-        if (hoveredNode !== undefined && hoveredNode !== null) {
-          clickedNodes.push(String(hoveredNode));
-        } else if (hoveredEdge !== undefined && hoveredEdge !== null) {
-          clickedEdges.push(String(hoveredEdge));
-        }
-      }
+      const { domPoint, clickedNodes, clickedEdges } = resolvePluginMenuTargets(network, params);
       await openPluginMenuAt(domPoint, clickedNodes, clickedEdges);
     });
 
     network.on('click', (params: any) => {
-      const pendingNode = nodeCreateSpecRef.current;
-      if (pendingNode) {
-        nodeCreateSpecRef.current = null;
-        const canvasPoint = params?.pointer?.canvas
-          || (params?.pointer?.DOM && networkRef.current
-            ? networkRef.current.DOMtoCanvas(params.pointer.DOM)
-            : null);
-
-        if (!canvasPoint) {
-          onNodeCreateCompleteRef.current?.();
-          return;
-        }
-
-        onAddNodeAtPositionRef.current?.(
-          pendingNode.label,
-          pendingNode.typeId,
-          Number(canvasPoint.x || 0),
-          Number(canvasPoint.y || 0)
-        );
-        onNodeCreateCompleteRef.current?.();
-        return;
-      }
+      const created = handleNodeCreateClick({
+        network,
+        params,
+        nodeCreateSpecRef,
+        onAddNodeAtPositionRef,
+        onNodeCreateCompleteRef,
+      });
+      if (created) return;
 
       if (!connectModeRef.current) {
-        const clickedNodes = Array.isArray(params?.nodes) ? params.nodes.map((id: any) => String(id)) : [];
-        const clickedEdges = Array.isArray(params?.edges) ? params.edges.map((id: any) => String(id)) : [];
-        const additive = Boolean(
-          params?.event?.srcEvent?.shiftKey ||
-          params?.event?.srcEvent?.ctrlKey ||
-          params?.event?.srcEvent?.metaKey
-        );
-
-        if (clickedNodes.length === 0 && clickedEdges.length === 0) {
-          network.unselectAll();
-          updateSelectionFromNetwork();
-          updateNodeTooltipsByScale(network.getScale());
-          return;
-        }
-
-        if (additive) {
-          const nodeSet = new Set(network.getSelectedNodes().map((id: any) => String(id)));
-          const edgeSet = new Set(network.getSelectedEdges().map((id: any) => String(id)));
-          clickedNodes.forEach((id: string) => nodeSet.add(id));
-          clickedEdges.forEach((id: string) => edgeSet.add(id));
-          network.setSelection({ nodes: Array.from(nodeSet), edges: Array.from(edgeSet) }, { unselectAll: true, highlightEdges: false });
-        } else {
-          network.setSelection({ nodes: clickedNodes, edges: clickedEdges }, { unselectAll: true, highlightEdges: false });
-        }
-
-        updateSelectionFromNetwork();
-        updateNodeTooltipsByScale(network.getScale());
-        return;
-      }
-      if (!params.nodes || params.nodes.length === 0) return;
-
-      const clickedNodeId = String(params.nodes[0]);
-      const sourceId = edgeSourceIdRef.current;
-
-      if (!sourceId) {
-        const requestedEdgeType = connectTypeRef.current ? String(connectTypeRef.current) : null;
-        if (requestedEdgeType) {
-          const data = artifactDataRef.current || {};
-          const nodesById = new Map((data.nodes || []).map((node: any) => [String(getNodeId(node)), node]));
-          const sourceNode = nodesById.get(clickedNodeId);
-          const sourceType = String(sourceNode?.type || '');
-          const edgeType = findEdgeType(requestedEdgeType);
-          const allowedFrom = Array.isArray(edgeType?.allowed_from) ? edgeType.allowed_from : ['*'];
-
-          if (!matchesType(allowedFrom, sourceType)) {
-            window.alert('\u041d\u0430\u0447\u0430\u043b\u044c\u043d\u044b\u0439 \u0443\u0437\u0435\u043b \u043d\u0435 \u043f\u043e\u0434\u0445\u043e\u0434\u0438\u0442 \u0434\u043b\u044f \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u043e\u0433\u043e \u0442\u0438\u043f\u0430 \u0441\u0432\u044f\u0437\u0438.');
-            return;
-          }
-        }
-
-        setEdgeSourceId(clickedNodeId);
+        applyRegularSelectionClick(network, params, updateSelectionFromNetwork, updateNodeTooltipsByScale);
         return;
       }
 
-      let edgeType = 'connected_to';
-      const requestedEdgeType = connectTypeRef.current ? String(connectTypeRef.current) : null;
-
-      if (requestedEdgeType) {
-        edgeType = requestedEdgeType;
-      } else {
-        const data = artifactDataRef.current || {};
-        const nodesById = new Map((data.nodes || []).map((node: any) => [String(getNodeId(node)), node]));
-        const sourceNode = nodesById.get(sourceId);
-        const targetNode = nodesById.get(clickedNodeId);
-        const sourceType = String(sourceNode?.type || '');
-        const targetType = String(targetNode?.type || '');
-        const resolvedType = resolveAllowedEdgeType(sourceType, targetType);
-
-        if (!resolvedType) {
-          window.alert('\u0414\u043b\u044f \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u043e\u0439 \u043f\u0430\u0440\u044b \u0443\u0437\u043b\u043e\u0432 \u043d\u0435\u0442 \u0434\u043e\u043f\u0443\u0441\u0442\u0438\u043c\u043e\u0433\u043e \u0442\u0438\u043f\u0430 \u0441\u0432\u044f\u0437\u0438.');
-          setEdgeSourceId(null);
-          if (!requestedEdgeType) setConnectMode(false);
-          return;
-        }
-
-        edgeType = resolvedType;
-      }
-
-      if (clickedNodeId === sourceId) {
-        window.alert('\u041d\u0435\u043b\u044c\u0437\u044f \u0441\u043e\u0437\u0434\u0430\u0442\u044c \u0441\u0432\u044f\u0437\u044c \u0443\u0437\u043b\u0430 \u0441 \u0441\u0430\u043c\u0438\u043c \u0441\u043e\u0431\u043e\u0439.');
-        setEdgeSourceId(null);
-        if (!requestedEdgeType) setConnectMode(false);
-        return;
-      }
-
-      if (requestedEdgeType) {
-        const data = artifactDataRef.current || {};
-        const nodesById = new Map((data.nodes || []).map((node: any) => [String(getNodeId(node)), node]));
-        const sourceNode = nodesById.get(sourceId);
-        const targetNode = nodesById.get(clickedNodeId);
-        const sourceType = String(sourceNode?.type || '');
-        const targetType = String(targetNode?.type || '');
-
-        if (!isAllowedForEdgeType(requestedEdgeType, sourceType, targetType)) {
-          window.alert('\u042d\u0442\u043e\u0442 \u0442\u0438\u043f \u0441\u0432\u044f\u0437\u0438 \u043d\u0435\u043b\u044c\u0437\u044f \u0441\u043e\u0437\u0434\u0430\u0442\u044c \u043c\u0435\u0436\u0434\u0443 \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u044b\u043c\u0438 \u0443\u0437\u043b\u0430\u043c\u0438.');
-          setEdgeSourceId(null);
-          onConnectCompleteRef.current?.();
-          return;
-        }
-      }
-
-      onAddEdgeRef.current?.(sourceId, clickedNodeId, edgeType);
-      setEdgeSourceId(null);
-      if (requestedEdgeType) {
-        onConnectCompleteRef.current?.();
-      } else {
-        setConnectMode(false);
-      }
+      handleConnectClick({
+        params,
+        artifactData: artifactDataRef.current,
+        getNodeId: (node: any) => String(getNodeId(node)),
+        connectTypeRef,
+        edgeSourceIdRef,
+        setEdgeSourceId,
+        setConnectMode,
+        findEdgeType,
+        matchesType,
+        resolveAllowedEdgeType,
+        isAllowedForEdgeType,
+        onAddEdgeRef,
+        onConnectCompleteRef,
+      });
     });
     network.once('afterDrawing', () => {
       if (isFirstLoadRef.current) {
-        network.fit({ animation: true, duration: 300 });
+        network.fit({ animation: { duration: 300, easingFunction: 'easeInOutQuad' } });
         isFirstLoadRef.current = false;
       }
     });
@@ -1517,7 +1195,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
     );
     const nodesData = resolvedNodes.map((node: any) => ({
       id: String(getNodeId(node)),
-        label: (!labelsSuppressedRef.current && shouldShowNodeLabel(currentScale)) ? getNodeLabel(node, nodeAttributePreviewRef.current, nodeTypeAttributesRef.current) : "",
+        label: (!labelsSuppressedStateRef.current && shouldShowNodeLabel(currentScale)) ? getNodeLabel(node, nodeAttributePreviewRef.current, nodeTypeAttributesRef.current) : "",
       title: getNodeTooltip(node, currentScale),
       x: node.position_x,
       y: node.position_y,
@@ -1539,7 +1217,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
 
     const nodeRadiusById = buildNodeRadiusById(resolvedNodes);
     const edgeCurveMap = buildEdgeCurveMap(artifact.data?.edges || []);
-    const edgesData = (artifact.data?.edges || []).map((edge: any) => buildEdgeForVis(edge, nodeRadiusById, edgeCurveMap, currentScale, labelsSuppressedRef.current));
+    const edgesData = (artifact.data?.edges || []).map((edge: any) => buildEdgeForVis(edge, nodeRadiusById, edgeCurveMap, currentScale, labelsSuppressedStateRef.current));
 
     edgesDataSetRef.current?.clear();
     if (edgesData.length > 0) {
@@ -1563,42 +1241,13 @@ export const GraphView: React.FC<GraphViewProps> = ({
   useEffect(() => {
     applyConnectPreview();
   }, [connectType, edgeSourceId, domainModelRevision, applyConnectPreview]);
-  useEffect(() => {
-    const isTypingTarget = (target: EventTarget | null) => {
-      if (!(target instanceof HTMLElement)) return false;
-      const tag = target.tagName.toLowerCase();
-      return tag === 'input' || tag === 'textarea' || tag === 'select' || target.isContentEditable;
-    };
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (isTypingTarget(event.target)) return;
-      if (!networkRef.current) return;
-      if (!nodesDataSetRef.current) return;
-
-      const isSelectAll = (event.ctrlKey || event.metaKey) && (event.code === 'KeyA' || event.key.toLowerCase() === 'a' || event.key.toLowerCase() === 'Р В Р’В Р В Р вЂ№Р В Р вЂ Р В РІР‚С™Р РЋРІР‚С”');
-      if (isSelectAll) {
-        event.preventDefault();
-        const allNodeIds = nodesDataSetRef.current.getIds().map((id: any) => String(id));
-        if (!allNodeIds.length) return;
-        networkRef.current.setSelection({ nodes: allNodeIds, edges: [] }, { unselectAll: true, highlightEdges: false });
-        return;
-      }
-
-      if (event.key !== 'Delete') return;
-
-      const selectedNodeIds = networkRef.current.getSelectedNodes().map((id) => String(id));
-      const selectedEdgeIds = networkRef.current.getSelectedEdges().map((id) => String(id));
-      if (!selectedNodeIds.length && !selectedEdgeIds.length) return;
-
-      event.preventDefault();
-      onDeleteSelectionRef.current?.(selectedNodeIds, selectedEdgeIds);
-      networkRef.current.unselectAll();
-      dispatch(setSelectedElements([]));
-    };
-
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [dispatch]);
+  useGraphKeyboardShortcuts({
+    networkRef,
+    nodesDataSetRef,
+    onDeleteSelectionRef,
+    dispatch,
+    setSelectedElementsAction: setSelectedElements,
+  });
 
   const handleUndoClick = useCallback(() => {
     console.log('[GraphView] Undo button clicked');
@@ -1609,14 +1258,6 @@ export const GraphView: React.FC<GraphViewProps> = ({
     console.log('[GraphView] Redo button clicked');
     onRedo?.();
   }, [onRedo]);
-
-  const createLayoutGroupId = () => {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-      const r = Math.random() * 16 | 0;
-      const v = c === 'x' ? r : ((r & 0x3) | 0x8);
-      return v.toString(16);
-    });
-  };
 
   const estimateNodeFootprint = (node: any) => {
     const nodeSize = Number(getNodeSize(node) || 24);
@@ -1630,771 +1271,93 @@ export const GraphView: React.FC<GraphViewProps> = ({
     return Math.max(28, Math.sqrt((visualWidth * visualWidth + visualHeight * visualHeight) / 4));
   };
 
-  const runAntiOverlap = (
-    targetIds: string[],
-    initialPositions: Map<string, { x: number; y: number }>,
-    radiusById: Map<string, number>,
-    blockers: Array<{ x: number; y: number; radius: number }>,
-    paddingOverride?: number
-  ) => {
-    const next = new Map<string, { x: number; y: number }>();
-    targetIds.forEach((id) => {
-      const pos = initialPositions.get(id) || { x: 0, y: 0 };
-      next.set(id, { x: pos.x, y: pos.y });
-    });
+  const { handleAutoLayoutClick, handleBalancedLayoutClick } = useGraphLayoutActions({
+    networkRef,
+    nodesDataSetRef,
+    artifactDataRef,
+    onNodeMove,
+    onNodesMove,
+    setLabelsSuppressed,
+    updateSelectionFromNetwork,
+    getNodeId: (node: any) => String(getNodeId(node)),
+    estimateNodeFootprint,
+  });
+
+  const {
+    handleSelectConnectedEdges,
+    handleSelectEndpoints,
+  } = useGraphSelectionActions({
+    networkRef,
+    artifactDataRef,
+    updateSelectionFromNetwork,
+  });
+
+
+
+  const {
+    handleFitClick,
+    handleFitSelectionClick,
+    handleInvertSelectionClick,
+  } = useGraphViewportSelectionActions({
+    networkRef,
+    artifactDataRef,
+    nodesDataSetRef,
+    edgesDataSetRef,
+    updateSelectionFromNetwork,
+  });
+
+  useGraphExternalEvents({
+    networkRef,
+    nodesDataSetRef,
+    updateSelectionFromNetwork,
+    runBalancedLayoutForNodes: (nodeIds: string[]) => handleBalancedLayoutClick(false, nodeIds),
+    artifactId: artifact.id,
+  });
 
-    const padding = paddingOverride ?? (layoutConfig.hybrid.antiOverlapPaddingBase * layoutConfig.hybrid.spacingMultiplier);
-    for (let iter = 0; iter < 90; iter += 1) {
-      let totalShift = 0;
-
-      for (let i = 0; i < targetIds.length; i += 1) {
-        for (let j = i + 1; j < targetIds.length; j += 1) {
-          const aId = targetIds[i];
-          const bId = targetIds[j];
-          const a = next.get(aId)!;
-          const b = next.get(bId)!;
-          const ra = radiusById.get(aId) || 30;
-          const rb = radiusById.get(bId) || 30;
-          const dx = b.x - a.x;
-          const dy = b.y - a.y;
-          const dist = Math.hypot(dx, dy) || 0.0001;
-          const desired = ra + rb + padding;
-          if (dist >= desired) continue;
-
-          const push = (desired - dist) / 2;
-          const ux = dx / dist;
-          const uy = dy / dist;
-          a.x -= ux * push;
-          a.y -= uy * push;
-          b.x += ux * push;
-          b.y += uy * push;
-          totalShift += push * 2;
-        }
-      }
-
-      for (const id of targetIds) {
-        const point = next.get(id)!;
-        const r = radiusById.get(id) || 30;
-        for (const blocker of blockers) {
-          const dx = point.x - blocker.x;
-          const dy = point.y - blocker.y;
-          const dist = Math.hypot(dx, dy) || 0.0001;
-          const desired = r + blocker.radius + padding;
-          if (dist >= desired) continue;
-
-          const push = desired - dist;
-          point.x += (dx / dist) * push;
-          point.y += (dy / dist) * push;
-          totalShift += push;
-        }
-      }
-
-      if (totalShift < 0.35) break;
-    }
-
-    return next;
-  };
-  const handleBalancedLayoutClick = useCallback(async (forceAll = false, explicitIds?: string[]) => {
-    if (!networkRef.current || !nodesDataSetRef.current) return;
-
-    const data = artifactDataRef.current || {};
-    const allNodes = data.nodes || [];
-    if (!allNodes.length) return;
-
-    const selectedIds = networkRef.current.getSelectedNodes().map((id) => String(id));
-    const targetIds = (explicitIds && explicitIds.length)
-      ? explicitIds
-      : ((!forceAll && selectedIds.length)
-          ? selectedIds
-          : allNodes.map((node: any) => String(getNodeId(node))));
-
-    if (targetIds.length <= 1) return;
-
-    setLabelsSuppressed(true);
-    try {
-    const targetSet = new Set(targetIds);
-    const allIds = allNodes.map((node: any) => String(getNodeId(node)));
-    const physicsFlags = allIds.map((id) => ({ id, physics: targetSet.has(id) }));
-    nodesDataSetRef.current.update(physicsFlags);
-
-    const cfg = layoutConfig.physicsEngine;
-
-    networkRef.current.setOptions({
-      physics: {
-        enabled: true,
-        solver: cfg.solver,
-        forceAtlas2Based: {
-          gravitationalConstant: cfg.gravitationalConstant,
-          centralGravity: cfg.centralGravity,
-          springLength: cfg.springLength,
-          springConstant: cfg.springConstant,
-          damping: cfg.damping,
-          avoidOverlap: cfg.avoidOverlap
-        },
-        minVelocity: cfg.minVelocity,
-        timestep: cfg.timestep,
-        stabilization: {
-          enabled: true,
-          iterations: cfg.iterations,
-          fit: false,
-          updateInterval: 25
-        }
-      }
-    });
-
-    await new Promise<void>((resolve) => {
-      let settled = false;
-      const finish = () => {
-        if (settled) return;
-        settled = true;
-        try {
-          networkRef.current?.off?.('stabilizationIterationsDone', onDone as any);
-        } catch {
-          // no-op
-        }
-        resolve();
-      };
-      const onDone = () => finish();
-
-      networkRef.current?.on('stabilizationIterationsDone', onDone as any);
-      networkRef.current?.startSimulation();
-      setTimeout(finish, cfg.maxDurationMs);
-    });
-
-    networkRef.current.stopSimulation();
-
-    const moves = targetIds.map((id) => {
-      const pos = networkRef.current!.getPosition(id);
-      return { nodeId: id, x: Math.round(Number(pos.x || 0)), y: Math.round(Number(pos.y || 0)) };
-    });
-
-    nodesDataSetRef.current.update([
-      ...allIds.map((id) => ({ id, physics: false })),
-      ...moves.map((move) => ({ id: move.nodeId, x: move.x, y: move.y }))
-    ]);
-
-    networkRef.current.setOptions({ physics: { enabled: false } });
-
-    const groupId = createLayoutGroupId();
-    if (onNodesMove && moves.length > 1) {
-      onNodesMove(moves, groupId);
-    } else {
-      moves.forEach((move) => onNodeMove(move.nodeId, move.x, move.y, groupId));
-    }
-
-    networkRef.current.selectNodes(targetIds, false);
-    updateSelectionFromNetwork();
-    } finally {
-      setLabelsSuppressed(false);
-    }
-  }, [onNodeMove, onNodesMove, setLabelsSuppressed, updateSelectionFromNetwork]);
-
-  useEffect(() => {
-    const handler = (event: Event) => {
-      const detail = (event as CustomEvent<any>)?.detail || {};
-      const newNodeIds = Array.isArray(detail.newNodeIds) ? detail.newNodeIds.map((id: any) => String(id)).filter(Boolean) : [];
-      if (newNodeIds.length === 0) return;
-      const autoLayout = detail.autoLayout !== false;
-      setPendingPluginNodeIds((prev) => Array.from(new Set([...prev, ...newNodeIds])));
-      if (!autoLayout) return;
-
-      const tryRun = (attempt = 0) => {
-        const ds = nodesDataSetRef.current;
-        const availableIds = newNodeIds.filter((id) => Boolean(ds?.get(id)));
-        if (!availableIds.length) {
-          if (attempt < 12) {
-            window.setTimeout(() => tryRun(attempt + 1), 150);
-          }
-          return;
-        }
-        networkRef.current?.selectNodes(availableIds, false);
-        void handleBalancedLayoutClick(false, availableIds).then(() => {
-          setPendingPluginNodeIds((prev) => prev.filter((id) => !availableIds.includes(id)));
-        });
-      };
-      tryRun();
-    };
-
-    window.addEventListener("graph:run-physics-layout", handler as EventListener);
-    return () => window.removeEventListener("graph:run-physics-layout", handler as EventListener);
-  }, [handleBalancedLayoutClick]);
-
-  useEffect(() => {
-    const handler = (event: Event) => {
-      if (!networkRef.current) return;
-      const detail = (event as CustomEvent<any>)?.detail || {};
-      const nodeIds = Array.isArray(detail.nodeIds) ? detail.nodeIds.map((id: any) => String(id)) : [];
-      const edgeIds = Array.isArray(detail.edgeIds) ? detail.edgeIds.map((id: any) => String(id)) : [];
-      networkRef.current.setSelection({ nodes: nodeIds, edges: edgeIds }, { unselectAll: true, highlightEdges: false });
-      updateSelectionFromNetwork();
-    };
-
-    window.addEventListener('graph:set-selection', handler as EventListener);
-    return () => window.removeEventListener('graph:set-selection', handler as EventListener);
-  }, [updateSelectionFromNetwork]);
-
-
-  const handleAutoLayoutClick = useCallback(async () => {
-    if (!networkRef.current || !nodesDataSetRef.current) return;
-    const data = artifactDataRef.current || {};
-    const allNodes = data.nodes || [];
-    if (!allNodes.length) return;
-
-    const selectedIds = networkRef.current.getSelectedNodes().map((id) => String(id));
-    const targetIds = selectedIds.length
-      ? selectedIds
-      : allNodes.map((node: any) => String(getNodeId(node)));
-
-    if (targetIds.length <= 1) return;
-
-    setLabelsSuppressed(true);
-    try {
-    const targetSet = new Set(targetIds);
-    const allIds = allNodes.map((node: any) => String(getNodeId(node)));
-    const nodeById = new Map(allNodes.map((node: any) => [String(getNodeId(node)), node]));
-
-    const blockers = selectedIds.length
-      ? allNodes
-          .filter((node: any) => !targetSet.has(String(getNodeId(node))))
-          .map((node: any) => ({
-            x: Number(node.position_x || 0),
-            y: Number(node.position_y || 0),
-            radius: estimateNodeFootprint(node)
-          }))
-      : [];
-
-    const physicsFlags = allIds.map((id) => ({ id, physics: targetSet.has(id) }));
-    nodesDataSetRef.current.update(physicsFlags);
-
-    networkRef.current.setOptions({
-      physics: {
-        enabled: true,
-        solver: 'forceAtlas2Based',
-        forceAtlas2Based: {
-          gravitationalConstant: layoutConfig.hybrid.physics.gravitationalConstantBase * layoutConfig.hybrid.spacingMultiplier,
-          centralGravity: layoutConfig.hybrid.physics.centralGravityBase / layoutConfig.hybrid.spacingMultiplier,
-          springLength: layoutConfig.hybrid.physics.springLengthBase * layoutConfig.hybrid.spacingMultiplier,
-          springConstant: layoutConfig.hybrid.physics.springConstant,
-          avoidOverlap: layoutConfig.hybrid.physics.avoidOverlap
-        },
-        minVelocity: layoutConfig.hybrid.physics.minVelocity,
-        timestep: layoutConfig.hybrid.physics.timestep,
-        stabilization: false
-      }
-    });
-
-    networkRef.current.startSimulation();
-    await new Promise((resolve) => setTimeout(resolve, layoutConfig.hybrid.forceDurationMs));
-    networkRef.current.stopSimulation();
-
-    const forcePositions = new Map<string, { x: number; y: number }>();
-    targetIds.forEach((id) => {
-      const pos = networkRef.current!.getPosition(id);
-      forcePositions.set(id, { x: Number(pos.x || 0), y: Number(pos.y || 0) });
-    });
-
-    const radiusById = new Map<string, number>();
-    targetIds.forEach((id) => {
-      const node = nodeById.get(id);
-      radiusById.set(id, estimateNodeFootprint(node));
-    });
-
-    const finalPositions = runAntiOverlap(targetIds, forcePositions, radiusById, blockers);
-
-    const moves = targetIds.map((id) => {
-      const pos = finalPositions.get(id) || forcePositions.get(id) || { x: 0, y: 0 };
-      return { nodeId: id, x: Math.round(pos.x), y: Math.round(pos.y) };
-    });
-
-    nodesDataSetRef.current.update([
-      ...allIds.map((id) => ({ id, physics: false })),
-      ...moves.map((move) => ({ id: move.nodeId, x: move.x, y: move.y }))
-    ]);
-
-    networkRef.current.setOptions({ physics: { enabled: false } });
-
-    const groupId = createLayoutGroupId();
-    if (onNodesMove && moves.length > 1) {
-      onNodesMove(moves, groupId);
-    } else {
-      moves.forEach((move) => onNodeMove(move.nodeId, move.x, move.y, groupId));
-    }
-
-    networkRef.current.selectNodes(targetIds, false);
-    updateSelectionFromNetwork();
-    } finally {
-      setLabelsSuppressed(false);
-    }
-  }, [onNodeMove, onNodesMove, setLabelsSuppressed, updateSelectionFromNetwork]);
-
-  const handleSelectConnectedEdges = useCallback(() => {
-    if (!networkRef.current) return;
-
-    const selectedNodeIds = networkRef.current.getSelectedNodes().map((id) => String(id));
-    if (selectedNodeIds.length === 0) return;
-
-    const data = artifactDataRef.current || {};
-    const edgeIds = new Set<string>(networkRef.current.getSelectedEdges().map((id) => String(id)));
-
-    (data.edges || []).forEach((edge: any) => {
-      const fromId = String(edge.from || edge.source_node || '');
-      const toId = String(edge.to || edge.target_node || '');
-      if (selectedNodeIds.includes(fromId) || selectedNodeIds.includes(toId)) {
-        edgeIds.add(String(edge.id));
-      }
-    });
-
-    networkRef.current.setSelection({ nodes: selectedNodeIds, edges: Array.from(edgeIds) }, { unselectAll: true, highlightEdges: false });
-    updateSelectionFromNetwork();
-  }, [updateSelectionFromNetwork]);
-
-  const handleSelectEndpoints = useCallback(() => {
-    if (!networkRef.current) return;
-
-    const data = artifactDataRef.current || {};
-    const selectedNodeIds = new Set<string>(networkRef.current.getSelectedNodes().map((id) => String(id)));
-    if (selectedNodeIds.size === 0) return;
-
-    const selectedEdgeIds = new Set<string>(networkRef.current.getSelectedEdges().map((id) => String(id)));
-
-    (data.edges || []).forEach((edge: any) => {
-      const fromId = String(edge.from || edge.source_node || "");
-      const toId = String(edge.to || edge.target_node || "");
-      if (selectedNodeIds.has(fromId) || selectedNodeIds.has(toId)) {
-        selectedNodeIds.add(fromId);
-        selectedNodeIds.add(toId);
-        selectedEdgeIds.add(String(edge.id));
-      }
-    });
-
-    networkRef.current.setSelection({ nodes: Array.from(selectedNodeIds), edges: Array.from(selectedEdgeIds) }, { unselectAll: true, highlightEdges: false });
-    updateSelectionFromNetwork();
-  }, [updateSelectionFromNetwork]);
-
-
-  const handleFitClick = useCallback(() => {
-    if (!networkRef.current) return;
-    networkRef.current.fit({ animation: true, duration: 250 });
-  }, []);
-
-  const handleFitSelectionClick = useCallback(() => {
-    if (!networkRef.current) return;
-
-    const selectedNodeIds = networkRef.current.getSelectedNodes().map((id) => String(id));
-    const selectedEdgeIds = networkRef.current.getSelectedEdges().map((id) => String(id));
-    const targetNodes = new Set<string>(selectedNodeIds);
-
-    if (selectedEdgeIds.length > 0) {
-      const edges = (artifactDataRef.current?.edges || []) as any[];
-      edges.forEach((edge: any) => {
-        if (!selectedEdgeIds.includes(String(edge.id))) return;
-        targetNodes.add(String(edge.from || edge.source_node || ''));
-        targetNodes.add(String(edge.to || edge.target_node || ''));
-      });
-    }
-
-    const nodeIds = Array.from(targetNodes).filter(Boolean);
-    if (!nodeIds.length) return;
-
-    networkRef.current.fit({
-      nodes: nodeIds,
-      animation: { duration: 250, easingFunction: 'easeInOutQuad' }
-    });
-  }, []);
-
-  const handleInvertSelectionClick = useCallback(() => {
-    if (!networkRef.current || !nodesDataSetRef.current || !edgesDataSetRef.current) return;
-
-    const allNodeIds = nodesDataSetRef.current.getIds().map((id: any) => String(id));
-    const allEdgeIds = edgesDataSetRef.current.getIds().map((id: any) => String(id));
-    const selectedNodeIds = new Set(networkRef.current.getSelectedNodes().map((id: any) => String(id)));
-    const selectedEdgeIds = new Set(networkRef.current.getSelectedEdges().map((id: any) => String(id)));
-
-    const nextNodeIds = allNodeIds.filter((id) => !selectedNodeIds.has(id));
-    const nextEdgeIds = allEdgeIds.filter((id) => !selectedEdgeIds.has(id));
-
-    networkRef.current.setSelection({ nodes: nextNodeIds, edges: nextEdgeIds }, { unselectAll: true, highlightEdges: false });
-    updateSelectionFromNetwork();
-  }, [updateSelectionFromNetwork]);
-
-  const handleLayoutNewNodesClick = useCallback(async () => {
-    if (pendingPluginNodeIds.length === 0) return;
-    const ds = nodesDataSetRef.current;
-    const availableIds = pendingPluginNodeIds.filter((id) => Boolean(ds?.get(id)));
-    if (availableIds.length === 0) {
-      setPendingPluginNodeIds([]);
-      return;
-    }
-    networkRef.current?.selectNodes(availableIds, false);
-    await handleBalancedLayoutClick(false, availableIds);
-    setPendingPluginNodeIds((prev) => prev.filter((id) => !availableIds.includes(id)));
-  }, [handleBalancedLayoutClick, pendingPluginNodeIds]);
-
-  useEffect(() => {
-    setPendingPluginNodeIds([]);
-  }, [artifact.id]);
-  const handleHistoryJump = useCallback((state: any) => {
-    console.log('[GraphView] History jump');
-
-  }, []);
-  const pluginMenuTree = useMemo(() => buildPluginMenuTree(pluginMenu?.plugins || []), [pluginMenu?.plugins]);
-  const menuMaxWidth = 360;
-  const menuMaxHeight = 440;
-  const pluginMenuLeft = pluginMenu ? Math.max(8, Math.min(pluginMenu.x + 8, (containerRef.current?.clientWidth || 800) - menuMaxWidth - 8)) : 8;
-  const pluginMenuTop = pluginMenu ? Math.max(GRAPH_TOOLBAR_HEIGHT + 8, Math.min(pluginMenu.y + GRAPH_TOOLBAR_HEIGHT + 8, GRAPH_TOOLBAR_HEIGHT + (containerRef.current?.clientHeight || 600) - menuMaxHeight - 8)) : GRAPH_TOOLBAR_HEIGHT + 8;
-  const getPluginMenuEntries = useCallback((node: PluginMenuNode | null): PluginMenuEntry[] => {
-    const folders = (node ? node.children : pluginMenuTree).map((child) => ({
-      kind: 'folder' as const,
-      key: child.key,
-      label: child.label,
-      node: child,
-    }));
-
-    const plugins = (node ? node.plugins : []).map((plugin) => ({
-      kind: 'plugin' as const,
-      key: `plugin:${plugin.id}`,
-      label: plugin.name,
-      plugin,
-    }));
-
-    return [...folders, ...plugins];
-  }, [pluginMenuTree]);
-
-  const renderPluginMenuRows = (entries: PluginMenuEntry[], depth = 0): React.ReactNode => (
-    <>
-      {entries.map((entry) => {
-        const rowBaseStyle: React.CSSProperties = {
-          width: '100%',
-          textAlign: 'left',
-          border: 'none',
-          background: 'transparent',
-          color: '#0f172a',
-          borderRadius: 4,
-          padding: '4px 8px',
-          cursor: 'pointer',
-          fontSize: 12,
-          lineHeight: '16px',
-          display: 'block',
-          whiteSpace: 'nowrap',
-          paddingLeft: `${8 + depth * 14}px`
-        };
-
-        if (entry.kind === 'plugin' && entry.plugin) {
-          return (
-            <button
-              key={entry.key}
-              type='button'
-              onClick={() => runPluginFromMenu(entry.plugin!, pluginMenu?.context || {})}
-              style={rowBaseStyle}
-            >
-              {entry.label}
-            </button>
-          );
-        }
-
-        const folderNode = entry.node;
-        if (!folderNode) return null;
-
-        return (
-          <React.Fragment key={entry.key}>
-            <div
-              style={{
-                ...rowBaseStyle,
-                cursor: 'default',
-                color: '#475569',
-                fontWeight: 600
-              }}
-            >
-              {entry.label}
-            </div>
-            {renderPluginMenuRows(getPluginMenuEntries(folderNode), depth + 1)}
-          </React.Fragment>
-        );
-      })}
-    </>
-  );
 
   const isGraphEmpty = !artifact.data || (!(artifact.data.nodes?.length) && !(artifact.data.edges?.length));
 
   return (
     <div className="graph-view" style={{ height: '100%', position: 'relative', background: '#ffffff', overflow: 'hidden' }}>
       
-      <div style={{ 
-        position: 'absolute', 
-        top: 8,
-        left: 8,
-        zIndex: 10, 
-        display: 'flex', 
-        gap: '8px',
-        background: 'rgba(255, 255, 255, 0.95)',
-        border: '1px solid #d7deea',
-        padding: '8px 12px',
-        borderRadius: '6px',
-        backdropFilter: 'blur(4px)'
-      }}>
-        <button 
-          onClick={handleUndoClick} 
-          disabled={!canUndo}
-          title="Отменить (Ctrl+Z)"
-          style={{
-            padding: '6px 12px',
-            background: '#2563eb',
-            border: '1px solid #2563eb',
-            borderRadius: '4px',
-            color: '#ffffff',
-            cursor: canUndo ? 'pointer' : 'not-allowed',
-            opacity: canUndo ? 1 : 0.5
-          }}
-        >
-          {'\u21B6'}
-        </button>
-        <button 
-          onClick={handleRedoClick} 
-          disabled={!canRedo}
-          title="Повторить (Ctrl+Y)"
-          style={{
-            padding: '6px 12px',
-            background: '#2563eb',
-            border: '1px solid #2563eb',
-            borderRadius: '4px',
-            color: '#ffffff',
-            cursor: canRedo ? 'pointer' : 'not-allowed',
-            opacity: canRedo ? 1 : 0.5
-          }}
-        >
-          {'\u21B7'}
-        </button>
-        <button
-          onClick={handleAutoLayoutClick}
-          title="Авторазмещение"
-          style={{
-            padding: '6px 10px',
-            background: '#2563eb',
-            border: '1px solid #2563eb',
-            borderRadius: '4px',
-            color: '#ffffff',
-            cursor: 'pointer'
-          }}
-        >
-          {'\u2728'}
-        </button>
-        <button
-          onClick={handleBalancedLayoutClick}
-          title="Оптимальная раскладка"
-          style={{
-            padding: '6px 10px',
-            background: '#2563eb',
-            border: '1px solid #2563eb',
-            borderRadius: '4px',
-            color: '#ffffff',
-            cursor: 'pointer'
-          }}
-        >
-          {'\u2696'}
-        </button>
-        <button
-          onClick={handleFitClick}
-          title="Показать весь граф"
-          style={{
-            padding: '6px 10px',
-            background: '#2563eb',
-            border: '1px solid #2563eb',
-            borderRadius: '4px',
-            color: '#ffffff',
-            cursor: 'pointer'
-          }}
-        >
-          {'◎'}
-        </button>
-        <button
-          onClick={handleFitSelectionClick}
-          title={"Позиционировать экран по выделенным элементам"}
-          style={{
-            padding: '6px 10px',
-            background: '#2563eb',
-            border: '1px solid #2563eb',
-            borderRadius: '4px',
-            color: '#ffffff',
-            cursor: 'pointer'
-          }}
-        >
-          {'⌖'}
-        </button>
-        <button
-          onClick={handleInvertSelectionClick}
-          title={"Инвертировать выделение"}
-          style={{
-            padding: '6px 10px',
-            background: '#2563eb',
-            border: '1px solid #2563eb',
-            borderRadius: '4px',
-            color: '#ffffff',
-            cursor: 'pointer'
-          }}
-        >
-          {'↔'}
-        </button>
-        <div style={{ fontSize: '12px', color: '#475569', marginLeft: '8px', padding: '6px 0' }}>
-          v{artifact.version}
-        </div>
-      </div>
+      <GraphToolbar
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onUndo={handleUndoClick}
+        onRedo={handleRedoClick}
+        onAutoLayout={handleAutoLayoutClick}
+        onBalancedLayout={handleBalancedLayoutClick}
+        onFit={handleFitClick}
+        onFitSelection={handleFitSelectionClick}
+        onInvertSelection={handleInvertSelectionClick}
+        version={artifact.version}
+      />
 
       
-      <div style={{ 
-        position: 'absolute', 
-        top: 10, 
-        right: 10, 
-        zIndex: 10, 
-        display: 'flex', 
-        flexDirection: 'column', 
-        gap: '5px' 
-      }}>
-        {isRecording && (
-          <div style={{ background: '#f59e0b', color: 'white', padding: '4px 12px', borderRadius: '4px', fontSize: '12px' }}>
-            Recording...
-          </div>
-        )}
-        {lastError && (
-          <div style={{ background: '#ef4444', color: 'white', padding: '4px 12px', borderRadius: '4px', fontSize: '12px' }}>
-            Error: {lastError.message}
-          </div>
-        )}
-        {pendingMoves.length > 0 && (
-          <div style={{ background: '#3b82f6', color: 'white', padding: '4px 12px', borderRadius: '4px', fontSize: '12px' }}>
-            Grouping {new Set(pendingMoves.map(m => m.nodeId)).size} nodes...
-          </div>
-        )}
-        {nodeCreateSpec && (
-          <div style={{ background: '#16a34a', color: 'white', padding: '4px 12px', borderRadius: '4px', fontSize: '12px' }}>
-            {`\u041a\u043b\u0438\u043a\u043d\u0438\u0442\u0435 \u043f\u043e \u0433\u0440\u0430\u0444\u0443 \u0434\u043b\u044f \u0434\u043e\u0431\u0430\u0432\u043b\u0435\u043d\u0438\u044f \u0443\u0437\u043b\u0430: ${nodeCreateSpec.label}`}
-          </div>
-        )}
-        {connectType && (
-          <div style={{ background: '#2563eb', color: 'white', padding: '4px 12px', borderRadius: '4px', fontSize: '12px' }}>
-            {edgeSourceId
-              ? '\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u043a\u043e\u043d\u0435\u0447\u043d\u044b\u0439 \u0443\u0437\u0435\u043b \u0434\u043b\u044f \u0441\u043e\u0437\u0434\u0430\u043d\u0438\u044f \u0441\u0432\u044f\u0437\u0438'
-              : '\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u043d\u0430\u0447\u0430\u043b\u044c\u043d\u044b\u0439 \u0443\u0437\u0435\u043b \u0434\u043b\u044f \u0441\u043e\u0437\u0434\u0430\u043d\u0438\u044f \u0441\u0432\u044f\u0437\u0438'}
-          </div>
-        )}
-      </div>
-
-      
-
-      {pluginExecutionMessage && (
-        <div style={{
-          position: 'absolute',
-          top: GRAPH_TOOLBAR_HEIGHT + 10,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          zIndex: 1100,
-          background: 'rgba(37, 99, 235, 0.95)',
-          color: '#ffffff',
-          border: '1px solid #1d4ed8',
-          borderRadius: 8,
-          padding: '8px 12px',
-          fontSize: 12,
-          boxShadow: '0 8px 18px rgba(15, 23, 42, 0.2)'
-        }}>
-          {pluginExecutionMessage}
-        </div>
-      )}
-      {pluginMenu && (
-        <div
-          ref={pluginMenuRef}
-          style={{
-            position: 'absolute',
-            left: pluginMenuLeft,
-            top: pluginMenuTop,
-            zIndex: 1000,
-            minWidth: 240,
-            maxWidth: 300,
-            background: '#ffffff',
-            border: '1px solid #d7deea',
-            borderRadius: 8,
-            boxShadow: '0 12px 28px rgba(15, 23, 42, 0.16)',
-            padding: 6
-          }}
-        >
-
-
-          <button
-            type='button'
-            onClick={() => {
-              handleSelectConnectedEdges();
-              closePluginMenu();
-            }}
-            disabled={!pluginMenu.context.selected_nodes || pluginMenu.context.selected_nodes.length === 0}
-            style={{
-              width: '100%',
-              textAlign: 'left',
-              border: 'none',
-              background: 'transparent',
-              color: '#0f172a',
-              borderRadius: 4,
-              padding: '5px 8px',
-              cursor: (!pluginMenu.context.selected_nodes || pluginMenu.context.selected_nodes.length === 0) ? 'not-allowed' : 'pointer',
-              opacity: (!pluginMenu.context.selected_nodes || pluginMenu.context.selected_nodes.length === 0) ? 0.5 : 1,
-              fontSize: 12,
-              lineHeight: '16px'
-            }}
-          >
-            {'\u0412\u044b\u0434\u0435\u043b\u0438\u0442\u044c \u0441\u0432\u044f\u0437\u0438'}
-          </button>
-
-          <button
-            type='button'
-            onClick={() => {
-              handleSelectEndpoints();
-              closePluginMenu();
-            }}
-            disabled={!pluginMenu.context.selected_nodes || pluginMenu.context.selected_nodes.length === 0}
-            style={{
-              width: '100%',
-              textAlign: 'left',
-              border: 'none',
-              background: 'transparent',
-              color: '#0f172a',
-              borderRadius: 4,
-              padding: '5px 8px',
-              cursor: (!pluginMenu.context.selected_nodes || pluginMenu.context.selected_nodes.length === 0) ? 'not-allowed' : 'pointer',
-              opacity: (!pluginMenu.context.selected_nodes || pluginMenu.context.selected_nodes.length === 0) ? 0.5 : 1,
-              fontSize: 12,
-              lineHeight: '16px'
-            }}
-          >
-            {'\u0412\u044b\u0434\u0435\u043b\u0438\u0442\u044c \u043e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u044f'}
-          </button>
-
-          <div style={{ height: 1, background: '#eef2f7', margin: '4px 0 6px 0' }} />
-
-          {pluginMenu.loading && (
-            <div style={{ fontSize: 12, color: '#334155', padding: '6px 8px' }}>{'\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430...'}</div>
-          )}
-          {!pluginMenu.loading && pluginMenuTree.length === 0 && (
-            <div style={{ fontSize: 12, color: '#64748b', padding: '6px 8px' }}>{'\u041d\u0435\u0442 \u0434\u043e\u0441\u0442\u0443\u043f\u043d\u044b\u0445 \u043f\u043b\u0430\u0433\u0438\u043d\u043e\u0432'}</div>
-          )}
-          {!pluginMenu.loading && pluginExecutionMessage && (
-            <div style={{ fontSize: 12, color: '#2563eb', padding: '6px 8px' }}>Идет выполнение плагина. Запуск новых плагинов временно заблокирован.</div>
-          )}
-          {!pluginMenu.loading && renderPluginMenuRows(getPluginMenuEntries(null))}
-        </div>
-      )}
-
-      {isGraphEmpty && (
-        <div style={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          textAlign: 'center',
-          color: '#64748b',
-          pointerEvents: 'none',
-          zIndex: 2
-        }}>
-          <h3 style={{ margin: '0 0 8px 0' }}>{'\u041f\u0443\u0441\u0442\u043e\u0439 \u0433\u0440\u0430\u0444'}</h3>
-          <p style={{ margin: 0 }}>{'\u041a\u043b\u0438\u043a\u043d\u0438\u0442\u0435 \u043f\u043e \u043f\u043e\u043b\u044e, \u0447\u0442\u043e\u0431\u044b \u0441\u043e\u0437\u0434\u0430\u0442\u044c \u043f\u0435\u0440\u0432\u0443\u044e \u0432\u0435\u0440\u0448\u0438\u043d\u0443'}</p>
-        </div>
-      )}
+      <GraphStatusOverlays
+        isRecording={isRecording}
+        lastError={lastError}
+        pendingMoveCount={new Set(pendingMoves.map((m) => m.nodeId)).size}
+        nodeCreateSpec={nodeCreateSpec}
+        connectType={connectType}
+        edgeSourceId={edgeSourceId}
+        pluginExecutionMessage={pluginExecutionMessage}
+        toolbarHeight={GRAPH_TOOLBAR_HEIGHT}
+      />
+      <PluginContextMenu
+        pluginMenu={pluginMenu}
+        pluginMenuRef={pluginMenuRef}
+        pluginMenuLeft={pluginMenuLeft}
+        pluginMenuTop={pluginMenuTop}
+        pluginMenuTree={pluginMenuTree}
+        pluginExecutionMessage={pluginExecutionMessage}
+        getPluginMenuEntries={getPluginMenuEntries}
+        onRunPlugin={runPluginFromMenu}
+        onSelectLinks={handleSelectConnectedEdges}
+        onSelectEndpoints={handleSelectEndpoints}
+        onClose={closePluginMenu}
+      />
+      {isGraphEmpty && <GraphEmptyState />}
       <div ref={containerRef} style={{ width: '100%', height: `calc(100% - ${GRAPH_TOOLBAR_HEIGHT}px)`, marginTop: `${GRAPH_TOOLBAR_HEIGHT}px` }} />
 
     </div>
@@ -2402,6 +1365,41 @@ export const GraphView: React.FC<GraphViewProps> = ({
 };
 
 export default GraphView;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

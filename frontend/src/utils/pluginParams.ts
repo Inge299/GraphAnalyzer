@@ -1,4 +1,4 @@
-// frontend/src/utils/pluginParams.ts
+﻿// frontend/src/utils/pluginParams.ts
 import type { ApiPlugin, PluginParamSpec } from '../types/api';
 
 const STORAGE_PREFIX = 'ga:project-plugin-defaults:';
@@ -36,8 +36,10 @@ const saveStored = (projectId: number, next: ProjectPluginDefaults) => {
 const isStartKey = (key: string) => START_KEYS.includes(key.toLowerCase());
 const isEndKey = (key: string) => END_KEYS.includes(key.toLowerCase());
 
+const getParamKey = (spec: PluginParamSpec) => String(spec.key || spec.name || '').trim();
+
 const getDefaultForParam = (spec: PluginParamSpec, defaults: ProjectPluginDefaults) => {
-  const key = (spec.key || '').toLowerCase();
+  const key = getParamKey(spec).toLowerCase();
   if (spec.default !== undefined && spec.default !== null && String(spec.default).trim() !== '') {
     return spec.default;
   }
@@ -190,7 +192,7 @@ const openPluginParamsDialog = (
       row.style.gap = '8px';
 
       const label = document.createElement('label');
-      label.textContent = spec.label || spec.key;
+      label.textContent = spec.label || getParamKey(spec);
       label.style.fontSize = '13px';
       label.style.color = '#334155';
 
@@ -204,8 +206,8 @@ const openPluginParamsDialog = (
       return { spec, input };
     });
 
-    const dateStart = controls.find((item) => item.spec.type === 'date' && isStartKey(item.spec.key));
-    const dateEnd = controls.find((item) => item.spec.type === 'date' && isEndKey(item.spec.key));
+    const dateStart = controls.find((item) => item.spec.type === 'date' && isStartKey(getParamKey(item.spec)));
+    const dateEnd = controls.find((item) => item.spec.type === 'date' && isEndKey(getParamKey(item.spec)));
 
     if (dateStart && dateEnd) {
       const presetRow = document.createElement('div');
@@ -310,7 +312,8 @@ const openPluginParamsDialog = (
 
       for (const control of controls) {
         const { spec, input } = control;
-        const label = spec.label || spec.key;
+        const key = getParamKey(spec);
+        const label = spec.label || key;
         const raw = toStringSafe(input.value).trim();
 
         if (!raw) {
@@ -335,7 +338,13 @@ const openPluginParamsDialog = (
           return;
         }
 
-        result[spec.key] = parsed;
+        if (!key) {
+          showError('Некорректный параметр плагина: отсутствует key/name.');
+          input.focus();
+          return;
+        }
+
+        result[key] = parsed;
       }
 
       close(result);
@@ -400,3 +409,4 @@ export const groupPluginsByMenuPath = (plugins: ApiPlugin[]) => {
       items: [...list].sort((a, b) => a.name.localeCompare(b.name, 'ru')),
     }));
 };
+

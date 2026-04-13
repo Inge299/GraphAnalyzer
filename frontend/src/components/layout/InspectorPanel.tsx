@@ -304,9 +304,13 @@ const InspectorPanel: React.FC<InspectorPanelProps> = ({ onApplyGraphData, onSta
   const [activeTab, setActiveTab] = useState<'properties' | 'builder' | 'elements' | 'metadata'>('properties');
   const [plugins, setPlugins] = useState<ApiPlugin[]>([]);
   const [pluginsLoading, setPluginsLoading] = useState(false);
+  void pluginsLoading;
   const [pluginsError, setPluginsError] = useState<string | null>(null);
+  void pluginsError;
   const [runningPluginId, setRunningPluginId] = useState<string | null>(null);
+  void runningPluginId;
   const [pluginsMessage, setPluginsMessage] = useState<string | null>(null);
+  void pluginsMessage;
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState('');
   const [renaming, setRenaming] = useState(false);
@@ -343,7 +347,7 @@ const InspectorPanel: React.FC<InspectorPanelProps> = ({ onApplyGraphData, onSta
   const [builderNodeLabel, setBuilderNodeLabel] = useState('');
   const [builderNodeType, setBuilderNodeType] = useState('');
   const [builderEdgeType, setBuilderEdgeType] = useState('');
-  const [builderSaving, setBuilderSaving] = useState(false);
+  const [builderSaving] = useState(false);
 
   const selectedArtifact = useAppSelector(state => {
     const { currentArtifactId, items } = state.artifacts;
@@ -373,11 +377,11 @@ const InspectorPanel: React.FC<InspectorPanelProps> = ({ onApplyGraphData, onSta
       const selected_nodes = selectedElements
         .filter(item => item.type === 'node')
         .map(item => String(item.id))
-        .filter((id) => graphNodeIdSet.has(id));
+        .filter((id) => graphNodeIdSet.has(id)).slice(0, 120);
       const selected_edges = selectedElements
         .filter(item => item.type === 'edge')
         .map(item => String(item.id))
-        .filter((id) => graphEdgeIdSet.has(id));
+        .filter((id) => graphEdgeIdSet.has(id)).slice(0, 200);
 
       return { selected_nodes, selected_edges };
     }
@@ -768,6 +772,7 @@ const pluginContextKey = useMemo(() => {
   }, [selectedArtifact, nodeTypeDefinitions, edgeTypeDefinitions, builderNodeType, builderEdgeType]);
   const applicablePlugins = useMemo(() => plugins, [plugins]);
   const groupedPlugins = useMemo(() => groupPluginsByMenuPath(applicablePlugins), [applicablePlugins]);
+  void groupedPlugins;
 
   const handleRunPlugin = useCallback(async (plugin: ApiPlugin) => {
     if (!selectedArtifact) return;
@@ -829,6 +834,7 @@ const pluginContextKey = useMemo(() => {
       setRunningPluginId(null);
     }
   }, [selectedArtifact, pluginContext, dispatch]);
+  void handleRunPlugin;
 
   const handleSelectCreated = useCallback((artifactId: number) => {
     dispatch(setCurrentArtifact(artifactId));
@@ -1871,6 +1877,9 @@ const handleCreateNode = useCallback(() => {
 };
 
 export default InspectorPanel;
+
+
+
 
 
 

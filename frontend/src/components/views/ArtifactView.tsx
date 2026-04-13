@@ -1,11 +1,10 @@
-// frontend/src/components/views/ArtifactView.tsx
-import React, { Suspense, memo, useCallback, useEffect, useMemo, useState } from 'react';
+﻿// frontend/src/components/views/ArtifactView.tsx
+import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useAppDispatch } from '../../store';
 import { fetchArtifacts, setCurrentArtifact } from '../../store/slices/artifactsSlice';
 import { pluginApi } from '../../services/api';
 import type { ApiPlugin } from '../../types/api';
 import type { ApiArtifact } from '../../types/api';
-import { updateArtifact } from '../../store/slices/artifactsSlice';
 import { useActionWithUndo } from '../../hooks/useActionWithUndo';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import { setSelectedElement, setSelectedElements } from '../../store/slices/uiSlice';
@@ -13,28 +12,11 @@ import { GraphView } from './GraphView';
 
 interface ArtifactViewProps {
   artifact: ApiArtifact;
-  onClose: () => void;
   onUpdate: (updates: Partial<ApiArtifact>) => void;
 }
 
-const LoadingFallback = () => (
-  <div className="flex items-center justify-center h-full">
-    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500" />
-  </div>
-);
-
-const PlaceholderView = ({ icon, text }: { icon: string; text: string }) => (
-  <div className="flex items-center justify-center h-full text-gray-400">
-    <div className="text-center">
-      <div className="text-3xl mb-3">{icon}</div>
-      <div className="text-sm opacity-75">{text}</div>
-    </div>
-  </div>
-);
-
 const ArtifactView: React.FC<ArtifactViewProps> = memo(({
   artifact,
-  onClose,
   onUpdate,
 }) => {
   const dispatch = useAppDispatch();
@@ -52,22 +34,21 @@ const ArtifactView: React.FC<ArtifactViewProps> = memo(({
 
   const {
     execute,
+    undo,
+    redo,
     isRecording,
-    lastError
+    lastError,
+    canUndo,
+    canRedo,
   } = useActionWithUndo(
     artifact.id,
     artifact.data,
     async (newData: any) => {
       await onUpdate({ data: newData });
-      await dispatch(updateArtifact({
-        projectId: artifact.project_id,
-        id: artifact.id,
-        updates: { data: newData }
-      }));
     }
   );
 
-  useKeyboardShortcuts(artifact.id);
+  useKeyboardShortcuts(artifact.id, canUndo, canRedo);
   useEffect(() => {
     let isMounted = true;
     const loadPlugins = async () => {
@@ -150,7 +131,7 @@ const ArtifactView: React.FC<ArtifactViewProps> = memo(({
         };
       },
       {
-        description: `\u041f\u0435\u0440\u0435\u043c\u0435\u0449\u0435\u043d\u0438\u0435 \u0443\u0437\u043b\u0430 ${nodeId}`
+        description: `\u041f\u0435\u0440\u0435\u043c\u0435\u0449\u0435\u043d\u0438\u0435 \u0443\u0437\u043b\u0430 ${nodeId}`,
         actionType: 'move_node'
       }
     );
@@ -181,7 +162,7 @@ const ArtifactView: React.FC<ArtifactViewProps> = memo(({
         };
       },
       {
-        description: `\u0414\u043e\u0431\u0430\u0432\u043b\u0435\u043d\u0438\u0435 \u0443\u0437\u043b\u0430 ${nodeType}`
+        description: `\u0414\u043e\u0431\u0430\u0432\u043b\u0435\u043d\u0438\u0435 \u0443\u0437\u043b\u0430 ${nodeType}`,
         actionType: 'add_node'
       }
     );
@@ -211,7 +192,7 @@ const ArtifactView: React.FC<ArtifactViewProps> = memo(({
         };
       },
       {
-        description: `\u0423\u0434\u0430\u043b\u0435\u043d\u0438\u0435 \u0443\u0437\u043b\u0430 ${nodeId}`
+        description: `\u0423\u0434\u0430\u043b\u0435\u043d\u0438\u0435 \u0443\u0437\u043b\u0430 ${nodeId}`,
         actionType: 'delete_node'
       }
     );
@@ -268,11 +249,20 @@ const ArtifactView: React.FC<ArtifactViewProps> = memo(({
         key={artifact.id}
         artifact={artifact}
         onNodeMove={handleNodeMove}
+        onAddNodeAtPosition={(label: string, typeId: string, x: number, y: number) => {
+          void label;
+          handleAddNode({ x, y }, typeId || 'person');
+        }}
+        onDeleteSelection={(nodeIds: string[]) => {
+          nodeIds.forEach((nodeId) => {
+            handleDeleteNode(nodeId);
+          });
+        }}
         onNodesMove={() => {}}
-        onUndo={() => {}}
-        onRedo={() => {}}
-        canUndo={false}
-        canRedo={false}
+        onUndo={undo}
+        onRedo={redo}
+        canUndo={canUndo}
+        canRedo={canRedo}
         isRecording={isRecording}
         lastError={lastError}
       />
@@ -281,3 +271,7 @@ const ArtifactView: React.FC<ArtifactViewProps> = memo(({
 });
 
 export default ArtifactView;
+
+
+
+
