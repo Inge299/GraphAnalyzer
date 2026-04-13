@@ -1,4 +1,4 @@
-﻿"""Plugin: find related documents in RAG for selected graph objects."""
+"""Plugin: find related documents in RAG for selected graph objects."""
 
 from __future__ import annotations
 
@@ -177,18 +177,16 @@ class RagSearchDocumentsPlugin(PluginBase):
 
         return list(dedup.values())
 
-    async def _query_for_node(
+    async def _query_documents(
         self,
         rag: RagIntegrationService,
-        source_node: Dict[str, Any],
+        query_text: str,
         top_k: int,
         semaphore: asyncio.Semaphore,
         topic: Optional[str],
     ) -> Tuple[str, List[Dict[str, Any]], int, Optional[str]]:
-        query_text = node_label(source_node)
-        source_key = node_id(source_node)
         if not query_text:
-            return source_key, [], 0, None
+            return query_text, [], 0, None
 
         payload: Dict[str, Any] = {
             "query": query_text,
@@ -205,24 +203,24 @@ class RagSearchDocumentsPlugin(PluginBase):
             try:
                 response = await rag.query(payload)
                 if not isinstance(response, dict):
-                    return source_key, [], 0, None
+                    return query_text, [], 0, None
 
                 documents = self._extract_documents(response)
                 hits = int(response.get("hits_count") or len(response.get("hits") or []))
                 if documents or not topic:
-                    return source_key, documents, hits, None
+                    return query_text, documents, hits, None
 
                 retry_payload = dict(payload)
                 retry_payload.pop("topic", None)
                 retry = await rag.query(retry_payload)
                 if not isinstance(retry, dict):
-                    return source_key, documents, hits, None
+                    return query_text, documents, hits, None
 
                 retry_documents = self._extract_documents(retry)
                 retry_hits = int(retry.get("hits_count") or len(retry.get("hits") or []))
-                return source_key, retry_documents, retry_hits, None
+                return query_text, retry_documents, retry_hits, None
             except Exception as exc:
-                return source_key, [], 0, str(exc)
+                return query_text, [], 0, str(exc)
 
     async def execute(
         self,
@@ -278,14 +276,28 @@ class RagSearchDocumentsPlugin(PluginBase):
         topic = self._resolve_topic()
         semaphore = asyncio.Semaphore(parallel)
 
-        tasks = [self._query_for_node(rag, source_node, top_k, semaphore, topic) for source_node in selected_nodes]
-        results = await asyncio.gather(*tasks)
+        node_query_map: Dict[str, str] = {}
+        for source_node in selected_nodes:
+            source_key = node_id(source_node)
+            node_query_map[source_key] = node_label(source_node)
 
-        docs_by_source: Dict[str, List[Dict[str, Any]]] = {}
+        query_tasks: Dict[str, asyncio.Task[Tuple[str, List[Dict[str, Any]], int, Optional[str]]]] = {}
+        for query_text in set(node_query_map.values()):
+            if not query_text:
+                continue
+            query_tasks[query_text] = asyncio.create_task(
+                self._query_documents(rag, query_text, top_k, semaphore, topic)
+            )
+
+        query_results: Dict[str, Tuple[List[Dict[str, Any]], int, Optional[str]]] = {}
+        if query_tasks:
+            task_results = await asyncio.gather(*query_tasks.values())
+            for query_text, documents, hits, error in task_results:
+                query_results[query_text] = (documents, hits, error)
+
         total_hits = 0
         errors: List[str] = []
-        for source_key, documents, hits, error in results:
-            docs_by_source[source_key] = documents
+        for documents, hits, error in query_results.values():
             total_hits += hits
             if error:
                 errors.append(error)
@@ -297,7 +309,8 @@ class RagSearchDocumentsPlugin(PluginBase):
 
         for source_node in selected_nodes:
             source_id = node_id(source_node)
-            source_docs = docs_by_source.get(source_id) or []
+            query_text = node_query_map.get(source_id, "")
+            source_docs = (query_results.get(query_text) or ([], 0, None))[0]
             if max_docs_per_object > 0:
                 source_docs = source_docs[:max_docs_per_object]
 
