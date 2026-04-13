@@ -11,7 +11,7 @@ interface Tab {
 export interface SelectedElement {
   type: 'node' | 'edge';
   id: string;
-  data: any;
+  data?: any;
 }
 
 interface UIState {
@@ -67,12 +67,10 @@ const uiSlice = createSlice({
       state.activeTabId = action.payload;
     },
     setSelectedElement: (state, action: PayloadAction<SelectedElement | null>) => {
-      console.log('[uiSlice] Setting selected element:', action.payload);
       state.selectedElement = action.payload;
       state.selectedElements = action.payload ? [action.payload] : [];
     },
     setSelectedElements: (state, action: PayloadAction<SelectedElement[]>) => {
-      console.log('[uiSlice] Setting selected elements:', action.payload);
       state.selectedElements = action.payload;
       state.selectedElement = action.payload.length === 1 ? action.payload[0] : null;
     },

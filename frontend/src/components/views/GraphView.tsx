@@ -1,7 +1,8 @@
-﻿// frontend/src/components/views/GraphView.tsx
+// frontend/src/components/views/GraphView.tsx
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useAppDispatch } from '../../store';
 import { setSelectedElements } from '../../store/slices/uiSlice';
+import type { SelectedElement } from '../../store/slices/uiSlice';
 import { Network } from 'vis-network/standalone';
 import { DataSet } from 'vis-data/standalone';
 import { domainModelApi } from '../../services/api';
@@ -585,6 +586,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
   const isDraggingRef = useRef(false);
   const labelsSuppressedStateRef = useRef(false);
   const lastReduxStateRef = useRef<string>(JSON.stringify(artifact.data));
+  const lastSelectionDigestRef = useRef<string>('');
   const isFirstLoadRef = useRef(true);
   const [domainModelRevision, setDomainModelRevision] = useState(0);
   const [previewConfigRevision, setPreviewConfigRevision] = useState(0);
@@ -860,14 +862,17 @@ export const GraphView: React.FC<GraphViewProps> = ({
     if (!networkRef.current) return;
     const selectedNodeIds = networkRef.current.getSelectedNodes().map(id => String(id));
     const selectedEdgeIds = networkRef.current.getSelectedEdges().map(id => String(id));
+    const digest = selectedNodeIds.join(',') + '|' + selectedEdgeIds.join(',');
+    if (digest === lastSelectionDigestRef.current) return;
+    lastSelectionDigestRef.current = digest;
 
-    const nodes = selectedNodeIds.map((id: string) => ({
+    const nodes: SelectedElement[] = selectedNodeIds.map((id: string) => ({
       type: 'node',
       id,
       data: null,
     }));
 
-    const edges = selectedEdgeIds.map((id: string) => ({
+    const edges: SelectedElement[] = selectedEdgeIds.map((id: string) => ({
       type: 'edge',
       id,
       data: null,
@@ -1365,101 +1370,3 @@ export const GraphView: React.FC<GraphViewProps> = ({
 };
 
 export default GraphView;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

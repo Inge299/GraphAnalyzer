@@ -1,4 +1,4 @@
-﻿// frontend/src/components/layout/InspectorPanel.tsx
+// frontend/src/components/layout/InspectorPanel.tsx
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { fetchArtifacts, deleteArtifact, updateArtifactSync, setCurrentArtifact } from '../../store/slices/artifactsSlice';
@@ -154,7 +154,7 @@ const normalizeDisplayLabel = (candidate: string, fallback: string) => {
 const getEdgeTypeColor = (edgeType: DomainEdgeTypeOption | undefined) => {
   return String(edgeType?.defaultVisual?.color || edgeType?.color || '#64748b');
 };
-const getCommonValue = <T,>(items: SelectedElement[], getter: (item: SelectedElement) => T | undefined): T | undefined => {
+const getCommonValue = <T, U>(items: U[], getter: (item: U) => T | undefined): T | undefined => {
   if (items.length === 0) return undefined;
   const first = getter(items[0]);
   for (const item of items.slice(1)) {
@@ -182,6 +182,17 @@ type EdgeExtraAttributeState = {
   value: string;
   mixed: boolean;
   visibleOnGraph: 'on' | 'off' | 'mixed';
+};
+
+type GraphSelectedElement = SelectedElement & {
+  data: any;
+};
+
+type GraphSelectionState = {
+  nodes: GraphSelectedElement[];
+  edges: GraphSelectedElement[];
+  mode: 'none' | 'nodes' | 'edges' | 'mixed';
+  total: number;
 };
 
 const attributeTypePriority: Record<string, number> = {
@@ -448,8 +459,8 @@ const pluginContextKey = useMemo(() => {
         setIconOptions(uniqueIcons.length > 0 ? uniqueIcons : fallbackIconOptions);
 
         const nodeTypes = (model?.node_types || []).map((node) => ({
-          id: String(node?.id || ''),
-          label: normalizeDisplayLabel(String(node?.label || ''), String(node?.id || 'Р В Р в‚¬Р В Р’В·Р В Р’ВµР В Р’В»')),
+          id: String(node?.id || 'Узел'),
+          label: normalizeDisplayLabel(String(node?.label || ''), String(node?.id || 'Узел')),
           icon: String(node?.icon || '').trim(),
           defaultVisual: ((node as any)?.default_visual || {}) as Record<string, any>,
           attributes: Array.isArray((node as any)?.attributes)
@@ -470,8 +481,8 @@ const pluginContextKey = useMemo(() => {
         setNodeTypeDefinitions(nodeTypes);
 
         const edgeTypes = (model?.edge_types || []).map((edge) => ({
-          id: String((edge as any)?.id || ''),
-          label: normalizeDisplayLabel(String((edge as any)?.label || ''), String((edge as any)?.id || 'Р В Р Р‹Р В Р вЂ Р РЋР РЏР В Р’В·Р РЋР Р‰')),
+          id: String((edge as any)?.id || 'Связь'),
+          label: normalizeDisplayLabel(String((edge as any)?.label || ''), String((edge as any)?.id || 'Связь')),
           color: String((edge as any)?.default_visual?.color || '#64748b'),
           defaultVisual: (((edge as any)?.default_visual || {}) as Record<string, any>),
           allowedFrom: Array.isArray((edge as any)?.allowed_from) ? (edge as any).allowed_from.map((v: any) => String(v)) : ['*'],
@@ -570,7 +581,7 @@ const pluginContextKey = useMemo(() => {
     }
   }, [selectedArtifact?.name]);
 
-  const graphSelection = useMemo(() => {
+    const graphSelection = useMemo<GraphSelectionState | null>(() => {
     if (!selectedArtifact || selectedArtifact.type !== 'graph') return null;
 
     const data = selectedArtifact.data || { nodes: [], edges: [] };
@@ -578,16 +589,16 @@ const pluginContextKey = useMemo(() => {
     const edgeById = new Map((data.edges || []).map((edge: any) => [String(edge.id), edge]));
 
     const nodes = selectedElements
-      .filter(item => item.type === 'node')
-      .map((item) => ({ ...item, data: nodeById.get(String(item.id)) || item.data }))
-      .filter(item => !!item.data);
+      .filter((item): item is SelectedElement => item.type === 'node')
+      .map((item) => ({ ...item, data: nodeById.get(String(item.id)) ?? item.data }))
+      .filter((item): item is GraphSelectedElement => Boolean(item.data));
 
     const edges = selectedElements
-      .filter(item => item.type === 'edge')
-      .map((item) => ({ ...item, data: edgeById.get(String(item.id)) || item.data }))
-      .filter(item => !!item.data);
+      .filter((item): item is SelectedElement => item.type === 'edge')
+      .map((item) => ({ ...item, data: edgeById.get(String(item.id)) ?? item.data }))
+      .filter((item): item is GraphSelectedElement => Boolean(item.data));
 
-    const mode = nodes.length > 0 && edges.length > 0 ? 'mixed' : nodes.length > 0 ? 'nodes' : edges.length > 0 ? 'edges' : 'none';
+    const mode: GraphSelectionState['mode'] = nodes.length > 0 && edges.length > 0 ? 'mixed' : nodes.length > 0 ? 'nodes' : edges.length > 0 ? 'edges' : 'none';
     return { nodes, edges, mode, total: nodes.length + edges.length };
   }, [selectedArtifact, selectedElements]);
 
@@ -988,7 +999,7 @@ const handleCreateNode = useCallback(() => {
 
       const conflictInSelected = Array.from(selectedTypeGroups.values()).some((count) => count > 1);
       if (conflictInSelected) {
-        window.alert('Р В Р в‚¬Р В Р’В·Р В Р’ВµР В Р’В» Р РЋР С“ Р РЋРІР‚С™Р В Р’В°Р В РЎвЂќР В РЎвЂР В РЎВ Р РЋРІР‚С™Р В РЎвЂР В РЎвЂ”Р В РЎвЂўР В РЎВ Р В РЎвЂ Р В РЎвЂ”Р В РЎвЂўР В РўвЂР В РЎвЂ”Р В РЎвЂР РЋР С“Р РЋР Р‰Р РЋР вЂ№ Р РЋРЎвЂњР В Р’В¶Р В Р’Вµ Р РЋР С“Р РЋРЎвЂњР РЋРІР‚В°Р В Р’ВµР РЋР С“Р РЋРІР‚С™Р В Р вЂ Р РЋРЎвЂњР В Р’ВµР РЋРІР‚С™');
+        window.alert('Обнаружены дубликаты: для выбранных типов уже есть узлы с таким названием.');
         return;
       }
 
@@ -1002,7 +1013,7 @@ const handleCreateNode = useCallback(() => {
       });
 
       if (conflictWithExisting) {
-        window.alert('Р В Р в‚¬Р В Р’В·Р В Р’ВµР В Р’В» Р РЋР С“ Р РЋРІР‚С™Р В Р’В°Р В РЎвЂќР В РЎвЂР В РЎВ Р РЋРІР‚С™Р В РЎвЂР В РЎвЂ”Р В РЎвЂўР В РЎВ Р В РЎвЂ Р В РЎвЂ”Р В РЎвЂўР В РўвЂР В РЎвЂ”Р В РЎвЂР РЋР С“Р РЋР Р‰Р РЋР вЂ№ Р РЋРЎвЂњР В Р’В¶Р В Р’Вµ Р РЋР С“Р РЋРЎвЂњР РЋРІР‚В°Р В Р’ВµР РЋР С“Р РЋРІР‚С™Р В Р вЂ Р РЋРЎвЂњР В Р’ВµР РЋРІР‚С™');
+        window.alert('Обнаружены дубликаты: для выбранных типов уже есть узлы с таким названием.');
         return;
       }
     }
@@ -1877,76 +1888,3 @@ const handleCreateNode = useCallback(() => {
 };
 
 export default InspectorPanel;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
