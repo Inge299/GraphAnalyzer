@@ -63,8 +63,6 @@ const labels = {
   loadReportTitle: '\u041e\u0442\u0447\u0435\u0442 \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0438',
   communicationsCount: '\u0421\u0432\u044f\u0437\u0438 \u0430\u0431\u043e\u043d\u0435\u043d\u0442\u043e\u0432',
   deviceHistoryCount: '\u0421\u043c\u0435\u043d\u044b \u0430\u043f\u043f\u0430\u0440\u0430\u0442\u043e\u0432',
-  ragAdmin: 'Nodex RAG Admin',
-  openRagAdmin: 'Открыть RAG Admin',
   refreshConsole: 'Обновить консоль',
   cancel: '\u041e\u0442\u043c\u0435\u043d\u0430',
   save: '\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c',
@@ -950,13 +948,6 @@ const pluginContextKey = useMemo(() => {
     }
   }, [currentProject, refreshProjectDataStats]);
 
-  const handleOpenRagAdmin = useCallback(() => {
-    const protocol = window.location.protocol || 'http:';
-    const host = window.location.hostname || 'localhost';
-    const url = protocol + '//' + host + ':8011/api/rag/admin';
-    window.open(url, '_blank', 'noopener,noreferrer');
-  }, []);
-
 const handleCreateNode = useCallback(() => {
     if (!selectedArtifact || selectedArtifact.type !== 'graph') return;
     const label = builderNodeLabel.trim();
@@ -1491,19 +1482,6 @@ const handleCreateNode = useCallback(() => {
                   <div className="data-stat-card">
                     <div className="data-stat-label">{labels.deviceHistoryCount}</div>
                     <div className="data-stat-value">{dataStatsLoading ? '...' : dataStats.deviceHistory}</div>
-                  </div>
-                </div>
-
-                <div className="property-group">
-                  <label>{labels.ragAdmin}</label>
-                  <div className="property-inline">
-                    <button
-                      className="property-action secondary"
-                      onClick={handleOpenRagAdmin}
-                      type="button"
-                    >
-                      {labels.openRagAdmin}
-                    </button>
                   </div>
                 </div>
 
