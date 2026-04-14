@@ -72,7 +72,8 @@ export interface PluginInputs {
 }
 
 export interface PluginParamSpec {
-  key: string;
+  key?: string;
+  name?: string;
   label?: string;
   type: 'string' | 'number' | 'integer' | 'boolean' | 'date';
   required?: boolean;
@@ -131,3 +132,6 @@ export interface DomainModelConfig {
   edge_types: Array<Record<string, any>>;
   rules?: DomainModelRules;
 }
+
+
+

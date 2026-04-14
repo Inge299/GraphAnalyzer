@@ -1,221 +1,369 @@
 ﻿{
-  "version": 1,
-  "node_types": [
-    {
-      "id": "person",
-      "label": "РђР±РѕРЅРµРЅС‚",
-      "icon": "person_phone",
-      "default_visual": {
-        "color": "#2563eb",
-        "iconScale": 2,
-        "ringEnabled": true,
-        "ringWidth": 1.5
-      },
-      "attributes": [
-        { "key": "name", "type": "string", "label": "РРјСЏ" },
-        { "key": "phone", "type": "string", "label": "РўРµР»РµС„РѕРЅ" }
-      ]
-    },
-    {
-      "id": "phone",
-      "label": "РЎРјР°СЂС‚С„РѕРЅ",
-      "icon": "smartphone",
-      "default_visual": {
-        "color": "#0ea5e9",
-        "iconScale": 2,
-        "ringEnabled": true,
-        "ringWidth": 1.5
-      },
-      "attributes": [
-        { "key": "number", "type": "string", "label": "РќРѕРјРµСЂ" },
-        { "key": "imei", "type": "string", "label": "IMEI" }
-      ]
-    },
-    {
-      "id": "sim",
-      "label": "SIM-РєР°СЂС‚Р°",
-      "icon": "sim",
-      "default_visual": {
-        "color": "#22c55e",
-        "iconScale": 2,
-        "ringEnabled": true,
-        "ringWidth": 1.5
-      },
-      "attributes": [
-        { "key": "iccid", "type": "string", "label": "ICCID" },
-        { "key": "imsi", "type": "string", "label": "IMSI" }
-      ]
-    },
-    {
-      "id": "ip",
-      "label": "IP-Р°РґСЂРµСЃ",
-      "icon": "ip",
-      "default_visual": {
-        "color": "#6366f1",
-        "iconScale": 2,
-        "ringEnabled": true,
-        "ringWidth": 1.5
-      },
-      "attributes": [
-        { "key": "ip", "type": "string", "label": "IP" }
-      ]
-    },
-    {
-      "id": "email",
-      "label": "РџРѕС‡С‚Р°",
-      "icon": "mail",
-      "default_visual": {
-        "color": "#f59e0b",
-        "iconScale": 2,
-        "ringEnabled": true,
-        "ringWidth": 1.5
-      },
-      "attributes": [
-        { "key": "email", "type": "string", "label": "Email" }
-      ]
-    },
-    {
-      "id": "social_id",
-      "label": "РЎРѕС†СЃРµС‚СЊ",
-      "icon": "social",
-      "default_visual": {
-        "color": "#ec4899",
-        "iconScale": 2,
-        "ringEnabled": true,
-        "ringWidth": 1.5
-      },
-      "attributes": [
-        { "key": "network", "type": "string", "label": "РЎРµС‚СЊ" },
-        { "key": "account", "type": "string", "label": "РђРєРєР°СѓРЅС‚" }
-      ]
-    },
-    {
-      "id": "passport",
-      "label": "РџР°СЃРїРѕСЂС‚",
-      "icon": "passport",
-      "default_visual": {
-        "color": "#ef4444",
-        "iconScale": 2,
-        "ringEnabled": true,
-        "ringWidth": 1.5
-      },
-      "attributes": [
-        { "key": "series", "type": "string", "label": "РЎРµСЂРёСЏ" },
-        { "key": "number", "type": "string", "label": "РќРѕРјРµСЂ" }
-      ]
-    },
-    {
-      "id": "vehicle",
-      "label": "РђРІС‚Рѕ",
-      "icon": "car",
-      "default_visual": {
-        "color": "#14b8a6",
-        "iconScale": 2,
-        "ringEnabled": true,
-        "ringWidth": 1.5
-      },
-      "attributes": [
-        { "key": "plate", "type": "string", "label": "Р“РѕСЃРЅРѕРјРµСЂ" }
-      ]
-    },
-    {
-      "id": "address",
-      "label": "РђРґСЂРµСЃ",
-      "icon": "address",
-      "default_visual": {
-        "color": "#8b5cf6",
-        "iconScale": 2,
-        "ringEnabled": true,
-        "ringWidth": 1.5
-      },
-      "attributes": [
-        { "key": "address", "type": "string", "label": "РђРґСЂРµСЃ" }
-      ]
-    },
-    {
-      "id": "location",
-      "label": "РљРѕРѕСЂРґРёРЅР°С‚С‹",
-      "icon": "location",
-      "default_visual": {
-        "color": "#f97316",
-        "iconScale": 2,
-        "ringEnabled": true,
-        "ringWidth": 1.5
-      },
-      "attributes": [
-        { "key": "latitude", "type": "number", "label": "РЁРёСЂРѕС‚Р°" },
-        { "key": "longitude", "type": "number", "label": "Р”РѕР»РіРѕС‚Р°" }
-      ]
-    },
-    {
-      "id": "bank_card",
-      "label": "Р‘Р°РЅРєРѕРІСЃРєР°СЏ РєР°СЂС‚Р°",
-      "icon": "bank_card",
-      "default_visual": {
-        "color": "#64748b",
-        "iconScale": 2,
-        "ringEnabled": true,
-        "ringWidth": 1.5
-      },
-      "attributes": [
-        { "key": "pan_masked", "type": "string", "label": "РќРѕРјРµСЂ (РјР°СЃРєР°)" }
-      ]
-    }
-  ],
-  "edge_types": [
-    {
-      "id": "owns",
-      "label": "Р’Р»Р°РґРµРµС‚",
-      "default_visual": {
-        "color": "#334155",
-        "width": 2,
-        "direction": "to",
-        "dashed": false
-      },
-      "allowed_from": ["person"],
-      "allowed_to": ["phone", "sim", "bank_card", "vehicle", "passport", "email", "social_id"]
-    },
-    {
-      "id": "uses",
-      "label": "РСЃРїРѕР»СЊР·СѓРµС‚",
-      "default_visual": {
-        "color": "#2563eb",
-        "width": 2,
-        "direction": "to",
-        "dashed": false
-      },
-      "allowed_from": ["person", "phone"],
-      "allowed_to": ["sim", "ip", "email", "social_id"]
-    },
-    {
-      "id": "located_at",
-      "label": "РќР°С…РѕРґРёС‚СЃСЏ",
-      "default_visual": {
-        "color": "#0f766e",
-        "width": 2,
-        "direction": "to",
-        "dashed": true
-      },
-      "allowed_from": ["person", "phone", "vehicle"],
-      "allowed_to": ["address", "location"]
-    },
-    {
-      "id": "connected_to",
-      "label": "РЎРІСЏР·Р°РЅ",
-      "default_visual": {
-        "color": "#475569",
-        "width": 2,
-        "direction": "both",
-        "dashed": false
-      },
-      "allowed_from": ["*"],
-      "allowed_to": ["*"]
-    }
-  ],
-  "rules": {
-    "merge_nodes_with_same_label": true,
-    "allow_parallel_edges": true,
-    "edge_direction_values": ["from", "to", "both"],
-    "edge_style_values": ["solid", "dashed"]
-  }
+    "version":  1,
+    "node_types":  [
+                       {
+                           "id":  "person",
+                           "label":  "Абонент",
+                           "icon":  "person_phone",
+                           "default_visual":  {
+                                                  "color":  "#2563eb",
+                                                  "iconScale":  2,
+                                                  "ringEnabled":  true,
+                                                  "ringWidth":  1.5
+                                              },
+                           "attributes":  [
+                                              {
+                                                  "key":  "name",
+                                                  "type":  "string",
+                                                  "label":  "Имя"
+                                              },
+                                              {
+                                                  "key":  "phone",
+                                                  "type":  "string",
+                                                  "label":  "Телефон"
+                                              }
+                                          ]
+                       },
+                       {
+                           "id":  "phone",
+                           "label":  "Смартфон",
+                           "icon":  "smartphone",
+                           "default_visual":  {
+                                                  "color":  "#0ea5e9",
+                                                  "iconScale":  2,
+                                                  "ringEnabled":  true,
+                                                  "ringWidth":  1.5
+                                              },
+                           "attributes":  [
+                                              {
+                                                  "key":  "number",
+                                                  "type":  "string",
+                                                  "label":  "Номер"
+                                              },
+                                              {
+                                                  "key":  "imei",
+                                                  "type":  "string",
+                                                  "label":  "IMEI"
+                                              }
+                                          ]
+                       },
+                       {
+                           "id":  "sim",
+                           "label":  "SIM-карта",
+                           "icon":  "sim",
+                           "default_visual":  {
+                                                  "color":  "#22c55e",
+                                                  "iconScale":  2,
+                                                  "ringEnabled":  true,
+                                                  "ringWidth":  1.5
+                                              },
+                           "attributes":  [
+                                              {
+                                                  "key":  "iccid",
+                                                  "type":  "string",
+                                                  "label":  "ICCID"
+                                              },
+                                              {
+                                                  "key":  "imsi",
+                                                  "type":  "string",
+                                                  "label":  "IMSI"
+                                              }
+                                          ]
+                       },
+                       {
+                           "id":  "ip",
+                           "label":  "IP-адрес",
+                           "icon":  "ip",
+                           "default_visual":  {
+                                                  "color":  "#6366f1",
+                                                  "iconScale":  2,
+                                                  "ringEnabled":  true,
+                                                  "ringWidth":  1.5
+                                              },
+                           "attributes":  [
+                                              {
+                                                  "key":  "ip",
+                                                  "type":  "string",
+                                                  "label":  "IP"
+                                              }
+                                          ]
+                       },
+                       {
+                           "id":  "email",
+                           "label":  "Почта",
+                           "icon":  "mail",
+                           "default_visual":  {
+                                                  "color":  "#f59e0b",
+                                                  "iconScale":  2,
+                                                  "ringEnabled":  true,
+                                                  "ringWidth":  1.5
+                                              },
+                           "attributes":  [
+                                              {
+                                                  "key":  "email",
+                                                  "type":  "string",
+                                                  "label":  "Email"
+                                              }
+                                          ]
+                       },
+                       {
+                           "id":  "social_id",
+                           "label":  "Соцсеть",
+                           "icon":  "social",
+                           "default_visual":  {
+                                                  "color":  "#ec4899",
+                                                  "iconScale":  2,
+                                                  "ringEnabled":  true,
+                                                  "ringWidth":  1.5
+                                              },
+                           "attributes":  [
+                                              {
+                                                  "key":  "network",
+                                                  "type":  "string",
+                                                  "label":  "Сеть"
+                                              },
+                                              {
+                                                  "key":  "account",
+                                                  "type":  "string",
+                                                  "label":  "Аккаунт"
+                                              }
+                                          ]
+                       },
+                       {
+                           "id":  "passport",
+                           "label":  "Паспорт",
+                           "icon":  "passport",
+                           "default_visual":  {
+                                                  "color":  "#ef4444",
+                                                  "iconScale":  2,
+                                                  "ringEnabled":  true,
+                                                  "ringWidth":  1.5
+                                              },
+                           "attributes":  [
+                                              {
+                                                  "key":  "series",
+                                                  "type":  "string",
+                                                  "label":  "Серия"
+                                              },
+                                              {
+                                                  "key":  "number",
+                                                  "type":  "string",
+                                                  "label":  "Номер"
+                                              }
+                                          ]
+                       },
+                       {
+                           "id":  "vehicle",
+                           "label":  "Авто",
+                           "icon":  "car",
+                           "default_visual":  {
+                                                  "color":  "#14b8a6",
+                                                  "iconScale":  2,
+                                                  "ringEnabled":  true,
+                                                  "ringWidth":  1.5
+                                              },
+                           "attributes":  [
+                                              {
+                                                  "key":  "plate",
+                                                  "type":  "string",
+                                                  "label":  "Госномер"
+                                              }
+                                          ]
+                       },
+                       {
+                           "id":  "address",
+                           "label":  "Адрес",
+                           "icon":  "address",
+                           "default_visual":  {
+                                                  "color":  "#8b5cf6",
+                                                  "iconScale":  2,
+                                                  "ringEnabled":  true,
+                                                  "ringWidth":  1.5
+                                              },
+                           "attributes":  [
+                                              {
+                                                  "key":  "address",
+                                                  "type":  "string",
+                                                  "label":  "Адрес"
+                                              }
+                                          ]
+                       },
+                       {
+                           "id":  "location",
+                           "label":  "Координаты",
+                           "icon":  "location",
+                           "default_visual":  {
+                                                  "color":  "#f97316",
+                                                  "iconScale":  2,
+                                                  "ringEnabled":  true,
+                                                  "ringWidth":  1.5
+                                              },
+                           "attributes":  [
+                                              {
+                                                  "key":  "latitude",
+                                                  "type":  "number",
+                                                  "label":  "Широта"
+                                              },
+                                              {
+                                                  "key":  "longitude",
+                                                  "type":  "number",
+                                                  "label":  "Долгота"
+                                              }
+                                          ]
+                       },
+                       {
+                           "id":  "bank_card",
+                           "label":  "Банковская карта",
+                           "icon":  "bank_card",
+                           "default_visual":  {
+                                                  "color":  "#64748b",
+                                                  "iconScale":  2,
+                                                  "ringEnabled":  true,
+                                                  "ringWidth":  1.5
+                                              },
+                           "attributes":  [
+                                              {
+                                                  "key":  "pan_masked",
+                                                  "type":  "string",
+                                                  "label":  "Номер (маска)"
+                                              }
+                                          ]
+                       },
+                       {
+                           "id":  "document",
+                           "label":  "Документ",
+                           "icon":  "file",
+                           "default_visual":  {
+                                                  "color":  "#22c55e",
+                                                  "iconScale":  2,
+                                                  "ringEnabled":  true,
+                                                  "ringWidth":  1.5
+                                              },
+                           "attributes":  [
+                                              {
+                                                  "key":  "document_id",
+                                                  "type":  "string",
+                                                  "label":  "ID документа"
+                                              },
+                                              {
+                                                  "key":  "source",
+                                                  "type":  "string",
+                                                  "label":  "Источник"
+                                              },
+                                              {
+                                                  "key":  "excerpt",
+                                                  "type":  "string",
+                                                  "label":  "Фрагмент"
+                                              }
+                                          ]
+                       }
+                   ],
+    "edge_types":  [
+                       {
+                           "id":  "owns",
+                           "label":  "Владеет",
+                           "default_visual":  {
+                                                  "color":  "#334155",
+                                                  "width":  2,
+                                                  "direction":  "to",
+                                                  "dashed":  false
+                                              },
+                           "allowed_from":  [
+                                                "person"
+                                            ],
+                           "allowed_to":  [
+                                              "phone",
+                                              "sim",
+                                              "bank_card",
+                                              "vehicle",
+                                              "passport",
+                                              "email",
+                                              "social_id"
+                                          ]
+                       },
+                       {
+                           "id":  "uses",
+                           "label":  "Использует",
+                           "default_visual":  {
+                                                  "color":  "#2563eb",
+                                                  "width":  2,
+                                                  "direction":  "to",
+                                                  "dashed":  false
+                                              },
+                           "allowed_from":  [
+                                                "person",
+                                                "phone"
+                                            ],
+                           "allowed_to":  [
+                                              "sim",
+                                              "ip",
+                                              "email",
+                                              "social_id"
+                                          ]
+                       },
+                       {
+                           "id":  "located_at",
+                           "label":  "Находится",
+                           "default_visual":  {
+                                                  "color":  "#0f766e",
+                                                  "width":  2,
+                                                  "direction":  "to",
+                                                  "dashed":  true
+                                              },
+                           "allowed_from":  [
+                                                "person",
+                                                "phone",
+                                                "vehicle"
+                                            ],
+                           "allowed_to":  [
+                                              "address",
+                                              "location"
+                                          ]
+                       },
+                       {
+                           "id":  "connected_to",
+                           "label":  "Связан",
+                           "default_visual":  {
+                                                  "color":  "#475569",
+                                                  "width":  2,
+                                                  "direction":  "both",
+                                                  "dashed":  false
+                                              },
+                           "allowed_from":  [
+                                                "*"
+                                            ],
+                           "allowed_to":  [
+                                              "*"
+                                          ]
+                       },
+                       {
+                           "id":  "object_document",
+                           "label":  "содержится",
+                           "default_visual":  {
+                                                  "color":  "#22c55e",
+                                                  "width":  2,
+                                                  "direction":  "both",
+                                                  "dashed":  false
+                                              },
+                           "allowed_from":  [
+                                                "*"
+                                            ],
+                           "allowed_to":  [
+                                              "document"
+                                          ]
+                       }
+                   ],
+    "rules":  {
+                  "merge_nodes_with_same_label":  true,
+                  "allow_parallel_edges":  true,
+                  "edge_direction_values":  [
+                                                "from",
+                                                "to",
+                                                "both"
+                                            ],
+                  "edge_style_values":  [
+                                            "solid",
+                                            "dashed"
+                                        ]
+              }
 }

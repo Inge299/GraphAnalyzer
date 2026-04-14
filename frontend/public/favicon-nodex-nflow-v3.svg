@@ -1,0 +1,28 @@
+﻿<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="64" y1="48" x2="448" y2="464" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#F4F2FF"/>
+    </linearGradient>
+    <linearGradient id="flow" x1="82" y1="176" x2="196" y2="316" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#12C6D7"/>
+      <stop offset="1" stop-color="#6E5CE7"/>
+    </linearGradient>
+  </defs>
+  <rect x="24" y="24" width="464" height="464" rx="108" fill="url(#bg)"/>
+  <rect x="24" y="24" width="464" height="464" rx="108" stroke="#DDD8FB" stroke-width="3"/>
+  <!-- Stylized slanted N (black) -->
+  <g fill="#111111">
+    <polygon points="196,114 246,114 230,398 180,398"/>
+    <polygon points="296,114 346,114 330,398 280,398"/>
+    <polygon points="244,114 304,114 282,398 222,398"/>
+  </g>
+  <!-- left incoming streams -->
+  <g stroke="url(#flow)" stroke-width="20" stroke-linecap="round">
+    <line x1="84" y1="186" x2="170" y2="186"/>
+    <line x1="68" y1="256" x2="170" y2="256"/>
+    <line x1="84" y1="326" x2="170" y2="326"/>
+  </g>
+  <!-- merge into N -->
+  <line x1="170" y1="256" x2="210" y2="256" stroke="#111111" stroke-width="22" stroke-linecap="round"/>
+</svg>

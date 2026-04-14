@@ -1,0 +1,46 @@
+﻿<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FAFAFF"/>
+      <stop offset="1" stop-color="#F0F2FF"/>
+    </linearGradient>
+    <linearGradient id="line" x1="190" y1="154" x2="474" y2="420" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8C7BEE"/>
+      <stop offset="1" stop-color="#5B3FD6"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+
+  <g opacity="0.35" stroke="#DCD9FB" stroke-width="1">
+    <line x1="80" y1="140" x2="1120" y2="140"/>
+    <line x1="80" y1="220" x2="1120" y2="220"/>
+    <line x1="80" y1="300" x2="1120" y2="300"/>
+    <line x1="80" y1="380" x2="1120" y2="380"/>
+    <line x1="80" y1="460" x2="1120" y2="460"/>
+  </g>
+
+  <g transform="translate(120 88)">
+    <rect x="0" y="0" width="420" height="420" rx="90" fill="#F4F2FF"/>
+    <rect x="0" y="0" width="420" height="420" rx="90" stroke="#D8D2FA" stroke-width="2"/>
+
+    <g stroke="url(#line)" stroke-width="24" stroke-linecap="round">
+      <line x1="118" y1="286" x2="186" y2="206"/>
+      <line x1="186" y1="206" x2="268" y2="252"/>
+      <line x1="186" y1="206" x2="296" y2="136"/>
+    </g>
+
+    <circle cx="118" cy="286" r="23" fill="#C9C2F8"/>
+    <circle cx="186" cy="206" r="23" fill="#C9C2F8"/>
+    <circle cx="268" cy="252" r="23" fill="#B5AAF4"/>
+
+    <g transform="translate(296 136)">
+      <circle cx="0" cy="0" r="38" fill="#2B1D70"/>
+      <path d="M0 -26 L8 -8 L26 0 L8 8 L0 26 L-8 8 L-26 0 L-8 -8 Z" fill="#16C7D8"/>
+      <circle cx="0" cy="0" r="7" fill="#F9FAFF"/>
+    </g>
+  </g>
+
+  <text x="596" y="282" fill="#221B47" font-size="110" font-weight="700" font-family="Segoe UI, Inter, Arial, sans-serif">Nodex</text>
+  <text x="600" y="360" fill="#61588F" font-size="46" font-weight="500" font-family="Segoe UI, Inter, Arial, sans-serif">AI-инструмент для анализа данных</text>
+</svg>

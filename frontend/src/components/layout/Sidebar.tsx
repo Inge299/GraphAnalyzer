@@ -272,7 +272,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onArti
         data: {
           name: nextName,
           type: artifact.type,
-          description: artifact.description,
+          description: artifact.description ?? undefined,
           data: artifact.data || {},
           metadata: artifact.metadata || {},
         },
@@ -458,6 +458,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onArti
 };
 
 export default Sidebar;
+
 
 
 

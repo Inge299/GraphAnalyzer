@@ -1,7 +1,7 @@
-// frontend/src/store/slices/artifactsSlice.ts
+﻿// frontend/src/store/slices/artifactsSlice.ts
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { api } from '../../services/api';
-import { ApiArtifact, ApiArtifactCreate, ApiArtifactUpdate } from '../../types/api';
+import { ApiArtifact, ApiArtifactCreate } from '../../types/api';
 
 interface ArtifactsState {
   items: Record<number, ApiArtifact>;
@@ -63,12 +63,12 @@ export const createArtifact = createAsyncThunk(
   }
 );
 
-// updateArtifact теперь НЕ делает API запрос, только обновляет Redux
-// Но принимает обновленный артефакт из useActionWithUndo
+// updateArtifact С‚РµРїРµСЂСЊ РќР• РґРµР»Р°РµС‚ API Р·Р°РїСЂРѕСЃ, С‚РѕР»СЊРєРѕ РѕР±РЅРѕРІР»СЏРµС‚ Redux
+// РќРѕ РїСЂРёРЅРёРјР°РµС‚ РѕР±РЅРѕРІР»РµРЅРЅС‹Р№ Р°СЂС‚РµС„Р°РєС‚ РёР· useActionWithUndo
 export const updateArtifactRedux = createAsyncThunk(
   'artifacts/updateRedux',
-  async (artifact: ApiArtifact, { rejectWithValue }) => {
-    // Просто возвращаем артефакт для обновления Redux
+  async (artifact: ApiArtifact) => {
+    // РџСЂРѕСЃС‚Рѕ РІРѕР·РІСЂР°С‰Р°РµРј Р°СЂС‚РµС„Р°РєС‚ РґР»СЏ РѕР±РЅРѕРІР»РµРЅРёСЏ Redux
     return artifact;
   }
 );
@@ -102,7 +102,7 @@ const artifactsSlice = createSlice({
     clearError: (state) => {
       state.error = null;
     },
-    // Синхронное обновление артефакта (без API)
+    // РЎРёРЅС…СЂРѕРЅРЅРѕРµ РѕР±РЅРѕРІР»РµРЅРёРµ Р°СЂС‚РµС„Р°РєС‚Р° (Р±РµР· API)
     updateArtifactSync: (state, action: PayloadAction<ApiArtifact>) => {
       const artifact = action.payload;
       if (artifact && artifact.id) {
@@ -159,7 +159,7 @@ const artifactsSlice = createSlice({
         }
       })
 
-      // Update artifact Redux (синхронно)
+      // Update artifact Redux (СЃРёРЅС…СЂРѕРЅРЅРѕ)
       .addCase(updateArtifactRedux.fulfilled, (state, action) => {
         const artifact = action.payload;
         if (artifact && artifact.id) {

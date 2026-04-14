@@ -1,0 +1,28 @@
+﻿<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="66" y1="52" x2="446" y2="462" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#F1EEFF"/>
+    </linearGradient>
+    <linearGradient id="nFill" x1="180" y1="114" x2="350" y2="398" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#866FF0"/>
+      <stop offset="1" stop-color="#4D31CD"/>
+    </linearGradient>
+    <linearGradient id="inFlow" x1="84" y1="178" x2="196" y2="306" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#10C2D4"/>
+      <stop offset="1" stop-color="#6A59E6"/>
+    </linearGradient>
+  </defs>
+  <rect x="24" y="24" width="464" height="464" rx="108" fill="url(#bg)"/>
+  <rect x="24" y="24" width="464" height="464" rx="108" stroke="#D8D1FA" stroke-width="3"/>
+  <!-- Tech slanted N (solid geometry) -->
+  <path d="M178 114 L230 114 L330 318 L330 114 L382 114 L382 398 L330 398 L230 194 L230 398 L178 398 Z" fill="url(#nFill)"/>
+  <!-- Incoming multi-source flows (left only) -->
+  <g stroke="url(#inFlow)" stroke-width="20" stroke-linecap="round">
+    <line x1="86" y1="186" x2="170" y2="186"/>
+    <line x1="70" y1="256" x2="170" y2="256"/>
+    <line x1="86" y1="326" x2="170" y2="326"/>
+  </g>
+  <!-- Merge rail into N -->
+  <line x1="170" y1="256" x2="206" y2="256" stroke="#2A1B72" stroke-width="22" stroke-linecap="round"/>
+</svg>

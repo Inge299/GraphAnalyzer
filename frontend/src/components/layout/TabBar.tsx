@@ -137,7 +137,7 @@ const TabBar: React.FC<TabBarProps> = ({
   return (
     <div className="tab-bar">
       <div className="tab-brand" title={labels.appName}>
-        <img className="tab-brand-logo" src="/favicon-nodex-tab-32.png" alt={labels.appName} />
+        <img className="tab-brand-logo" src="/brand/nodex-logo.png" alt={labels.appName} />
         <span className="tab-brand-name">{labels.appName}</span>
       </div>
       {createdArtifacts && (
@@ -279,6 +279,7 @@ const TabBar: React.FC<TabBarProps> = ({
 };
 
 export default TabBar;
+
 
 
 

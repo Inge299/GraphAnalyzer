@@ -25,7 +25,7 @@ export const nodeAttributePreviewConfig = {
       label: 'оператор',
       marker: '•',
       maxLines: 3,
-      visibleOnGraph: true,
+      visibleOnGraph: false,
     },
     ownership: {
       label: 'оформлен',

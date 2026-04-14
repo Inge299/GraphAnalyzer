@@ -1,0 +1,6 @@
+﻿<svg width="640" height="160" viewBox="0 0 640 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="640" height="160" rx="28" fill="#F7F8FF"/>
+  <text x="56" y="101" fill="#211B47" font-size="74" font-weight="700" letter-spacing="1" font-family="Segoe UI, Inter, Arial, sans-serif">Nodex</text>
+  <circle cx="545" cy="80" r="28" fill="#2B1D70"/>
+  <path d="M545 59 L551 73 L565 80 L551 87 L545 101 L539 87 L525 80 L539 73 Z" fill="#16C7D8"/>
+</svg>
