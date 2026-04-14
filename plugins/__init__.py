@@ -58,6 +58,19 @@ class PluginBase:
         """Validate if plugin can process these artifacts."""
         return True
 
+    def _normalized_params_schema(self) -> List[Dict[str, Any]]:
+        schema = self.params_schema if isinstance(self.params_schema, list) else []
+        normalized: List[Dict[str, Any]] = []
+        for item in schema:
+            if not isinstance(item, dict):
+                continue
+            entry = dict(item)
+            key = str(entry.get("key") or entry.get("name") or "").strip()
+            if not key:
+                continue
+            entry["key"] = key
+            normalized.append(entry)
+        return normalized
     def to_metadata(self) -> dict:
         """Serialize plugin metadata for API responses."""
         return {
@@ -71,7 +84,7 @@ class PluginBase:
             "applicable_to": self.applicable_to,
             "inputs": self.inputs,
             "applicable_when": self.applicable_when,
-            "params_schema": self.params_schema,
+            "params_schema": self._normalized_params_schema(),
             "output_strategy": self.output_strategy,
         }
 
@@ -112,3 +125,5 @@ def discover_plugins() -> Dict[str, Type[PluginBase]]:
 
 # Discover plugins when module is imported
 AVAILABLE_PLUGINS = discover_plugins()
+
+

@@ -8,6 +8,8 @@ RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
     libffi-dev \
+    freetds-dev \
+    pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install dependencies
@@ -22,6 +24,7 @@ WORKDIR /app
 # Install runtime system dependencies
 RUN apt-get update && apt-get install -y \
     libpq-dev \
+    libsybdb5 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Python dependencies from builder
@@ -33,6 +36,7 @@ ENV PATH=/root/.local/bin:$PATH
 # Copy application code
 COPY app ./app
 COPY plugins ./plugins
+COPY scripts ./scripts
 RUN mkdir -p /app/data
 
 COPY alembic.ini /app/alembic.ini
@@ -52,4 +56,6 @@ HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
 
 # Run application
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "5000"]
+
+
 

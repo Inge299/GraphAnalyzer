@@ -96,6 +96,7 @@ def validate_plugin_execution(
     input_artifacts: List[Dict[str, Any]],
     params: Optional[Dict[str, Any]],
     context: Optional[Dict[str, Any]],
+    check_required_params: bool = True,
 ) -> None:
     """Raise ValueError on contract violations."""
 
@@ -162,7 +163,7 @@ def validate_plugin_execution(
     for spec in params_schema:
         if not isinstance(spec, dict):
             continue
-        key = str(spec.get("key", "")).strip()
+        key = str(spec.get("key") or spec.get("name") or "").strip()
         if not key:
             continue
 
@@ -172,10 +173,11 @@ def validate_plugin_execution(
             raise ValueError(f"Invalid params_schema type '{param_type}' for '{key}'")
 
         if key not in params:
-            if required:
+            if required and check_required_params:
                 raise ValueError(f"Param '{key}' is required")
             continue
 
         type_error = _validate_param_type(param_type, params[key], key)
         if type_error:
             raise ValueError(type_error)
+

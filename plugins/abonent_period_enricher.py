@@ -102,10 +102,10 @@ def _build_mssql_url(db_cfg: Dict[str, Any]) -> str:
 
 class AbonentPeriodEnricherPlugin(PluginBase):
     id = "abonent_period_enricher"
-    name = "Abonent Period Enricher"
-    version = "0.2.0"
+    name = "Абонентский номер"
+    version = "0.2.1"
     description = "Loads abonent records for a period and enriches/creates abonent node in current graph"
-    menu_path = "Создать объект/Телеком"
+    menu_path = "Создать объект"
     input_types = ["graph"]
     output_types = ["graph"]
     applicable_to = ["graph"]
@@ -222,7 +222,6 @@ class AbonentPeriodEnricherPlugin(PluginBase):
             return []
 
         table_name = self._resolve_table_name()
-
         before_sql = text(
             f"""
             SELECT TOP 1
@@ -238,7 +237,6 @@ class AbonentPeriodEnricherPlugin(PluginBase):
             ORDER BY [дата] DESC
             """
         )
-
         period_sql = text(
             f"""
             SELECT
@@ -255,6 +253,7 @@ class AbonentPeriodEnricherPlugin(PluginBase):
             ORDER BY [дата] ASC
             """
         )
+
 
         engine = create_engine(db_url, future=True)
         rows: List[Dict[str, str]] = []
@@ -364,7 +363,7 @@ class AbonentPeriodEnricherPlugin(PluginBase):
                     "icon": str(node_type.get("icon") or "person_phone"),
                     "color": str(visual.get("color") or "#2563eb"),
                     "iconScale": float(visual.get("iconScale") or 2),
-                    "ringEnabled": bool(visual.get("ringEnabled", True)),
+                    "ringEnabled": bool(visual.get("ringEnabled", False)),
                     "ringWidth": float(visual.get("ringWidth") or 1.5),
                 }
 
@@ -372,7 +371,7 @@ class AbonentPeriodEnricherPlugin(PluginBase):
             "icon": "person_phone",
             "color": "#2563eb",
             "iconScale": 2.0,
-            "ringEnabled": True,
+            "ringEnabled": False,
             "ringWidth": 1.5,
         }
 
@@ -392,7 +391,7 @@ class AbonentPeriodEnricherPlugin(PluginBase):
                     "icon": visual_defaults["icon"],
                     "color": visual_defaults["color"],
                     "iconScale": visual_defaults["iconScale"],
-                    "ringEnabled": visual_defaults["ringEnabled"],
+                    "ringEnabled": False,
                     "ringWidth": visual_defaults["ringWidth"],
                     "fontColor": "#0f172a",
                 },
@@ -425,3 +424,5 @@ class AbonentPeriodEnricherPlugin(PluginBase):
 
         attributes["operator"] = _dedupe_preserve_order([*existing_operator, *operator_lines])
         attributes["ownership"] = _dedupe_preserve_order([*existing_ownership, *ownership_lines])
+
+

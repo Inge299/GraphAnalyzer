@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   app:
     volumes:
@@ -36,3 +34,4 @@ services:
       - postgres
     networks:
       - osint-network
+

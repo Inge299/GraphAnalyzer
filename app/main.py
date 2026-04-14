@@ -1,7 +1,7 @@
-﻿"""
+"""
 Main FastAPI application module for OSINT Graph Analyzer.
 """
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import logging
@@ -46,6 +46,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def force_utf8_json_content_type(request: Request, call_next):
+    """Ensure JSON responses explicitly declare UTF-8 charset."""
+    response = await call_next(request)
+    content_type = response.headers.get("content-type", "")
+    if content_type.startswith("application/json") and "charset=" not in content_type:
+        response.headers["content-type"] = "application/json; charset=utf-8"
+    return response
+
 
 @app.on_event("startup")
 async def startup_event():

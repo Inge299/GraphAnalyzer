@@ -18,3 +18,4 @@ httpx==0.25.1
 tenacity==8.2.3
 structlog==24.1.0
 greenlet==3.3.2
+pymssql==2.3.0

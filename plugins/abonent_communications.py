@@ -1,16 +1,15 @@
-﻿"""Plugin: expand selected abonent nodes with communications from SQL source."""
+"""Plugin: expand selected abonent nodes with communications from SQL source."""
 
 from __future__ import annotations
 
-import os
 from datetime import date, datetime
 import math
 import random
 from typing import Any, Dict, List, Optional, Tuple
 
-from sqlalchemy import bindparam, create_engine, text
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import bindparam, text
 
+from app.database import AsyncSessionLocal
 from app.services.domain_model_service import get_domain_model
 from app.services.plugins_config_service import get_plugin_config
 from plugins import PluginBase
@@ -145,6 +144,19 @@ class AbonentCommunicationsPlugin(PluginBase):
         self._new_node_sequence = 0
         self._rng = random.Random()
 
+    def is_applicable_with_context(self, input_artifacts: List[Dict[str, Any]], context: Optional[Dict[str, Any]] = None) -> bool:
+        if not input_artifacts:
+            return False
+        graph = input_artifacts[0] if isinstance(input_artifacts[0], dict) else {}
+        data = graph.get("data") if isinstance(graph.get("data"), dict) else {}
+        nodes = list(data.get("nodes") or [])
+        ctx = context if isinstance(context, dict) else {}
+        selected_ids = [str(item) for item in (ctx.get("selected_nodes") or [])]
+        selected_abonents = self._collect_selected_abonents(nodes, selected_ids)
+        if not selected_abonents:
+            return False
+        return True
+
     async def execute(
         self,
         input_artifacts: List[Dict[str, Any]],
@@ -163,9 +175,25 @@ class AbonentCommunicationsPlugin(PluginBase):
         edges = list(data.get("edges") or [])
 
         selected_abonents = self._collect_selected_abonents(nodes, selected_ids)
-        selection_limited = len(selected_abonents) > MAX_SELECTED_ABONENTS
-        if selection_limited:
-            selected_abonents = selected_abonents[:MAX_SELECTED_ABONENTS]
+        selected_total = len(selected_abonents)
+        if selected_total > MAX_SELECTED_ABONENTS:
+            return [
+                {
+                    "type": "graph",
+                    "name": graph.get("name", "Graph"),
+                    "description": graph.get("description"),
+                    "data": {**data, "nodes": nodes, "edges": edges},
+                    "metadata": {
+                        **(graph.get("metadata") or {}),
+                        "source_plugin": self.id,
+                        "communications_status": "selection_too_large",
+                        "communications_selection_exceeded": True,
+                        "communications_selection_limit": MAX_SELECTED_ABONENTS,
+                        "communications_selected_total": selected_total,
+                    },
+                }
+            ]
+        selection_limited = False
         if not selected_abonents:
             return [
                 {
@@ -181,7 +209,8 @@ class AbonentCommunicationsPlugin(PluginBase):
                 }
             ]
 
-        rows = self._load_rows(selected_abonents)
+        project_id = int(graph.get("project_id") or params.get("project_id") or 0)
+        rows = await self._load_rows(selected_abonents, project_id)
         if not rows:
             return [
                 {
@@ -208,31 +237,16 @@ class AbonentCommunicationsPlugin(PluginBase):
             if abon1 not in selected_abonents and abon2 not in selected_abonents:
                 continue
 
-            row_info = {
-                "1": {
-                    "phone": abon1,
-                    "operator": _normalize_text(row.get("operator1")),
-                    "ownership": self._format_ownership(_normalize_text(row.get("fio1")), _normalize_text(row.get("address1"))),
-                },
-                "2": {
-                    "phone": abon2,
-                    "operator": _normalize_text(row.get("operator2")),
-                    "ownership": self._format_ownership(_normalize_text(row.get("fio2")), _normalize_text(row.get("address2"))),
-                },
-            }
-
-            left_node = self._find_or_create_abonent_node(nodes, row_info["1"]["phone"])
-            right_node = self._find_or_create_abonent_node(nodes, row_info["2"]["phone"], anchor_node=left_node)
+            left_node = self._find_or_create_abonent_node(nodes, abon1)
+            right_node = self._find_or_create_abonent_node(nodes, abon2, anchor_node=left_node)
             if _node_id(left_node) == _node_id(right_node):
                 continue
-
-            self._merge_node_attributes(left_node, row_info["1"]["operator"], row_info["1"]["ownership"])
-            self._merge_node_attributes(right_node, row_info["2"]["operator"], row_info["2"]["ownership"])
 
             edge_type = resolve_edge_type("person", "person")
             start_raw = row.get("time_start")
             end_raw = row.get("time_end")
             calls_count = int(row.get("calls_count") or 0)
+            calls_count_approx = bool(row.get("calls_count_approx") or False)
 
             existing = self._find_existing_edge(edges, _node_id(left_node), _node_id(right_node), edge_type)
             if existing is None:
@@ -245,11 +259,12 @@ class AbonentCommunicationsPlugin(PluginBase):
                         start_raw=start_raw,
                         end_raw=end_raw,
                         calls_count=calls_count,
+                        calls_count_approx=calls_count_approx,
                     )
                 )
                 continue
 
-            self._merge_edge_interval(existing, start_raw, end_raw, calls_count)
+            self._merge_edge_interval(existing, start_raw, end_raw, calls_count, calls_count_approx)
 
         updated_data = {**data, "nodes": nodes, "edges": edges}
 
@@ -274,91 +289,52 @@ class AbonentCommunicationsPlugin(PluginBase):
         cfg = get_plugin_config(self.id)
         return cfg if isinstance(cfg, dict) else {}
 
-    def _resolve_db_url(self) -> str:
-        env_url = os.getenv("ABONENT_COMMUNICATIONS_DB_URL", "").strip()
-        if env_url:
-            return env_url
-
-        cfg = self._resolve_plugin_sql_config()
-        connection = cfg.get("connection") if isinstance(cfg.get("connection"), dict) else {}
-
-        direct_url = str(connection.get("url") or "").strip()
-        if direct_url:
-            return direct_url
-
-        db_cfg = connection.get("db") if isinstance(connection.get("db"), dict) else {}
-        if db_cfg:
-            return _build_mssql_url(db_cfg)
-
-        return ""
-
-    def _resolve_table_name(self) -> str:
-        cfg = self._resolve_plugin_sql_config()
-        query_cfg = cfg.get("query") if isinstance(cfg.get("query"), dict) else {}
-        configured = str(query_cfg.get("table") or "").strip()
-        if configured:
-            return configured
-        return "[dbo].[communications]"
-
-    def _load_rows(self, selected_phones: List[str]) -> List[Dict[str, Any]]:
-        db_url = self._resolve_db_url()
-        if not db_url or not selected_phones:
+    async def _load_rows(self, selected_phones: List[str], project_id: int) -> List[Dict[str, Any]]:
+        if not selected_phones or project_id <= 0:
             return []
 
-        table_name = self._resolve_table_name()
         sql = text(
-            f"""
+            """
             SELECT
-              [Абон1] AS abon1,
-              [Абон2] AS abon2,
-              [ФИО1] AS fio1,
-              [ФИО2] AS fio2,
-              [оператор1] AS operator1,
-              [оператор2] AS operator2,
-              [Адрес1] AS address1,
-              [Адрес2] AS address2,
-              [время_начала] AS time_start,
-              [время_конца] AS time_end,
-              [количество_связей] AS calls_count,
-              [общая_продолжительность] AS total_duration
-            FROM {table_name}
-            WHERE [Абон1] IN :phones OR [Абон2] IN :phones
-            ORDER BY [время_начала] ASC
+              abon1,
+              abon2,
+              time_start,
+              time_end,
+              calls_count,
+              calls_count_approx
+            FROM project_communications
+            WHERE project_id = :project_id
+              AND (abon1 IN :phones OR abon2 IN :phones)
+            ORDER BY time_start ASC
             """
         ).bindparams(bindparam("phones", expanding=True))
 
-        # SQL Server limit: max 2100 params in a single statement.
-        # Large multi-selection is processed in chunks.
-        chunk_size = 500
         phones = _dedupe_preserve_order([_normalize_phone(item) for item in selected_phones])
+        if not phones:
+            return []
+
         rows: List[Dict[str, Any]] = []
         seen: set[tuple] = set()
 
-        engine = create_engine(db_url, future=True)
         try:
-            with engine.connect() as connection:
-                for idx in range(0, len(phones), chunk_size):
-                    chunk = phones[idx:idx + chunk_size]
-                    if not chunk:
+            async with AsyncSessionLocal() as session:
+                result = await session.execute(sql, {"project_id": project_id, "phones": phones})
+                for row in result.mappings().all():
+                    payload = dict(row)
+                    key = (
+                        _normalize_phone(payload.get("abon1")),
+                        _normalize_phone(payload.get("abon2")),
+                        _normalize_text(payload.get("time_start")),
+                        _normalize_text(payload.get("time_end")),
+                        _normalize_text(payload.get("calls_count")),
+                        bool(payload.get("calls_count_approx") or False),
+                    )
+                    if key in seen:
                         continue
-                    chunk_rows = connection.execute(sql, {"phones": chunk}).mappings().all()
-                    for row in chunk_rows:
-                        payload = dict(row)
-                        key = (
-                            _normalize_phone(payload.get("abon1")),
-                            _normalize_phone(payload.get("abon2")),
-                            _normalize_text(payload.get("time_start")),
-                            _normalize_text(payload.get("time_end")),
-                            _normalize_text(payload.get("calls_count")),
-                        )
-                        if key in seen:
-                            continue
-                        seen.add(key)
-                        rows.append(payload)
-        except SQLAlchemyError:
+                    seen.add(key)
+                    rows.append(payload)
+        except Exception:
             return []
-        finally:
-            engine.dispose()
 
         rows.sort(key=lambda item: (
             _as_datetime(item.get("time_start")) or datetime.min,
@@ -375,7 +351,8 @@ class AbonentCommunicationsPlugin(PluginBase):
             node_id = _node_id(node)
             if node_id not in selected_id_set:
                 continue
-            if str(node.get("type") or "").strip().lower() != "person":
+            node_type = str(node.get("type") or "").strip().lower()
+            if node_type and node_type not in {"person", "abonent", "subscriber"}:
                 continue
             label = _node_label(node)
             if label:
@@ -401,7 +378,7 @@ class AbonentCommunicationsPlugin(PluginBase):
                     "icon": str(node_type.get("icon") or "person_phone"),
                     "color": str(visual.get("color") or "#2563eb"),
                     "iconScale": float(visual.get("iconScale") or 2),
-                    "ringEnabled": bool(visual.get("ringEnabled", True)),
+                    "ringEnabled": bool(visual.get("ringEnabled", False)),
                     "ringWidth": float(visual.get("ringWidth") or 1.5),
                 }
 
@@ -409,7 +386,7 @@ class AbonentCommunicationsPlugin(PluginBase):
             "icon": "person_phone",
             "color": "#2563eb",
             "iconScale": 2.0,
-            "ringEnabled": True,
+            "ringEnabled": False,
             "ringWidth": 1.5,
         }
 
@@ -478,7 +455,7 @@ class AbonentCommunicationsPlugin(PluginBase):
                     "icon": visual_defaults["icon"],
                     "color": visual_defaults["color"],
                     "iconScale": visual_defaults["iconScale"],
-                    "ringEnabled": visual_defaults["ringEnabled"],
+                    "ringEnabled": False,
                     "ringWidth": visual_defaults["ringWidth"],
                     "fontColor": "#0f172a",
                 },
@@ -563,6 +540,7 @@ class AbonentCommunicationsPlugin(PluginBase):
         start_raw: Any,
         end_raw: Any,
         calls_count: int,
+        calls_count_approx: bool = False,
     ) -> Dict[str, Any]:
         edge_id = self._next_edge_id(edges)
         start_str = _format_dt(start_raw)
@@ -583,6 +561,7 @@ class AbonentCommunicationsPlugin(PluginBase):
                 "period_start": start_str,
                 "period_end": end_str,
                 "calls_count": calls_count,
+                "calls_count_approx": bool(calls_count_approx),
                 "visual": {
                     "label": edge_label,
                     "direction": "both",
@@ -590,7 +569,7 @@ class AbonentCommunicationsPlugin(PluginBase):
             },
         }
 
-    def _merge_edge_interval(self, edge: Dict[str, Any], start_raw: Any, end_raw: Any, calls_count: int) -> None:
+    def _merge_edge_interval(self, edge: Dict[str, Any], start_raw: Any, end_raw: Any, calls_count: int, calls_count_approx: bool = False) -> None:
         attributes = edge.get("attributes")
         if not isinstance(attributes, dict):
             attributes = {}
@@ -616,10 +595,12 @@ class AbonentCommunicationsPlugin(PluginBase):
             chosen_start = _format_dt(start_raw)
             chosen_end = _format_dt(end_raw)
             chosen_calls = max(0, int(calls_count or 0))
+            chosen_calls_approx = bool(calls_count_approx)
         else:
             chosen_start = _format_dt(existing_start_raw)
             chosen_end = _format_dt(existing_end_raw)
             chosen_calls = max(0, int(attributes.get("calls_count") or 0))
+            chosen_calls_approx = bool(attributes.get("calls_count_approx") or False)
 
         interval_label = self._interval_label(chosen_start, chosen_end)
         contacts_label = f"\u043a\u043e\u043d\u0442\u0430\u043a\u0442\u043e\u0432: {chosen_calls}"
@@ -628,6 +609,7 @@ class AbonentCommunicationsPlugin(PluginBase):
         attributes["period_start"] = chosen_start
         attributes["period_end"] = chosen_end
         attributes["calls_count"] = chosen_calls
+        attributes["calls_count_approx"] = chosen_calls_approx
         attributes["period"] = interval_label
         attributes["contacts"] = contacts_label
 
@@ -641,6 +623,3 @@ class AbonentCommunicationsPlugin(PluginBase):
         if start_value and end_value:
             return f"\u0441 {start_value} \u043f\u043e {end_value}"
         return start_value or end_value
-
-
-
