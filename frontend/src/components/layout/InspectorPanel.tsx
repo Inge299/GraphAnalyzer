@@ -42,8 +42,8 @@ const labels = {
   typeTable: '\u0422\u0430\u0431\u043b\u0438\u0446\u0430',
   typeMap: '\u041a\u0430\u0440\u0442\u0430',
   typeChart: '\u0414\u0438\u0430\u0433\u0440\u0430\u043c\u043c\u0430',
-  typeDocument: 'Документ',
-  typeConsole: 'Консоль',
+  typeDocument: 'Р”РѕРєСѓРјРµРЅС‚',
+  typeConsole: 'РљРѕРЅСЃРѕР»СЊ',
   historyPlaceholder: '\u0418\u0441\u0442\u043e\u0440\u0438\u044f \u0438\u0437\u043c\u0435\u043d\u0435\u043d\u0438\u0439',
   artifactId: 'ID \u0430\u0440\u0442\u0435\u0444\u0430\u043a\u0442\u0430',
   projectId: 'ID \u043f\u0440\u043e\u0435\u043a\u0442\u0430',
@@ -63,10 +63,14 @@ const labels = {
   loadReportTitle: '\u041e\u0442\u0447\u0435\u0442 \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0438',
   communicationsCount: '\u0421\u0432\u044f\u0437\u0438 \u0430\u0431\u043e\u043d\u0435\u043d\u0442\u043e\u0432',
   deviceHistoryCount: '\u0421\u043c\u0435\u043d\u044b \u0430\u043f\u043f\u0430\u0440\u0430\u0442\u043e\u0432',
-  refreshConsole: 'Обновить консоль',
+  refreshConsole: 'РћР±РЅРѕРІРёС‚СЊ РєРѕРЅСЃРѕР»СЊ',
   cancel: '\u041e\u0442\u043c\u0435\u043d\u0430',
   save: '\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c',
-  selectResult: '\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0440\u0435\u0437\u0443\u043b\u044c\u0442\u0430\u0442',
+  selectResult: '\\u0412\\u044b\\u0431\\u0435\\u0440\\u0438\\u0442\\u0435 \\u0440\\u0435\\u0437\\u0443\\u043b\\u044c\\u0442\\u0430\\u0442',
+  llmSection: 'LLM',
+  llmModel: 'Модель',
+  llmRuntime: 'Режим',
+  llmLatency: 'Задержка',
   elementProps: '\u0421\u0432\u043e\u0439\u0441\u0442\u0432\u0430',
   selectedCount: '\u041a\u043e\u043b-\u0432\u043e',
   mixedSelection: '\u0412\u044b\u0434\u0435\u043b\u0435\u043d\u044b \u0438 \u0432\u0435\u0440\u0448\u0438\u043d\u044b, \u0438 \u0441\u0432\u044f\u0437\u0438. \u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u043e\u0434\u0438\u043d \u0442\u0438\u043f \u044d\u043b\u0435\u043c\u0435\u043d\u0442\u043e\u0432.',
@@ -142,7 +146,7 @@ const fallbackIconOptions = [
 const iconScaleOptions = ['1', '2', '3', '4', '5'];
 const nodeColorPalette = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#a855f7', '#06b6d4', '#14b8a6', '#84cc16', '#f43f5e', '#eab308', '#000000'];
 const defaultEdgeDirectionOptions = ['from', 'to', 'both'];
-const isLikelyMojibake = (value: string) => /[\u00D0\u00D1][\u0080-\u00BF]|[\uFFFD]|(?:Р В Р’В .|Р В Р Р‹.){2,}/.test(value);
+const isLikelyMojibake = (value: string) => /[\u00D0\u00D1][\u0080-\u00BF]|[\uFFFD]|(?:Р В Р’В Р вЂ™Р’В .|Р В Р’В Р В Р вЂ№.){2,}/.test(value);
 
 const normalizeDisplayLabel = (candidate: string, fallback: string) => {
   const trimmed = candidate.trim();
@@ -229,7 +233,7 @@ const normalizeAttributeValue = (value: unknown) => {
 
 const buildEdgeLabelFromAttributes = (attributes: Record<string, any>, visibleKeys?: string[]) => {
   const visibleSet = Array.isArray(visibleKeys) ? new Set(visibleKeys.map((item) => String(item))) : null;
-  const contactsLine = String(attributes.contacts || (attributes.calls_count !== undefined ? `РєРѕРЅС‚Р°РєС‚РѕРІ: ${attributes.calls_count}` : '')).trim();
+  const contactsLine = String(attributes.contacts || (attributes.calls_count !== undefined ? `Р С”Р С•Р Р…РЎвЂљР В°Р С”РЎвЂљР С•Р Р†: ${attributes.calls_count}` : '')).trim();
   const periodLine = String(attributes.period || '').trim();
 
   const lines: string[] = [];
@@ -246,7 +250,7 @@ type EdgeTypeSelectProps = {
   emptyLabel?: string;
 };
 
-const EdgeTypeSelect: React.FC<EdgeTypeSelectProps> = ({ value, onChange, options, placeholder, allowEmpty = false, emptyLabel = 'Без изменений' }) => {
+const EdgeTypeSelect: React.FC<EdgeTypeSelectProps> = ({ value, onChange, options, placeholder, allowEmpty = false, emptyLabel = 'Р‘РµР· РёР·РјРµРЅРµРЅРёР№' }) => {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const selected = options.find((item) => item.id === value) || null;
@@ -282,7 +286,7 @@ const EdgeTypeSelect: React.FC<EdgeTypeSelectProps> = ({ value, onChange, option
         ) : (
           <span className="edge-type-select-label edge-type-select-placeholder">{placeholder}</span>
         )}
-        <span className="edge-type-select-caret">▾</span>
+        <span className="edge-type-select-caret">в–ѕ</span>
       </button>
 
       {open && (
@@ -457,8 +461,8 @@ const pluginContextKey = useMemo(() => {
         setIconOptions(uniqueIcons.length > 0 ? uniqueIcons : fallbackIconOptions);
 
         const nodeTypes = (model?.node_types || []).map((node) => ({
-          id: String(node?.id || 'Узел'),
-          label: normalizeDisplayLabel(String(node?.label || ''), String(node?.id || 'Узел')),
+          id: String(node?.id || 'РЈР·РµР»'),
+          label: normalizeDisplayLabel(String(node?.label || ''), String(node?.id || 'РЈР·РµР»')),
           icon: String(node?.icon || '').trim(),
           defaultVisual: ((node as any)?.default_visual || {}) as Record<string, any>,
           attributes: Array.isArray((node as any)?.attributes)
@@ -479,8 +483,8 @@ const pluginContextKey = useMemo(() => {
         setNodeTypeDefinitions(nodeTypes);
 
         const edgeTypes = (model?.edge_types || []).map((edge) => ({
-          id: String((edge as any)?.id || 'Связь'),
-          label: normalizeDisplayLabel(String((edge as any)?.label || ''), String((edge as any)?.id || 'Связь')),
+          id: String((edge as any)?.id || 'РЎРІСЏР·СЊ'),
+          label: normalizeDisplayLabel(String((edge as any)?.label || ''), String((edge as any)?.id || 'РЎРІСЏР·СЊ')),
           color: String((edge as any)?.default_visual?.color || '#64748b'),
           defaultVisual: (((edge as any)?.default_visual || {}) as Record<string, any>),
           allowedFrom: Array.isArray((edge as any)?.allowed_from) ? (edge as any).allowed_from.map((v: any) => String(v)) : ['*'],
@@ -815,7 +819,7 @@ const pluginContextKey = useMemo(() => {
       const updatedMeta = updatedCurrent?.metadata || {};
       if (updatedMeta?.communications_selection_limited) {
         const limit = Number(updatedMeta?.communications_selection_limit || 0);
-        setPluginsMessage(`Обработаны только первые ${limit} абонентов из выделения. Для остальных запустите плагин повторно.`);
+        setPluginsMessage(`РћР±СЂР°Р±РѕС‚Р°РЅС‹ С‚РѕР»СЊРєРѕ РїРµСЂРІС‹Рµ ${limit} Р°Р±РѕРЅРµРЅС‚РѕРІ РёР· РІС‹РґРµР»РµРЅРёСЏ. Р”Р»СЏ РѕСЃС‚Р°Р»СЊРЅС‹С… Р·Р°РїСѓСЃС‚РёС‚Рµ РїР»Р°РіРёРЅ РїРѕРІС‚РѕСЂРЅРѕ.`);
       }
       if (newNodeIds.length > 0) {
         const maxAutoLayout = Number(layoutConfig.pluginAutoLayout?.maxNewNodes || 80);
@@ -909,7 +913,7 @@ const pluginContextKey = useMemo(() => {
       const insertedComm = Number(result.inserted_communications || 0);
       const insertedDevice = Number(result.inserted_device_history || 0);
       setDataActionMessage(
-        `${labels.dataActionSuccess}:\n- прочитано ${readComm}/${readDevice}\n- добавлено ${insertedComm}/${insertedDevice}\n(communications/device_history)`
+        `${labels.dataActionSuccess}:\n- РїСЂРѕС‡РёС‚Р°РЅРѕ ${readComm}/${readDevice}\n- РґРѕР±Р°РІР»РµРЅРѕ ${insertedComm}/${insertedDevice}\n(communications/device_history)`
       );
       if (result.load_log) {
         setDataActionLog(JSON.stringify(result.load_log, null, 2));
@@ -990,7 +994,7 @@ const handleCreateNode = useCallback(() => {
 
       const conflictInSelected = Array.from(selectedTypeGroups.values()).some((count) => count > 1);
       if (conflictInSelected) {
-        window.alert('Обнаружены дубликаты: для выбранных типов уже есть узлы с таким названием.');
+        window.alert('РћР±РЅР°СЂСѓР¶РµРЅС‹ РґСѓР±Р»РёРєР°С‚С‹: РґР»СЏ РІС‹Р±СЂР°РЅРЅС‹С… С‚РёРїРѕРІ СѓР¶Рµ РµСЃС‚СЊ СѓР·Р»С‹ СЃ С‚Р°РєРёРј РЅР°Р·РІР°РЅРёРµРј.');
         return;
       }
 
@@ -1004,7 +1008,7 @@ const handleCreateNode = useCallback(() => {
       });
 
       if (conflictWithExisting) {
-        window.alert('Обнаружены дубликаты: для выбранных типов уже есть узлы с таким названием.');
+        window.alert('РћР±РЅР°СЂСѓР¶РµРЅС‹ РґСѓР±Р»РёРєР°С‚С‹: РґР»СЏ РІС‹Р±СЂР°РЅРЅС‹С… С‚РёРїРѕРІ СѓР¶Рµ РµСЃС‚СЊ СѓР·Р»С‹ СЃ С‚Р°РєРёРј РЅР°Р·РІР°РЅРёРµРј.');
         return;
       }
     }
@@ -1241,7 +1245,24 @@ const handleCreateNode = useCallback(() => {
   const artifactMetadata = ((selectedArtifact as any).metadata || (selectedArtifact as any).artifact_metadata || {}) as Record<string, any>;
   const derivedFrom = artifactMetadata.derived_from;
   const sourcePlugin = artifactMetadata.source_plugin;
-  const metadataRest = Object.fromEntries(Object.entries(artifactMetadata).filter(([key]) => key !== 'derived_from' && key !== 'source_plugin'));
+  const llmModel = String(artifactMetadata.llm_model || '').trim();
+  const llmRuntime = String(artifactMetadata.llm_runtime || '').trim();
+  const llmLatencyRaw = Number(artifactMetadata.llm_latency_ms);
+  const llmLatency = Number.isFinite(llmLatencyRaw) && llmLatencyRaw > 0
+    ? (llmLatencyRaw < 1000 ? `${Math.round(llmLatencyRaw)} мс` : `${(llmLatencyRaw / 1000).toFixed(2)} с`)
+    : '';
+  const hasLlmMeta = Boolean(llmModel || llmRuntime || llmLatency);
+
+  const metadataRest = Object.fromEntries(
+    Object.entries(artifactMetadata).filter(
+      ([key]) =>
+        key !== 'derived_from' &&
+        key !== 'source_plugin' &&
+        key !== 'llm_model' &&
+        key !== 'llm_runtime' &&
+        key !== 'llm_latency_ms'
+    )
+  );
   return (
     <div className="inspector-panel">
       {createdArtifacts && (
@@ -1826,6 +1847,19 @@ const handleCreateNode = useCallback(() => {
               <div className="property-value">v{selectedArtifact.version || 1}</div>
             </div>
 
+            {hasLlmMeta && (
+              <div className="property-group">
+                <label>{labels.llmSection}</label>
+                <div className="property-value">
+                  {labels.llmModel}: {llmModel || '-'}
+                  <br />
+                  {labels.llmRuntime}: {llmRuntime || '-'}
+                  <br />
+                  {labels.llmLatency}: {llmLatency || '-'}
+                </div>
+              </div>
+            )}
+
             {sourcePlugin && (
               <div className="property-group">
                 <label>source_plugin</label>
@@ -1866,3 +1900,6 @@ const handleCreateNode = useCallback(() => {
 };
 
 export default InspectorPanel;
+
+
+

@@ -225,7 +225,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onArti
   const handleCreateArtifact = useCallback(async () => {
     if (!currentProject?.id || !creatingType) return;
     const baseName = creatingType === 'graph' ? 'Граф' : creatingType === 'document' ? 'Документ' : creatingType === 'console' ? 'Консоль' : 'Карта';
-    const data = creatingType === 'graph' ? { nodes: [], edges: [] } : creatingType === 'console' ? { columns: [], rows: [] } : {};
+    const data = creatingType === 'graph' ? { nodes: [], edges: [] } : creatingType === 'console' ? { tabs: [{ id: 'main', name: 'Основная', columns: [], rows: [], row_count: 0 }], active_tab_id: 'main', columns: [], rows: [] } : {};
 
     try {
       const trimmedName = createName.trim();

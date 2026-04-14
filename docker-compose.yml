@@ -1,4 +1,4 @@
-services:
+﻿services:
   postgres:
     image: postgres:15-alpine
     container_name: osint-postgres
@@ -48,6 +48,17 @@ services:
       - POSTGRES_USER=osint_user
       - POSTGRES_PASSWORD=osint_password
       - POSTGRES_DB=osint_db
+      - LLM_BASE_URL=http://host.docker.internal:1234/v1
+      - LLM_API_KEY=lm-studio
+      - LLM_TIMEOUT_SECONDS=120
+      - LLM_MAX_CONTEXT_CHARS=24000
+      - LLM_MODEL_ANALYZE=google/gemma-3-4b
+      - LLM_MODEL_DRAFT=google/gemma-3-4b
+      - LLM_MODEL_EDIT=google/gemma-3-4b
+      - LLM_TEMPERATURE_ANALYZE=0.1
+      - LLM_TEMPERATURE_DRAFT=0.3
+      - LLM_TEMPERATURE_EDIT=0.2
+      - LLM_RUNTIME_LABEL=GPU (RTX 4060 via LM Studio)
     depends_on:
       postgres:
         condition: service_healthy
@@ -109,6 +120,9 @@ networks:
 volumes:
   postgres_data:
   redis_data:
+
+
+
 
 
 

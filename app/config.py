@@ -1,4 +1,4 @@
-# app/config.py
+﻿# app/config.py
 from typing import List
 from pydantic_settings import BaseSettings
 from pydantic import validator
@@ -60,6 +60,19 @@ class Settings(BaseSettings):
     INFERENCE_TIMEOUT_SECONDS: int = 60
     INFERENCE_EMBEDDING_MODEL: str = "BAAI/bge-m3"
     INFERENCE_RERANK_MODEL: str = "BAAI/bge-reranker-v2-m3"
+
+    # LLM service (OpenAI-compatible, e.g. LM Studio)
+    LLM_BASE_URL: str = "http://host.docker.internal:1234/v1"
+    LLM_API_KEY: str = "lm-studio"
+    LLM_TIMEOUT_SECONDS: int = 120
+    LLM_MAX_CONTEXT_CHARS: int = 24000
+    LLM_MODEL_ANALYZE: str = "google/gemma-3-4b"
+    LLM_MODEL_DRAFT: str = "qwen2.5-7b-instruct"
+    LLM_MODEL_EDIT: str = "saiga_gemma2_9b"
+    LLM_RUNTIME_LABEL: str = ""
+    LLM_TEMPERATURE_ANALYZE: float = 0.1
+    LLM_TEMPERATURE_DRAFT: float = 0.3
+    LLM_TEMPERATURE_EDIT: float = 0.2
 
     class Config:
         env_file = ".env"

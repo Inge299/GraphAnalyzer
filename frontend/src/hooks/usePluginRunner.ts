@@ -28,17 +28,53 @@ interface PluginExecuteResponse {
 }
 
 const getErrorMessage = (error: unknown): string => {
+  const fallback = 'Не удалось запустить плагин.';
+
+  const explainByText = (text: string): string | null => {
+    const normalized = text.toLowerCase();
+
+    if (
+      normalized.includes('timeout') ||
+      normalized.includes('timed out') ||
+      normalized.includes('econnaborted')
+    ) {
+      return 'Превышено время ожидания ответа от LLM. Попробуйте уменьшить объём задачи (например, max_sections=3-4) или выбрать более быструю модель.';
+    }
+
+    if (
+      normalized.includes('context length') ||
+      normalized.includes('n_ctx') ||
+      normalized.includes('n_keep') ||
+      normalized.includes('too many tokens') ||
+      normalized.includes('maximum context')
+    ) {
+      return 'Слишком большой контекст для текущей модели LLM. Уменьшите объём входных данных/число секций или используйте модель с большим context window.';
+    }
+
+    return null;
+  };
+
   if (typeof error === 'object' && error !== null && 'response' in error) {
     const response = (error as { response?: { data?: { detail?: unknown } } }).response;
     const detail = response?.data?.detail;
     if (typeof detail === 'string' && detail.trim()) {
-      return detail;
+      return explainByText(detail) || detail;
     }
   }
+
+  if (typeof error === 'object' && error !== null && 'message' in error) {
+    const message = String((error as { message?: unknown }).message || '');
+    const explained = explainByText(message);
+    if (explained) {
+      return explained;
+    }
+  }
+
   if (error instanceof Error && error.message) {
     return error.message;
   }
-  return 'Не удалось запустить плагин.';
+
+  return fallback;
 };
 
 export const usePluginRunner = ({

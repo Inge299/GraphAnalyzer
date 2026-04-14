@@ -13,28 +13,78 @@ interface DocumentViewProps {
 }
 
 const labels = {
-  title: '\u0414\u043e\u043a\u0443\u043c\u0435\u043d\u0442',
-  contentPlaceholder: '\u041d\u0430\u0447\u043d\u0438\u0442\u0435 \u043f\u0438\u0441\u0430\u0442\u044c Markdown...',
-  save: '\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c',
-  saving: '\u0421\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u0438\u0435...',
-  saved: '\u0421\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u043e',
-  edit: '\u0420\u0435\u0434\u0430\u043a\u0442\u043e\u0440',
-  preview: '\u041f\u0440\u043e\u0441\u043c\u043e\u0442\u0440'
+  title: 'Документ',
+  contentPlaceholder: 'Начните писать Markdown...',
+  save: 'Сохранить',
+  saving: 'Сохранение...',
+  saved: 'Сохранено',
+  edit: 'Редактор',
+  preview: 'Просмотр',
+  llmModel: 'Модель',
+  llmRuntime: 'Режим',
+  llmLatency: 'Задержка',
+};
+
+const formatLatency = (value: unknown): string => {
+  const ms = Number(value);
+  if (!Number.isFinite(ms) || ms <= 0) return '-';
+  if (ms < 1000) return `${Math.round(ms)} мс`;
+  return `${(ms / 1000).toFixed(2)} с`;
+};
+
+const normalizePreviewMarkdown = (value: string): string => {
+  return value
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .filter((line) => {
+      const trimmed = line.trim();
+      if (/^\|+$/.test(trimmed)) return false;
+      if (/^[-*+]$/.test(trimmed)) return false;
+      return true;
+    })
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 };
 
 const DocumentView: React.FC<DocumentViewProps> = ({ artifact }) => {
   const dispatch = useAppDispatch();
   const initialContent = useMemo(() => {
     if (artifact?.data && typeof artifact.data === 'object') {
-      return (artifact.data as any).content || '';
+      return (artifact.data as { content?: string }).content || '';
     }
     return '';
   }, [artifact]);
+
+  const llmMeta = useMemo(() => {
+    const metadata =
+      artifact?.metadata && typeof artifact.metadata === 'object'
+        ? artifact.metadata
+        : {};
+    const typedMetadata = metadata as Record<string, unknown>;
+
+    const model = String(typedMetadata.llm_model || '').trim();
+    const runtime = String(typedMetadata.llm_runtime || '').trim();
+    const latency = formatLatency(typedMetadata.llm_latency_ms);
+
+    const hasAny = Boolean(model || runtime || latency !== '-');
+    return {
+      hasAny,
+      model: model || '-',
+      runtime: runtime || '-',
+      latency,
+    };
+  }, [artifact?.metadata]);
 
   const [content, setContent] = useState<string>(initialContent);
   const [mode, setMode] = useState<'edit' | 'preview'>('edit');
   const [isSaving, setIsSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
+
+  const previewContent = useMemo(
+    () => normalizePreviewMarkdown(content || labels.contentPlaceholder),
+    [content]
+  );
 
   useEffect(() => {
     setContent(initialContent);
@@ -44,11 +94,13 @@ const DocumentView: React.FC<DocumentViewProps> = ({ artifact }) => {
     if (!artifact?.project_id) return;
     setIsSaving(true);
     setSavedAt(null);
+
     try {
       const updatedData = {
         ...(artifact.data || {}),
-        content
+        content,
       };
+
       const response = await api.put(
         `/api/v2/projects/${artifact.project_id}/artifacts/${artifact.id}`,
         { data: updatedData }
@@ -65,7 +117,16 @@ const DocumentView: React.FC<DocumentViewProps> = ({ artifact }) => {
   return (
     <div className="document-view">
       <div className="document-header">
-        <div className="document-title">{artifact.name || labels.title}</div>
+        <div>
+          <div className="document-title">{artifact.name || labels.title}</div>
+          {llmMeta.hasAny && (
+            <div className="document-saved" style={{ marginTop: 4 }}>
+              {labels.llmModel}: {llmMeta.model} · {labels.llmRuntime}: {llmMeta.runtime} ·{' '}
+              {labels.llmLatency}: {llmMeta.latency}
+            </div>
+          )}
+        </div>
+
         <div className="document-actions">
           <button
             className={`document-tab ${mode === 'edit' ? 'active' : ''}`}
@@ -82,7 +143,11 @@ const DocumentView: React.FC<DocumentViewProps> = ({ artifact }) => {
           <button className="document-save" onClick={handleSave} disabled={isSaving}>
             {isSaving ? labels.saving : labels.save}
           </button>
-          {savedAt && <span className="document-saved">{labels.saved} · {savedAt}</span>}
+          {savedAt && (
+            <span className="document-saved">
+              {labels.saved} · {savedAt}
+            </span>
+          )}
         </div>
       </div>
 
@@ -95,9 +160,7 @@ const DocumentView: React.FC<DocumentViewProps> = ({ artifact }) => {
         />
       ) : (
         <div className="document-preview">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>
-            {content || labels.contentPlaceholder}
-          </ReactMarkdown>
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{previewContent}</ReactMarkdown>
         </div>
       )}
     </div>
