@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { setCurrentProject, fetchProjects } from '../../store/slices/projectsSlice';
-import { fetchArtifacts, setCurrentArtifact, createArtifact } from '../../store/slices/artifactsSlice';
+import { fetchArtifacts, setCurrentArtifact, createArtifact, deleteArtifact } from '../../store/slices/artifactsSlice';
 import { projectApi, artifactApi } from '../../services/api';
 import type { ApiArtifact } from '../../types/api';
 import './Sidebar.css';
@@ -11,6 +11,8 @@ interface SidebarProps {
   isCollapsed: boolean;
   onToggleCollapse: () => void;
   onArtifactSelect: (artifact: ApiArtifact) => void;
+  onOpenServiceScreen: () => void;
+  isServiceScreenActive: boolean;
 }
 
 type ArtifactContextMenuState = {
@@ -30,6 +32,7 @@ const labels = {
   createDocument: '\u0421\u043e\u0437\u0434\u0430\u0442\u044c \u043d\u043e\u0432\u044b\u0439 \u0434\u043e\u043a\u0443\u043c\u0435\u043d\u0442',
   createMap: 'Создать новую карту',
   createConsole: 'Создать новую консоль',
+  openServiceScreen: 'Сервисные функции',
   createNamePlaceholder: '\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435 \u0430\u0440\u0442\u0435\u0444\u0430\u043a\u0442\u0430',
   createConfirm: '\u0421\u043e\u0437\u0434\u0430\u0442\u044c',
   createCancel: '\u041e\u0442\u043c\u0435\u043d\u0430',
@@ -41,6 +44,8 @@ const labels = {
   deleteProjectNotEmpty: '\u041f\u0440\u043e\u0435\u043a\u0442 \u043d\u0435 \u043f\u0443\u0441\u0442\u043e\u0439. \u0421\u043d\u0430\u0447\u0430\u043b\u0430 \u0443\u0434\u0430\u043b\u0438\u0442\u0435 \u0432\u0441\u0435 \u0430\u0440\u0442\u0435\u0444\u0430\u043a\u0442\u044b.',
   duplicate: '\u0414\u0443\u0431\u043b\u0438\u0440\u043e\u0432\u0430\u0442\u044c',
   rename: '\u041f\u0435\u0440\u0435\u0438\u043c\u0435\u043d\u043e\u0432\u0430\u0442\u044c',
+  deleteArtifact: 'Удалить',
+  deleteArtifactConfirm: 'Удалить артефакт? Это действие необратимо.',
   renamePrompt: '\u041d\u043e\u0432\u043e\u0435 \u0438\u043c\u044f \u0430\u0440\u0442\u0435\u0444\u0430\u043a\u0442\u0430:',
   renameSame: '\u0418\u043c\u044f \u043d\u0435 \u0438\u0437\u043c\u0435\u043d\u0438\u043b\u043e\u0441\u044c',
   renameEmpty: '\u0418\u043c\u044f \u043d\u0435 \u043c\u043e\u0436\u0435\u0442 \u0431\u044b\u0442\u044c \u043f\u0443\u0441\u0442\u044b\u043c',
@@ -57,7 +62,7 @@ const typeIcon: Record<string, string> = {
   console: '🖥',
 };
 
-const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onArtifactSelect }) => {
+const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onArtifactSelect, onOpenServiceScreen, isServiceScreenActive }) => {
   const dispatch = useAppDispatch();
   const projects = useAppSelector((state) => state.projects.projects);
   const projectsLoading = useAppSelector((state) => state.projects.isLoading);
@@ -155,7 +160,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onArti
   const contextMenuStyle = useMemo<React.CSSProperties>(() => {
     if (!contextMenu) return {};
     const maxWidth = 180;
-    const maxHeight = 96;
+    const maxHeight = 140;
     const panel = sidebarRef.current;
     const width = panel?.clientWidth || 300;
     const height = panel?.clientHeight || 600;
@@ -307,6 +312,19 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onArti
     }
   }, [currentProject?.id, dispatch]);
 
+  const handleDeleteArtifact = useCallback(async (artifact: ApiArtifact) => {
+    if (!currentProject?.id) return;
+    const ok = window.confirm(`${labels.deleteArtifactConfirm}\n\n${artifact.name || ''}`);
+    if (!ok) return;
+    try {
+      await dispatch(deleteArtifact({ projectId: currentProject.id, id: artifact.id })).unwrap();
+      setContextMenu(null);
+    } catch (error: any) {
+      const detail = String(error?.response?.data?.detail || error?.message || '');
+      if (detail) window.alert(detail);
+    }
+  }, [currentProject?.id, dispatch]);
+
   const actionsDisabled = !currentProject || !!creatingType;
 
   return (
@@ -343,6 +361,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onArti
           <button className="action-btn wide" onClick={() => openCreate('document')} disabled={actionsDisabled} title={labels.createDocument}>{labels.createDocument}</button>
           <button className="action-btn wide" onClick={() => openCreate('map')} disabled={actionsDisabled} title={labels.createMap}>{labels.createMap}</button>
           <button className="action-btn wide" onClick={() => openCreate('console')} disabled={actionsDisabled} title={labels.createConsole}>{labels.createConsole}</button>
+          <button className={`action-btn wide ${isServiceScreenActive ? 'active' : ''}`} onClick={onOpenServiceScreen} title={labels.openServiceScreen}>{labels.openServiceScreen}</button>
         </div>
 
         {creatingType && (
@@ -450,6 +469,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onArti
           <div className="artifact-context-menu" style={contextMenuStyle} onClick={(e) => e.stopPropagation()}>
             <button type="button" className="artifact-context-btn" onClick={() => handleDuplicateArtifact(contextMenu.artifact)}>{labels.duplicate}</button>
             <button type="button" className="artifact-context-btn" onClick={() => handleRenameArtifact(contextMenu.artifact)}>{labels.rename}</button>
+            <button type="button" className="artifact-context-btn danger" onClick={() => handleDeleteArtifact(contextMenu.artifact)}>{labels.deleteArtifact}</button>
           </div>
         )}
       </div>
@@ -458,6 +478,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onArti
 };
 
 export default Sidebar;
+
+
 
 
 

@@ -58,6 +58,61 @@ export interface ApiProject {
   updated_at: string;
 }
 
+export interface ProjectDataStats {
+  project_id: number;
+  communications_count: number;
+  device_history_count: number;
+  location_events_count: number;
+  ip_bindings_count: number;
+}
+
+export interface ProjectDataLoadResponse {
+  message: string;
+  project_id: number;
+  source_path: string;
+  output_dir: string;
+  communications_rows: number;
+  device_history_rows: number;
+  location_events_rows: number;
+  ip_bindings_rows: number;
+  inserted_communications: number;
+  inserted_device_history: number;
+  inserted_location_events: number;
+  inserted_ip_bindings: number;
+  load_batch_id: string;
+  load_log: Record<string, any>;
+  graph_artifact?: ApiArtifact | Record<string, any> | null;
+}
+
+export interface ProjectDataClearResponse {
+  message: string;
+  project_id: number;
+  communications_deleted: number;
+  device_history_deleted: number;
+  location_events_deleted: number;
+  ip_bindings_deleted: number;
+}
+
+export interface CellTowerReferenceLoadResponse {
+  message: string;
+  source_path: string;
+  inserted_rows: number;
+  loaded_at: string;
+}
+
+export interface CellTowerReferenceEnrichResponse {
+  message: string;
+  project_id: number;
+  raw_candidates: number;
+  matched_by_address: number;
+  inserted_rows: number;
+}
+
+export interface CellTowerReferenceStats {
+  cell_tower_reference_count: number;
+  last_loaded_at: string | null;
+}
+
 export interface PluginSelectionRules {
   nodes?: 'required' | 'optional' | 'forbidden';
   edges?: 'required' | 'optional' | 'forbidden';
@@ -93,6 +148,7 @@ export interface ApiPlugin {
   applicable_when?: Record<string, any>;
   params_schema?: PluginParamSpec[];
   output_strategy?: Record<string, any>;
+  plugin_scope?: 'context' | 'global' | string;
 }
 
 export interface PluginExecutionContext {
@@ -101,6 +157,22 @@ export interface PluginExecutionContext {
   selected_rows?: string[];
   selected_text?: string;
   selected_geo?: Record<string, any>;
+}
+
+export interface PluginListResponse {
+  plugins: ApiPlugin[];
+}
+
+export interface PluginApplicableResponse {
+  plugins: ApiPlugin[];
+}
+
+export interface PluginUploadInputResponse {
+  project_id: number;
+  original_name: string;
+  saved_name: string;
+  container_path: string;
+  size_bytes: number;
 }
 
 export interface ApiPluginExecuteRequest {
@@ -112,6 +184,7 @@ export interface ApiPluginExecuteRequest {
 
 export interface ApiPluginExecuteResponse {
   created: ApiArtifact[];
+  updated: ApiArtifact[];
 }
 
 export interface DomainModelNodeType {

@@ -1,6 +1,18 @@
 ﻿// frontend/src/services/api.ts
 import axios from 'axios';
-import type { PluginExecutionContext } from '../types/api';
+import type {
+  ApiPluginExecuteResponse,
+  CellTowerReferenceEnrichResponse,
+  CellTowerReferenceLoadResponse,
+  CellTowerReferenceStats,
+  PluginApplicableResponse,
+  PluginExecutionContext,
+  PluginListResponse,
+  PluginUploadInputResponse,
+  ProjectDataClearResponse,
+  ProjectDataLoadResponse,
+  ProjectDataStats,
+} from '../types/api';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -75,9 +87,9 @@ export const projectApi = {
 };
 
 export const pluginApi = {
-  list: () => api.get('/api/v1/plugins').then(res => res.data),
+  list: () => api.get<PluginListResponse>('/api/v1/plugins').then(res => res.data),
   applicable: (projectId: number, artifactId: number, context: PluginExecutionContext = {}) =>
-    api.post('/api/v1/plugins/applicable', {
+    api.post<PluginApplicableResponse>('/api/v1/plugins/applicable', {
       project_id: projectId,
       artifact_id: artifactId,
       context,
@@ -86,35 +98,50 @@ export const pluginApi = {
     pluginId: string,
     projectId: number,
     inputArtifactIds: number[],
-    params: any = {},
+    params: Record<string, any> = {},
     context: PluginExecutionContext = {},
   ) =>
-    api.post(`/api/v1/plugins/${pluginId}/execute`, {
+    api.post<ApiPluginExecuteResponse>(`/api/v1/plugins/${pluginId}/execute`, {
       project_id: projectId,
       input_artifact_ids: inputArtifactIds,
       params,
       context,
     }, { timeout: 300000 }).then(res => res.data),
+  uploadInput: (projectId: number, file: File) => {
+    const formData = new FormData();
+    formData.append('project_id', String(projectId));
+    formData.append('file', file, file.name);
+    return api.post<PluginUploadInputResponse>('/api/v1/plugins/upload-input', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 600000,
+    }).then(res => res.data);
+  },
 };
 
 export const projectDataApi = {
   load: (projectId: number, sourcePath: string) =>
-    api.post(`/api/v1/projects/${projectId}/data/load`, { source_path: sourcePath }).then(res => res.data),
+    api.post<ProjectDataLoadResponse>(`/api/v1/projects/${projectId}/data/load`, { source_path: sourcePath }).then(res => res.data),
   loadFromFiles: (projectId: number, files: File[]) => {
     const formData = new FormData();
     files.forEach((file) => {
       const relativeName = (file as any).webkitRelativePath || file.name;
       formData.append('files', file, relativeName);
     });
-    return api.post(`/api/v1/projects/${projectId}/data/load-upload`, formData, {
+    return api.post<ProjectDataLoadResponse>(`/api/v1/projects/${projectId}/data/load-upload`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
       timeout: 300000,
     }).then(res => res.data);
   },
   clear: (projectId: number) =>
-    api.post(`/api/v1/projects/${projectId}/data/clear`).then(res => res.data),
+    api.post<ProjectDataClearResponse>(`/api/v1/projects/${projectId}/data/clear`, {}, { timeout: 300000 }).then(res => res.data),
   stats: (projectId: number) =>
-    api.get(`/api/v1/projects/${projectId}/data/stats`).then(res => res.data),
+    api.get<ProjectDataStats>(`/api/v1/projects/${projectId}/data/stats`).then(res => res.data),
+  loadCellTowers: (sourcePath: string) =>
+    api.post<CellTowerReferenceLoadResponse>(`/api/v1/projects/data/cell-towers/load`, { source_path: sourcePath }, { timeout: 600000 }).then(res => res.data),
+  cellTowerStats: () =>
+    api.get<CellTowerReferenceStats>(`/api/v1/projects/data/cell-towers/stats`).then(res => res.data),
+  enrichCellTowersByProjectAddresses: (projectId: number) =>
+    api.post<CellTowerReferenceEnrichResponse>(`/api/v1/projects/${projectId}/data/cell-towers/enrich-by-address`, {}).then(res => res.data),
 };
 
 export const consoleApi = {
@@ -131,6 +158,10 @@ export const domainModelApi = {
 };
 
 export default api;
+
+
+
+
 
 
 

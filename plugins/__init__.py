@@ -34,6 +34,7 @@ class PluginBase:
         "mode": "create_new",
         "history_action": "plugin_execute",
     }
+    plugin_scope: str = "context"
 
     async def execute(self, input_artifacts: List[dict], params: Optional[dict] = None) -> List[dict]:
         """
@@ -86,6 +87,7 @@ class PluginBase:
             "applicable_when": self.applicable_when,
             "params_schema": self._normalized_params_schema(),
             "output_strategy": self.output_strategy,
+            "plugin_scope": self.plugin_scope,
         }
 
 

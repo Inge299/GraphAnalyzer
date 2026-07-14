@@ -58,12 +58,6 @@ def _dedupe_preserve_order(items: List[str]) -> List[str]:
     return result
 
 
-def _safe_duration(start: Optional[datetime], end: Optional[datetime]) -> float:
-    if start is None or end is None:
-        return float("-inf")
-    return (end - start).total_seconds()
-
-
 def _as_datetime(value: Any) -> Optional[datetime]:
     if isinstance(value, datetime):
         return value
@@ -246,6 +240,7 @@ class AbonentCommunicationsPlugin(PluginBase):
             start_raw = row.get("time_start")
             end_raw = row.get("time_end")
             calls_count = int(row.get("calls_count") or 0)
+            contacts_count = max(1, int(row.get("contacts_count") or 1))
             calls_count_approx = bool(row.get("calls_count_approx") or False)
 
             existing = self._find_existing_edge(edges, _node_id(left_node), _node_id(right_node), edge_type)
@@ -259,12 +254,13 @@ class AbonentCommunicationsPlugin(PluginBase):
                         start_raw=start_raw,
                         end_raw=end_raw,
                         calls_count=calls_count,
+                        contacts_count=contacts_count,
                         calls_count_approx=calls_count_approx,
                     )
                 )
                 continue
 
-            self._merge_edge_interval(existing, start_raw, end_raw, calls_count, calls_count_approx)
+            self._merge_edge_interval(existing, start_raw, end_raw, calls_count, contacts_count, calls_count_approx)
 
         updated_data = {**data, "nodes": nodes, "edges": edges}
 
@@ -301,6 +297,7 @@ class AbonentCommunicationsPlugin(PluginBase):
               time_start,
               time_end,
               calls_count,
+              contacts_count,
               calls_count_approx
             FROM project_communications
             WHERE project_id = :project_id
@@ -327,6 +324,7 @@ class AbonentCommunicationsPlugin(PluginBase):
                         _normalize_text(payload.get("time_start")),
                         _normalize_text(payload.get("time_end")),
                         _normalize_text(payload.get("calls_count")),
+                        _normalize_text(payload.get("contacts_count")),
                         bool(payload.get("calls_count_approx") or False),
                     )
                     if key in seen:
@@ -540,14 +538,23 @@ class AbonentCommunicationsPlugin(PluginBase):
         start_raw: Any,
         end_raw: Any,
         calls_count: int,
+        contacts_count: int = 1,
         calls_count_approx: bool = False,
     ) -> Dict[str, Any]:
         edge_id = self._next_edge_id(edges)
         start_str = _format_dt(start_raw)
         end_str = _format_dt(end_raw)
         interval_label = self._interval_label(start_str, end_str)
-        contacts_label = f"\u043a\u043e\u043d\u0442\u0430\u043a\u0442\u043e\u0432: {calls_count}" if calls_count > 0 else "\u043a\u043e\u043d\u0442\u0430\u043a\u0442\u043e\u0432: 0"
-        edge_label = f"{contacts_label}\n{interval_label}" if interval_label else contacts_label
+        contacts_value = max(1, int(contacts_count or 1))
+        connections_value = max(0, int(calls_count or 0))
+        contacts_label = f"\u043a\u043e\u043d\u0442\u0430\u043a\u0442\u043e\u0432: {contacts_value}"
+        connections_label = f"\u0441\u043e\u0435\u0434\u0438\u043d\u0435\u043d\u0438\u0439: {connections_value}"
+        label_parts = [contacts_label]
+        if connections_value != contacts_value:
+            label_parts.append(connections_label)
+        if interval_label:
+            label_parts.append(interval_label)
+        edge_label = "\n".join(label_parts)
 
         return {
             "id": edge_id,
@@ -558,6 +565,8 @@ class AbonentCommunicationsPlugin(PluginBase):
             "attributes": {
                 "period": interval_label,
                 "contacts": contacts_label,
+                "contacts_count": contacts_value,
+                "connections": connections_label,
                 "period_start": start_str,
                 "period_end": end_str,
                 "calls_count": calls_count,
@@ -569,7 +578,7 @@ class AbonentCommunicationsPlugin(PluginBase):
             },
         }
 
-    def _merge_edge_interval(self, edge: Dict[str, Any], start_raw: Any, end_raw: Any, calls_count: int, calls_count_approx: bool = False) -> None:
+    def _merge_edge_interval(self, edge: Dict[str, Any], start_raw: Any, end_raw: Any, calls_count: int, contacts_count: int = 1, calls_count_approx: bool = False) -> None:
         attributes = edge.get("attributes")
         if not isinstance(attributes, dict):
             attributes = {}
@@ -588,30 +597,39 @@ class AbonentCommunicationsPlugin(PluginBase):
         old_start_dt = _as_datetime(existing_start_raw)
         old_end_dt = _as_datetime(existing_end_raw)
 
-        new_duration = _safe_duration(new_start_dt, new_end_dt)
-        old_duration = _safe_duration(old_start_dt, old_end_dt)
-
-        if new_duration >= old_duration:
-            chosen_start = _format_dt(start_raw)
-            chosen_end = _format_dt(end_raw)
-            chosen_calls = max(0, int(calls_count or 0))
-            chosen_calls_approx = bool(calls_count_approx)
-        else:
-            chosen_start = _format_dt(existing_start_raw)
-            chosen_end = _format_dt(existing_end_raw)
-            chosen_calls = max(0, int(attributes.get("calls_count") or 0))
-            chosen_calls_approx = bool(attributes.get("calls_count_approx") or False)
+        starts = [value for value in (old_start_dt, new_start_dt) if value is not None]
+        ends = [value for value in (old_end_dt, new_end_dt) if value is not None]
+        chosen_start = _format_dt(min(starts)) if starts else ""
+        chosen_end = _format_dt(max(ends)) if ends else ""
+        chosen_calls = max(
+            max(0, int(attributes.get("calls_count") or 0)),
+            max(0, int(calls_count or 0)),
+        )
+        chosen_contacts = max(
+            1,
+            int(attributes.get("contacts_count") or 1),
+            int(contacts_count or 1),
+        )
+        chosen_calls_approx = bool(attributes.get("calls_count_approx") or False) or bool(calls_count_approx)
 
         interval_label = self._interval_label(chosen_start, chosen_end)
-        contacts_label = f"\u043a\u043e\u043d\u0442\u0430\u043a\u0442\u043e\u0432: {chosen_calls}"
-        edge_label = f"{contacts_label}\n{interval_label}" if interval_label else contacts_label
+        contacts_label = f"\u043a\u043e\u043d\u0442\u0430\u043a\u0442\u043e\u0432: {chosen_contacts}"
+        connections_label = f"\u0441\u043e\u0435\u0434\u0438\u043d\u0435\u043d\u0438\u0439: {chosen_calls}"
+        label_parts = [contacts_label]
+        if chosen_calls != chosen_contacts:
+            label_parts.append(connections_label)
+        if interval_label:
+            label_parts.append(interval_label)
+        edge_label = "\n".join(label_parts)
 
         attributes["period_start"] = chosen_start
         attributes["period_end"] = chosen_end
         attributes["calls_count"] = chosen_calls
+        attributes["contacts_count"] = chosen_contacts
         attributes["calls_count_approx"] = chosen_calls_approx
         attributes["period"] = interval_label
         attributes["contacts"] = contacts_label
+        attributes["connections"] = connections_label
 
         edge["label"] = edge_label
         visual["label"] = edge_label

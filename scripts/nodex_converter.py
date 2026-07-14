@@ -30,7 +30,40 @@ class Event:
     operator_b: str
     address_a: str
     address_b: str
+    imsi_a: str
+    imsi_b: str
+    imei_a: str
+    imei_b: str
+    loc_a_start: str
+    loc_a_end: str
+    loc_b_start: str
+    loc_b_end: str
     conn_type: str
+
+
+@dataclass
+class LocationEvent:
+    identifier_type: str
+    identifier_value: str
+    event_time: datetime
+    address: str
+    mcc: str
+    mnc: str
+    lac: str
+    bs: str
+
+
+@dataclass
+class IpBinding:
+    identifier_type: str
+    identifier_value: str
+    ip_address: str
+    event_time: datetime
+    address: str
+    mcc: str
+    mnc: str
+    lac: str
+    bs: str
 
 
 @dataclass
@@ -45,11 +78,23 @@ class Cluster:
     operator_b: Counter
     address_a: Counter
     address_b: Counter
+    imsi_a: Counter
+    imsi_b: Counter
+    imei_a: Counter
+    imei_b: Counter
+    loc_a_start: Counter
+    loc_a_end: Counter
+    loc_b_start: Counter
+    loc_b_end: Counter
+    duration_sum_sec: int
+    event_count: int
 
     def absorb(self, event: Event) -> None:
         self.start = min(self.start, event.start)
         self.end = max(self.end, event.end)
         self.duration_sec = max(self.duration_sec, event.duration_sec)
+        self.duration_sum_sec += max(0, event.duration_sec)
+        self.event_count += 1
         if event.operator_a:
             self.operator_a[event.operator_a] += 1
         if event.operator_b:
@@ -58,6 +103,22 @@ class Cluster:
             self.address_a[event.address_a] += 1
         if event.address_b:
             self.address_b[event.address_b] += 1
+        if event.imsi_a:
+            self.imsi_a[event.imsi_a] += 1
+        if event.imsi_b:
+            self.imsi_b[event.imsi_b] += 1
+        if event.imei_a:
+            self.imei_a[event.imei_a] += 1
+        if event.imei_b:
+            self.imei_b[event.imei_b] += 1
+        if event.loc_a_start:
+            self.loc_a_start[event.loc_a_start] += 1
+        if event.loc_a_end:
+            self.loc_a_end[event.loc_a_end] += 1
+        if event.loc_b_start:
+            self.loc_b_start[event.loc_b_start] += 1
+        if event.loc_b_end:
+            self.loc_b_end[event.loc_b_end] += 1
 
 
 @dataclass
@@ -68,11 +129,12 @@ class BuildStats:
     rows_read_total: int = 0
     rows_with_valid_start: int = 0
     rows_with_two_abonents: int = 0
+    rows_location_only: int = 0
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Nodex converter: transform billing CSV/ZIP into communications and device_history CSV files."
+        description="Nodex converter: transform billing CSV/ZIP into project CSV files."
     )
     parser.add_argument(
         "--input-dir",
@@ -88,6 +150,16 @@ def parse_args() -> argparse.Namespace:
         "--out-device-history",
         default="device_history.csv",
         help="Output path for device history CSV.",
+    )
+    parser.add_argument(
+        "--out-location-events",
+        default="location_events.csv",
+        help="Output path for location-only events CSV.",
+    )
+    parser.add_argument(
+        "--out-ip-bindings",
+        default="ip_bindings.csv",
+        help="Output path for identifier-to-ip bindings CSV.",
     )
     parser.add_argument(
         "--out-manifest",
@@ -129,6 +201,37 @@ def normalize_phone(value: str) -> str:
     if len(digits) == 10:
         return "7" + digits
     return digits
+
+
+def normalize_imsi(value: str) -> str:
+    digits = re.sub(r"\D+", "", normalize_text(value))
+    if len(digits) != 15:
+        return ""
+    return digits
+
+
+def extract_mcc_mnc(imsi: str) -> tuple[str, str]:
+    normalized = normalize_imsi(imsi)
+    if not normalized:
+        return "", ""
+    return normalized[:3], normalized[3:5].lstrip("0") or "0"
+
+
+def normalize_imei(value: str) -> str:
+    digits = re.sub(r"\D+", "", normalize_text(value))
+    if len(digits) < 14:
+        return ""
+    return digits[:14]
+
+
+def parse_lac_bs(value: str) -> tuple[str, str]:
+    raw = normalize_text(value)
+    if not raw:
+        return "", ""
+    parts = re.findall(r"\d+", raw)
+    if len(parts) < 2:
+        return "", ""
+    return parts[0], parts[1]
 
 
 def parse_int(value: str) -> int:
@@ -221,10 +324,18 @@ def iter_source_bytes(input_dir: Path) -> Iterable[tuple[str, bytes]]:
 
 def build_events_and_devices(
     input_dir: Path,
-) -> tuple[list[Event], dict[tuple[str, str, str], list[datetime]], BuildStats]:
+) -> tuple[
+    list[Event],
+    dict[tuple[str, str, str], list[datetime]],
+    list[LocationEvent],
+    list[IpBinding],
+    BuildStats,
+]:
     seen_hashes: set[str] = set()
     events: list[Event] = []
     devices: dict[tuple[str, str, str], list[datetime]] = {}
+    location_events: list[LocationEvent] = []
+    ip_bindings: list[IpBinding] = []
     stats = BuildStats()
 
     for source_name, raw in iter_source_bytes(input_dir):
@@ -238,76 +349,163 @@ def build_events_and_devices(
 
         for row in read_csv_rows(raw, source_name):
             stats.rows_read_total += 1
-            start = parse_dt(row.get("Время начала соединения", ""))
-            if start is None:
-                continue
-            stats.rows_with_valid_start += 1
 
-            duration = parse_int(row.get("Длительность, сек", "0"))
-            end = start + timedelta(seconds=duration)
+            conn_start = parse_dt(row.get("Время начала соединения", ""))
+            location_time = parse_dt(row.get("Время определения местоположения", ""))
+
+            if conn_start is not None:
+                stats.rows_with_valid_start += 1
+
+                duration = parse_int(row.get("Длительность, сек", "0"))
+                conn_end = conn_start + timedelta(seconds=duration)
+
+                abon_num = normalize_phone(row.get("Номер абонента", ""))
+                contact_num = normalize_phone(row.get("Номер контакта", ""))
+                if not abon_num or not contact_num:
+                    continue
+                stats.rows_with_two_abonents += 1
+
+                a_phone, b_phone, swapped = canonicalize_pair(abon_num, contact_num)
+
+                abon_imsi = normalize_text(row.get("IMSI абонента", ""))
+                contact_imsi = normalize_text(row.get("IMSI контакта", ""))
+                abon_imei = normalize_text(row.get("IMEI абонента", ""))
+                contact_imei = normalize_text(row.get("IMEI контакта", ""))
+
+                operator_abon = detect_operator(abon_num, abon_imsi, row.get("Номер абонента", ""))
+                operator_contact = detect_operator(contact_num, contact_imsi, row.get("Номер контакта", ""))
+
+                address_abon = normalize_text(
+                    row.get("Адрес БС абонента на начало", "")
+                    or row.get("Адрес БС абонента на завершение", "")
+                )
+                address_contact = normalize_text(
+                    row.get("Адрес БС контакта на начало", "")
+                    or row.get("Адрес БС контакта на завершение", "")
+                )
+
+                loc_abon_start = normalize_text(row.get("М/П абонента на начало", ""))
+                loc_abon_end = normalize_text(row.get("М/П абонента на конец", ""))
+                loc_contact_start = normalize_text(row.get("М/П контакта на начало", ""))
+                loc_contact_end = normalize_text(row.get("М/П контакта на конец", ""))
+
+                if swapped:
+                    operator_a, operator_b = operator_contact, operator_abon
+                    address_a, address_b = address_contact, address_abon
+                    imsi_a, imsi_b = contact_imsi, abon_imsi
+                    imei_a, imei_b = contact_imei, abon_imei
+                    loc_a_start, loc_a_end = loc_contact_start, loc_contact_end
+                    loc_b_start, loc_b_end = loc_abon_start, loc_abon_end
+                else:
+                    operator_a, operator_b = operator_abon, operator_contact
+                    address_a, address_b = address_abon, address_contact
+                    imsi_a, imsi_b = abon_imsi, contact_imsi
+                    imei_a, imei_b = abon_imei, contact_imei
+                    loc_a_start, loc_a_end = loc_abon_start, loc_abon_end
+                    loc_b_start, loc_b_end = loc_contact_start, loc_contact_end
+
+                conn_type = normalize_text(row.get("Тип соединения", ""))
+                events.append(
+                    Event(
+                        phone_a=a_phone,
+                        phone_b=b_phone,
+                        start=conn_start,
+                        end=conn_end,
+                        duration_sec=duration,
+                        operator_a=operator_a,
+                        operator_b=operator_b,
+                        address_a=address_a,
+                        address_b=address_b,
+                        imsi_a=imsi_a,
+                        imsi_b=imsi_b,
+                        imei_a=imei_a,
+                        imei_b=imei_b,
+                        loc_a_start=loc_a_start,
+                        loc_a_end=loc_a_end,
+                        loc_b_start=loc_b_start,
+                        loc_b_end=loc_b_end,
+                        conn_type=conn_type,
+                    )
+                )
+
+                for phone, imsi, imei in (
+                    (abon_num, abon_imsi, abon_imei),
+                    (contact_num, contact_imsi, contact_imei),
+                ):
+                    if not phone or (not imsi and not imei):
+                        continue
+                    key = (phone, imsi, imei)
+                    if key not in devices:
+                        devices[key] = [conn_start, conn_end]
+                    else:
+                        devices[key][0] = min(devices[key][0], conn_start)
+                        devices[key][1] = max(devices[key][1], conn_end)
+                continue
+
+            if location_time is None:
+                continue
+
+            stats.rows_with_valid_start += 1
+            stats.rows_location_only += 1
 
             abon_num = normalize_phone(row.get("Номер абонента", ""))
-            contact_num = normalize_phone(row.get("Номер контакта", ""))
-            if not abon_num or not contact_num:
+            abon_imsi = normalize_imsi(row.get("IMSI абонента", ""))
+            abon_imei = normalize_imei(row.get("IMEI абонента", ""))
+            ip_address = normalize_text(row.get("IP-адрес абонента", ""))
+            location_value = normalize_text(row.get("М/П абонента", ""))
+            address = normalize_text(row.get("Адрес БС абонента", ""))
+            lac, bs = parse_lac_bs(location_value)
+            mcc, mnc = extract_mcc_mnc(abon_imsi)
+
+            identifiers: list[tuple[str, str]] = []
+            if abon_num:
+                identifiers.append(("phone", abon_num))
+            if abon_imsi:
+                identifiers.append(("imsi", abon_imsi))
+            if abon_imei:
+                identifiers.append(("imei", abon_imei))
+            if not identifiers:
                 continue
-            stats.rows_with_two_abonents += 1
 
-            a_phone, b_phone, swapped = canonicalize_pair(abon_num, contact_num)
-
-            abon_imsi = normalize_text(row.get("IMSI абонента", ""))
-            contact_imsi = normalize_text(row.get("IMSI контакта", ""))
-            abon_imei = normalize_text(row.get("IMEI абонента", ""))
-            contact_imei = normalize_text(row.get("IMEI контакта", ""))
-
-            operator_abon = detect_operator(abon_num, abon_imsi, row.get("Номер абонента", ""))
-            operator_contact = detect_operator(contact_num, contact_imsi, row.get("Номер контакта", ""))
-
-            address_abon = normalize_text(
-                row.get("Адрес БС абонента на начало", "")
-                or row.get("Адрес БС абонента на завершение", "")
-            )
-            address_contact = normalize_text(
-                row.get("Адрес БС контакта на начало", "")
-                or row.get("Адрес БС контакта на завершение", "")
-            )
-
-            if swapped:
-                operator_a, operator_b = operator_contact, operator_abon
-                address_a, address_b = address_contact, address_abon
-            else:
-                operator_a, operator_b = operator_abon, operator_contact
-                address_a, address_b = address_abon, address_contact
-
-            conn_type = normalize_text(row.get("Тип соединения", ""))
-            events.append(
-                Event(
-                    phone_a=a_phone,
-                    phone_b=b_phone,
-                    start=start,
-                    end=end,
-                    duration_sec=duration,
-                    operator_a=operator_a,
-                    operator_b=operator_b,
-                    address_a=address_a,
-                    address_b=address_b,
-                    conn_type=conn_type,
+            for identifier_type, identifier_value in identifiers:
+                location_events.append(
+                    LocationEvent(
+                        identifier_type=identifier_type,
+                        identifier_value=identifier_value,
+                        event_time=location_time,
+                        address=address,
+                        mcc=mcc,
+                        mnc=mnc,
+                        lac=lac,
+                        bs=bs,
+                    )
                 )
-            )
 
-            for phone, imsi, imei in (
-                (abon_num, abon_imsi, abon_imei),
-                (contact_num, contact_imsi, contact_imei),
-            ):
-                if not phone or (not imsi and not imei):
-                    continue
-                key = (phone, imsi, imei)
+            if ip_address:
+                for identifier_type, identifier_value in identifiers:
+                    ip_bindings.append(
+                        IpBinding(
+                            identifier_type=identifier_type,
+                            identifier_value=identifier_value,
+                            ip_address=ip_address,
+                            event_time=location_time,
+                            address=address,
+                            mcc=mcc,
+                            mnc=mnc,
+                            lac=lac,
+                            bs=bs,
+                        )
+                    )
+
+            if abon_num and (abon_imsi or abon_imei):
+                key = (abon_num, abon_imsi, abon_imei)
                 if key not in devices:
-                    devices[key] = [start, end]
+                    devices[key] = [location_time, location_time]
                 else:
-                    devices[key][0] = min(devices[key][0], start)
-                    devices[key][1] = max(devices[key][1], end)
+                    devices[key][0] = min(devices[key][0], location_time)
+                    devices[key][1] = max(devices[key][1], location_time)
 
-    return events, devices, stats
+    return events, devices, location_events, ip_bindings, stats
 
 
 def cluster_events(events: list[Event], dedup_window_sec: int) -> list[Cluster]:
@@ -339,6 +537,16 @@ def cluster_events(events: list[Event], dedup_window_sec: int) -> list[Cluster]:
                 operator_b=Counter([event.operator_b]) if event.operator_b else Counter(),
                 address_a=Counter([event.address_a]) if event.address_a else Counter(),
                 address_b=Counter([event.address_b]) if event.address_b else Counter(),
+                imsi_a=Counter([event.imsi_a]) if event.imsi_a else Counter(),
+                imsi_b=Counter([event.imsi_b]) if event.imsi_b else Counter(),
+                imei_a=Counter([event.imei_a]) if event.imei_a else Counter(),
+                imei_b=Counter([event.imei_b]) if event.imei_b else Counter(),
+                loc_a_start=Counter([event.loc_a_start]) if event.loc_a_start else Counter(),
+                loc_a_end=Counter([event.loc_a_end]) if event.loc_a_end else Counter(),
+                loc_b_start=Counter([event.loc_b_start]) if event.loc_b_start else Counter(),
+                loc_b_end=Counter([event.loc_b_end]) if event.loc_b_end else Counter(),
+                duration_sum_sec=max(0, event.duration_sec),
+                event_count=1,
             )
             local_clusters.append(cluster)
         clusters.extend(local_clusters)
@@ -365,10 +573,6 @@ def write_communications(
     postgres_friendly: bool,
     null_token: str,
 ) -> int:
-    grouped: dict[tuple[str, str], list[Cluster]] = defaultdict(list)
-    for cluster in clusters:
-        grouped[(cluster.phone_a, cluster.phone_b)].append(cluster)
-
     fieldnames = [
         "Абон1",
         "Абон2",
@@ -376,44 +580,57 @@ def write_communications(
         "оператор2",
         "Адрес1",
         "Адрес2",
+        "IMSI абонента",
+        "IMSI контакта",
+        "IMEI абонента",
+        "IMEI контакта",
+        "М/П абонента на начало",
+        "М/П абонента на конец",
+        "М/П контакта на начало",
+        "М/П контакта на конец",
         "время_начала",
         "время_конца",
+        "Длительность, сек",
+        "уникальных_контактов",
         "количество_связей",
         "общая_продолжительность",
     ]
 
     rows = []
-    for (phone_a, phone_b), pair_clusters in grouped.items():
-        starts = [c.start for c in pair_clusters]
-        ends = [c.end for c in pair_clusters]
-        op_a = Counter()
-        op_b = Counter()
-        addr_a = Counter()
-        addr_b = Counter()
-        total_duration = 0
-        for c in pair_clusters:
-            op_a.update(c.operator_a)
-            op_b.update(c.operator_b)
-            addr_a.update(c.address_a)
-            addr_b.update(c.address_b)
-            total_duration += c.duration_sec
-
+    for cluster in clusters:
         rows.append(
             {
-                "Абон1": out_value(phone_a, postgres_friendly, null_token),
-                "Абон2": out_value(phone_b, postgres_friendly, null_token),
-                "оператор1": out_value(most_common_value(op_a), postgres_friendly, null_token),
-                "оператор2": out_value(most_common_value(op_b), postgres_friendly, null_token),
-                "Адрес1": out_value(most_common_value(addr_a), postgres_friendly, null_token),
-                "Адрес2": out_value(most_common_value(addr_b), postgres_friendly, null_token),
-                "время_начала": format_dt(min(starts), postgres_friendly),
-                "время_конца": format_dt(max(ends), postgres_friendly),
-                "количество_связей": len(pair_clusters),
-                "общая_продолжительность": total_duration,
+                "Абон1": out_value(cluster.phone_a, postgres_friendly, null_token),
+                "Абон2": out_value(cluster.phone_b, postgres_friendly, null_token),
+                "оператор1": out_value(most_common_value(cluster.operator_a), postgres_friendly, null_token),
+                "оператор2": out_value(most_common_value(cluster.operator_b), postgres_friendly, null_token),
+                "Адрес1": out_value(most_common_value(cluster.address_a), postgres_friendly, null_token),
+                "Адрес2": out_value(most_common_value(cluster.address_b), postgres_friendly, null_token),
+                "IMSI абонента": out_value(most_common_value(cluster.imsi_a), postgres_friendly, null_token),
+                "IMSI контакта": out_value(most_common_value(cluster.imsi_b), postgres_friendly, null_token),
+                "IMEI абонента": out_value(most_common_value(cluster.imei_a), postgres_friendly, null_token),
+                "IMEI контакта": out_value(most_common_value(cluster.imei_b), postgres_friendly, null_token),
+                "М/П абонента на начало": out_value(most_common_value(cluster.loc_a_start), postgres_friendly, null_token),
+                "М/П абонента на конец": out_value(most_common_value(cluster.loc_a_end), postgres_friendly, null_token),
+                "М/П контакта на начало": out_value(most_common_value(cluster.loc_b_start), postgres_friendly, null_token),
+                "М/П контакта на конец": out_value(most_common_value(cluster.loc_b_end), postgres_friendly, null_token),
+                "время_начала": format_dt(cluster.start, postgres_friendly),
+                "время_конца": format_dt(cluster.end, postgres_friendly),
+                "Длительность, сек": int(max(0, cluster.duration_sec)),
+                "уникальных_контактов": 1,
+                "количество_связей": int(max(1, cluster.event_count)),
+                "общая_продолжительность": int(max(0, cluster.duration_sum_sec)),
             }
         )
 
-    rows.sort(key=lambda r: int(r["количество_связей"]), reverse=True)
+    rows.sort(
+        key=lambda r: (
+            str(r["Абон1"]),
+            str(r["Абон2"]),
+            str(r["время_начала"]),
+            str(r["время_конца"]),
+        )
+    )
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline="") as fh:
         writer = csv.DictWriter(fh, fieldnames=fieldnames, delimiter=";")
@@ -451,6 +668,69 @@ def write_device_history(
     return len(rows)
 
 
+def write_location_events(
+    path: Path,
+    rows: list[LocationEvent],
+    postgres_friendly: bool,
+    null_token: str,
+) -> int:
+    fieldnames = ["identifier_type", "identifier_value", "event_time", "address", "mcc", "mnc", "lac", "bs"]
+    out_rows: list[dict[str, str]] = []
+    for row in rows:
+        out_rows.append(
+            {
+                "identifier_type": row.identifier_type,
+                "identifier_value": row.identifier_value,
+                "event_time": format_dt(row.event_time, postgres_friendly),
+                "address": str(out_value(row.address, postgres_friendly, null_token)),
+                "mcc": str(out_value(row.mcc, postgres_friendly, null_token)),
+                "mnc": str(out_value(row.mnc, postgres_friendly, null_token)),
+                "lac": str(out_value(row.lac, postgres_friendly, null_token)),
+                "bs": str(out_value(row.bs, postgres_friendly, null_token)),
+            }
+        )
+
+    out_rows.sort(key=lambda r: (r["identifier_type"], r["identifier_value"], r["event_time"]))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8", newline="") as fh:
+        writer = csv.DictWriter(fh, fieldnames=fieldnames, delimiter=";")
+        writer.writeheader()
+        writer.writerows(out_rows)
+    return len(out_rows)
+
+
+def write_ip_bindings(
+    path: Path,
+    rows: list[IpBinding],
+    postgres_friendly: bool,
+    null_token: str,
+) -> int:
+    fieldnames = ["identifier_type", "identifier_value", "ip_address", "event_time", "address", "mcc", "mnc", "lac", "bs"]
+    out_rows: list[dict[str, str]] = []
+    for row in rows:
+        out_rows.append(
+            {
+                "identifier_type": row.identifier_type,
+                "identifier_value": row.identifier_value,
+                "ip_address": row.ip_address,
+                "event_time": format_dt(row.event_time, postgres_friendly),
+                "address": str(out_value(row.address, postgres_friendly, null_token)),
+                "mcc": str(out_value(row.mcc, postgres_friendly, null_token)),
+                "mnc": str(out_value(row.mnc, postgres_friendly, null_token)),
+                "lac": str(out_value(row.lac, postgres_friendly, null_token)),
+                "bs": str(out_value(row.bs, postgres_friendly, null_token)),
+            }
+        )
+
+    out_rows.sort(key=lambda r: (r["identifier_type"], r["identifier_value"], r["event_time"], r["ip_address"]))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8", newline="") as fh:
+        writer = csv.DictWriter(fh, fieldnames=fieldnames, delimiter=";")
+        writer.writeheader()
+        writer.writerows(out_rows)
+    return len(out_rows)
+
+
 def write_manifest(
     path: Path,
     input_dir: Path,
@@ -460,6 +740,8 @@ def write_manifest(
     clusters_count: int,
     communications_rows: int,
     device_rows: int,
+    location_events_rows: int,
+    ip_bindings_rows: int,
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = {
@@ -480,12 +762,15 @@ def write_manifest(
             "read_total": stats.rows_read_total,
             "with_valid_start": stats.rows_with_valid_start,
             "with_two_abonents": stats.rows_with_two_abonents,
+            "location_only_rows": stats.rows_location_only,
             "events_kept": events_count,
             "events_after_dedup": clusters_count,
         },
         "output": {
             "communications_rows": communications_rows,
             "device_history_rows": device_rows,
+            "location_events_rows": location_events_rows,
+            "ip_bindings_rows": ip_bindings_rows,
         },
     }
     with path.open("w", encoding="utf-8") as fh:
@@ -498,11 +783,13 @@ def main() -> None:
     if not input_dir.exists() or not input_dir.is_dir():
         raise SystemExit(f"Input directory does not exist: {input_dir}")
 
-    events, devices, stats = build_events_and_devices(input_dir)
+    events, devices, location_events, ip_bindings, stats = build_events_and_devices(input_dir)
     clusters = cluster_events(events, args.dedup_window_sec)
 
     communications_path = Path(args.out_communications)
     device_history_path = Path(args.out_device_history)
+    location_events_path = Path(args.out_location_events)
+    ip_bindings_path = Path(args.out_ip_bindings)
     manifest_path = Path(args.out_manifest)
 
     communications_rows = write_communications(
@@ -517,6 +804,18 @@ def main() -> None:
         postgres_friendly=args.postgres_friendly,
         null_token=args.null_token,
     )
+    location_rows = write_location_events(
+        location_events_path,
+        location_events,
+        postgres_friendly=args.postgres_friendly,
+        null_token=args.null_token,
+    )
+    ip_rows = write_ip_bindings(
+        ip_bindings_path,
+        ip_bindings,
+        postgres_friendly=args.postgres_friendly,
+        null_token=args.null_token,
+    )
     write_manifest(
         manifest_path,
         input_dir,
@@ -526,6 +825,8 @@ def main() -> None:
         clusters_count=len(clusters),
         communications_rows=communications_rows,
         device_rows=device_rows,
+        location_events_rows=location_rows,
+        ip_bindings_rows=ip_rows,
     )
 
     print(f"Nodex converter done. Sources processed from: {input_dir}")
@@ -535,14 +836,17 @@ def main() -> None:
     print(f"Rows read: {stats.rows_read_total}")
     print(f"Unique raw events with two abonents: {len(events)}")
     print(f"Events after dedup clustering: {len(clusters)}")
+    print(f"Location-only rows: {stats.rows_location_only}")
     print(f"Communications rows written: {communications_rows}")
     print(f"Device history rows written: {device_rows}")
+    print(f"Location events rows written: {location_rows}")
+    print(f"IP bindings rows written: {ip_rows}")
     print(f"Communications written to: {communications_path.resolve()}")
     print(f"Device history written to: {device_history_path.resolve()}")
+    print(f"Location events written to: {location_events_path.resolve()}")
+    print(f"IP bindings written to: {ip_bindings_path.resolve()}")
     print(f"Manifest written to: {manifest_path.resolve()}")
 
 
 if __name__ == "__main__":
     main()
-
-

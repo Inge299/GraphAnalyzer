@@ -291,6 +291,11 @@
   margin-bottom: 0;
 }
 
+.settings-number-input {
+  max-width: 120px;
+  justify-self: start;
+}
+
 
 
 

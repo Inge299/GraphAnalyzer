@@ -1,9 +1,13 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, File, UploadFile, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel, Field
 import logging
+import os
+import re
+from datetime import datetime, timezone
+from pathlib import Path
 
 from app.database import get_db
 from app.models.artifact import Artifact, ArtifactVersion, ArtifactRelation
@@ -29,14 +33,136 @@ class ApplicablePluginsRequest(BaseModel):
     context: Optional[Dict[str, Any]] = Field(default=None, description="Selection/runtime context")
 
 
-@router.get("/")
+class PluginSelectionRulesResponse(BaseModel):
+    nodes: Optional[str] = None
+    edges: Optional[str] = None
+    text: Optional[str] = None
+    rows: Optional[str] = None
+    geo: Optional[str] = None
+
+
+class PluginInputsResponse(BaseModel):
+    artifact_types: List[str] = Field(default_factory=list)
+    selection: PluginSelectionRulesResponse = Field(default_factory=PluginSelectionRulesResponse)
+
+
+class PluginParamSpecResponse(BaseModel):
+    key: str
+    name: Optional[str] = None
+    label: Optional[str] = None
+    type: str
+    required: bool = False
+    default: Any = None
+
+
+class PluginMetadataResponse(BaseModel):
+    id: str
+    name: str
+    version: str
+    description: str
+    menu_path: str
+    input_types: List[str]
+    output_types: List[str]
+    applicable_to: List[str]
+    inputs: PluginInputsResponse = Field(default_factory=PluginInputsResponse)
+    applicable_when: Dict[str, Any] = Field(default_factory=dict)
+    params_schema: List[PluginParamSpecResponse] = Field(default_factory=list)
+    output_strategy: Dict[str, Any] = Field(default_factory=dict)
+    plugin_scope: str = "context"
+
+
+class PluginUploadInputResponse(BaseModel):
+    project_id: int
+    original_name: str
+    saved_name: str
+    container_path: str
+    size_bytes: int
+
+
+class PluginListResponse(BaseModel):
+    plugins: List[PluginMetadataResponse]
+
+
+class ApplicablePluginsResponse(BaseModel):
+    plugins: List[PluginMetadataResponse]
+
+
+class PluginArtifactResponse(BaseModel):
+    id: int
+    project_id: int
+    type: str
+    name: str
+    description: Optional[str] = None
+    data: Dict[str, Any] | List[Any] | str | int | float | bool | None = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    version: int
+
+
+class PluginExecuteResponse(BaseModel):
+    created: List[PluginArtifactResponse] = Field(default_factory=list)
+    updated: List[PluginArtifactResponse] = Field(default_factory=list)
+
+
+def _sanitize_upload_name(name: str) -> str:
+    cleaned = re.sub(r"[^A-Za-z0-9._-]+", "_", (name or "").strip())
+    cleaned = cleaned.strip("._")
+    return cleaned or "upload.bin"
+
+
+@router.post("/upload-input", response_model=PluginUploadInputResponse)
+async def upload_plugin_input_file(
+    project_id: int = Form(...),
+    file: UploadFile = File(...),
+):
+    """Upload helper for plugin input files (stores under /app/data/plugin_uploads/<project_id>)."""
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="File name is required")
+
+    root = Path(os.getenv("PLUGIN_UPLOAD_ROOT", "/app/data/plugin_uploads")).resolve()
+    project_dir = (root / str(project_id)).resolve()
+    project_dir.mkdir(parents=True, exist_ok=True)
+
+    ext = Path(file.filename).suffix.lower()
+    if ext not in {".csv", ".zip"}:
+        raise HTTPException(status_code=400, detail="Supported file types: .csv, .zip")
+
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S_%f")
+    safe_name = _sanitize_upload_name(file.filename)
+    target_path = (project_dir / f"{stamp}_{safe_name}").resolve()
+
+    # Defensive check: keep writes within configured upload root.
+    if root not in target_path.parents:
+        raise HTTPException(status_code=400, detail="Invalid upload path")
+
+    try:
+        with target_path.open("wb") as out:
+            while True:
+                chunk = await file.read(1024 * 1024)
+                if not chunk:
+                    break
+                out.write(chunk)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to save upload: {exc}") from exc
+    finally:
+        await file.close()
+
+    return {
+        "project_id": project_id,
+        "original_name": file.filename,
+        "saved_name": target_path.name,
+        "container_path": str(target_path),
+        "size_bytes": target_path.stat().st_size,
+    }
+
+
+@router.get("/", response_model=PluginListResponse)
 async def list_plugins():
     """List all available plugins."""
     service = PluginService()
     return {"plugins": service.list_plugins()}
 
 
-@router.post("/applicable")
+@router.post("/applicable", response_model=ApplicablePluginsResponse)
 async def list_applicable_plugins(
     request: ApplicablePluginsRequest,
     db: AsyncSession = Depends(get_db),
@@ -90,7 +216,7 @@ async def list_applicable_plugins(
     return {"plugins": applicable}
 
 
-@router.get("/{plugin_id}")
+@router.get("/{plugin_id}", response_model=PluginMetadataResponse)
 async def get_plugin(plugin_id: str):
     """Get plugin metadata by ID."""
     service = PluginService()
@@ -101,7 +227,7 @@ async def get_plugin(plugin_id: str):
     return plugin.to_metadata()
 
 
-@router.post("/{plugin_id}/execute")
+@router.post("/{plugin_id}/execute", response_model=PluginExecuteResponse)
 async def execute_plugin(
     plugin_id: str,
     request: PluginExecuteRequest,
@@ -170,7 +296,7 @@ async def execute_plugin(
     if not isinstance(outputs, list):
         raise HTTPException(status_code=500, detail="Plugin returned invalid output")
 
-    valid_types = {"graph", "table", "map", "chart", "document"}
+    valid_types = {"graph", "table", "map", "chart", "document", "console"}
     created = []
     updated = []
     cache = HistoryCache(redis_client)

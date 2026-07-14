@@ -149,6 +149,12 @@
   border-color: #bfd2f0;
 }
 
+.action-btn.active {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
 .action-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
@@ -431,6 +437,15 @@
 .artifact-context-btn:hover {
   background: #eef4ff;
 }
+
+.artifact-context-btn.danger {
+  color: #b42318;
+}
+
+.artifact-context-btn.danger:hover {
+  background: #fff1f3;
+}
+
 
 
 

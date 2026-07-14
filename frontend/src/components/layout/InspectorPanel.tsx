@@ -4,11 +4,29 @@ import { useAppDispatch, useAppSelector } from '../../store';
 import { fetchArtifacts, deleteArtifact, updateArtifactSync, setCurrentArtifact } from '../../store/slices/artifactsSlice';
 import { artifactApi, pluginApi, domainModelApi, projectDataApi } from '../../services/api';
 import type { ApiPlugin, ApiArtifact, PluginExecutionContext, DomainModelConfig } from '../../types/api';
-import type { SelectedElement } from '../../store/slices/uiSlice';
 import './InspectorPanel.css';
 import { collectPluginParamsWithPrompts, groupPluginsByMenuPath } from '../../utils/pluginParams';
-import { nodeAttributePreviewConfig } from '../../config/nodeAttributePreview';
 import { layoutConfig } from '../../config/layout';
+import { InspectorBuilderTab } from './InspectorBuilderTab';
+import { InspectorEdgeTypeSelect } from './InspectorEdgeTypeSelect';
+import { InspectorElementsTab } from './InspectorElementsTab';
+import { InspectorMetadataTab } from './InspectorMetadataTab';
+import { InspectorGraphDisplaySettings } from './InspectorGraphDisplaySettings';
+import { useInspectorGraphSelection } from './useInspectorGraphSelection';
+import {
+  buildEdgeLabelFromAttributes as buildEdgeLabelFromAttributesUtil,
+  defaultEdgeDirectionOptions,
+  type DomainEdgeTypeOption,
+  type DomainNodeAttributeOption,
+  type DomainNodeTypeOption,
+  type EdgeExtraAttributeState,
+  fallbackIconOptions,
+  getEdgeTypeColor,
+  iconScaleOptions,
+  type NodeExtraAttributeState,
+  nodeColorPalette,
+  normalizeDisplayLabel,
+} from './inspectorPanelUtils';
 
 interface InspectorPanelProps {
   onApplyGraphData?: (newData: any, description: string, actionType: string) => Promise<void> | void;
@@ -103,142 +121,30 @@ const labels = {
   on: '\u0415\u0441\u0442\u044c',
   off: '\u041d\u0435\u0442',
   solid: '\u0421\u043f\u043b\u043e\u0448\u043d\u0430\u044f',
-  dashed: '\u041f\u0443\u043d\u043a\u0442\u0438\u0440\u043d\u0430\u044f'
-};
-type DomainNodeAttributeOption = {
-  key: string;
-  label: string;
-  type: string;
-  visibleOnGraph?: boolean;
-};
-
-type DomainNodeTypeOption = {
-  id: string;
-  label: string;
-  icon?: string;
-  defaultVisual?: Record<string, any>;
-  attributes?: DomainNodeAttributeOption[];
+  dashed: '\u041f\u0443\u043d\u043a\u0442\u0438\u0440\u043d\u0430\u044f',
+  graphDisplaySettings: '\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438 \u0433\u0440\u0430\u0444\u0430',
+  tableFontSize: '\u0428\u0440\u0438\u0444\u0442 \u0442\u0430\u0431\u043b\u0438\u0446',
+  nodeLabelsZoom: '\u041f\u043e\u0434\u043f\u0438\u0441\u0438 \u0443\u0437\u043b\u043e\u0432 \u0441 \u043c\u0430\u0441\u0448\u0442\u0430\u0431\u0430',
+  edgeLabelsZoom: '\u041f\u043e\u0434\u043f\u0438\u0441\u0438 \u0441\u0432\u044f\u0437\u0435\u0439 \u0441 \u043c\u0430\u0441\u0448\u0442\u0430\u0431\u0430',
+  autoLayoutDistance: '\u0414\u0438\u0441\u0442\u0430\u043d\u0446\u0438\u044f \u043c\u0435\u0436\u0434\u0443 \u0432\u0435\u0440\u0448\u0438\u043d\u0430\u043c\u0438',
+  resetDefaults: '\u0421\u0431\u0440\u043e\u0441\u0438\u0442\u044c \u043f\u043e \u0443\u043c\u043e\u043b\u0447\u0430\u043d\u0438\u044e'
 };
 
-type DomainEdgeTypeOption = {
-  id: string;
-  label: string;
-  color: string;
-  defaultVisual?: Record<string, any>;
-  allowedFrom: string[];
-  allowedTo: string[];
-};
-
-const fallbackIconOptions = [
-  { value: 'smartphone', label: 'Smartphone' },
-  { value: 'sim', label: 'SIM card' },
-  { value: 'person_phone', label: 'Subscriber' },
-  { value: 'ip', label: 'IP' },
-  { value: 'mail', label: 'Email' },
-  { value: 'social', label: 'Social ID' },
-  { value: 'passport', label: 'Passport' },
-  { value: 'car', label: 'Car number' },
-  { value: 'address', label: 'Address' },
-  { value: 'location', label: 'Location' },
-  { value: 'bank_card', label: 'Bank card' }
-];
-
-const iconScaleOptions = ['1', '2', '3', '4', '5'];
-const nodeColorPalette = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#a855f7', '#06b6d4', '#14b8a6', '#84cc16', '#f43f5e', '#eab308', '#000000'];
-const defaultEdgeDirectionOptions = ['from', 'to', 'both'];
 const isLikelyMojibake = (value: string) => /[\u00D0\u00D1][\u0080-\u00BF]|[\uFFFD]|(?:Р В Р’В Р вЂ™Р’В .|Р В Р’В Р В Р вЂ№.){2,}/.test(value);
 
-const normalizeDisplayLabel = (candidate: string, fallback: string) => {
-  const trimmed = candidate.trim();
-  if (!trimmed || isLikelyMojibake(trimmed)) return fallback;
-  return trimmed;
-};
-const getEdgeTypeColor = (edgeType: DomainEdgeTypeOption | undefined) => {
-  return String(edgeType?.defaultVisual?.color || edgeType?.color || '#64748b');
-};
-const getCommonValue = <T, U>(items: U[], getter: (item: U) => T | undefined): T | undefined => {
-  if (items.length === 0) return undefined;
-  const first = getter(items[0]);
-  for (const item of items.slice(1)) {
-    if (getter(item) !== first) return undefined;
-  }
-  return first;
-};
-
+void isLikelyMojibake;
 const NODE_SYSTEM_ATTRIBUTE_KEYS = new Set(['visual', 'label', 'color', 'icon', 'iconScale', 'ringEnabled', 'ringWidth']);
 const EDGE_SYSTEM_ATTRIBUTE_KEYS = new Set(['visual', 'label', 'color', 'width', 'direction', 'dashed']);
 
-type NodeExtraAttributeState = {
-  key: string;
-  label: string;
-  type: string;
-  value: string;
-  mixed: boolean;
-  visibleOnGraph: 'on' | 'off' | 'mixed';
-};
-
-type EdgeExtraAttributeState = {
-  key: string;
-  label: string;
-  type: string;
-  value: string;
-  mixed: boolean;
-  visibleOnGraph: 'on' | 'off' | 'mixed';
-};
-
-type GraphSelectedElement = SelectedElement & {
-  data: any;
-};
-
-type GraphSelectionState = {
-  nodes: GraphSelectedElement[];
-  edges: GraphSelectedElement[];
-  mode: 'none' | 'nodes' | 'edges' | 'mixed';
-  total: number;
-};
-
-const attributeTypePriority: Record<string, number> = {
-  string: 1,
-  text: 1,
-  number: 2,
-  integer: 2,
-  float: 2,
-  date: 3,
-  datetime: 3,
-  boolean: 4,
-};
-
-const attributeLabelAliases: Record<string, string> = {
-  operator: '\u043e\u043f\u0435\u0440\u0430\u0442\u043e\u0440',
-  ownership: '\u043e\u0444\u043e\u0440\u043c\u043b\u0435\u043d',
-};
-
-const edgeAttributeLabelAliases: Record<string, string> = {
-  period_start: '\u041d\u0430\u0447\u0430\u043b\u043e \u043f\u0435\u0440\u0438\u043e\u0434\u0430',
-  period_end: '\u041a\u043e\u043d\u0435\u0446 \u043f\u0435\u0440\u0438\u043e\u0434\u0430',
-  calls_count: '\u041a\u043e\u043b\u0438\u0447\u0435\u0441\u0442\u0432\u043e \u0441\u0432\u044f\u0437\u0435\u0439',
-  contacts: '\u041a\u043e\u043d\u0442\u0430\u043a\u0442\u043e\u0432',
-  period: '\u041f\u0435\u0440\u0438\u043e\u0434',
-};
-
-const normalizeAttributeValue = (value: unknown) => {
-  if (Array.isArray(value)) {
-    return value.map((item) => String(item ?? '').trim()).filter(Boolean).join('\n');
-  }
-  if (value !== undefined && value !== null && typeof value === 'object') {
-    return JSON.stringify(value, null, 2);
-  }
-  return value === undefined || value === null ? '' : String(value).replace(/\\n/g, '\n');
-};
-
 const buildEdgeLabelFromAttributes = (attributes: Record<string, any>, visibleKeys?: string[]) => {
-  const visibleSet = Array.isArray(visibleKeys) ? new Set(visibleKeys.map((item) => String(item))) : null;
+  return buildEdgeLabelFromAttributesUtil(attributes, visibleKeys);
+  const visibleSet = Array.isArray(visibleKeys) ? new Set((visibleKeys ?? []).map((item) => String(item))) : new Set<string>();
   const contactsLine = String(attributes.contacts || (attributes.calls_count !== undefined ? `Р С”Р С•Р Р…РЎвЂљР В°Р С”РЎвЂљР С•Р Р†: ${attributes.calls_count}` : '')).trim();
   const periodLine = String(attributes.period || '').trim();
 
   const lines: string[] = [];
-  if ((!visibleSet || visibleSet.has('contacts')) && contactsLine) lines.push(contactsLine);
-  if ((!visibleSet || visibleSet.has('period')) && periodLine) lines.push(periodLine);
+  if (visibleSet.size === 0 || visibleSet.has('contacts')) lines.push(contactsLine);
+  if (visibleSet.size === 0 || visibleSet.has('period')) lines.push(periodLine);
   return lines.join('\n').trim();
 };
 type EdgeTypeSelectProps = {
@@ -312,6 +218,7 @@ const EdgeTypeSelect: React.FC<EdgeTypeSelectProps> = ({ value, onChange, option
     </div>
   );
 };
+void EdgeTypeSelect;
 const InspectorPanel: React.FC<InspectorPanelProps> = ({ onApplyGraphData, onStartNodeCreation, onStartEdgeCreation, nodeCreationSpec = null, edgeCreationType = null, onRefreshConsole }) => {
   const dispatch = useAppDispatch();
   const [activeTab, setActiveTab] = useState<'properties' | 'builder' | 'elements' | 'metadata'>('properties');
@@ -583,196 +490,27 @@ const pluginContextKey = useMemo(() => {
     }
   }, [selectedArtifact?.name]);
 
-    const graphSelection = useMemo<GraphSelectionState | null>(() => {
-    if (!selectedArtifact || selectedArtifact.type !== 'graph') return null;
-
-    const data = selectedArtifact.data || { nodes: [], edges: [] };
-    const nodeById = new Map((data.nodes || []).map((node: any) => [String(node.id ?? node.node_id ?? node.uuid ?? node.key), node]));
-    const edgeById = new Map((data.edges || []).map((edge: any) => [String(edge.id), edge]));
-
-    const nodes = selectedElements
-      .filter((item): item is SelectedElement => item.type === 'node')
-      .map((item) => ({ ...item, data: nodeById.get(String(item.id)) ?? item.data }))
-      .filter((item): item is GraphSelectedElement => Boolean(item.data));
-
-    const edges = selectedElements
-      .filter((item): item is SelectedElement => item.type === 'edge')
-      .map((item) => ({ ...item, data: edgeById.get(String(item.id)) ?? item.data }))
-      .filter((item): item is GraphSelectedElement => Boolean(item.data));
-
-    const mode: GraphSelectionState['mode'] = nodes.length > 0 && edges.length > 0 ? 'mixed' : nodes.length > 0 ? 'nodes' : edges.length > 0 ? 'edges' : 'none';
-    return { nodes, edges, mode, total: nodes.length + edges.length };
-  }, [selectedArtifact, selectedElements]);
+  const { graphSelection, selectionDraft } = useInspectorGraphSelection({
+    selectedArtifact,
+    selectedElements,
+    getNodeTypeDefaultVisual,
+    getNodeTypeAttributeDefinitions,
+  });
 
   useEffect(() => {
-    if (!graphSelection || graphSelection.mode === 'none' || graphSelection.mode === 'mixed') {
-      setElementLabel('');
-      setElementColor('');
-      setElementIcon('');
-      setElementIconScale('');
-      setElementRingMode('unchanged');
-      setElementRingWidth('');
-      setElementEdgeWidth('');
-      setElementEdgeDirection('');
-      setElementEdgeStyle('unchanged');
-      setElementEdgeType('');
-      setNodeExtraAttributes([]);
-      setEdgeExtraAttributes([]);
-      return;
-    }
-
-    if (graphSelection.mode === 'nodes') {
-      const label = getCommonValue(graphSelection.nodes, item => item.data?.label || item.data?.attributes?.visual?.label || item.data?.attributes?.label);
-      const color = getCommonValue(graphSelection.nodes, item => item.data?.attributes?.visual?.color || item.data?.attributes?.color);
-      const icon = getCommonValue(graphSelection.nodes, item => item.data?.attributes?.visual?.icon || item.data?.attributes?.icon);
-      const scale = getCommonValue(graphSelection.nodes, item => {
-        const fallback = getNodeTypeDefaultVisual(item.data);
-        return item.data?.attributes?.visual?.iconScale ?? item.data?.attributes?.iconScale ?? fallback.iconScale ?? 2;
-      });
-      const ringEnabled = getCommonValue(graphSelection.nodes, item => {
-        const fallback = getNodeTypeDefaultVisual(item.data);
-        return item.data?.attributes?.visual?.ringEnabled ?? item.data?.attributes?.ringEnabled ?? fallback.ringEnabled ?? true;
-      });
-      const ringWidth = getCommonValue(graphSelection.nodes, item => {
-        const fallback = getNodeTypeDefaultVisual(item.data);
-        return item.data?.attributes?.visual?.ringWidth ?? item.data?.attributes?.ringWidth ?? fallback.ringWidth ?? 2;
-      });
-
-      setElementLabel(label === undefined ? '' : String(label));
-      setElementColor(color === undefined ? '' : String(color));
-      setElementIcon(icon === undefined ? '' : String(icon));
-      setElementIconScale(scale === undefined ? '' : String(scale));
-      setElementRingMode(ringEnabled === undefined ? 'unchanged' : (ringEnabled ? 'on' : 'off'));
-      setElementRingWidth(ringWidth === undefined ? '' : String(ringWidth));
-      setElementEdgeWidth('');
-      setElementEdgeDirection('');
-      setElementEdgeStyle('unchanged');
-      setElementEdgeType('');
-            const knownAttributeMap = new Map<string, DomainNodeAttributeOption>();
-      graphSelection.nodes.forEach((nodeItem) => {
-        getNodeTypeAttributeDefinitions(nodeItem.data).forEach((attribute) => {
-          if (!knownAttributeMap.has(attribute.key)) {
-            knownAttributeMap.set(attribute.key, attribute);
-          }
-        });
-      });
-
-      const keySet = new Set<string>();
-      graphSelection.nodes.forEach((nodeItem) => {
-        const nodeAttributes = (nodeItem.data?.attributes || {}) as Record<string, any>;
-        Object.keys(nodeAttributes).forEach((key) => {
-          if (!NODE_SYSTEM_ATTRIBUTE_KEYS.has(key)) keySet.add(key);
-        });
-      });
-      knownAttributeMap.forEach((_, key) => keySet.add(key));
-
-      const fields: NodeExtraAttributeState[] = Array.from(keySet).map((key) => {
-        const descriptor = knownAttributeMap.get(key);
-        const rawValues = graphSelection.nodes.map((nodeItem) => {
-          const nodeAttributes = (nodeItem.data?.attributes || {}) as Record<string, any>;
-          return normalizeAttributeValue(nodeAttributes[key]);
-        });
-        const firstValue = rawValues[0] || '';
-        const mixedValue = rawValues.some((value) => value !== firstValue);
-
-        const visibleValues = graphSelection.nodes.map((nodeItem) => {
-          const visibleAttributes = nodeItem.data?.attributes?.visual?.visibleAttributes;
-          if (Array.isArray(visibleAttributes)) return visibleAttributes.includes(key);
-          const previewField = (nodeAttributePreviewConfig as any)?.fields?.[key];
-          if (typeof previewField?.visibleOnGraph === 'boolean') {
-            return Boolean(previewField.visibleOnGraph);
-          }
-          return false;
-        });
-        const firstVisible = visibleValues[0];
-        const mixedVisible = visibleValues.some((value) => value !== firstVisible);
-
-        return {
-          key,
-          label: normalizeDisplayLabel(String(descriptor?.label || ''), attributeLabelAliases[key] || key),
-          type: String(descriptor?.type || 'string').toLowerCase(),
-          value: mixedValue ? '' : firstValue,
-          mixed: mixedValue,
-          visibleOnGraph: mixedVisible ? 'mixed' : (firstVisible ? 'on' : 'off'),
-        };
-      });
-
-      fields.sort((left, right) => {
-        const typePriorityLeft = attributeTypePriority[left.type] ?? 99;
-        const typePriorityRight = attributeTypePriority[right.type] ?? 99;
-        if (typePriorityLeft !== typePriorityRight) return typePriorityLeft - typePriorityRight;
-        return left.label.localeCompare(right.label, 'ru');
-      });
-
-      const fieldsForPanel = graphSelection.nodes.length === 1
-        ? fields.filter((field) => field.mixed || field.visibleOnGraph !== 'off' || String(field.value || '').trim().length > 0)
-        : fields;
-
-      setNodeExtraAttributes(fieldsForPanel);
-      setEdgeExtraAttributes([]);
-      return;
-    }
-
-    const label = getCommonValue(graphSelection.edges, item => item.data?.label || item.data?.attributes?.visual?.label || item.data?.attributes?.label);
-    const color = getCommonValue(graphSelection.edges, item => item.data?.attributes?.visual?.color || item.data?.attributes?.color);
-    const width = getCommonValue(graphSelection.edges, item => item.data?.attributes?.visual?.width ?? item.data?.attributes?.width);
-    const direction = getCommonValue(graphSelection.edges, item => item.data?.attributes?.visual?.direction || item.data?.attributes?.direction);
-    const dashed = getCommonValue(graphSelection.edges, item => item.data?.attributes?.visual?.dashed ?? item.data?.attributes?.dashed);
-    const edgeType = getCommonValue(graphSelection.edges, item => item.data?.type);
-
-    setElementLabel(label === undefined ? '' : String(label));
-    setElementColor(color === undefined ? '' : String(color));
-    setElementIcon('');
-    setElementIconScale('');
-    setElementRingMode('unchanged');
-    setElementRingWidth('');
-    setElementEdgeWidth(width === undefined ? '' : String(width));
-    setElementEdgeDirection(direction === undefined ? '' : String(direction));
-    setElementEdgeStyle(dashed === undefined ? 'unchanged' : (dashed ? 'dashed' : 'solid'));
-    setElementEdgeType(edgeType === undefined ? '' : String(edgeType));
-
-    const edgeKeySet = new Set<string>();
-    graphSelection.edges.forEach((edgeItem) => {
-      const edgeAttributes = (edgeItem.data?.attributes || {}) as Record<string, any>;
-      Object.keys(edgeAttributes).forEach((key) => {
-        if (!EDGE_SYSTEM_ATTRIBUTE_KEYS.has(key)) edgeKeySet.add(key);
-      });
-    });
-
-        const edgeFields: EdgeExtraAttributeState[] = Array.from(edgeKeySet).map((key) => {
-      const rawValues = graphSelection.edges.map((edgeItem) => {
-        const edgeAttributes = (edgeItem.data?.attributes || {}) as Record<string, any>;
-        return normalizeAttributeValue(edgeAttributes[key]);
-      });
-      const firstValue = rawValues[0] || "";
-      const mixedValue = rawValues.some((value) => value !== firstValue);
-      const fallbackLabel = edgeAttributeLabelAliases[key] || key;
-      const sampleValue = ((graphSelection.edges[0]?.data?.attributes || {}) as Record<string, any>)[key];
-      const inferredType = typeof sampleValue === 'number' ? 'number' : 'string';
-
-      const visibleValues = graphSelection.edges.map((edgeItem) => {
-        const visibleAttributes = edgeItem.data?.attributes?.visual?.visibleAttributes;
-        if (Array.isArray(visibleAttributes)) return visibleAttributes.includes(key);
-        return true;
-      });
-      const firstVisible = visibleValues[0];
-      const mixedVisible = visibleValues.some((value) => value !== firstVisible);
-
-      return {
-        key,
-        label: normalizeDisplayLabel(fallbackLabel, fallbackLabel),
-        type: inferredType,
-        value: mixedValue ? "" : firstValue,
-        mixed: mixedValue,
-        visibleOnGraph: mixedVisible ? 'mixed' : (firstVisible ? 'on' : 'off'),
-      };
-    });
-
-    const visibleEdgeFields = edgeFields.filter((field) => !["period_start", "period_end", "calls_count"].includes(field.key));
-    visibleEdgeFields.sort((left, right) => left.label.localeCompare(right.label, "ru"));
-    setNodeExtraAttributes([]);
-    setEdgeExtraAttributes(visibleEdgeFields);
-  }, [graphSelection, getNodeTypeDefaultVisual, getNodeTypeAttributeDefinitions]);
+    setElementLabel(selectionDraft.elementLabel);
+    setElementColor(selectionDraft.elementColor);
+    setElementIcon(selectionDraft.elementIcon);
+    setElementIconScale(selectionDraft.elementIconScale);
+    setElementRingMode(selectionDraft.elementRingMode);
+    setElementRingWidth(selectionDraft.elementRingWidth);
+    setElementEdgeWidth(selectionDraft.elementEdgeWidth);
+    setElementEdgeDirection(selectionDraft.elementEdgeDirection);
+    setElementEdgeStyle(selectionDraft.elementEdgeStyle);
+    setElementEdgeType(selectionDraft.elementEdgeType);
+    setNodeExtraAttributes(selectionDraft.nodeExtraAttributes);
+    setEdgeExtraAttributes(selectionDraft.edgeExtraAttributes);
+  }, [selectionDraft]);
   useEffect(() => {
     if (!selectedArtifact || selectedArtifact.type !== 'graph') return;
 
@@ -919,6 +657,10 @@ const pluginContextKey = useMemo(() => {
         setDataActionLog(JSON.stringify(result.load_log, null, 2));
       }
       await refreshProjectDataStats(currentProject.id);
+      if (result.graph_artifact?.id) {
+        await dispatch(fetchArtifacts(currentProject.id));
+        dispatch(setCurrentArtifact(result.graph_artifact.id));
+      }
     } catch (error: any) {
       const detail = error?.response?.data?.detail || error?.message || labels.dataActionError;
       setDataActionError(String(detail));
@@ -1545,6 +1287,19 @@ const handleCreateNode = useCallback(() => {
               </div>
             </details>
 
+            {selectedArtifact.type === 'graph' && (
+              <InspectorGraphDisplaySettings
+                labels={{
+                  graphDisplaySettings: labels.graphDisplaySettings,
+                  tableFontSize: labels.tableFontSize,
+                  nodeLabelsZoom: labels.nodeLabelsZoom,
+                  edgeLabelsZoom: labels.edgeLabelsZoom,
+                  autoLayoutDistance: labels.autoLayoutDistance,
+                  resetDefaults: labels.resetDefaults,
+                }}
+              />
+            )}
+
             <details className="inspector-section">
               <summary>{'\u0414\u0435\u0439\u0441\u0442\u0432\u0438\u044f'}</summary>
               <div className="inspector-section-body">
@@ -1580,319 +1335,76 @@ const handleCreateNode = useCallback(() => {
           </div>
         )}
         {activeTab === 'builder' && selectedArtifact.type === 'graph' && (
-          <div className="properties-tab elements-tab builder-tab">
-            <div className="property-group">
-              <label>{labels.nodeLabel}</label>
-              <input
-                className="property-input"
-                value={builderNodeLabel}
-                onChange={(e) => setBuilderNodeLabel(e.target.value)}
-                placeholder="New entity"
-              />
-            </div>
-            <div className="property-group">
-              <label>{labels.nodeType}</label>
-              <select className="property-input" value={builderNodeType} onChange={(e) => setBuilderNodeType(e.target.value)}>
-                {nodeTypeDefinitions.map((item) => (
-                  <option key={item.id} value={item.id}>{item.label}</option>
-                ))}
-              </select>
-            </div>
-            <div className="property-group">
-              <button className="property-action" onClick={handleCreateNode} disabled={builderSaving || !builderNodeLabel.trim()}>
-                {builderSaving ? labels.loading : labels.createNode}
-              </button>
-            </div>
-
-            <div className="property-group">
-              <label>{labels.edgeType}</label>
-              <EdgeTypeSelect
-                value={builderEdgeType}
-                onChange={setBuilderEdgeType}
-                options={edgeTypeDefinitions}
-                placeholder={labels.edgeType}
-              />
-            </div>
-            <div className="property-group">
-              <button className="property-action" onClick={handleCreateEdge} disabled={builderSaving || graphNodeOptions.length < 2 || !builderEdgeType}>
-                {builderSaving ? labels.loading : labels.createEdgeOnGraph}
-              </button>
-            </div>
-
-            {nodeCreationSpec && (
-              <div className="property-value">{labels.nodeCreationActive}</div>
-            )}
-            {edgeCreationType && (
-              <div className="property-value">{labels.edgeCreationActive}</div>
-            )}
-            {graphNodeOptions.length < 2 && (
-              <div className="property-value">{labels.chooseNodeFirst}</div>
-            )}
-          </div>
+          <InspectorBuilderTab
+            labels={labels}
+            builderNodeLabel={builderNodeLabel}
+            setBuilderNodeLabel={setBuilderNodeLabel}
+            builderNodeType={builderNodeType}
+            setBuilderNodeType={setBuilderNodeType}
+            nodeTypeDefinitions={nodeTypeDefinitions}
+            builderSaving={builderSaving}
+            handleCreateNode={handleCreateNode}
+            builderEdgeType={builderEdgeType}
+            setBuilderEdgeType={setBuilderEdgeType}
+            edgeTypeDefinitions={edgeTypeDefinitions}
+            handleCreateEdge={handleCreateEdge}
+            graphNodeOptions={graphNodeOptions}
+            nodeCreationSpec={nodeCreationSpec}
+            edgeCreationType={edgeCreationType}
+            EdgeTypeSelectComponent={InspectorEdgeTypeSelect}
+          />
         )}
 
         {activeTab === 'elements' && selectedArtifact.type === 'graph' && (
-          <div className="properties-tab elements-tab">
-            {!graphSelection || graphSelection.mode === 'none' ? (
-              <div className="property-value">{labels.noSelection}</div>
-            ) : graphSelection.mode === 'mixed' ? (
-              <div className="property-value">{labels.mixedSelection}</div>
-            ) : (
-              <>
-                <div className="property-group">
-                  <label>{labels.selectedCount}</label>
-                  <div className="property-value">{graphSelection.total}</div>
-                </div>
-
-                <div className="property-group">
-                  <label>{labels.elementLabel}</label>
-                  <input className="property-input" value={elementLabel} onChange={(e) => setElementLabel(e.target.value)} />
-                </div>
-
-
-                {graphSelection.mode === 'nodes' && (
-                  <>
-                    <div className="property-group">
-                      <label>{labels.elementColor}</label>
-                      <div className="property-inline">
-                        <input
-                          className="property-input"
-                          type="color"
-                          value={/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(elementColor) ? elementColor : '#3b82f6'}
-                          onChange={(e) => setElementColor(e.target.value)}
-                          style={{ width: 36, minWidth: 36, height: 30, padding: 2, borderRadius: 6 }}
-                        />
-                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                          {nodeColorPalette.map((color) => (
-                            <button
-                              key={color}
-                              type="button"
-                              onClick={() => setElementColor(color)}
-                              style={{ width: 18, height: 18, borderRadius: 4, border: '1px solid #475569', background: color, cursor: 'pointer' }}
-                              title={color}
-                            />
-                          ))}
-                          </div>
-                        </div>
-                      </div>
-                    <div className="property-group">
-                      <label>{labels.elementIcon}</label>
-                      <select className="property-input" value={elementIcon} onChange={(e) => setElementIcon(e.target.value)}>
-                        <option value="">{labels.unchanged}</option>
-                        {iconOptions.map((opt) => (
-                          <option key={opt.value} value={opt.value}>{opt.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="property-group">
-                      <label>{labels.iconScale}</label>
-                      <select className="property-input" value={elementIconScale} onChange={(e) => setElementIconScale(e.target.value)}>
-                        <option value="">{labels.unchanged}</option>
-                        {iconScaleOptions.map((size) => (
-                          <option key={size} value={size}>{size}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="property-group">
-                      <label>{labels.ringEnabled}</label>
-                      <select className="property-input" value={elementRingMode} onChange={(e) => setElementRingMode(e.target.value as 'unchanged' | 'on' | 'off')}>
-                        <option value="unchanged">{labels.unchanged}</option>
-                        <option value="on">{labels.on}</option>
-                        <option value="off">{labels.off}</option>
-                      </select>
-                    </div>
-                    <div className="property-group">
-                      <label>{labels.ringWidth}</label>
-                      <input className="property-input" value={elementRingWidth} onChange={(e) => setElementRingWidth(e.target.value)} placeholder="2" />
-                    </div>
-
-                    {nodeExtraAttributes.length > 0 && (
-                      <div className="node-attributes-editor">
-                        {nodeExtraAttributes.map((field) => (
-                          <div key={field.key} className="node-attribute-row">
-                            <label className="node-attribute-title">
-                              <input
-                                type="checkbox"
-                                checked={field.visibleOnGraph === 'on'}
-                                ref={(el) => {
-                                  if (el) el.indeterminate = field.visibleOnGraph === 'mixed';
-                                }}
-                                onChange={(event) => {
-                                  const visibleOnGraph = event.target.checked ? 'on' : 'off';
-                                  setNodeExtraAttributes((prev) => prev.map((item) => item.key === field.key ? { ...item, visibleOnGraph } : item));
-                                }}
-                              />
-                              <span>{field.label}</span>
-                            </label>
-                            <textarea
-                              className="property-input node-attribute-value"
-                              value={field.value}
-                              placeholder={field.mixed ? labels.unchanged : ''}
-                              onChange={(event) => {
-                                const nextValue = event.target.value;
-                                setNodeExtraAttributes((prev) => prev.map((item) => item.key === field.key ? { ...item, value: nextValue, mixed: false } : item));
-                              }}
-                              rows={Math.max(2, Math.min(6, String(field.value || '').split(/\r?\n/).length || 2))}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                )}
-
-                {graphSelection.mode === 'edges' && (
-                  <>
-                    <div className="property-group">
-                      <label>{labels.edgeType}</label>
-                      <EdgeTypeSelect
-                        value={elementEdgeType}
-                        onChange={setElementEdgeType}
-                        options={edgeTypeDefinitions}
-                        placeholder={labels.unchanged}
-                        allowEmpty={true}
-                        emptyLabel={labels.unchanged}
-                      />
-                    </div>
-                    <div className="property-group">
-                      <label>{labels.edgeWidth}</label>
-                      <input className="property-input" value={elementEdgeWidth} onChange={(e) => setElementEdgeWidth(e.target.value)} placeholder="2" />
-                    </div>
-                    <div className="property-group">
-                      <label>{labels.edgeDirection}</label>
-                      <select className="property-input" value={elementEdgeDirection} onChange={(e) => setElementEdgeDirection(e.target.value)}>
-                        <option value="">{labels.unchanged}</option>
-                        {edgeDirectionOptions.map((direction) => (
-                          <option key={direction} value={direction}>
-                            {direction === 'from' ? '<-' : direction === 'to' ? '->' : '<->'}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="property-group">
-                      <label>{labels.edgeStyle}</label>
-                      <select className="property-input" value={elementEdgeStyle} onChange={(e) => setElementEdgeStyle(e.target.value as 'unchanged' | 'solid' | 'dashed')}>
-                        <option value="unchanged">{labels.unchanged}</option>
-                        <option value="solid">{labels.solid}</option>
-                        <option value="dashed">{labels.dashed}</option>
-                      </select>
-                    </div>
-
-                    {edgeExtraAttributes.length > 0 && (
-                      <div className="node-attributes-editor">
-                        {edgeExtraAttributes.map((field) => (
-                          <div key={field.key} className="node-attribute-row">
-                            <label className="node-attribute-title">
-                              <input
-                                type="checkbox"
-                                checked={field.visibleOnGraph === 'on'}
-                                ref={(el) => {
-                                  if (el) el.indeterminate = field.visibleOnGraph === 'mixed';
-                                }}
-                                onChange={(event) => {
-                                  const visibleOnGraph = event.target.checked ? 'on' : 'off';
-                                  setEdgeExtraAttributes((prev) => prev.map((item) => item.key === field.key ? { ...item, visibleOnGraph } : item));
-                                }}
-                              />
-                              <span>{field.label}</span>
-                            </label>
-                            <textarea
-                              className="property-input node-attribute-value"
-                              value={field.value}
-                              placeholder={field.mixed ? labels.unchanged : ""}
-                              onChange={(event) => {
-                                const nextValue = event.target.value;
-                                setEdgeExtraAttributes((prev) => prev.map((item) => item.key === field.key ? { ...item, value: nextValue, mixed: false } : item));
-                              }}
-                              rows={Math.max(2, Math.min(6, String(field.value || "").split(/\r?\n/).length || 2))}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                )}
-
-                <div className="property-group apply-group">
-                  <button className="property-action" onClick={applyElementEdits} disabled={elementsSaving}>
-                    {elementsSaving ? labels.loading : labels.apply}
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
+          <InspectorElementsTab
+            labels={labels}
+            graphSelection={graphSelection}
+            elementLabel={elementLabel}
+            setElementLabel={setElementLabel}
+            elementColor={elementColor}
+            setElementColor={setElementColor}
+            elementIcon={elementIcon}
+            setElementIcon={setElementIcon}
+            iconOptions={iconOptions}
+            iconScaleOptions={iconScaleOptions}
+            elementIconScale={elementIconScale}
+            setElementIconScale={setElementIconScale}
+            elementRingMode={elementRingMode}
+            setElementRingMode={setElementRingMode}
+            elementRingWidth={elementRingWidth}
+            setElementRingWidth={setElementRingWidth}
+            nodeExtraAttributes={nodeExtraAttributes}
+            setNodeExtraAttributes={setNodeExtraAttributes}
+            elementEdgeType={elementEdgeType}
+            setElementEdgeType={setElementEdgeType}
+            edgeTypeDefinitions={edgeTypeDefinitions}
+            elementEdgeWidth={elementEdgeWidth}
+            setElementEdgeWidth={setElementEdgeWidth}
+            edgeDirectionOptions={edgeDirectionOptions}
+            elementEdgeDirection={elementEdgeDirection}
+            setElementEdgeDirection={setElementEdgeDirection}
+            elementEdgeStyle={elementEdgeStyle}
+            setElementEdgeStyle={setElementEdgeStyle}
+            edgeExtraAttributes={edgeExtraAttributes}
+            setEdgeExtraAttributes={setEdgeExtraAttributes}
+            nodeColorPalette={nodeColorPalette}
+            applyElementEdits={applyElementEdits}
+            elementsSaving={elementsSaving}
+            EdgeTypeSelectComponent={InspectorEdgeTypeSelect}
+          />
         )}
         {activeTab === 'metadata' && (
-          <div className="metadata-tab">
-            <div className="property-group">
-              <label>{labels.type}</label>
-              <div className="property-value type-badge">
-                {selectedArtifact.type === 'graph' ? labels.typeGraph :
-                 selectedArtifact.type === 'table' ? labels.typeTable :
-                 selectedArtifact.type === 'map' ? labels.typeMap :
-                 selectedArtifact.type === 'chart' ? labels.typeChart :
-                 selectedArtifact.type === 'console' ? labels.typeConsole : labels.typeDocument}
-              </div>
-            </div>
-
-            {selectedArtifact.description && (
-              <div className="property-group">
-                <label>{labels.description}</label>
-                <div className="property-value">{selectedArtifact.description}</div>
-              </div>
-            )}
-
-            <div className="property-group">
-              <label>{labels.version}</label>
-              <div className="property-value">v{selectedArtifact.version || 1}</div>
-            </div>
-
-            {hasLlmMeta && (
-              <div className="property-group">
-                <label>{labels.llmSection}</label>
-                <div className="property-value">
-                  {labels.llmModel}: {llmModel || '-'}
-                  <br />
-                  {labels.llmRuntime}: {llmRuntime || '-'}
-                  <br />
-                  {labels.llmLatency}: {llmLatency || '-'}
-                </div>
-              </div>
-            )}
-
-            {sourcePlugin && (
-              <div className="property-group">
-                <label>source_plugin</label>
-                <div className="property-value">{String(sourcePlugin)}</div>
-              </div>
-            )}
-
-            {derivedFrom !== undefined && derivedFrom !== null && (
-              <div className="property-group">
-                <label>derived_from</label>
-                <div className="property-value">{String(derivedFrom)}</div>
-              </div>
-            )}
-
-            <div className="property-group">
-              <label>{labels.artifactId}</label>
-              <div className="property-value">{selectedArtifact.id}</div>
-            </div>
-
-            <div className="property-group">
-              <label>{labels.projectId}</label>
-              <div className="property-value">{selectedArtifact.project_id}</div>
-            </div>
-
-            {Object.keys(metadataRest).length > 0 && (
-              <div className="property-group">
-                <label>{labels.extraMetadata}</label>
-                <pre className="metadata-json">
-                  {JSON.stringify(metadataRest, null, 2)}
-                </pre>
-              </div>
-            )}
-          </div>
+          <InspectorMetadataTab
+            artifact={selectedArtifact}
+            labels={labels}
+            hasLlmMeta={hasLlmMeta}
+            llmModel={llmModel}
+            llmRuntime={llmRuntime}
+            llmLatency={llmLatency}
+            sourcePlugin={sourcePlugin}
+            derivedFrom={derivedFrom}
+            metadataRest={metadataRest}
+          />
         )}
       </div>
     </div>

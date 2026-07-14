@@ -1,5 +1,5 @@
 ﻿// frontend/src/App.tsx
-import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useAppDispatch, useAppSelector } from './store';
 import { fetchProjects, setCurrentProject } from './store/slices/projectsSlice';
 import { setCurrentArtifact, fetchArtifacts } from './store/slices/artifactsSlice';
@@ -7,20 +7,20 @@ import { setSelectedElements } from './store/slices/uiSlice';
 import TabBar from './components/layout/TabBar';
 import Sidebar from './components/layout/Sidebar';
 import InspectorPanel from './components/layout/InspectorPanel';
-import { GraphView } from './components/views/GraphView';
-import DocumentView from './components/views/DocumentView';
-import MapView from './components/views/MapView';
-import TableView from './components/views/TableView';
-import ChartView from './components/views/ChartView';
-import ConsoleView from './components/views/ConsoleView';
+import PluginsPanel from './components/layout/PluginsPanel';
+import ServiceFunctionsView from './components/views/ServiceFunctionsView';
+import AppEmptyProjectsState from './components/app/AppEmptyProjectsState';
+import ArtifactContentView from './components/app/ArtifactContentView';
+import AppGraphBottomPanel from './components/app/AppGraphBottomPanel';
 import { useActionWithUndo } from './hooks/useActionWithUndo';
 import { useConsoleArtifact } from './hooks/useConsoleArtifact';
-import { useGraphTablePanelData } from './hooks/useGraphTablePanelData';
-import { useGraphTableSelection } from './hooks/useGraphTableSelection';
-import { projectApi, domainModelApi } from './services/api';
+import { useGraphBottomPanelViewModel } from './hooks/useGraphBottomPanelViewModel';
+import { initializeGraphDisplaySettings } from './config/graphDisplaySettings';
+import { useDomainModelVisuals } from './hooks/useDomainModelVisuals';
+import { useGraphBottomPanelState } from './hooks/useGraphBottomPanelState';
+import { projectApi } from './services/api';
 import './App.css';
 import './components/layout/TabBar.css';
-import type { DomainModelConfig } from './types/api';
 
 interface Tab {
   id: string;
@@ -33,8 +33,6 @@ interface NodeCreationSpec {
   typeId: string;
   label: string;
 }
-
-type BottomTab = 'nodes' | 'edges';
 
 const labels = {
   loadingProjects: 'Загрузка проектов...',
@@ -58,7 +56,6 @@ function App() {
   const artifacts = useAppSelector((state) => state.artifacts.items);
   const currentArtifactId = useAppSelector((state) => state.artifacts.currentArtifactId);
   const projectsLoading = useAppSelector((state) => state.projects.isLoading);
-  const selectedElements = useAppSelector((state) => state.ui.selectedElements);
   const [newProjectName, setNewProjectName] = useState('');
   const [creatingProject, setCreatingProject] = useState(false);
   const [createProjectError, setCreateProjectError] = useState<string | null>(null);
@@ -66,26 +63,31 @@ function App() {
   const [tabs, setTabs] = useState<Tab[]>([]);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
-  const [isBottomPanelOpen, setIsBottomPanelOpen] = useState(false);
-  const [bottomTab, setBottomTab] = useState<BottomTab>('nodes');
   const [isInspectorVisible, setIsInspectorVisible] = useState(true);
+
+  useEffect(() => {
+    initializeGraphDisplaySettings();
+  }, []);
+  const [inspectorTab, setInspectorTab] = useState<'inspector' | 'plugins'>('inspector');
+  const [isServiceScreenActive, setIsServiceScreenActive] = useState(false);
   const [isDevServerDisconnected, setIsDevServerDisconnected] = useState(false);
-  const [bottomPanelHeight, setBottomPanelHeight] = useState(260);
-  const [isBottomResizing, setIsBottomResizing] = useState(false);
-  const contentAreaRef = useRef<HTMLDivElement | null>(null);
-  const [bottomPanelBounds, setBottomPanelBounds] = useState({ left: 8, width: 320 });
 
   const lastNodesStateRef = useRef<any>(null);
-  const lastNodeRowIndexRef = useRef<number | null>(null);
-  const lastEdgeRowIndexRef = useRef<number | null>(null);
-  const nodeRowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
-  const edgeRowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
   const [edgeCreationType, setEdgeCreationType] = useState<string | null>(null);
   const [nodeCreationSpec, setNodeCreationSpec] = useState<NodeCreationSpec | null>(null);
-  const bottomResizeStartYRef = useRef(0);
-  const bottomResizeStartHeightRef = useRef(260);
-  const [edgeTypeVisuals, setEdgeTypeVisuals] = useState<Record<string, { color: string; width: number; direction: string; dashed: boolean; label: string }>>({});
-  const [nodeTypeVisuals, setNodeTypeVisuals] = useState<Record<string, { icon: string; color: string; iconScale: number; ringEnabled: boolean; ringWidth: number; label: string }>>({});
+  const { edgeTypeVisuals, nodeTypeVisuals } = useDomainModelVisuals();
+  const {
+    isBottomPanelOpen,
+    setIsBottomPanelOpen,
+    bottomTab,
+    setBottomTab,
+    contentAreaRef,
+    handleBottomResizerMouseDown,
+    bottomPanelStyle,
+  } = useGraphBottomPanelState({
+    currentArtifactId: currentArtifactId || null,
+    isInspectorVisible,
+  });
 
   useEffect(() => {
     dispatch(fetchProjects());
@@ -110,56 +112,6 @@ function App() {
       dispatch(fetchArtifacts(currentProject.id));
     }
   }, [currentProject?.id, dispatch]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadDomainModel = async () => {
-      try {
-        const model = await domainModelApi.get() as DomainModelConfig;
-        if (cancelled) return;
-
-        const edgeMap: Record<string, { color: string; width: number; direction: string; dashed: boolean; label: string }> = {};
-        (model?.edge_types || []).forEach((edge: any) => {
-          const id = String(edge?.id || '').trim();
-          if (!id) return;
-          const visual = edge?.default_visual || {};
-          edgeMap[id] = {
-            color: String(visual.color || '#475569'),
-            width: Number(visual.width ?? 2),
-            direction: String(visual.direction || 'to'),
-            dashed: Boolean(visual.dashed ?? false),
-            label: String(edge?.label || id)
-          };
-        });
-
-        const nodeMap: Record<string, { icon: string; color: string; iconScale: number; ringEnabled: boolean; ringWidth: number; label: string }> = {};
-        (model?.node_types || []).forEach((node: any) => {
-          const id = String(node?.id || '').trim();
-          if (!id) return;
-          const visual = node?.default_visual || {};
-          nodeMap[id] = {
-            icon: String(node?.icon || ''),
-            color: String(visual.color || '#3b82f6'),
-            iconScale: Number(visual.iconScale ?? 2),
-            ringEnabled: Boolean(visual.ringEnabled ?? true),
-            ringWidth: Number(visual.ringWidth ?? 2),
-            label: String(node?.label || id)
-          };
-        });
-
-        setEdgeTypeVisuals(edgeMap);
-        setNodeTypeVisuals(nodeMap);
-      } catch {
-        if (cancelled) return;
-        setEdgeTypeVisuals({});
-        setNodeTypeVisuals({});
-      }
-    };
-
-    loadDomainModel();
-    return () => { cancelled = true; };
-  }, []);
 
   useEffect(() => {
     if (!currentArtifactId) return;
@@ -244,52 +196,49 @@ function App() {
   const {
     graphNodesForPanel,
     graphEdgesForPanel,
-    nodeLabelById,
-    selectedNodeIds,
-    selectedEdgeIds,
-    nodeById,
-    edgeById,
-    getNormalizedEdgeAttributes,
-    nodeAttributeColumns,
-    edgeAttributeColumns,
-    formatAttributeHeader,
-    sortedGraphNodesForPanel,
-    sortedGraphEdgesForPanel,
+    toggleNodeSort,
+    toggleEdgeSort,
+    renderSortIndicator,
     nodeSortKey,
     nodeSortDir,
     edgeSortKey,
     edgeSortDir,
-    toggleNodeSort,
-    toggleEdgeSort,
-  } = useGraphTablePanelData({
-    activeArtifact,
-    selectedElements,
-    edgeTypeVisuals,
-  });
-
-  const renderSortIndicator = useCallback((active: boolean, dir: 'asc' | 'desc') => {
-    return (
-      <span className={`bottom-sort-indicator ${active ? 'active' : ''}`} aria-hidden="true">
-        {active ? (dir === 'asc' ? '\u2191' : '\u2193') : '\u2195'}
-      </span>
-    );
-  }, []);
-
-  const { handleNodeRowClick, handleEdgeRowClick } = useGraphTableSelection({
-    dispatch,
-    setSelectedElementsAction: setSelectedElements,
+    nodeAttributeColumns,
+    edgeAttributeColumns,
+    formatAttributeHeader,
+    visibleGraphNodesForPanel,
+    visibleGraphEdgesForPanel,
     selectedNodeIds,
     selectedEdgeIds,
-    sortedGraphNodesForPanel,
-    sortedGraphEdgesForPanel,
-    nodeById,
-    edgeById,
-    isBottomPanelOpen,
-    bottomTab,
-    lastNodeRowIndexRef,
-    lastEdgeRowIndexRef,
+    handleNodeRowClick,
+    handleEdgeRowClick,
     nodeRowRefs,
     edgeRowRefs,
+    getNormalizedEdgeAttributes,
+    nodeLabelById,
+    searchQuery,
+    setSearchQuery,
+    nodeTypeOptions,
+    edgeTypeOptions,
+    activeTypeFilter,
+    setNodeTypeFilter,
+    setEdgeTypeFilter,
+    nodeAttributeKeyOptions,
+    edgeAttributeKeyOptions,
+    activeAttributeKeyFilter,
+    setNodeAttributeKeyFilter,
+    setEdgeAttributeKeyFilter,
+    attributeValueOptions,
+    activeAttributeValueFilter,
+    setNodeAttributeValueFilter,
+    setEdgeAttributeValueFilter,
+    showOnlySelected,
+    setShowOnlySelected,
+  } = useGraphBottomPanelViewModel({
+    activeArtifact,
+    edgeTypeVisuals,
+    isBottomPanelOpen,
+    bottomTab,
   });
 
   useEffect(() => {
@@ -663,6 +612,7 @@ function App() {
     });
 
     setActiveTabId(tabId);
+    setIsServiceScreenActive(false);
     dispatch(setCurrentArtifact(artifact.id));
 
     if (artifact?.data) {
@@ -679,6 +629,7 @@ function App() {
 
   const handleTabClick = useCallback((tabId: string) => {
     setActiveTabId(tabId);
+    setIsServiceScreenActive(false);
     const tab = tabs.find(t => t.id === tabId);
     if (tab) {
       dispatch(setCurrentArtifact(tab.artifactId));
@@ -688,6 +639,10 @@ function App() {
       }
     }
   }, [tabs, artifacts, dispatch]);
+
+  const handleOpenServiceScreen = useCallback(() => {
+    setIsServiceScreenActive(true);
+  }, []);
 
   const handleTabClose = useCallback((tabId: string) => {
     setTabs(prev => prev.filter(t => t.id !== tabId));
@@ -722,68 +677,6 @@ function App() {
     setIsSidebarCollapsed((prev) => !prev);
   }, []);
 
-  const handleBottomResizerMouseDown = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    bottomResizeStartYRef.current = event.clientY;
-    bottomResizeStartHeightRef.current = bottomPanelHeight;
-    setIsBottomResizing(true);
-  }, [bottomPanelHeight]);
-
-  useEffect(() => {
-    if (!isBottomResizing) return;
-
-    const onMouseMove = (event: MouseEvent) => {
-      const delta = bottomResizeStartYRef.current - event.clientY;
-      const maxHeight = Math.max(180, Math.floor(window.innerHeight * 0.34));
-      const nextHeight = Math.max(170, Math.min(maxHeight, bottomResizeStartHeightRef.current + delta));
-      setBottomPanelHeight(nextHeight);
-    };
-
-    const onMouseUp = () => {
-      setIsBottomResizing(false);
-    };
-
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
-    return () => {
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
-    };
-  }, [isBottomResizing]);
-  useEffect(() => {
-    const updateBounds = () => {
-      const el = contentAreaRef.current;
-      if (!el) return;
-      const rect = el.getBoundingClientRect();
-      setBottomPanelBounds({
-        left: Math.max(8, Math.round(rect.left)),
-        width: Math.max(320, Math.round(rect.width))
-      });
-    };
-
-    updateBounds();
-
-    const target = contentAreaRef.current;
-    let observer: ResizeObserver | null = null;
-    if (target && typeof ResizeObserver !== 'undefined') {
-      observer = new ResizeObserver(() => updateBounds());
-      observer.observe(target);
-    }
-
-    window.addEventListener('resize', updateBounds);
-    return () => {
-      window.removeEventListener('resize', updateBounds);
-      observer?.disconnect();
-    };
-  }, [isInspectorVisible, currentArtifactId]);
-
-  const bottomPanelStyle = useMemo<React.CSSProperties>(() => ({
-    left: `${bottomPanelBounds.left + 8}px`,
-    width: `${Math.max(320, bottomPanelBounds.width - 16)}px`,
-    transform: 'none',
-    ...(isBottomPanelOpen ? { height: `${bottomPanelHeight}px` } : {}),
-  }), [bottomPanelBounds, isBottomPanelOpen, bottomPanelHeight]);
-
   const handleCreateProject = useCallback(async () => {
     if (!newProjectName.trim()) {
       setCreateProjectError(labels.emptyNameError);
@@ -809,43 +702,14 @@ function App() {
 
   if (!projects || projects.length === 0) {
     return (
-      <div className="loading-screen" style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center' }}>
-        <div style={{ fontSize: '18px', color: '#ffffff' }}>{labels.noProjectsTitle}</div>
-        <div style={{ color: '#9ca3af', fontSize: '13px' }}>{labels.noProjectsHint}</div>
-        <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-          <input
-            type="text"
-            value={newProjectName}
-            onChange={(e) => setNewProjectName(e.target.value)}
-            placeholder={labels.projectNamePlaceholder}
-            style={{
-              padding: '8px 10px',
-              borderRadius: '6px',
-              border: '1px solid #374151',
-              background: '#111827',
-              color: '#e5e7eb',
-              minWidth: '260px'
-            }}
-          />
-          <button
-            onClick={handleCreateProject}
-            disabled={creatingProject}
-            style={{
-              padding: '8px 12px',
-              borderRadius: '6px',
-              border: '1px solid #2563eb',
-              background: '#2563eb',
-              color: '#ffffff',
-              cursor: 'pointer'
-            }}
-          >
-            {creatingProject ? labels.creating : labels.create}
-          </button>
-        </div>
-        {createProjectError && (
-          <div style={{ color: '#f87171', fontSize: '12px' }}>{createProjectError}</div>
-        )}
-      </div>
+      <AppEmptyProjectsState
+        labels={labels}
+        newProjectName={newProjectName}
+        setNewProjectName={setNewProjectName}
+        creatingProject={creatingProject}
+        createProjectError={createProjectError}
+        onCreateProject={handleCreateProject}
+      />
     );
   }
 
@@ -876,160 +740,134 @@ function App() {
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={handleToggleCollapse}
           onArtifactSelect={handleArtifactSelect}
+          onOpenServiceScreen={handleOpenServiceScreen}
+          isServiceScreenActive={isServiceScreenActive}
         />
         <div className="content-area" ref={contentAreaRef}>
-          {activeArtifact ? (
-            activeArtifact.type === 'graph' ? (
-              <GraphView
-                artifact={activeArtifact}
-                onNodeMove={handleNodeMove}
-                onNodesMove={handleNodesMove}
-                onAddEdge={handleAddEdge}
-                onDeleteSelection={handleDeleteSelection}
-                onAddNodeAtPosition={handleAddNodeAtPosition}
-                nodeCreateSpec={nodeCreationSpec}
-                onNodeCreateComplete={handleFinishNodeCreation}
-                connectType={edgeCreationType}
-                onConnectComplete={handleFinishEdgeCreation}
-                onUndo={handleUndo}
-                onRedo={handleRedo}
-                canUndo={canUndo}
-                canRedo={canRedo}
-                isRecording={isRecording}
-                lastError={lastError}
-              />
-            ) : activeArtifact.type === 'document' ? (
-              <DocumentView artifact={activeArtifact} />
-            ) : activeArtifact.type === 'map' ? (
-              <MapView artifact={activeArtifact} _onUpdate={() => {}} />
-            ) : activeArtifact.type === 'table' ? (
-              <TableView artifact={activeArtifact} _onUpdate={() => {}} />
-            ) : activeArtifact.type === 'chart' ? (
-              <ChartView artifact={activeArtifact} _onUpdate={() => {}} />
-            ) : activeArtifact.type === 'console' ? (
-              <ConsoleView artifact={activeArtifact} />
-            ) : (
-              <DocumentView artifact={activeArtifact} />
-            )
+          {isServiceScreenActive ? (
+            <ServiceFunctionsView projectId={currentProject?.id || null} />
           ) : (
-            <div className="no-selection">
-              <h2>{labels.noSelectionTitle}</h2>
-              <p>{labels.noSelectionHint}</p>
+            <ArtifactContentView
+              activeArtifact={activeArtifact}
+              labels={labels}
+              graphViewProps={{
+                onNodeMove: handleNodeMove,
+                onNodesMove: handleNodesMove,
+                onAddEdge: handleAddEdge,
+                onDeleteSelection: handleDeleteSelection,
+                onAddNodeAtPosition: handleAddNodeAtPosition,
+                nodeCreateSpec: nodeCreationSpec,
+                onNodeCreateComplete: handleFinishNodeCreation,
+                connectType: edgeCreationType,
+                onConnectComplete: handleFinishEdgeCreation,
+                onUndo: handleUndo,
+                onRedo: handleRedo,
+                canUndo,
+                canRedo,
+                isRecording,
+                lastError,
+              }}
+            />
+          )}
+        </div>
+        {!isServiceScreenActive && (
+          <div className={`inspector-shell ${isInspectorVisible ? 'expanded' : 'collapsed'}`}>
+            <button
+              type="button"
+              className="inspector-grip"
+              onClick={() => setIsInspectorVisible((prev) => !prev)}
+              title={isInspectorVisible ? '\u0421\u043a\u0440\u044b\u0442\u044c \u0438\u043d\u0441\u043f\u0435\u043a\u0442\u043e\u0440' : '\u041f\u043e\u043a\u0430\u0437\u0430\u0442\u044c \u0438\u043d\u0441\u043f\u0435\u043a\u0442\u043e\u0440'}
+              aria-label={isInspectorVisible ? '\u0421\u043a\u0440\u044b\u0442\u044c \u0438\u043d\u0441\u043f\u0435\u043a\u0442\u043e\u0440' : '\u041f\u043e\u043a\u0430\u0437\u0430\u0442\u044c \u0438\u043d\u0441\u043f\u0435\u043a\u0442\u043e\u0440'}
+            >
+              {isInspectorVisible ? '>' : '<'}
+            </button>
+            <div className="inspector-shell-body">
+              {isInspectorVisible && (
+                <div className="inspector-content-tabs">
+                  <button
+                    type="button"
+                    className={`inspector-content-tab ${inspectorTab === 'inspector' ? 'active' : ''}`}
+                    onClick={() => setInspectorTab('inspector')}
+                  >
+                    Инспектор
+                  </button>
+                  <button
+                    type="button"
+                    className={`inspector-content-tab ${inspectorTab === 'plugins' ? 'active' : ''}`}
+                    onClick={() => setInspectorTab('plugins')}
+                  >
+                    Плагины
+                  </button>
+                </div>
+              )}
+              {isInspectorVisible && inspectorTab === 'inspector' && (
+                <InspectorPanel onApplyGraphData={handleGraphUpdate} onStartNodeCreation={handleStartNodeCreation} onStartEdgeCreation={handleStartEdgeCreation} nodeCreationSpec={nodeCreationSpec} edgeCreationType={edgeCreationType} onRefreshConsole={handleRefreshConsole} />
+              )}
+              {isInspectorVisible && inspectorTab === 'plugins' && (
+                <PluginsPanel />
+              )}
             </div>
-          )}
-        </div>
-        <div className={`inspector-shell ${isInspectorVisible ? 'expanded' : 'collapsed'}`}>
-          <button
-            type="button"
-            className="inspector-grip"
-            onClick={() => setIsInspectorVisible((prev) => !prev)}
-            title={isInspectorVisible ? '\u0421\u043a\u0440\u044b\u0442\u044c \u0438\u043d\u0441\u043f\u0435\u043a\u0442\u043e\u0440' : '\u041f\u043e\u043a\u0430\u0437\u0430\u0442\u044c \u0438\u043d\u0441\u043f\u0435\u043a\u0442\u043e\u0440'}
-            aria-label={isInspectorVisible ? '\u0421\u043a\u0440\u044b\u0442\u044c \u0438\u043d\u0441\u043f\u0435\u043a\u0442\u043e\u0440' : '\u041f\u043e\u043a\u0430\u0437\u0430\u0442\u044c \u0438\u043d\u0441\u043f\u0435\u043a\u0442\u043e\u0440'}
-          >
-            {isInspectorVisible ? '>' : '<'}
-          </button>
-          <div className="inspector-shell-body">
-            {isInspectorVisible && (
-              <InspectorPanel onApplyGraphData={handleGraphUpdate} onStartNodeCreation={handleStartNodeCreation} onStartEdgeCreation={handleStartEdgeCreation} nodeCreationSpec={nodeCreationSpec} edgeCreationType={edgeCreationType} onRefreshConsole={handleRefreshConsole} />
-            )}
           </div>
-        </div>
+        )}
       </div>
-      {activeArtifact?.type === 'graph' && (
-        <div className={`bottom-panel ${isBottomPanelOpen ? 'open' : 'collapsed'}`} style={bottomPanelStyle}>
-          <button
-            type="button"
-            className="bottom-panel-handle"
-            onClick={() => setIsBottomPanelOpen((prev) => !prev)}
-            title={isBottomPanelOpen ? '\u0421\u043a\u0440\u044b\u0442\u044c \u0441\u043f\u0438\u0441\u043a\u0438' : '\u041f\u043e\u043a\u0430\u0437\u0430\u0442\u044c \u0441\u043f\u0438\u0441\u043a\u0438'}
-          >
-            {isBottomPanelOpen ? '\u25be' : '\u25b4'}
-          </button>
-          {isBottomPanelOpen && (
-            <>
-              <div className="bottom-panel-resizer" onMouseDown={handleBottomResizerMouseDown} title="\u041f\u043e\u0442\u044f\u043d\u0438\u0442\u0435, \u0447\u0442\u043e\u0431\u044b \u0438\u0437\u043c\u0435\u043d\u0438\u0442\u044c \u0432\u044b\u0441\u043e\u0442\u0443" />
-              <div className="bottom-panel-body">
-                <div className="bottom-panel-tabs">
-                  <button type="button" className={`bottom-panel-tab ${bottomTab === 'nodes' ? 'active' : ''}`} onClick={() => setBottomTab('nodes')}>{'\u0423\u0437\u043b\u044b'} ({graphNodesForPanel.length})</button>
-                  <button type="button" className={`bottom-panel-tab ${bottomTab === 'edges' ? 'active' : ''}`} onClick={() => setBottomTab('edges')}>{'\u0421\u0432\u044f\u0437\u0438'} ({graphEdgesForPanel.length})</button>
-                </div>
-                <div className="bottom-panel-list">
-                  {bottomTab === 'nodes' ? (
-                    <table className="bottom-table">
-                      <thead>
-                        <tr>
-                          <th><button type="button" className="bottom-sort-btn" onClick={() => toggleNodeSort('type')}>{'\u0422\u0438\u043f'}{renderSortIndicator(nodeSortKey === 'type', nodeSortDir)}</button></th>
-                          <th><button type="button" className="bottom-sort-btn" onClick={() => toggleNodeSort('label')}>{'\u041f\u043e\u0434\u043f\u0438\u0441\u044c'}{renderSortIndicator(nodeSortKey === 'label', nodeSortDir)}</button></th>
-                          {nodeAttributeColumns.map((key) => (<th key={key}><button type="button" className="bottom-sort-btn" onClick={() => toggleNodeSort(key)}>{formatAttributeHeader(key)}{renderSortIndicator(nodeSortKey === key, nodeSortDir)}</button></th>))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {sortedGraphNodesForPanel.map((node: any, rowIndex: number) => {
-                          const nodeId = String(node?.id ?? node?.node_id ?? '');
-                          const attrs = node?.attributes || {};
-                          const isSelected = selectedNodeIds.has(nodeId);
-                          return (
-                            <tr
-                              key={nodeId || String(Math.random())}
-                              className={isSelected ? 'selected-row' : ''}
-                              onClick={(event) => handleNodeRowClick(event, node, rowIndex)}
-                              ref={(el) => { if (nodeId) nodeRowRefs.current[nodeId] = el; }}
-                            >
-                              <td>{String(node?.type || '-')}</td>
-                              <td>{String(node?.label || node?.attributes?.label || nodeId)}</td>
-                              {nodeAttributeColumns.map((key) => (<td key={key}>{Array.isArray(attrs[key]) ? attrs[key].join(', ') : String(attrs[key] ?? '')}</td>))}
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  ) : (
-                    <table className="bottom-table">
-                      <thead>
-                        <tr>
-                          <th><button type="button" className="bottom-sort-btn" onClick={() => toggleEdgeSort('type')}>{'\u0422\u0438\u043f'}{renderSortIndicator(edgeSortKey === 'type', edgeSortDir)}</button></th>
-                          <th><button type="button" className="bottom-sort-btn" onClick={() => toggleEdgeSort('from')}>{'\u041e\u0442\u043a\u0443\u0434\u0430'}{renderSortIndicator(edgeSortKey === 'from', edgeSortDir)}</button></th>
-                          <th><button type="button" className="bottom-sort-btn" onClick={() => toggleEdgeSort('to')}>{'\u041a\u0443\u0434\u0430'}{renderSortIndicator(edgeSortKey === 'to', edgeSortDir)}</button></th>
-                          <th><button type="button" className="bottom-sort-btn" onClick={() => toggleEdgeSort('label')}>{'\u041f\u043e\u0434\u043f\u0438\u0441\u044c'}{renderSortIndicator(edgeSortKey === 'label', edgeSortDir)}</button></th>
-                          {edgeAttributeColumns.map((key) => (<th key={key}><button type="button" className="bottom-sort-btn" onClick={() => toggleEdgeSort(key)}>{formatAttributeHeader(key)}{renderSortIndicator(edgeSortKey === key, edgeSortDir)}</button></th>))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {sortedGraphEdgesForPanel.map((edge: any, rowIndex: number) => {
-                          const edgeId = String(edge?.id ?? '');
-                          const fromId = String(edge?.from || edge?.source_node || '');
-                          const toId = String(edge?.to || edge?.target_node || '');
-                          const attrs = getNormalizedEdgeAttributes(edge);
-                          const isSelected = selectedEdgeIds.has(edgeId);
-                          return (
-                            <tr
-                              key={edgeId || String(Math.random())}
-                              className={isSelected ? 'selected-row' : ''}
-                              onClick={(event) => handleEdgeRowClick(event, edge, rowIndex)}
-                              ref={(el) => { if (edgeId) edgeRowRefs.current[edgeId] = el; }}
-                            >
-                              <td>{String(edge?.type || '-')}</td>
-                              <td>{nodeLabelById[fromId] || fromId}</td>
-                              <td>{nodeLabelById[toId] || toId}</td>
-                              <td>{String(edge?.label || '')}</td>
-                              {edgeAttributeColumns.map((key) => (<td key={key}>{Array.isArray(attrs[key]) ? attrs[key].join(', ') : String(attrs[key] ?? '')}</td>))}
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  )}
-                </div>
-              </div>
-            </>
-          )}
-        </div>
+      {!isServiceScreenActive && activeArtifact?.type === 'graph' && (
+        <AppGraphBottomPanel
+          isOpen={isBottomPanelOpen}
+          setIsOpen={setIsBottomPanelOpen}
+          bottomPanelStyle={bottomPanelStyle}
+          onResizerMouseDown={handleBottomResizerMouseDown}
+          bottomTab={bottomTab}
+          setBottomTab={setBottomTab}
+          graphNodesForPanel={graphNodesForPanel}
+          graphEdgesForPanel={graphEdgesForPanel}
+          toggleNodeSort={toggleNodeSort}
+          toggleEdgeSort={toggleEdgeSort}
+          renderSortIndicator={renderSortIndicator}
+          nodeSortKey={nodeSortKey}
+          nodeSortDir={nodeSortDir}
+          edgeSortKey={edgeSortKey}
+          edgeSortDir={edgeSortDir}
+          nodeAttributeColumns={nodeAttributeColumns}
+          edgeAttributeColumns={edgeAttributeColumns}
+          formatAttributeHeader={formatAttributeHeader}
+          visibleGraphNodesForPanel={visibleGraphNodesForPanel}
+          visibleGraphEdgesForPanel={visibleGraphEdgesForPanel}
+          selectedNodeIds={selectedNodeIds}
+          selectedEdgeIds={selectedEdgeIds}
+          handleNodeRowClick={handleNodeRowClick}
+          handleEdgeRowClick={handleEdgeRowClick}
+          nodeRowRefs={nodeRowRefs}
+          edgeRowRefs={edgeRowRefs}
+          getNormalizedEdgeAttributes={getNormalizedEdgeAttributes}
+          nodeLabelById={nodeLabelById}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          nodeTypeOptions={nodeTypeOptions}
+          edgeTypeOptions={edgeTypeOptions}
+          activeTypeFilter={activeTypeFilter}
+          setNodeTypeFilter={setNodeTypeFilter}
+          setEdgeTypeFilter={setEdgeTypeFilter}
+          nodeAttributeKeyOptions={nodeAttributeKeyOptions}
+          edgeAttributeKeyOptions={edgeAttributeKeyOptions}
+          activeAttributeKeyFilter={activeAttributeKeyFilter}
+          setNodeAttributeKeyFilter={setNodeAttributeKeyFilter}
+          setEdgeAttributeKeyFilter={setEdgeAttributeKeyFilter}
+          attributeValueOptions={attributeValueOptions}
+          activeAttributeValueFilter={activeAttributeValueFilter}
+          setNodeAttributeValueFilter={setNodeAttributeValueFilter}
+          setEdgeAttributeValueFilter={setEdgeAttributeValueFilter}
+          showOnlySelected={showOnlySelected}
+          setShowOnlySelected={setShowOnlySelected}
+        />
       )}
     </div>
   );
 }
 
 export default App;
+
+
+
 
 
 
