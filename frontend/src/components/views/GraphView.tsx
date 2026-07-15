@@ -1,13 +1,15 @@
 ﻿// frontend/src/components/views/GraphView.tsx
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useAppDispatch } from '../../store';
+import { fetchArtifacts } from '../../store/slices/artifactsSlice';
 import { setSelectedElements } from '../../store/slices/uiSlice';
 import type { SelectedElement } from '../../store/slices/uiSlice';
 import { Network } from 'vis-network/standalone';
 import { DataSet } from 'vis-data/standalone';
-import { domainModelApi } from '../../services/api';
-import type { ApiArtifact, ApiPlugin, DomainModelConfig, PluginExecutionContext } from '../../types/api';
+import { artifactApi, consoleApi, domainModelApi } from '../../services/api';
+import type { ApiArtifact, ApiPlugin, ConsoleProfile, ConsoleProfilesResponse, DomainModelConfig, PluginExecutionContext } from '../../types/api';
 import { nodeAttributePreviewConfig } from '../../config/nodeAttributePreview';
+import { loadProjectPeriodDefaults } from '../../utils/pluginParams';
 import { usePluginRunner } from '../../hooks/usePluginRunner';
 import { useGraphViewportSelectionActions } from '../../hooks/useGraphViewportSelectionActions';
 import { useGraphSelectionActions } from '../../hooks/useGraphSelectionActions';
@@ -68,6 +70,7 @@ interface GraphViewProps {
   canRedo?: boolean;
   isRecording?: boolean;
   lastError?: Error | null;
+  onRequestAnalysisProfile?: (profileKey: string) => void;
 }
 
 interface PendingMove {
@@ -75,6 +78,32 @@ interface PendingMove {
   x: number;
   y: number;
 }
+
+const DEFAULT_SOURCE_IDS = 'All';
+const PERIOD_START_KEYS = ['begtime', 'period_start', 'start_date', 'date_from', 'from_date', 'begin_date', 'beg_date'];
+const PERIOD_END_KEYS = ['endtime', 'period_end', 'end_date', 'date_to', 'to_date', 'finish_date'];
+
+const getParamKey = (param: any): string => String(param?.key || param?.name || '').trim();
+const getParamKeyLower = (param: any): string => getParamKey(param).toLowerCase();
+const isObjectsParam = (param: any): boolean => getParamKeyLower(param) === 'objects';
+const isObjectTypesParam = (param: any): boolean => getParamKeyLower(param) === 'objectstype';
+const isSourceIdsParam = (param: any): boolean => getParamKeyLower(param) === 'sourceids';
+const isPeriodStartKey = (key: string): boolean => PERIOD_START_KEYS.includes(key.toLowerCase());
+const isPeriodEndKey = (key: string): boolean => PERIOD_END_KEYS.includes(key.toLowerCase());
+
+const coerceParamValue = (type: string | undefined, value: string | boolean): unknown => {
+  const normalizedType = String(type || '').trim().toLowerCase();
+  if (normalizedType === 'boolean') return Boolean(value);
+  if (normalizedType === 'number' || normalizedType === 'float') {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : value;
+  }
+  if (normalizedType === 'integer' || normalizedType === 'int') {
+    const parsed = Number.parseInt(String(value), 10);
+    return Number.isFinite(parsed) ? parsed : value;
+  }
+  return String(value ?? '');
+};
 
 export const GraphView: React.FC<GraphViewProps> = ({ 
   artifact, 
@@ -92,7 +121,8 @@ export const GraphView: React.FC<GraphViewProps> = ({
   canUndo = false,
   canRedo = false,
   isRecording = false,
-  lastError = null
+  lastError = null,
+  onRequestAnalysisProfile,
 }) => {
   const dispatch = useAppDispatch();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -113,6 +143,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
   const [domainModelRevision, setDomainModelRevision] = useState(0);
   const [previewConfigRevision, setPreviewConfigRevision] = useState(0);
   const [, setGraphSettingsRevision] = useState(0);
+  const [analysisProfiles, setAnalysisProfiles] = useState<ConsoleProfile[]>([]);
   const edgeTypesRef = useRef<Array<any>>([]);
   const rulesRef = useRef<{ allow_parallel_edges: boolean }>({ allow_parallel_edges: true });
   const nodeTypeIconsRef = useRef<Record<string, string>>({});
@@ -161,6 +192,33 @@ export const GraphView: React.FC<GraphViewProps> = ({
   useEffect(() => {
     artifactDataRef.current = artifact.data || {};
   }, [artifact.data]);
+
+  const loadAnalysisProfiles = useCallback(async () => {
+    try {
+      const response = (await consoleApi.profiles()) as ConsoleProfilesResponse;
+      const nextProfiles = Array.isArray(response?.profiles)
+        ? response.profiles.filter((profile) => profile.is_active !== false)
+        : [];
+      setAnalysisProfiles(nextProfiles);
+      return nextProfiles;
+    } catch {
+      setAnalysisProfiles([]);
+      return [] as ConsoleProfile[];
+    }
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadProfiles = async () => {
+      const nextProfiles = await loadAnalysisProfiles();
+      if (cancelled) return;
+      setAnalysisProfiles(nextProfiles);
+    };
+    void loadProfiles();
+    return () => {
+      cancelled = true;
+    };
+  }, [loadAnalysisProfiles]);
 
   useEffect(() => {
     let cancelled = false;
@@ -480,6 +538,131 @@ export const GraphView: React.FC<GraphViewProps> = ({
     await runPlugin(plugin, context, dispatch);
   }, [dispatch, runPlugin]);
 
+  const buildSelectionPayloadFromContext = useCallback((context: PluginExecutionContext) => {
+    const nodeIds = new Set((context.selected_nodes || []).map((id) => String(id)));
+    const edgeIds = new Set((context.selected_edges || []).map((id) => String(id)));
+    const nodes = Array.isArray(artifactDataRef.current?.nodes) ? artifactDataRef.current.nodes : [];
+    const edges = Array.isArray(artifactDataRef.current?.edges) ? artifactDataRef.current.edges : [];
+
+    return {
+      selected_nodes: nodes
+        .filter((item: any) => nodeIds.has(String(item?.id ?? item?.node_id ?? '')))
+        .map((item: any) => ({
+          id: String(item?.id ?? item?.node_id ?? ''),
+          node_id: String(item?.node_id ?? item?.id ?? ''),
+          type: String(item?.type || ''),
+          label: item?.label,
+          attributes: item?.attributes && typeof item.attributes === 'object' ? item.attributes : {},
+        })),
+      selected_edges: edges
+        .filter((item: any) => edgeIds.has(String(item?.id ?? '')))
+        .map((item: any) => ({
+          id: String(item?.id ?? ''),
+          from: String(item?.from ?? item?.source_node ?? ''),
+          to: String(item?.to ?? item?.target_node ?? ''),
+          type: String(item?.type || ''),
+          label: item?.label,
+          attributes: item?.attributes && typeof item.attributes === 'object' ? item.attributes : {},
+        })),
+    };
+  }, []);
+
+  const hasRequiredManualParams = useCallback((profile: ConsoleProfile) => {
+    const defaults = loadProjectPeriodDefaults(artifact.project_id);
+    return (profile.params || []).some((param: any) => {
+      if (param.hidden) return false;
+      if (isObjectsParam(param) || isObjectTypesParam(param) || isSourceIdsParam(param)) return false;
+      const bindingMode = String(param.binding_mode || 'manual').trim().toLowerCase();
+      if (bindingMode !== 'manual') return false;
+      if (!param.required) return false;
+      const key = getParamKey(param);
+      const explicitDefault = String(param.default ?? '').trim();
+      if (explicitDefault) return false;
+      if (isPeriodStartKey(key) && defaults.period_start) return false;
+      if (isPeriodEndKey(key) && defaults.period_end) return false;
+      return true;
+    });
+  }, [artifact.project_id]);
+
+  const buildMenuRunParams = useCallback((profile: ConsoleProfile) => {
+    const defaults = loadProjectPeriodDefaults(artifact.project_id);
+    const params: Record<string, unknown> = {};
+    (profile.params || []).forEach((param: any) => {
+      const key = getParamKey(param);
+      if (!key) return;
+      if (isObjectsParam(param) || isObjectTypesParam(param)) return;
+      if (isSourceIdsParam(param)) {
+        params[key] = String(param.default ?? DEFAULT_SOURCE_IDS);
+        return;
+      }
+      const bindingMode = String(param.binding_mode || 'manual').trim().toLowerCase();
+      if (bindingMode !== 'manual') return;
+      if (isPeriodStartKey(key) && defaults.period_start) {
+        params[key] = defaults.period_start;
+        return;
+      }
+      if (isPeriodEndKey(key) && defaults.period_end) {
+        params[key] = defaults.period_end;
+        return;
+      }
+      params[key] = coerceParamValue(param.type, String(param.default ?? ''));
+    });
+    return params;
+  }, [artifact.project_id]);
+
+  const handleRunAnalysisFromMenu = useCallback(async (profile: ConsoleProfile, context: PluginExecutionContext) => {
+    if (hasRequiredManualParams(profile)) {
+      onRequestAnalysisProfile?.(String(profile.key || profile.id));
+      closePluginMenu();
+      return;
+    }
+
+    const selectionPayload = buildSelectionPayloadFromContext(context);
+    if (!selectionPayload.selected_nodes.length) {
+      closePluginMenu();
+      return;
+    }
+
+    try {
+      const consoleArtifact = await artifactApi.create(artifact.project_id, {
+        type: 'console',
+        name: `${profile.name} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`,
+        data: {
+          tabs: [{ id: 'main', name: 'Основная', columns: [], rows: [], row_count: 0 }],
+          active_tab_id: 'main',
+          columns: [],
+          rows: [],
+        },
+        metadata: {
+          console_profile_id: String(profile.key || profile.id),
+          console_context_artifact_id: artifact.id,
+        },
+      });
+
+      await consoleApi.refresh(
+        artifact.project_id,
+        consoleArtifact.id,
+        String(profile.key || profile.id),
+        buildMenuRunParams(profile),
+        selectionPayload,
+        artifact.id,
+      );
+
+      await dispatch(fetchArtifacts(artifact.project_id));
+    } finally {
+      closePluginMenu();
+    }
+  }, [
+    artifact.id,
+    artifact.project_id,
+    buildMenuRunParams,
+    buildSelectionPayloadFromContext,
+    closePluginMenu,
+    dispatch,
+    hasRequiredManualParams,
+    onRequestAnalysisProfile,
+  ]);
+
   useEffect(() => {
     if (!containerRef.current || isInitializedRef.current) return;
 
@@ -685,6 +868,9 @@ export const GraphView: React.FC<GraphViewProps> = ({
     network.on('oncontext', async (params: any) => {
       params?.event?.preventDefault?.();
       if (pluginExecutionRef.current) return;
+      if (analysisProfiles.length === 0) {
+        await loadAnalysisProfiles();
+      }
       const { domPoint, clickedNodes, clickedEdges } = resolvePluginMenuTargets(network, params);
       await openPluginMenuAt(domPoint, clickedNodes, clickedEdges);
     });
@@ -738,7 +924,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
       isInitializedRef.current = false;
       isFirstLoadRef.current = true;
     };
-  }, []);
+  }, [analysisProfiles.length, loadAnalysisProfiles]);
 
   useEffect(() => {
     if (!networkRef.current || !nodesDataSetRef.current || isDraggingRef.current) return;
@@ -921,9 +1107,11 @@ export const GraphView: React.FC<GraphViewProps> = ({
         pluginMenuLeft={pluginMenuLeft}
         pluginMenuTop={pluginMenuTop}
         pluginMenuTree={pluginMenuTree}
+        analysisProfiles={analysisProfiles}
         pluginExecutionMessage={pluginExecutionMessage}
         getPluginMenuEntries={getPluginMenuEntries}
         onRunPlugin={runPluginFromMenu}
+        onRunAnalysis={handleRunAnalysisFromMenu}
         onSelectLinks={handleSelectConnectedEdges}
         onSelectEndpoints={handleSelectEndpoints}
         onClose={closePluginMenu}

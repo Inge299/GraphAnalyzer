@@ -1,5 +1,5 @@
 import React from 'react';
-import type { ApiPlugin, PluginExecutionContext } from '../../types/api';
+import type { ApiPlugin, ConsoleProfile, PluginExecutionContext } from '../../types/api';
 import type { PluginContextMenuState, PluginMenuEntry, PluginMenuNode } from './graphPluginMenu';
 interface PluginContextMenuProps {
   pluginMenu: PluginContextMenuState | null;
@@ -7,9 +7,11 @@ interface PluginContextMenuProps {
   pluginMenuLeft: number;
   pluginMenuTop: number;
   pluginMenuTree: PluginMenuNode[];
+  analysisProfiles: ConsoleProfile[];
   pluginExecutionMessage: string | null;
   getPluginMenuEntries: (node: PluginMenuNode | null) => PluginMenuEntry[];
   onRunPlugin: (plugin: ApiPlugin, context: PluginExecutionContext) => void;
+  onRunAnalysis: (profile: ConsoleProfile, context: PluginExecutionContext) => void;
   onSelectLinks: () => void;
   onSelectEndpoints: () => void;
   onClose: () => void;
@@ -21,9 +23,11 @@ export const PluginContextMenu: React.FC<PluginContextMenuProps> = ({
   pluginMenuLeft,
   pluginMenuTop,
   pluginMenuTree,
+  analysisProfiles,
   pluginExecutionMessage,
   getPluginMenuEntries,
   onRunPlugin,
+  onRunAnalysis,
   onSelectLinks,
   onSelectEndpoints,
   onClose,
@@ -154,6 +158,41 @@ export const PluginContextMenu: React.FC<PluginContextMenuProps> = ({
       >
         {'Выделить окончания'}
       </button>
+
+      <div style={{ height: 1, background: '#eef2f7', margin: '4px 0 6px 0' }} />
+
+      <div style={{ padding: '0 8px 4px 8px', fontSize: 11, fontWeight: 700, color: '#475569' }}>
+        Анализ
+      </div>
+      {analysisProfiles.length === 0 ? (
+        <div style={{ fontSize: 12, color: '#64748b', padding: '4px 8px 8px 8px' }}>
+          Нет зарегистрированных процедур
+        </div>
+      ) : (
+        analysisProfiles.map((profile) => (
+          <button
+            key={String(profile.key || profile.id)}
+            type='button'
+            onClick={() => onRunAnalysis(profile, pluginMenu.context || {})}
+            disabled={!hasSelectedNodes}
+            style={{
+              width: '100%',
+              textAlign: 'left',
+              border: 'none',
+              background: 'transparent',
+              color: '#0f172a',
+              borderRadius: 4,
+              padding: '5px 8px',
+              cursor: hasSelectedNodes ? 'pointer' : 'not-allowed',
+              opacity: hasSelectedNodes ? 1 : 0.5,
+              fontSize: 12,
+              lineHeight: '16px',
+            }}
+          >
+            {profile.name}
+          </button>
+        ))
+      )}
 
       <div style={{ height: 1, background: '#eef2f7', margin: '4px 0 6px 0' }} />
 

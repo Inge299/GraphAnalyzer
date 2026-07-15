@@ -5,6 +5,13 @@ import type {
   CellTowerReferenceEnrichResponse,
   CellTowerReferenceLoadResponse,
   CellTowerReferenceStats,
+  ConsoleDataSource,
+  ConsoleDataSourcesResponse,
+  ConsoleDataSourceTestResponse,
+  ConsoleObjectTypeMappingsResponse,
+  ConsoleProfilesResponse,
+  ConsoleProfile,
+  ConsoleRefreshResponse,
   PluginApplicableResponse,
   PluginExecutionContext,
   PluginListResponse,
@@ -145,12 +152,43 @@ export const projectDataApi = {
 };
 
 export const consoleApi = {
-  profiles: () => api.get('/api/v1/console/profiles').then(res => res.data),
-  refresh: (projectId: number, artifactId: number, profileId: string, params: Record<string, any> = {}) =>
-    api.post(`/api/v1/projects/${projectId}/console/refresh`, {
+  profiles: () => api.get<ConsoleProfilesResponse>('/api/v1/console/profiles').then(res => res.data),
+  dataSources: () => api.get<ConsoleDataSourcesResponse>('/api/v1/console/datasources').then(res => res.data),
+  createDataSource: (payload: Record<string, any>) =>
+    api.post<ConsoleDataSource>('/api/v1/console/datasources', payload, { timeout: 120000 }).then(res => res.data),
+  updateDataSource: (sourceKey: string, payload: Record<string, any>) =>
+    api.put<ConsoleDataSource>(`/api/v1/console/datasources/${encodeURIComponent(sourceKey)}`, payload, { timeout: 120000 }).then(res => res.data),
+  deleteDataSource: (sourceKey: string) =>
+    api.delete<{ ok: boolean; source_key: string; message: string }>(`/api/v1/console/datasources/${encodeURIComponent(sourceKey)}`, { timeout: 120000 }).then(res => res.data),
+  testDataSource: (sourceKey: string) =>
+    api.post<ConsoleDataSourceTestResponse>(`/api/v1/console/datasources/${encodeURIComponent(sourceKey)}/test`, {}, { timeout: 30000 }).then(res => res.data),
+  objectTypeMappings: () =>
+    api.get<ConsoleObjectTypeMappingsResponse>('/api/v1/console/object-type-mappings').then(res => res.data),
+  updateObjectTypeMappings: (mappings: Array<Record<string, any>>) =>
+    api.put<ConsoleObjectTypeMappingsResponse>('/api/v1/console/object-type-mappings', { mappings }, { timeout: 120000 }).then(res => res.data),
+  procedures: () => api.get<{ procedures: ConsoleProfile[] }>('/api/v1/console/procedures').then(res => res.data),
+  getProcedure: (profileKey: string) =>
+    api.get<ConsoleProfile>(`/api/v1/console/procedures/${encodeURIComponent(profileKey)}`).then(res => res.data),
+  createProcedure: (payload: Record<string, any>) =>
+    api.post<ConsoleProfile>('/api/v1/console/procedures', payload, { timeout: 120000 }).then(res => res.data),
+  updateProcedure: (profileKey: string, payload: Record<string, any>) =>
+    api.put<ConsoleProfile>(`/api/v1/console/procedures/${encodeURIComponent(profileKey)}`, payload, { timeout: 120000 }).then(res => res.data),
+  deleteProcedure: (profileKey: string) =>
+    api.delete<{ ok: boolean; profile_key: string; message: string }>(`/api/v1/console/procedures/${encodeURIComponent(profileKey)}`, { timeout: 120000 }).then(res => res.data),
+  refresh: (
+    projectId: number,
+    artifactId: number,
+    profileId: string,
+    params: Record<string, any> = {},
+    context?: Record<string, any>,
+    contextArtifactId?: number | null,
+  ) =>
+    api.post<ConsoleRefreshResponse>(`/api/v1/projects/${projectId}/console/refresh`, {
       artifact_id: artifactId,
       profile_id: profileId,
       params,
+      context,
+      context_artifact_id: contextArtifactId,
     }, { timeout: 120000 }).then(res => res.data),
 };
 export const domainModelApi = {

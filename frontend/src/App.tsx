@@ -34,7 +34,7 @@ interface NodeCreationSpec {
   label: string;
 }
 
-const labels = {
+  const labels = {
   loadingProjects: 'Загрузка проектов...',
   noProjectsTitle: 'Проектов пока нет',
   noProjectsHint: 'Создай первый проект, чтобы начать работу',
@@ -47,6 +47,15 @@ const labels = {
   reloadPage: 'Обновить страницу',
   noSelectionTitle: 'Выберите артефакт из левой панели',
   noSelectionHint: 'Используйте дерево проектов и артефактов для навигации'
+};
+
+const artifactTypeLabels: Record<string, string> = {
+  graph: 'Граф',
+  console: 'Консоль',
+  document: 'Документ',
+  map: 'Карта',
+  table: 'Таблица',
+  chart: 'Диаграмма',
 };
 
 function App() {
@@ -63,6 +72,8 @@ function App() {
   const [tabs, setTabs] = useState<Tab[]>([]);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
+  const [requestedInspectorTab, setRequestedInspectorTab] = useState<'properties' | 'actions' | 'builder' | 'elements' | 'metadata' | null>(null);
+  const [requestedAnalysis, setRequestedAnalysis] = useState<{ profileKey: string; token: number } | null>(null);
   const [isInspectorVisible, setIsInspectorVisible] = useState(true);
 
   useEffect(() => {
@@ -193,6 +204,40 @@ function App() {
     return activeArtifact?.data || { nodes: [], edges: [] };
   }, [activeArtifact]);
 
+  const workspaceSummary = useMemo(() => {
+    if (isServiceScreenActive) {
+      return {
+        modeLabel: 'Администрирование',
+        title: 'Сервисные функции',
+        meta: currentProject?.name ? `Текущий проект: ${currentProject.name}` : 'Проект не выбран',
+      };
+    }
+
+    if (!activeArtifact) {
+      return {
+        modeLabel: 'Анализ',
+        title: 'Рабочая область',
+        meta: currentProject?.name ? `Проект: ${currentProject.name}` : 'Выберите проект и артефакт',
+      };
+    }
+
+    if (activeArtifact.type === 'graph') {
+      const nodesCount = Array.isArray(activeArtifact.data?.nodes) ? activeArtifact.data.nodes.length : 0;
+      const edgesCount = Array.isArray(activeArtifact.data?.edges) ? activeArtifact.data.edges.length : 0;
+      return {
+        modeLabel: 'Анализ',
+        title: activeArtifact.name,
+        meta: `${artifactTypeLabels[activeArtifact.type] || activeArtifact.type} · узлов ${nodesCount} · связей ${edgesCount}`,
+      };
+    }
+
+    return {
+      modeLabel: 'Анализ',
+      title: activeArtifact.name,
+      meta: artifactTypeLabels[activeArtifact.type] || activeArtifact.type,
+    };
+  }, [activeArtifact, currentProject?.name, isServiceScreenActive]);
+
   const {
     graphNodesForPanel,
     graphEdgesForPanel,
@@ -234,6 +279,7 @@ function App() {
     setEdgeAttributeValueFilter,
     showOnlySelected,
     setShowOnlySelected,
+    resultTabs,
   } = useGraphBottomPanelViewModel({
     activeArtifact,
     edgeTypeVisuals,
@@ -644,6 +690,18 @@ function App() {
     setIsServiceScreenActive(true);
   }, []);
 
+  const handleCloseServiceScreen = useCallback(() => {
+    setIsServiceScreenActive(false);
+  }, []);
+
+  const handleRequestGraphAnalysis = useCallback((profileKey: string) => {
+    setIsServiceScreenActive(false);
+    setIsInspectorVisible(true);
+    setInspectorTab('inspector');
+    setRequestedInspectorTab('actions');
+    setRequestedAnalysis({ profileKey, token: Date.now() });
+  }, []);
+
   const handleTabClose = useCallback((tabId: string) => {
     setTabs(prev => prev.filter(t => t.id !== tabId));
     if (activeTabId === tabId) {
@@ -741,34 +799,47 @@ function App() {
           onToggleCollapse={handleToggleCollapse}
           onArtifactSelect={handleArtifactSelect}
           onOpenServiceScreen={handleOpenServiceScreen}
+          onCloseServiceScreen={handleCloseServiceScreen}
           isServiceScreenActive={isServiceScreenActive}
         />
         <div className="content-area" ref={contentAreaRef}>
-          {isServiceScreenActive ? (
-            <ServiceFunctionsView projectId={currentProject?.id || null} />
-          ) : (
-            <ArtifactContentView
-              activeArtifact={activeArtifact}
-              labels={labels}
-              graphViewProps={{
-                onNodeMove: handleNodeMove,
-                onNodesMove: handleNodesMove,
-                onAddEdge: handleAddEdge,
-                onDeleteSelection: handleDeleteSelection,
-                onAddNodeAtPosition: handleAddNodeAtPosition,
-                nodeCreateSpec: nodeCreationSpec,
-                onNodeCreateComplete: handleFinishNodeCreation,
-                connectType: edgeCreationType,
-                onConnectComplete: handleFinishEdgeCreation,
-                onUndo: handleUndo,
-                onRedo: handleRedo,
-                canUndo,
-                canRedo,
-                isRecording,
-                lastError,
-              }}
-            />
-          )}
+          <div className="workspace-context-bar">
+            <div className={`workspace-mode-badge ${isServiceScreenActive ? 'admin' : 'analysis'}`}>
+              {workspaceSummary.modeLabel}
+            </div>
+            <div className="workspace-context-copy">
+              <div className="workspace-context-title">{workspaceSummary.title}</div>
+              <div className="workspace-context-meta">{workspaceSummary.meta}</div>
+            </div>
+          </div>
+          <div className="workspace-content-body">
+            {isServiceScreenActive ? (
+              <ServiceFunctionsView projectId={currentProject?.id || null} />
+            ) : (
+              <ArtifactContentView
+                activeArtifact={activeArtifact}
+                labels={labels}
+                graphViewProps={{
+                  onNodeMove: handleNodeMove,
+                  onNodesMove: handleNodesMove,
+                  onAddEdge: handleAddEdge,
+                  onDeleteSelection: handleDeleteSelection,
+                  onAddNodeAtPosition: handleAddNodeAtPosition,
+                  nodeCreateSpec: nodeCreationSpec,
+                  onNodeCreateComplete: handleFinishNodeCreation,
+                  connectType: edgeCreationType,
+                  onConnectComplete: handleFinishEdgeCreation,
+                  onUndo: handleUndo,
+                  onRedo: handleRedo,
+                  canUndo,
+                  canRedo,
+                  isRecording,
+                  lastError,
+                  onRequestAnalysisProfile: handleRequestGraphAnalysis,
+                }}
+              />
+            )}
+          </div>
         </div>
         {!isServiceScreenActive && (
           <div className={`inspector-shell ${isInspectorVisible ? 'expanded' : 'collapsed'}`}>
@@ -801,7 +872,17 @@ function App() {
                 </div>
               )}
               {isInspectorVisible && inspectorTab === 'inspector' && (
-                <InspectorPanel onApplyGraphData={handleGraphUpdate} onStartNodeCreation={handleStartNodeCreation} onStartEdgeCreation={handleStartEdgeCreation} nodeCreationSpec={nodeCreationSpec} edgeCreationType={edgeCreationType} onRefreshConsole={handleRefreshConsole} />
+                <InspectorPanel
+                  onApplyGraphData={handleGraphUpdate}
+                  onStartNodeCreation={handleStartNodeCreation}
+                  onStartEdgeCreation={handleStartEdgeCreation}
+                  nodeCreationSpec={nodeCreationSpec}
+                  edgeCreationType={edgeCreationType}
+                  onRefreshConsole={handleRefreshConsole}
+                  requestedTab={requestedInspectorTab}
+                  requestedAnalysisProfileKey={requestedAnalysis?.profileKey || null}
+                  requestedAnalysisToken={requestedAnalysis?.token || 0}
+                />
               )}
               {isInspectorVisible && inspectorTab === 'plugins' && (
                 <PluginsPanel />
@@ -812,6 +893,8 @@ function App() {
       </div>
       {!isServiceScreenActive && activeArtifact?.type === 'graph' && (
         <AppGraphBottomPanel
+          projectId={activeArtifact?.project_id || 0}
+          artifactTitle={activeArtifact?.name || 'Граф'}
           isOpen={isBottomPanelOpen}
           setIsOpen={setIsBottomPanelOpen}
           bottomPanelStyle={bottomPanelStyle}
@@ -858,6 +941,7 @@ function App() {
           setEdgeAttributeValueFilter={setEdgeAttributeValueFilter}
           showOnlySelected={showOnlySelected}
           setShowOnlySelected={setShowOnlySelected}
+          resultTabs={resultTabs}
         />
       )}
     </div>

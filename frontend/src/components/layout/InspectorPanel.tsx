@@ -8,6 +8,7 @@ import './InspectorPanel.css';
 import { collectPluginParamsWithPrompts, groupPluginsByMenuPath } from '../../utils/pluginParams';
 import { layoutConfig } from '../../config/layout';
 import { InspectorBuilderTab } from './InspectorBuilderTab';
+import { InspectorActionsTab } from './InspectorActionsTab';
 import { InspectorEdgeTypeSelect } from './InspectorEdgeTypeSelect';
 import { InspectorElementsTab } from './InspectorElementsTab';
 import { InspectorMetadataTab } from './InspectorMetadataTab';
@@ -35,15 +36,19 @@ interface InspectorPanelProps {
   nodeCreationSpec?: { typeId: string; label: string } | null;
   edgeCreationType?: string | null;
   onRefreshConsole?: () => Promise<void> | void;
+  requestedTab?: 'properties' | 'actions' | 'builder' | 'elements' | 'metadata' | null;
+  requestedAnalysisProfileKey?: string | null;
+  requestedAnalysisToken?: number;
 }
 
 const labels = {
   inspector: '\u0418\u043d\u0441\u043f\u0435\u043a\u0442\u043e\u0440',
   selectArtifact: '\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0430\u0440\u0442\u0435\u0444\u0430\u043a\u0442 \u0434\u043b\u044f \u043f\u0440\u043e\u0441\u043c\u043e\u0442\u0440\u0430',
-  properties: '\u041e\u0431\u0449\u0430\u044f',
-  builder: '\u041a\u043e\u043d\u0441\u0442\u0440\u0443\u043a\u0442\u043e\u0440',
+  properties: '\u041e\u0431\u0437\u043e\u0440',
+  actions: '\u0414\u0435\u0439\u0441\u0442\u0432\u0438\u044f',
+  builder: '\u0421\u0442\u0440\u0443\u043a\u0442\u0443\u0440\u0430',
   history: '\u0418\u0441\u0442\u043e\u0440\u0438\u044f',
-  metadata: '\u041c\u0435\u0442\u0430\u0434\u0430\u043d\u043d\u044b\u0435',
+  metadata: '\u0421\u043b\u0443\u0436\u0435\u0431\u043d\u043e\u0435',
   name: '\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435',
   type: '\u0422\u0438\u043f',
   description: '\u041e\u043f\u0438\u0441\u0430\u043d\u0438\u0435',
@@ -219,9 +224,28 @@ const EdgeTypeSelect: React.FC<EdgeTypeSelectProps> = ({ value, onChange, option
   );
 };
 void EdgeTypeSelect;
-const InspectorPanel: React.FC<InspectorPanelProps> = ({ onApplyGraphData, onStartNodeCreation, onStartEdgeCreation, nodeCreationSpec = null, edgeCreationType = null, onRefreshConsole }) => {
+
+const tabDescriptions: Record<'properties' | 'actions' | 'builder' | 'elements' | 'metadata', string> = {
+  properties: 'Краткий обзор артефакта, ключевые действия и настройки текущего контекста.',
+  actions: 'Запуск анализа и преобразований по текущему графу или выделению с пошаговой подготовкой входа.',
+  builder: 'Создание и связывание объектов графа в явном структурном режиме.',
+  elements: 'Поля и атрибуты выделенных узлов или связей.',
+  metadata: 'Служебные сведения, происхождение артефакта и технические метаданные.',
+};
+
+const InspectorPanel: React.FC<InspectorPanelProps> = ({
+  onApplyGraphData,
+  onStartNodeCreation,
+  onStartEdgeCreation,
+  nodeCreationSpec = null,
+  edgeCreationType = null,
+  onRefreshConsole,
+  requestedTab = null,
+  requestedAnalysisProfileKey = null,
+  requestedAnalysisToken = 0,
+}) => {
   const dispatch = useAppDispatch();
-  const [activeTab, setActiveTab] = useState<'properties' | 'builder' | 'elements' | 'metadata'>('properties');
+  const [activeTab, setActiveTab] = useState<'properties' | 'actions' | 'builder' | 'elements' | 'metadata'>('properties');
   const [plugins, setPlugins] = useState<ApiPlugin[]>([]);
   const [pluginsLoading, setPluginsLoading] = useState(false);
   void pluginsLoading;
@@ -421,9 +445,14 @@ const pluginContextKey = useMemo(() => {
     };
   }, []);
 
-  const handleTabChange = useCallback((tab: 'properties' | 'builder' | 'elements' | 'metadata') => {
+  const handleTabChange = useCallback((tab: 'properties' | 'actions' | 'builder' | 'elements' | 'metadata') => {
     setActiveTab(tab);
   }, []);
+
+  useEffect(() => {
+    if (!requestedTab) return;
+    setActiveTab(requestedTab);
+  }, [requestedTab, requestedAnalysisToken]);
 
   const refreshProjectDataStats = useCallback(async (projectId: number) => {
     setDataStatsLoading(true);
@@ -523,7 +552,6 @@ const pluginContextKey = useMemo(() => {
   }, [selectedArtifact, nodeTypeDefinitions, edgeTypeDefinitions, builderNodeType, builderEdgeType]);
   const applicablePlugins = useMemo(() => plugins, [plugins]);
   const groupedPlugins = useMemo(() => groupPluginsByMenuPath(applicablePlugins), [applicablePlugins]);
-  void groupedPlugins;
 
   const handleRunPlugin = useCallback(async (plugin: ApiPlugin) => {
     if (!selectedArtifact) return;
@@ -1143,6 +1171,12 @@ const handleCreateNode = useCallback(() => {
         {selectedArtifact.type === 'graph' && (
           <>
             <button
+              className={'tab-btn ' + (activeTab === 'actions' ? 'active' : '')}
+              onClick={() => handleTabChange('actions')}
+            >
+              {labels.actions}
+            </button>
+            <button
               className={'tab-btn ' + (activeTab === 'builder' ? 'active' : '')}
               onClick={() => handleTabChange('builder')}
             >
@@ -1165,6 +1199,20 @@ const handleCreateNode = useCallback(() => {
       </div>
 
       <div className="inspector-content">
+        <div className="inspector-tab-intro">
+          <div className="inspector-tab-title">
+            {activeTab === 'properties'
+              ? labels.properties
+              : activeTab === 'actions'
+                ? labels.actions
+                : activeTab === 'builder'
+                ? labels.builder
+                : activeTab === 'elements'
+                  ? labels.elementProps
+                  : labels.metadata}
+          </div>
+          <div className="inspector-tab-description">{tabDescriptions[activeTab]}</div>
+        </div>
         {activeTab === 'properties' && (
           <div className="properties-tab">
             <details className="inspector-section" open>
@@ -1333,6 +1381,21 @@ const handleCreateNode = useCallback(() => {
               </div>
             </details>
           </div>
+        )}
+        {activeTab === 'actions' && selectedArtifact.type === 'graph' && (
+          <InspectorActionsTab
+            artifact={selectedArtifact}
+            selectedElements={selectedElements as Array<{ type: string; id: string; data?: unknown }>}
+            pluginContext={pluginContext}
+            plugins={applicablePlugins}
+            groupedPlugins={groupedPlugins}
+            pluginsLoading={pluginsLoading}
+            pluginsError={pluginsError}
+            runningPluginId={runningPluginId}
+            onRunPlugin={handleRunPlugin}
+            presetProfileKey={requestedAnalysisProfileKey}
+            presetToken={requestedAnalysisToken}
+          />
         )}
         {activeTab === 'builder' && selectedArtifact.type === 'graph' && (
           <InspectorBuilderTab

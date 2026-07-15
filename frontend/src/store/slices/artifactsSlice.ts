@@ -121,13 +121,30 @@ const artifactsSlice = createSlice({
       .addCase(fetchArtifacts.fulfilled, (state, action) => {
         state.isLoading = false;
         const artifacts = action.payload;
+        const projectId = action.meta.arg;
+        const nextItems = { ...state.items };
+        const returnedIds = new Set<number>();
+
         if (Array.isArray(artifacts)) {
           artifacts.forEach((artifact: ApiArtifact) => {
             if (artifact && artifact.id) {
-              state.items[artifact.id] = artifact;
+              returnedIds.add(artifact.id);
+              nextItems[artifact.id] = artifact;
             }
           });
         }
+
+        Object.entries(nextItems).forEach(([rawId, artifact]) => {
+          const artifactId = Number(rawId);
+          if (artifact?.project_id === projectId && !returnedIds.has(artifactId)) {
+            delete nextItems[artifactId];
+            if (state.currentArtifactId === artifactId) {
+              state.currentArtifactId = null;
+            }
+          }
+        });
+
+        state.items = nextItems;
       })
       .addCase(fetchArtifacts.rejected, (state, action) => {
         state.isLoading = false;

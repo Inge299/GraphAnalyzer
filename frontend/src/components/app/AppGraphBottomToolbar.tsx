@@ -2,43 +2,93 @@ import type { AppGraphBottomToolbarProps } from './graphBottomPanelTypes';
 import { graphBottomPanelLabels } from './graphBottomPanelUtils';
 
 export const AppGraphBottomToolbar = ({
+  artifactTitle,
   bottomTab,
   setBottomTab,
   graphNodesCount,
   graphEdgesCount,
+  resultsCount,
   filteredNodesCount,
   filteredEdgesCount,
+  selectedNodesCount,
+  selectedEdgesCount,
   hasActiveFilters,
   actions,
 }: AppGraphBottomToolbarProps) => {
-  const totalCount = bottomTab === 'nodes' ? graphNodesCount : graphEdgesCount;
+  const totalCount = bottomTab === 'nodes'
+    ? graphNodesCount
+    : bottomTab === 'edges'
+      ? graphEdgesCount
+      : resultsCount;
+
   const filteredCount = bottomTab === 'nodes' ? filteredNodesCount : filteredEdgesCount;
+  const selectionCount = bottomTab === 'nodes'
+    ? selectedNodesCount
+    : bottomTab === 'edges'
+      ? selectedEdgesCount
+      : selectedNodesCount + selectedEdgesCount;
+
+  const sectionTitle = bottomTab === 'nodes'
+    ? 'Таблица узлов'
+    : bottomTab === 'edges'
+      ? 'Таблица связей'
+      : 'Результаты анализа';
+
+  const sectionDescription = bottomTab === 'nodes'
+    ? 'Выделение и прокрутка синхронизированы с графом. Здесь удобно искать, сортировать и проверять атрибуты узлов.'
+    : bottomTab === 'edges'
+      ? 'Связи можно быстро фильтровать, сравнивать и сверять с выделением на схеме без потери контекста.'
+      : 'Эта вкладка станет общей рабочей зоной для результатов процедур и других аналитических выборок по текущему графу.';
 
   return (
-    <div className="bottom-panel-tabs">
-      <div className="bottom-panel-tab-group">
-        <button
-          type="button"
-          className={`bottom-panel-tab ${bottomTab === 'nodes' ? 'active' : ''}`}
-          onClick={() => setBottomTab('nodes')}
-        >
-          {graphBottomPanelLabels.nodes} ({graphNodesCount})
-        </button>
-        <button
-          type="button"
-          className={`bottom-panel-tab ${bottomTab === 'edges' ? 'active' : ''}`}
-          onClick={() => setBottomTab('edges')}
-        >
-          {graphBottomPanelLabels.edges} ({graphEdgesCount})
-        </button>
-      </div>
-      <div className="bottom-panel-toolbar-main">
-        {actions}
-        <div className="bottom-panel-toolbar-status" aria-live="polite">
-          {hasActiveFilters
-            ? `\u041d\u0430\u0439\u0434\u0435\u043d\u043e ${filteredCount} \u0438\u0437 ${totalCount}`
-            : `${totalCount} \u0437\u0430\u043f\u0438\u0441\u0435\u0439`}
+    <div className="bottom-panel-toolbar">
+      <div className="bottom-panel-toolbar-top">
+        <div className="bottom-panel-tab-group" role="tablist" aria-label="Вкладки аналитической панели">
+          <button
+            type="button"
+            className={`bottom-panel-tab ${bottomTab === 'nodes' ? 'active' : ''}`}
+            onClick={() => setBottomTab('nodes')}
+          >
+            {graphBottomPanelLabels.nodes} ({graphNodesCount})
+          </button>
+          <button
+            type="button"
+            className={`bottom-panel-tab ${bottomTab === 'edges' ? 'active' : ''}`}
+            onClick={() => setBottomTab('edges')}
+          >
+            {graphBottomPanelLabels.edges} ({graphEdgesCount})
+          </button>
+          <button
+            type="button"
+            className={`bottom-panel-tab ${bottomTab === 'results' ? 'active' : ''}`}
+            onClick={() => setBottomTab('results')}
+          >
+            Результаты ({resultsCount})
+          </button>
         </div>
+
+        <div className="bottom-panel-toolbar-context">
+          <div className="bottom-panel-toolbar-title">{sectionTitle}</div>
+          <div className="bottom-panel-toolbar-description">{sectionDescription}</div>
+        </div>
+
+        <div className="bottom-panel-toolbar-status" aria-live="polite">
+          <span className="bottom-panel-status-pill">{artifactTitle}</span>
+          <span className="bottom-panel-status-pill">
+            {bottomTab === 'results'
+              ? `${totalCount} вкладок результатов`
+              : hasActiveFilters
+                ? `Показано ${filteredCount} из ${totalCount}`
+                : `${totalCount} записей`}
+          </span>
+          <span className="bottom-panel-status-pill">
+            {selectionCount > 0 ? `Выделено ${selectionCount}` : 'Без выделения'}
+          </span>
+        </div>
+      </div>
+
+      <div className={`bottom-panel-toolbar-main ${bottomTab === 'results' ? 'results-mode' : ''}`}>
+        {actions}
       </div>
     </div>
   );

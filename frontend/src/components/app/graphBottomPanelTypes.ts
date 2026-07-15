@@ -8,6 +8,7 @@ import type {
 } from 'react';
 import type { BottomTab } from '../../hooks/useGraphBottomPanelState';
 import type { GraphPanelEdge, GraphPanelNode } from '../../hooks/graphTableTypes';
+import type { ConsoleProcedureColumn } from '../../types/api';
 
 export type GraphSortDirection = 'asc' | 'desc';
 
@@ -57,6 +58,8 @@ export interface AppGraphEdgesTableProps {
 }
 
 export interface AppGraphBottomPanelProps {
+  projectId: number;
+  artifactTitle: string;
   isOpen: boolean;
   setIsOpen: Dispatch<SetStateAction<boolean>>;
   bottomPanelStyle: CSSProperties;
@@ -111,29 +114,42 @@ export interface AppGraphBottomPanelProps {
   setEdgeAttributeValueFilter: Dispatch<SetStateAction<string>>;
   showOnlySelected: boolean;
   setShowOnlySelected: Dispatch<SetStateAction<boolean>>;
+  resultTabs: GraphWorkbenchResultTab[];
 }
 
 export interface AppGraphBottomToolbarProps {
+  artifactTitle: string;
   bottomTab: BottomTab;
   setBottomTab: Dispatch<SetStateAction<BottomTab>>;
   graphNodesCount: number;
   graphEdgesCount: number;
+  resultsCount: number;
   filteredNodesCount: number;
   filteredEdgesCount: number;
-  searchQuery: string;
-  activeTypeFilter: string;
-  typeOptions: string[];
-  setTypeFilter: (value: string) => void;
-  attributeKeyOptions: string[];
-  activeAttributeKeyFilter: string;
-  setAttributeKeyFilter: (value: string) => void;
-  attributeValueOptions: string[];
-  activeAttributeValueFilter: string;
-  setAttributeValueFilter: (value: string) => void;
-  formatAttributeLabel: (key: string) => string;
-  showOnlySelected: boolean;
-  setShowOnlySelected: Dispatch<SetStateAction<boolean>>;
+  selectedNodesCount: number;
+  selectedEdgesCount: number;
   hasActiveFilters: boolean;
-  onClearFilters: () => void;
   actions?: ReactNode;
+}
+
+export interface GraphWorkbenchResultColumn extends ConsoleProcedureColumn {
+  key: string;
+}
+
+export interface GraphWorkbenchResultTab {
+  sourceArtifactId: number;
+  sourceArtifactName: string;
+  sourceArtifactVersion: number;
+  profileName: string;
+  executedAt: string | null;
+  sourceArtifactCreatedAt?: string | null;
+  inputSummary?: string;
+  inputObjectType?: string | null;
+  inputObjectCount?: number | null;
+  sourceSearchText?: string;
+  tabId: string;
+  tabName: string;
+  rowCount: number;
+  columns: GraphWorkbenchResultColumn[];
+  rows: Record<string, unknown>[];
 }

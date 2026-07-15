@@ -143,7 +143,7 @@ const ResizableHeaderCell = ({
         className="bottom-table-col-resizer"
         onMouseDown={(event) => onResizeStart(column.key, event)}
         onDoubleClick={() => onResizeReset(column.key)}
-        title="Потяните, чтобы изменить ширину колонки"
+        title="Потяните, чтобы изменить ширину колонки. Двойной щелчок сбрасывает ширину."
       />
     </div>
   </th>

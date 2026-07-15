@@ -5,8 +5,16 @@ from app.models.node import Node
 from app.models.edge import Edge
 from app.models.schema import ProjectSchema, NodeType, EdgeType
 from app.models.artifact import Artifact, ArtifactRelation, ArtifactVersion
+from app.models.console_registry import (
+    ConsoleDataSource,
+    ConsoleObjectTypeMapping,
+    ConsoleProcedureProfile,
+    ConsoleProcedureParam,
+    ConsoleResultSetMapping,
+    ConsoleResultColumnMapping,
+)
 from app.models.action import GraphAction
-from app.models.undone_action import UndoneAction  # Добавляем
+from app.models.undone_action import UndoneAction
 
 __all__ = [
     "Project",
@@ -19,6 +27,12 @@ __all__ = [
     "Artifact",
     "ArtifactRelation",
     "ArtifactVersion",
+    "ConsoleDataSource",
+    "ConsoleObjectTypeMapping",
+    "ConsoleProcedureProfile",
+    "ConsoleProcedureParam",
+    "ConsoleResultSetMapping",
+    "ConsoleResultColumnMapping",
     "GraphAction",
-    "UndoneAction",  # Добавляем
+    "UndoneAction",
 ]

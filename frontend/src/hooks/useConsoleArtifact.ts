@@ -5,6 +5,7 @@ import { consoleApi } from '../services/api';
 
 interface ConsoleProfileParam {
   key?: string;
+  name?: string;
   label?: string;
   type?: string;
   default?: unknown;
@@ -12,6 +13,7 @@ interface ConsoleProfileParam {
 
 interface ConsoleProfile {
   id: string;
+  key?: string;
   params?: ConsoleProfileParam[];
 }
 
@@ -58,14 +60,19 @@ export const useConsoleArtifact = ({
         return;
       }
 
-      const defaultProfileId = String(activeArtifact.metadata?.console_profile_id || profiles[0].id || '').trim();
+      const defaultProfileId = String(
+        activeArtifact.metadata?.console_profile_id || profiles[0].key || profiles[0].id || '',
+      ).trim();
       const profileId = window.prompt(
-        `Профиль консоли (${profiles.map((p) => p.id).join(', ')}):`,
+        `Профиль консоли (${profiles.map((p) => p.key || p.id).join(', ')}):`,
         defaultProfileId,
       );
       if (profileId === null) return;
 
-      const selectedProfile = profiles.find((item) => String(item.id) === String(profileId).trim());
+      const requestedProfileId = String(profileId).trim();
+      const selectedProfile = profiles.find(
+        (item) => String(item.key || item.id) === requestedProfileId || String(item.id) === requestedProfileId,
+      );
       if (!selectedProfile) {
         window.alert('Профиль не найден');
         return;
@@ -74,13 +81,14 @@ export const useConsoleArtifact = ({
       const params: Record<string, unknown> = { ...(activeArtifact.metadata?.console_last_params || {}) };
       const profileParams = Array.isArray(selectedProfile.params) ? selectedProfile.params : [];
       for (const spec of profileParams) {
-        const key = String(spec?.key || '').trim();
+        const key = String(spec?.key || spec?.name || '').trim();
         if (!key) continue;
         const currentValue = params[key] ?? spec?.default ?? '';
         const answer = window.prompt(String(spec?.label || key), String(currentValue));
         if (answer === null) return;
 
-        if (String(spec?.type || '').toLowerCase() === 'number') {
+        const normalizedType = String(spec?.type || '').toLowerCase();
+        if (normalizedType === 'number' || normalizedType === 'integer' || normalizedType === 'int') {
           const numeric = Number(answer);
           params[key] = Number.isFinite(numeric) ? numeric : currentValue;
         } else {
@@ -88,7 +96,12 @@ export const useConsoleArtifact = ({
         }
       }
 
-      const updated = await consoleApi.refresh(currentProjectId, activeArtifact.id, String(selectedProfile.id), params) as ConsoleRefreshResponse;
+      const updated = await consoleApi.refresh(
+        currentProjectId,
+        activeArtifact.id,
+        String(selectedProfile.key || selectedProfile.id),
+        params,
+      ) as ConsoleRefreshResponse;
       dispatch(setCurrentArtifactAction(updated.id));
       await dispatch(fetchArtifactsAction(currentProjectId));
     } catch (error: unknown) {

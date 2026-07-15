@@ -1,7 +1,7 @@
-import type { BottomTab } from '../../hooks/useGraphBottomPanelState';
+type SearchTab = 'nodes' | 'edges';
 
 type AppGraphBottomSearchProps = {
-  bottomTab: BottomTab;
+  bottomTab: SearchTab;
   searchQuery: string;
   setSearchQuery: (value: string) => void;
   activeTypeFilter: string;
@@ -22,7 +22,7 @@ type AppGraphBottomSearchProps = {
   totalCount: number;
 };
 
-const placeholders: Record<BottomTab, string> = {
+const placeholders: Record<SearchTab, string> = {
   nodes: '\u041f\u043e\u0438\u0441\u043a \u043f\u043e \u0443\u0437\u043b\u0430\u043c, \u0442\u0438\u043f\u0430\u043c \u0438 \u0430\u0442\u0440\u0438\u0431\u0443\u0442\u0430\u043c',
   edges: '\u041f\u043e\u0438\u0441\u043a \u043f\u043e \u0441\u0432\u044f\u0437\u044f\u043c, \u0432\u0435\u0440\u0448\u0438\u043d\u0430\u043c \u0438 \u0430\u0442\u0440\u0438\u0431\u0443\u0442\u0430\u043c',
 };

@@ -4,8 +4,8 @@ import { pluginApi } from '../services/api';
 
 const STORAGE_PREFIX = 'ga:project-plugin-defaults:';
 
-const START_KEYS = ['period_start', 'start_date', 'date_from', 'from_date'];
-const END_KEYS = ['period_end', 'end_date', 'date_to', 'to_date'];
+const START_KEYS = ['period_start', 'start_date', 'date_from', 'from_date', 'begtime', 'beg_date', 'begin_date'];
+const END_KEYS = ['period_end', 'end_date', 'date_to', 'to_date', 'endtime', 'end_date', 'finish_date'];
 
 type ParamInput = {
   spec: PluginParamSpec;
@@ -146,6 +146,8 @@ const isSniUploadParam = (plugin: ApiPlugin, spec: PluginParamSpec) => {
   const key = getParamKey(spec).toLowerCase();
   return SNI_UPLOAD_PLUGIN_IDS.has(plugin.id) && key === 'input_path';
 };
+
+export const loadProjectPeriodDefaults = (projectId: number): ProjectPluginDefaults => parseStored(projectId);
 
 const openPluginParamsDialog = (
   plugin: ApiPlugin,

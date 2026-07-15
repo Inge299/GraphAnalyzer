@@ -113,6 +113,122 @@ export interface CellTowerReferenceStats {
   last_loaded_at: string | null;
 }
 
+export interface ConsoleProcedureParam {
+  id?: string | number;
+  key?: string;
+  name?: string;
+  label?: string;
+  type?: string;
+  default?: unknown;
+  required?: boolean;
+  hidden?: boolean;
+  binding_mode?: string;
+  binding_source?: string | null;
+  binding_config?: Record<string, any>;
+}
+
+export interface ConsoleProcedureColumn {
+  key: string;
+  original_name?: string;
+  label?: string;
+  type?: string;
+  width?: number | null;
+  visible?: boolean;
+}
+
+export interface ConsoleProcedureResultSet {
+  id?: string | number;
+  result_index?: number;
+  result_key?: string;
+  name?: string;
+  visible?: boolean;
+  columns?: ConsoleProcedureColumn[];
+}
+
+export interface ConsoleProfile {
+  id: string;
+  db_id?: number;
+  key?: string;
+  name: string;
+  description?: string;
+  kind?: string;
+  schema_name?: string;
+  procedure_name?: string;
+  source_id?: number;
+  source_key?: string | null;
+  source_name?: string | null;
+  timeout_seconds?: number;
+  is_active?: boolean;
+  params?: ConsoleProcedureParam[];
+  result_sets?: ConsoleProcedureResultSet[];
+  supports_graph_selection?: boolean;
+  default_limit?: number | null;
+}
+
+export interface ConsoleProfilesResponse {
+  profiles: ConsoleProfile[];
+}
+
+export interface ConsoleRefreshResponse {
+  id: number;
+  project_id: number;
+  type: string;
+  name: string;
+  description: string | null;
+  data: Record<string, any>;
+  metadata: Record<string, any>;
+  created_at: string | null;
+  updated_at: string | null;
+  version: number;
+}
+
+export interface ConsoleDataSource {
+  id: number;
+  key: string;
+  name: string;
+  description?: string | null;
+  dbms: string;
+  driver: string;
+  host: string;
+  port: number;
+  database_name: string;
+  auth_type: string;
+  username?: string | null;
+  options?: Record<string, any>;
+  is_active: boolean;
+  has_password?: boolean;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface ConsoleDataSourcesResponse {
+  data_sources: ConsoleDataSource[];
+}
+
+export interface ConsoleDataSourceTestResponse {
+  ok: boolean;
+  source_key: string;
+  source_name: string;
+  server_name?: string | null;
+  database_name?: string | null;
+  message: string;
+}
+
+export interface ConsoleObjectTypeMapping {
+  id?: number | null;
+  graph_type: string;
+  procedure_type: string;
+  is_active: boolean;
+  position?: number;
+  is_default?: boolean;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface ConsoleObjectTypeMappingsResponse {
+  mappings: ConsoleObjectTypeMapping[];
+}
+
 export interface PluginSelectionRules {
   nodes?: 'required' | 'optional' | 'forbidden';
   edges?: 'required' | 'optional' | 'forbidden';
