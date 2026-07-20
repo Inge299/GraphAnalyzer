@@ -8,7 +8,7 @@ import TabBar from './components/layout/TabBar';
 import Sidebar from './components/layout/Sidebar';
 import InspectorPanel from './components/layout/InspectorPanel';
 import PluginsPanel from './components/layout/PluginsPanel';
-import ServiceFunctionsView from './components/views/ServiceFunctionsView';
+import ServiceFunctionsView, { type ServiceCategory } from './components/views/ServiceFunctionsView';
 import AppEmptyProjectsState from './components/app/AppEmptyProjectsState';
 import ArtifactContentView from './components/app/ArtifactContentView';
 import AppGraphBottomPanel from './components/app/AppGraphBottomPanel';
@@ -38,6 +38,8 @@ interface NodeCreationSpec {
   loadingProjects: 'Загрузка проектов...',
   noProjectsTitle: 'Проектов пока нет',
   noProjectsHint: 'Создай первый проект, чтобы начать работу',
+  projectsUnavailableTitle: 'Не удалось загрузить проекты',
+  projectsUnavailableHint: 'Список проектов временно недоступен. Попробуй обновить страницу или повторить загрузку через пару секунд.',
   projectNamePlaceholder: 'Название проекта',
   creating: 'Создание...',
   create: 'Создать',
@@ -65,6 +67,7 @@ function App() {
   const artifacts = useAppSelector((state) => state.artifacts.items);
   const currentArtifactId = useAppSelector((state) => state.artifacts.currentArtifactId);
   const projectsLoading = useAppSelector((state) => state.projects.isLoading);
+  const projectsError = useAppSelector((state) => state.projects.error);
   const [newProjectName, setNewProjectName] = useState('');
   const [creatingProject, setCreatingProject] = useState(false);
   const [createProjectError, setCreateProjectError] = useState<string | null>(null);
@@ -81,6 +84,8 @@ function App() {
   }, []);
   const [inspectorTab, setInspectorTab] = useState<'inspector' | 'plugins'>('inspector');
   const [isServiceScreenActive, setIsServiceScreenActive] = useState(false);
+  const [isProjectDataScreenActive, setIsProjectDataScreenActive] = useState(false);
+  const [serviceScreenCategory, setServiceScreenCategory] = useState<ServiceCategory>('cell_towers');
   const [isDevServerDisconnected, setIsDevServerDisconnected] = useState(false);
 
   const lastNodesStateRef = useRef<any>(null);
@@ -103,6 +108,16 @@ function App() {
   useEffect(() => {
     dispatch(fetchProjects());
   }, [dispatch]);
+
+  useEffect(() => {
+    if (!projectsError || projects.length > 0) return;
+
+    const retryTimer = window.setTimeout(() => {
+      dispatch(fetchProjects());
+    }, 3000);
+
+    return () => window.clearTimeout(retryTimer);
+  }, [dispatch, projects.length, projectsError]);
 
   useEffect(() => {
     if (!import.meta.hot) return;
@@ -205,10 +220,24 @@ function App() {
   }, [activeArtifact]);
 
   const workspaceSummary = useMemo(() => {
-    if (isServiceScreenActive) {
+    if (isProjectDataScreenActive) {
       return {
-        modeLabel: 'Администрирование',
-        title: 'Сервисные функции',
+        modeLabel: 'Проект',
+        title: 'Данные проекта',
+        meta: currentProject?.name ? `Текущий проект: ${currentProject.name}` : 'Проект не выбран',
+      };
+    }
+
+    if (isServiceScreenActive) {
+      const serviceScreenTitle =
+        serviceScreenCategory === 'project_data'
+          ? 'Данные проекта'
+          : serviceScreenCategory === 'console_registry'
+            ? 'Консоль / процедуры'
+            : 'Сервисные функции';
+      return {
+        modeLabel: serviceScreenCategory === 'project_data' ? 'Проект' : 'Администрирование',
+        title: serviceScreenTitle,
         meta: currentProject?.name ? `Текущий проект: ${currentProject.name}` : 'Проект не выбран',
       };
     }
@@ -222,12 +251,10 @@ function App() {
     }
 
     if (activeArtifact.type === 'graph') {
-      const nodesCount = Array.isArray(activeArtifact.data?.nodes) ? activeArtifact.data.nodes.length : 0;
-      const edgesCount = Array.isArray(activeArtifact.data?.edges) ? activeArtifact.data.edges.length : 0;
       return {
         modeLabel: 'Анализ',
         title: activeArtifact.name,
-        meta: `${artifactTypeLabels[activeArtifact.type] || activeArtifact.type} · узлов ${nodesCount} · связей ${edgesCount}`,
+        meta: currentProject?.name ? `Проект: ${currentProject.name}` : artifactTypeLabels[activeArtifact.type] || activeArtifact.type,
       };
     }
 
@@ -236,7 +263,7 @@ function App() {
       title: activeArtifact.name,
       meta: artifactTypeLabels[activeArtifact.type] || activeArtifact.type,
     };
-  }, [activeArtifact, currentProject?.name, isServiceScreenActive]);
+  }, [activeArtifact, currentProject?.name, isProjectDataScreenActive, isServiceScreenActive, serviceScreenCategory]);
 
   const {
     graphNodesForPanel,
@@ -557,6 +584,176 @@ function App() {
     );
   }, [activeArtifact, artifacts, execute, edgeTypeVisuals]);
 
+  const handlePasteGraphClipboard = useCallback(async (payload: any) => {
+    if (!activeArtifact) return;
+
+    let currentData = lastNodesStateRef.current;
+    if (!currentData) {
+      currentData = artifacts[activeArtifact.id]?.data;
+    }
+    if (!currentData) return;
+
+    const sourceNodes = Array.isArray(payload?.nodes) ? payload.nodes : [];
+    if (!sourceNodes.length) return;
+    const sourceEdges = Array.isArray(payload?.edges) ? payload.edges : [];
+
+    const existingNodes = currentData?.nodes || [];
+    const existingEdges = currentData?.edges || [];
+    const existingNodeIds = new Set(existingNodes.map((node: any) => String(node.id)));
+    const existingEdgeIds = new Set(existingEdges.map((edge: any) => String(edge.id)));
+    const buildNodeIdentityKey = (typeId: string, label: string) =>
+      `${String(typeId || '').trim().toLowerCase()}::${String(label || '').trim().toLowerCase()}`;
+    const buildEdgeIdentityKey = (typeId: string, fromId: string, toId: string, label: string) =>
+      `${String(typeId || '').trim().toLowerCase()}::${String(fromId || '')}::${String(toId || '')}::${String(label || '').trim().toLowerCase()}`;
+
+    const existingNodeByIdentity = new Map<string, string>();
+    for (const node of existingNodes) {
+      const typeId = String(node?.type || '');
+      const label = String(node?.label || node?.attributes?.visual?.label || node?.attributes?.label || '');
+      const key = buildNodeIdentityKey(typeId, label);
+      if (label.trim() && !existingNodeByIdentity.has(key)) {
+        existingNodeByIdentity.set(key, String(node.id));
+      }
+    }
+
+    const makeNodeId = () => {
+      let nodeIndex = existingNodes.length + 1;
+      let nodeId = `auto_node_${nodeIndex}`;
+      while (existingNodeIds.has(nodeId)) {
+        nodeIndex += 1;
+        nodeId = `auto_node_${nodeIndex}`;
+      }
+      existingNodeIds.add(nodeId);
+      return nodeId;
+    };
+
+    const makeEdgeId = () => {
+      let edgeIndex = existingEdges.length + 1;
+      let edgeId = `auto_edge_${edgeIndex}`;
+      while (existingEdgeIds.has(edgeId)) {
+        edgeIndex += 1;
+        edgeId = `auto_edge_${edgeIndex}`;
+      }
+      existingEdgeIds.add(edgeId);
+      return edgeId;
+    };
+
+    const pasteIndex = Math.max(1, Number((payload as any)?._pasteIndex ?? 1));
+    const offset = 48 * pasteIndex;
+    const nodeIdMap = new Map<string, string>();
+    const createdNodeByIdentity = new Map<string, string>();
+    const newNodes: any[] = [];
+
+    sourceNodes.forEach((node: any) => {
+      const typeId = String(node?.type || 'person');
+      const sourceNodeId = String(node?.originalId || '');
+      const sourceLabel = String(node?.label || '').trim();
+      const identityKey = sourceLabel ? buildNodeIdentityKey(typeId, sourceLabel) : '';
+
+      if (identityKey) {
+        const existingNodeId = existingNodeByIdentity.get(identityKey) || createdNodeByIdentity.get(identityKey);
+        if (existingNodeId) {
+          nodeIdMap.set(sourceNodeId, existingNodeId);
+          return;
+        }
+      }
+
+      const nodeId = makeNodeId();
+      nodeIdMap.set(sourceNodeId, nodeId);
+      const nodeLabel = sourceLabel || String(node?.attributes?.visual?.label || node?.attributes?.label || 'Новый узел').trim() || 'Новый узел';
+      const nextAttributes = { ...(node?.attributes || {}) } as any;
+      nextAttributes.label = nodeLabel;
+      nextAttributes.visual = {
+        ...(nextAttributes.visual || {}),
+        label: nodeLabel,
+      };
+      const nextNode = {
+        id: nodeId,
+        type: typeId,
+        label: nodeLabel,
+        position_x: Math.round(Number(node?.x || 0) + offset),
+        position_y: Math.round(Number(node?.y || 0) + offset),
+        attributes: nextAttributes,
+      };
+      newNodes.push(nextNode);
+      if (identityKey) {
+        createdNodeByIdentity.set(identityKey, nodeId);
+      }
+    });
+
+    const existingEdgeIdentityKeys = new Set(
+      existingEdges.map((edge: any) => {
+        const edgeType = String(edge?.type || '');
+        const fromId = String(edge?.from || edge?.source_node || '');
+        const toId = String(edge?.to || edge?.target_node || '');
+        const edgeLabel = String(edge?.label || edge?.attributes?.visual?.label || edge?.attributes?.label || '');
+        return buildEdgeIdentityKey(edgeType, fromId, toId, edgeLabel);
+      }),
+    );
+
+    const newEdges: any[] = sourceEdges
+      .filter((edge: any) => nodeIdMap.has(String(edge?.from || '')) && nodeIdMap.has(String(edge?.to || '')))
+      .reduce((acc: any[], edge: any) => {
+        const edgeType = String(edge?.type || 'connected_to');
+        const defaults = edgeTypeVisuals[edgeType] || {
+          color: '#475569',
+          width: 2,
+          direction: 'to',
+          dashed: false,
+          label: edgeType,
+        };
+        const edgeLabel = String(edge?.label || edge?.attributes?.visual?.label || edge?.attributes?.label || defaults.label || edgeType);
+        const fromId = String(nodeIdMap.get(String(edge?.from || '')) || '');
+        const toId = String(nodeIdMap.get(String(edge?.to || '')) || '');
+        const edgeIdentityKey = buildEdgeIdentityKey(edgeType, fromId, toId, edgeLabel);
+        if (existingEdgeIdentityKeys.has(edgeIdentityKey)) {
+          return acc;
+        }
+        existingEdgeIdentityKeys.add(edgeIdentityKey);
+        acc.push({
+          id: makeEdgeId(),
+          type: edgeType,
+          from: fromId,
+          to: toId,
+          label: edgeLabel,
+          attributes: {
+            ...(edge?.attributes || {}),
+            label: edgeLabel,
+            visual: {
+              ...(edge?.attributes?.visual || {}),
+              color: edge?.attributes?.visual?.color || defaults.color,
+              width: edge?.attributes?.visual?.width || defaults.width,
+              direction: edge?.attributes?.visual?.direction || defaults.direction,
+              dashed: edge?.attributes?.visual?.dashed ?? defaults.dashed,
+              label: edgeLabel,
+            },
+          },
+        });
+        return acc;
+      }, [] as any[]);
+
+    const afterState = {
+      ...currentData,
+      nodes: [...existingNodes, ...newNodes],
+      edges: [...existingEdges, ...newEdges],
+    };
+
+    lastNodesStateRef.current = afterState;
+
+    await execute(
+      async () => afterState,
+      {
+        description: `Вставка элементов графа: узлов ${newNodes.length}, связей ${newEdges.length}`,
+        actionType: 'paste_elements',
+      }
+    );
+
+    dispatch(setSelectedElements([
+      ...newNodes.map((node: any) => ({ type: 'node' as const, id: String(node.id), data: null })),
+      ...newEdges.map((edge: any) => ({ type: 'edge' as const, id: String(edge.id), data: null })),
+    ]));
+  }, [activeArtifact, artifacts, dispatch, edgeTypeVisuals, execute]);
+
   const handleDeleteSelection = useCallback(async (nodeIds: string[], edgeIds: string[]) => {
     if (!activeArtifact) return;
 
@@ -659,6 +856,7 @@ function App() {
 
     setActiveTabId(tabId);
     setIsServiceScreenActive(false);
+    setIsProjectDataScreenActive(false);
     dispatch(setCurrentArtifact(artifact.id));
 
     if (artifact?.data) {
@@ -676,6 +874,7 @@ function App() {
   const handleTabClick = useCallback((tabId: string) => {
     setActiveTabId(tabId);
     setIsServiceScreenActive(false);
+    setIsProjectDataScreenActive(false);
     const tab = tabs.find(t => t.id === tabId);
     if (tab) {
       dispatch(setCurrentArtifact(tab.artifactId));
@@ -686,12 +885,21 @@ function App() {
     }
   }, [tabs, artifacts, dispatch]);
 
-  const handleOpenServiceScreen = useCallback(() => {
+  const handleOpenServiceScreen = useCallback((category: ServiceCategory = 'cell_towers') => {
+    setServiceScreenCategory(category);
     setIsServiceScreenActive(true);
+    setIsProjectDataScreenActive(false);
+  }, []);
+
+  const handleOpenProjectDataScreen = useCallback(() => {
+    setServiceScreenCategory('project_data');
+    setIsServiceScreenActive(false);
+    setIsProjectDataScreenActive(true);
   }, []);
 
   const handleCloseServiceScreen = useCallback(() => {
     setIsServiceScreenActive(false);
+    setIsProjectDataScreenActive(false);
   }, []);
 
   const handleRequestGraphAnalysis = useCallback((profileKey: string) => {
@@ -759,6 +967,24 @@ function App() {
   }
 
   if (!projects || projects.length === 0) {
+    if (projectsError) {
+      return (
+        <AppEmptyProjectsState
+          labels={{
+            ...labels,
+            noProjectsTitle: labels.projectsUnavailableTitle,
+            noProjectsHint: labels.projectsUnavailableHint,
+            create: 'Повторить'
+          }}
+          newProjectName={newProjectName}
+          setNewProjectName={setNewProjectName}
+          creatingProject={projectsLoading}
+          createProjectError={projectsError}
+          onCreateProject={() => dispatch(fetchProjects())}
+        />
+      );
+    }
+
     return (
       <AppEmptyProjectsState
         labels={labels}
@@ -799,22 +1025,35 @@ function App() {
           onToggleCollapse={handleToggleCollapse}
           onArtifactSelect={handleArtifactSelect}
           onOpenServiceScreen={handleOpenServiceScreen}
+          onOpenProjectDataScreen={handleOpenProjectDataScreen}
           onCloseServiceScreen={handleCloseServiceScreen}
           isServiceScreenActive={isServiceScreenActive}
+          isProjectDataScreenActive={isProjectDataScreenActive}
         />
         <div className="content-area" ref={contentAreaRef}>
           <div className="workspace-context-bar">
-            <div className={`workspace-mode-badge ${isServiceScreenActive ? 'admin' : 'analysis'}`}>
-              {workspaceSummary.modeLabel}
-            </div>
+            {isServiceScreenActive || isProjectDataScreenActive ? (
+              <div className={`workspace-mode-badge ${serviceScreenCategory === 'project_data' ? '' : 'admin'}`.trim()}>
+                {workspaceSummary.modeLabel}
+              </div>
+            ) : null}
             <div className="workspace-context-copy">
               <div className="workspace-context-title">{workspaceSummary.title}</div>
               <div className="workspace-context-meta">{workspaceSummary.meta}</div>
             </div>
           </div>
           <div className="workspace-content-body">
-            {isServiceScreenActive ? (
-              <ServiceFunctionsView projectId={currentProject?.id || null} />
+            {isProjectDataScreenActive ? (
+              <ServiceFunctionsView
+                projectId={currentProject?.id || null}
+                initialCategory="project_data"
+                mode="project_data_only"
+              />
+            ) : isServiceScreenActive ? (
+              <ServiceFunctionsView
+                projectId={currentProject?.id || null}
+                initialCategory={serviceScreenCategory}
+              />
             ) : (
               <ArtifactContentView
                 activeArtifact={activeArtifact}
@@ -825,6 +1064,7 @@ function App() {
                   onAddEdge: handleAddEdge,
                   onDeleteSelection: handleDeleteSelection,
                   onAddNodeAtPosition: handleAddNodeAtPosition,
+                  onPasteGraphClipboard: handlePasteGraphClipboard,
                   nodeCreateSpec: nodeCreationSpec,
                   onNodeCreateComplete: handleFinishNodeCreation,
                   connectType: edgeCreationType,
@@ -841,7 +1081,7 @@ function App() {
             )}
           </div>
         </div>
-        {!isServiceScreenActive && (
+        {!isServiceScreenActive && !isProjectDataScreenActive && (
           <div className={`inspector-shell ${isInspectorVisible ? 'expanded' : 'collapsed'}`}>
             <button
               type="button"
@@ -891,7 +1131,7 @@ function App() {
           </div>
         )}
       </div>
-      {!isServiceScreenActive && activeArtifact?.type === 'graph' && (
+      {!isServiceScreenActive && !isProjectDataScreenActive && activeArtifact?.type === 'graph' && (
         <AppGraphBottomPanel
           projectId={activeArtifact?.project_id || 0}
           artifactTitle={activeArtifact?.name || 'Граф'}

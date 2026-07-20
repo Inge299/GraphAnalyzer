@@ -4,13 +4,14 @@ import { pluginApi } from '../services/api';
 import { layoutConfig } from '../config/layout';
 import { collectPluginParamsWithPrompts } from '../utils/pluginParams';
 import type { AppDispatch } from '../store';
-import type { ApiPlugin, PluginExecutionContext } from '../types/api';
+import type { ApiPlugin, PluginArtifactDataOverride, PluginExecutionContext } from '../types/api';
 
 interface UsePluginRunnerArgs {
   artifactId: number;
   projectId: number;
   getCurrentGraphNodeIds: () => string[];
   buildLiveContext: (fallback: PluginExecutionContext) => PluginExecutionContext;
+  getArtifactSnapshot: () => PluginArtifactDataOverride;
   onFinally?: () => void;
 }
 
@@ -82,6 +83,7 @@ export const usePluginRunner = ({
   projectId,
   getCurrentGraphNodeIds,
   buildLiveContext,
+  getArtifactSnapshot,
   onFinally,
 }: UsePluginRunnerArgs) => {
   const pluginExecutionRef = useRef(false);
@@ -103,6 +105,7 @@ export const usePluginRunner = ({
 
       const beforeNodeIds = new Set(getCurrentGraphNodeIds());
       const liveContext = buildLiveContext(context);
+      const liveArtifactData = getArtifactSnapshot();
 
       const response = await pluginApi.execute(
         plugin.id,
@@ -110,6 +113,7 @@ export const usePluginRunner = ({
         [artifactId],
         params,
         liveContext,
+        liveArtifactData,
       ) as PluginExecuteResponse;
 
       await dispatch(fetchArtifacts(projectId));
@@ -157,7 +161,7 @@ export const usePluginRunner = ({
       setPluginExecutionMessage(null);
       onFinally?.();
     }
-  }, [artifactId, buildLiveContext, getCurrentGraphNodeIds, onFinally, projectId]);
+  }, [artifactId, buildLiveContext, getArtifactSnapshot, getCurrentGraphNodeIds, onFinally, projectId]);
 
   return {
     runPlugin,

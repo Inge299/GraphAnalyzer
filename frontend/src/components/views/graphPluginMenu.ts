@@ -1,4 +1,11 @@
 import type { ApiPlugin, PluginExecutionContext } from '../../types/api';
+import {
+  comparePluginMenuPaths,
+  getPluginDisplayName,
+  normalizePluginMenuPath,
+  PLUGIN_MENU_FALLBACK_LABEL,
+  sortPluginsByName,
+} from '../../utils/pluginMenu';
 
 export interface PluginMenuNode {
   key: string;
@@ -45,8 +52,6 @@ interface NetworkForPluginMenu {
   getEdgeAt: (point: PluginMenuPointer) => string | number | null | undefined;
 }
 
-const MENU_FALLBACK_LABEL = 'Прочее';
-
 export const buildPluginContext = (selectedNodes: string[], selectedEdges: string[]): PluginExecutionContext => ({
   selected_nodes: selectedNodes,
   selected_edges: selectedEdges,
@@ -61,7 +66,7 @@ export const buildPluginMenuTree = (plugins: ApiPlugin[]): PluginMenuNode[] => {
     let siblings = root;
 
     segments.forEach((segment, index) => {
-      const safe = segment.trim() || MENU_FALLBACK_LABEL;
+      const safe = segment.trim() || PLUGIN_MENU_FALLBACK_LABEL;
       const path = parentPath ? `${parentPath}/${safe}` : safe;
       let node = nodeByPath.get(path);
       if (!node) {
@@ -77,16 +82,16 @@ export const buildPluginMenuTree = (plugins: ApiPlugin[]): PluginMenuNode[] => {
   };
 
   plugins.forEach((plugin) => {
-    const rawPath = String(plugin.menu_path || MENU_FALLBACK_LABEL).trim() || MENU_FALLBACK_LABEL;
-    const segments = rawPath.split('/').map((s) => s.trim()).filter(Boolean);
-    const target = ensureNode(segments.length > 0 ? segments : [MENU_FALLBACK_LABEL]);
+    const normalizedPath = normalizePluginMenuPath(plugin.menu_path);
+    const segments = normalizedPath.split('/').map((segment) => segment.trim()).filter(Boolean);
+    const target = ensureNode(segments.length > 0 ? segments : [PLUGIN_MENU_FALLBACK_LABEL]);
     if (target) target.plugins.push(plugin);
   });
 
   const sortTree = (nodes: PluginMenuNode[]) => {
-    nodes.sort((a, b) => a.label.localeCompare(b.label, 'ru'));
+    nodes.sort((left, right) => comparePluginMenuPaths(left.key, right.key));
     nodes.forEach((node) => {
-      node.plugins.sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+      node.plugins = sortPluginsByName(node.plugins);
       sortTree(node.children);
     });
   };
@@ -138,7 +143,7 @@ export const getPluginMenuEntries = (
   const plugins = (node ? node.plugins : []).map((plugin) => ({
     kind: 'plugin' as const,
     key: `plugin:${plugin.id}`,
-    label: plugin.name,
+    label: getPluginDisplayName(plugin),
     plugin,
   }));
 

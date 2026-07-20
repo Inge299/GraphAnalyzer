@@ -64,6 +64,10 @@ export interface ProjectDataStats {
   device_history_count: number;
   location_events_count: number;
   ip_bindings_count: number;
+  user_msisdn_facts_count: number;
+  ip_msisdn_facts_count: number;
+  msisdn_device_facts_count: number;
+  msisdn_text_facts_count: number;
 }
 
 export interface ProjectDataLoadResponse {
@@ -75,10 +79,18 @@ export interface ProjectDataLoadResponse {
   device_history_rows: number;
   location_events_rows: number;
   ip_bindings_rows: number;
+  user_msisdn_facts_rows: number;
+  ip_msisdn_facts_rows: number;
+  msisdn_device_facts_rows: number;
+  msisdn_text_facts_rows: number;
   inserted_communications: number;
   inserted_device_history: number;
   inserted_location_events: number;
   inserted_ip_bindings: number;
+  inserted_user_msisdn_facts: number;
+  inserted_ip_msisdn_facts: number;
+  inserted_msisdn_device_facts: number;
+  inserted_msisdn_text_facts: number;
   load_batch_id: string;
   load_log: Record<string, any>;
   graph_artifact?: ApiArtifact | Record<string, any> | null;
@@ -91,6 +103,10 @@ export interface ProjectDataClearResponse {
   device_history_deleted: number;
   location_events_deleted: number;
   ip_bindings_deleted: number;
+  user_msisdn_facts_deleted: number;
+  ip_msisdn_facts_deleted: number;
+  msisdn_device_facts_deleted: number;
+  msisdn_text_facts_deleted: number;
 }
 
 export interface CellTowerReferenceLoadResponse {
@@ -274,6 +290,8 @@ export interface PluginExecutionContext {
   selected_text?: string;
   selected_geo?: Record<string, any>;
 }
+
+export type PluginArtifactDataOverride = Record<string, any> | any[] | null;
 
 export interface PluginListResponse {
   plugins: ApiPlugin[];

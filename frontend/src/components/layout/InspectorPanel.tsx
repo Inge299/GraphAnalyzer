@@ -1,11 +1,12 @@
-// frontend/src/components/layout/InspectorPanel.tsx
+﻿// frontend/src/components/layout/InspectorPanel.tsx
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { fetchArtifacts, deleteArtifact, updateArtifactSync, setCurrentArtifact } from '../../store/slices/artifactsSlice';
-import { artifactApi, pluginApi, domainModelApi, projectDataApi } from '../../services/api';
+import { artifactApi, pluginApi, domainModelApi } from '../../services/api';
 import type { ApiPlugin, ApiArtifact, PluginExecutionContext, DomainModelConfig } from '../../types/api';
 import './InspectorPanel.css';
 import { collectPluginParamsWithPrompts, groupPluginsByMenuPath } from '../../utils/pluginParams';
+import { getPluginDisplayName } from '../../utils/pluginMenu';
 import { layoutConfig } from '../../config/layout';
 import { InspectorBuilderTab } from './InspectorBuilderTab';
 import { InspectorActionsTab } from './InspectorActionsTab';
@@ -44,7 +45,7 @@ interface InspectorPanelProps {
 const labels = {
   inspector: '\u0418\u043d\u0441\u043f\u0435\u043a\u0442\u043e\u0440',
   selectArtifact: '\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0430\u0440\u0442\u0435\u0444\u0430\u043a\u0442 \u0434\u043b\u044f \u043f\u0440\u043e\u0441\u043c\u043e\u0442\u0440\u0430',
-  properties: '\u041e\u0431\u0437\u043e\u0440',
+  properties: '\u041f\u0430\u0440\u0430\u043c\u0435\u0442\u0440\u044b',
   actions: '\u0414\u0435\u0439\u0441\u0442\u0432\u0438\u044f',
   builder: '\u0421\u0442\u0440\u0443\u043a\u0442\u0443\u0440\u0430',
   history: '\u0418\u0441\u0442\u043e\u0440\u0438\u044f',
@@ -131,6 +132,7 @@ const labels = {
   tableFontSize: '\u0428\u0440\u0438\u0444\u0442 \u0442\u0430\u0431\u043b\u0438\u0446',
   nodeLabelsZoom: '\u041f\u043e\u0434\u043f\u0438\u0441\u0438 \u0443\u0437\u043b\u043e\u0432 \u0441 \u043c\u0430\u0441\u0448\u0442\u0430\u0431\u0430',
   edgeLabelsZoom: '\u041f\u043e\u0434\u043f\u0438\u0441\u0438 \u0441\u0432\u044f\u0437\u0435\u0439 \u0441 \u043c\u0430\u0441\u0448\u0442\u0430\u0431\u0430',
+  maxGraphScale: '\u041c\u0430\u043a\u0441\u0438\u043c\u0430\u043b\u044c\u043d\u044b\u0439 \u043c\u0430\u0441\u0448\u0442\u0430\u0431',
   autoLayoutDistance: '\u0414\u0438\u0441\u0442\u0430\u043d\u0446\u0438\u044f \u043c\u0435\u0436\u0434\u0443 \u0432\u0435\u0440\u0448\u0438\u043d\u0430\u043c\u0438',
   resetDefaults: '\u0421\u0431\u0440\u043e\u0441\u0438\u0442\u044c \u043f\u043e \u0443\u043c\u043e\u043b\u0447\u0430\u043d\u0438\u044e'
 };
@@ -226,7 +228,7 @@ const EdgeTypeSelect: React.FC<EdgeTypeSelectProps> = ({ value, onChange, option
 void EdgeTypeSelect;
 
 const tabDescriptions: Record<'properties' | 'actions' | 'builder' | 'elements' | 'metadata', string> = {
-  properties: 'Краткий обзор артефакта, ключевые действия и настройки текущего контекста.',
+  properties: 'Настройки отображения и базовые действия для текущего артефакта.',
   actions: 'Запуск анализа и преобразований по текущему графу или выделению с пошаговой подготовкой входа.',
   builder: 'Создание и связывание объектов графа в явном структурном режиме.',
   elements: 'Поля и атрибуты выделенных узлов или связей.',
@@ -255,19 +257,7 @@ const InspectorPanel: React.FC<InspectorPanelProps> = ({
   void runningPluginId;
   const [pluginsMessage, setPluginsMessage] = useState<string | null>(null);
   void pluginsMessage;
-  const [isRenaming, setIsRenaming] = useState(false);
-  const [renameValue, setRenameValue] = useState('');
-  const [renaming, setRenaming] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [dataLoading, setDataLoading] = useState(false);
-  const [dataClearing, setDataClearing] = useState(false);
-  const [dataActionMessage, setDataActionMessage] = useState<string | null>(null);
-  const [dataActionError, setDataActionError] = useState<string | null>(null);
-  const [dataActionLog, setDataActionLog] = useState<string>('');
-  const [isLoadReportOpen, setIsLoadReportOpen] = useState(false);
-  const [dataStatsLoading, setDataStatsLoading] = useState(false);
-  const [dataStats, setDataStats] = useState<{ communications: number; deviceHistory: number }>({ communications: 0, deviceHistory: 0 });
-  const loadFilesInputRef = useRef<HTMLInputElement | null>(null);
   const [createdArtifacts, setCreatedArtifacts] = useState<ApiArtifact[] | null>(null);
   const [iconOptions, setIconOptions] = useState(fallbackIconOptions);
   const [edgeDirectionOptions, setEdgeDirectionOptions] = useState(defaultEdgeDirectionOptions);
@@ -454,29 +444,6 @@ const pluginContextKey = useMemo(() => {
     setActiveTab(requestedTab);
   }, [requestedTab, requestedAnalysisToken]);
 
-  const refreshProjectDataStats = useCallback(async (projectId: number) => {
-    setDataStatsLoading(true);
-    try {
-      const stats = await projectDataApi.stats(projectId);
-      setDataStats({
-        communications: Number(stats?.communications_count || 0),
-        deviceHistory: Number(stats?.device_history_count || 0),
-      });
-    } catch {
-      setDataStats({ communications: 0, deviceHistory: 0 });
-    } finally {
-      setDataStatsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!currentProject?.id) {
-      setDataStats({ communications: 0, deviceHistory: 0 });
-      return;
-    }
-    refreshProjectDataStats(currentProject.id);
-  }, [currentProject?.id, refreshProjectDataStats]);
-
 
   useEffect(() => {
     if (!selectedArtifact) {
@@ -512,12 +479,6 @@ const pluginContextKey = useMemo(() => {
       window.clearTimeout(timer);
     };
   }, [selectedArtifact?.id, selectedArtifact?.project_id, pluginContextKey]);
-
-  useEffect(() => {
-    if (selectedArtifact?.name) {
-      setRenameValue(selectedArtifact.name);
-    }
-  }, [selectedArtifact?.name]);
 
   const { graphSelection, selectionDraft } = useInspectorGraphSelection({
     selectedArtifact,
@@ -574,7 +535,7 @@ const pluginContextKey = useMemo(() => {
       } else if (created.length > 1) {
         setCreatedArtifacts(created);
       }
-      setPluginsMessage(labels.pluginDone.replace('{name}', plugin.name));
+      setPluginsMessage(labels.pluginDone.replace('{name}', getPluginDisplayName(plugin)));
 
       const updatedCurrent = (response as any)?.updated?.find((item: any) => Number(item?.id) === Number(selectedArtifact.id));
       const nextNodes = Array.isArray(updatedCurrent?.data?.nodes) ? updatedCurrent.data.nodes : [];
@@ -620,28 +581,6 @@ const pluginContextKey = useMemo(() => {
     setCreatedArtifacts(null);
   }, [dispatch]);
 
-  const handleRename = useCallback(async () => {
-    if (!selectedArtifact || !currentProject) return;
-    const trimmed = renameValue.trim();
-    if (!trimmed || trimmed === selectedArtifact.name) {
-      setIsRenaming(false);
-      return;
-    }
-    const ok = window.confirm(`${labels.renameConfirm}\n\n${selectedArtifact.name} -> ${trimmed}`);
-    if (!ok) return;
-    setRenaming(true);
-    try {
-      const updated = await artifactApi.update(currentProject.id, selectedArtifact.id, { name: trimmed });
-      dispatch(updateArtifactSync(updated));
-      await dispatch(fetchArtifacts(currentProject.id));
-      setIsRenaming(false);
-    } catch (error) {
-      // no-op
-    } finally {
-      setRenaming(false);
-    }
-  }, [selectedArtifact, currentProject, renameValue, dispatch]);
-
   const handleDelete = useCallback(async () => {
     if (!selectedArtifact || !currentProject || deleting) return;
     const ok = window.confirm(`${labels.deleteConfirm}\n\n${selectedArtifact.name}`);
@@ -656,71 +595,6 @@ const pluginContextKey = useMemo(() => {
       setDeleting(false);
     }
   }, [selectedArtifact, currentProject, deleting, dispatch]);
-
-  const handleLoadProjectData = useCallback(() => {
-    loadFilesInputRef.current?.click();
-  }, []);
-
-  const handleLoadProjectDataFiles = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!currentProject) return;
-    const fileList = event.target.files;
-    if (!fileList || fileList.length === 0) return;
-    const files = Array.from(fileList);
-
-    setDataLoading(true);
-    setDataActionError(null);
-    setDataActionMessage(null);
-    setDataActionLog('');
-    setIsLoadReportOpen(false);
-    try {
-      const result = await projectDataApi.loadFromFiles(currentProject.id, files);
-      const readComm = Number(result.communications_rows || 0);
-      const readDevice = Number(result.device_history_rows || 0);
-      const insertedComm = Number(result.inserted_communications || 0);
-      const insertedDevice = Number(result.inserted_device_history || 0);
-      setDataActionMessage(
-        `${labels.dataActionSuccess}:\n- РїСЂРѕС‡РёС‚Р°РЅРѕ ${readComm}/${readDevice}\n- РґРѕР±Р°РІР»РµРЅРѕ ${insertedComm}/${insertedDevice}\n(communications/device_history)`
-      );
-      if (result.load_log) {
-        setDataActionLog(JSON.stringify(result.load_log, null, 2));
-      }
-      await refreshProjectDataStats(currentProject.id);
-      if (result.graph_artifact?.id) {
-        await dispatch(fetchArtifacts(currentProject.id));
-        dispatch(setCurrentArtifact(result.graph_artifact.id));
-      }
-    } catch (error: any) {
-      const detail = error?.response?.data?.detail || error?.message || labels.dataActionError;
-      setDataActionError(String(detail));
-    } finally {
-      setDataLoading(false);
-      event.target.value = '';
-    }
-  }, [currentProject, refreshProjectDataStats]);
-
-  const handleClearProjectData = useCallback(async () => {
-    if (!currentProject) return;
-    const ok = window.confirm(`${labels.clearDataConfirm}\n\nProject ID: ${currentProject.id}`);
-    if (!ok) return;
-
-    setDataClearing(true);
-    setDataActionError(null);
-    setDataActionMessage(null);
-    setDataActionLog('');
-    setIsLoadReportOpen(false);
-    try {
-      const result = await projectDataApi.clear(currentProject.id);
-      setDataActionMessage(
-        `${labels.dataActionSuccess}: \u0443\u0434\u0430\u043b\u0435\u043d\u043e ${result.communications_deleted || 0} \u0437\u0430\u043f\u0438\u0441\u0435\u0439 communications \u0438 ${result.device_history_deleted || 0} \u0437\u0430\u043f\u0438\u0441\u0435\u0439 device_history.`
-      );
-      await refreshProjectDataStats(currentProject.id);
-    } catch (error: any) {
-      const detail = error?.response?.data?.detail || error?.message || labels.dataActionError;
-      setDataActionError(String(detail));
-    } finally {
-      setDataClearing(false);
-    }
-  }, [currentProject, refreshProjectDataStats]);
 
 const handleCreateNode = useCallback(() => {
     if (!selectedArtifact || selectedArtifact.type !== 'graph') return;
@@ -1094,64 +968,6 @@ const handleCreateNode = useCallback(() => {
         </div>
       )}
 
-      {isLoadReportOpen && dataActionLog && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.45)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 10000
-          }}
-          onClick={() => setIsLoadReportOpen(false)}
-        >
-          <div
-            style={{
-              background: '#ffffff',
-              border: '1px solid #d7deea',
-              borderRadius: 8,
-              padding: 12,
-              width: 'min(92vw, 820px)',
-              maxHeight: '80vh',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 10
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>{labels.loadReportTitle}</div>
-            <pre style={{
-              margin: 0,
-              whiteSpace: 'pre-wrap',
-              overflow: 'auto',
-              maxHeight: '64vh',
-              background: '#f8fafc',
-              color: '#0f172a',
-              border: '1px solid #d7deea',
-              borderRadius: 6,
-              padding: 10,
-              fontSize: 12
-            }}>{dataActionLog}</pre>
-            <button
-              onClick={() => setIsLoadReportOpen(false)}
-              style={{
-                alignSelf: 'flex-end',
-                background: '#2563eb',
-                border: '1px solid #3b82f6',
-                color: '#fff',
-                padding: '6px 12px',
-                borderRadius: 6,
-                cursor: 'pointer'
-              }}
-            >
-              {labels.cancel}
-            </button>
-          </div>
-        </div>
-      )}
-
       <div className="inspector-header">
         <h3>{labels.inspector}</h3>
         {currentProject && (
@@ -1215,126 +1031,6 @@ const handleCreateNode = useCallback(() => {
         </div>
         {activeTab === 'properties' && (
           <div className="properties-tab">
-            <details className="inspector-section" open>
-              <summary>{'\u041e\u0431\u0437\u043e\u0440'}</summary>
-              <div className="inspector-section-body">
-                <div className="property-group">
-                  <label>{labels.name}</label>
-                  {!isRenaming ? (
-                    <div className="property-inline">
-                      <div className="property-value">{selectedArtifact.name}</div>
-                      <button
-                        className="property-action"
-                        onClick={() => setIsRenaming(true)}
-                      >
-                        {labels.rename}
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="property-inline">
-                      <input
-                        className="property-input"
-                        value={renameValue}
-                        onChange={(e) => setRenameValue(e.target.value)}
-                      />
-                      <button
-                        className="property-action"
-                        onClick={handleRename}
-                        disabled={renaming}
-                      >
-                        {labels.save}
-                      </button>
-                      <button
-                        className="property-action secondary"
-                        onClick={() => {
-                          setIsRenaming(false);
-                          setRenameValue(selectedArtifact.name);
-                        }}
-                      >
-                        {labels.cancel}
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                <div className="property-group property-row-inline">
-                  <label>{labels.created}</label>
-                  <div className="property-value">
-                    {new Date(selectedArtifact.created_at).toLocaleString()}
-                  </div>
-                </div>
-
-                <div className="property-group property-row-inline">
-                  <label>{labels.updated}</label>
-                  <div className="property-value">
-                    {new Date(selectedArtifact.updated_at).toLocaleString()}
-                  </div>
-                </div>
-              </div>
-            </details>
-
-            <details className="inspector-section">
-              <summary>{labels.dataManagement}</summary>
-              <div className="inspector-section-body">
-                <input
-                  ref={loadFilesInputRef}
-                  type="file"
-                  multiple
-                  style={{ display: 'none' }}
-                  onChange={handleLoadProjectDataFiles}
-                  {...({ webkitdirectory: '' } as any)}
-                />
-
-                <div className="data-stats-grid">
-                  <div className="data-stat-card">
-                    <div className="data-stat-label">{labels.communicationsCount}</div>
-                    <div className="data-stat-value">{dataStatsLoading ? '...' : dataStats.communications}</div>
-                  </div>
-                  <div className="data-stat-card">
-                    <div className="data-stat-label">{labels.deviceHistoryCount}</div>
-                    <div className="data-stat-value">{dataStatsLoading ? '...' : dataStats.deviceHistory}</div>
-                  </div>
-                </div>
-
-                <div className="property-group">
-                  <label>{labels.loadData}</label>
-                  <div className="property-inline">
-                    <button
-                      className="property-action"
-                      onClick={handleLoadProjectData}
-                      disabled={dataLoading || dataClearing}
-                    >
-                      {dataLoading ? labels.loading : labels.loadData}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="property-group">
-                  <label>{labels.clearProjectData}</label>
-                  <div className="property-inline">
-                    <button
-                      className="property-action danger"
-                      onClick={handleClearProjectData}
-                      disabled={dataLoading || dataClearing}
-                    >
-                      {dataClearing ? labels.loading : labels.clearProjectData}
-                    </button>
-                  </div>
-                </div>
-                {dataActionMessage && <div className="property-value" style={{ whiteSpace: 'pre-line' }}>{dataActionMessage}</div>}
-                {dataActionError && <div className="property-value" style={{ color: '#b91c1c' }}>{dataActionError}</div>}
-                {dataActionLog && (
-                  <button
-                    className="property-action secondary"
-                    type="button"
-                    onClick={() => setIsLoadReportOpen(true)}
-                  >
-                    {labels.viewLoadReport}
-                  </button>
-                )}
-              </div>
-            </details>
-
             {selectedArtifact.type === 'graph' && (
               <InspectorGraphDisplaySettings
                 labels={{
@@ -1342,6 +1038,7 @@ const handleCreateNode = useCallback(() => {
                   tableFontSize: labels.tableFontSize,
                   nodeLabelsZoom: labels.nodeLabelsZoom,
                   edgeLabelsZoom: labels.edgeLabelsZoom,
+                  maxGraphScale: labels.maxGraphScale,
                   autoLayoutDistance: labels.autoLayoutDistance,
                   resetDefaults: labels.resetDefaults,
                 }}
@@ -1358,7 +1055,7 @@ const handleCreateNode = useCallback(() => {
                       <button
                         className="property-action"
                         onClick={() => void onRefreshConsole()}
-                        disabled={dataLoading || dataClearing || deleting}
+                        disabled={deleting}
                       >
                         {labels.refreshConsole}
                       </button>
@@ -1372,7 +1069,7 @@ const handleCreateNode = useCallback(() => {
                     <button
                       className="property-action danger"
                       onClick={handleDelete}
-                      disabled={deleting || dataLoading || dataClearing}
+                      disabled={deleting}
                     >
                       {labels.delete}
                     </button>

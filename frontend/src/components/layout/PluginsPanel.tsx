@@ -4,15 +4,19 @@ import { fetchArtifacts, setCurrentArtifact } from '../../store/slices/artifacts
 import { pluginApi } from '../../services/api';
 import type { ApiPlugin, PluginApplicableResponse, PluginExecutionContext } from '../../types/api';
 import { collectPluginParamsWithPrompts, groupPluginsByMenuPath } from '../../utils/pluginParams';
+import { getPluginDisplayDescription, getPluginDisplayName } from '../../utils/pluginMenu';
 import './PluginsPanel.css';
 
 const labels = {
   title: 'Плагины',
   loading: 'Загрузка...',
-  empty: 'Нет плагинов общего назначения для текущего артефакта.',
-  noArtifact: 'Выберите артефакт, чтобы запустить плагин.',
+  empty: 'Для текущего артефакта пока нет доступных глобальных плагинов.',
+  noArtifact: 'Выберите артефакт, чтобы посмотреть доступные плагины.',
   run: 'Запустить',
   running: 'Запуск...',
+  loadError: 'Не удалось загрузить список плагинов.',
+  runError: 'Ошибка запуска плагина.',
+  success: 'Готово',
 };
 
 const buildContext = (selectedElements: Array<{ type: string; id: string }>): PluginExecutionContext => {
@@ -51,9 +55,11 @@ const PluginsPanel: React.FC = () => {
       setError(null);
       return;
     }
+
     let cancelled = false;
     setIsLoading(true);
     setError(null);
+
     pluginApi
       .applicable(currentProject.id, selectedArtifact.id, pluginContext)
       .then((response: PluginApplicableResponse) => {
@@ -66,11 +72,12 @@ const PluginsPanel: React.FC = () => {
       .catch((fetchError: any) => {
         if (cancelled) return;
         setPlugins([]);
-        setError(String(fetchError?.response?.data?.detail || fetchError?.message || 'Не удалось загрузить плагины.'));
+        setError(String(fetchError?.response?.data?.detail || fetchError?.message || labels.loadError));
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false);
       });
+
     return () => {
       cancelled = true;
     };
@@ -83,9 +90,11 @@ const PluginsPanel: React.FC = () => {
     setRunningPluginId(plugin.id);
     setError(null);
     setMessage(null);
+
     try {
       const params = await collectPluginParamsWithPrompts(plugin, currentProject.id);
       if (params === null) return;
+
       const response = await pluginApi.execute(
         plugin.id,
         currentProject.id,
@@ -93,14 +102,15 @@ const PluginsPanel: React.FC = () => {
         params,
         pluginContext,
       );
+
       await dispatch(fetchArtifacts(currentProject.id));
       const created = response?.created || [];
       if (created.length > 0) {
         dispatch(setCurrentArtifact(created[0].id));
       }
-      setMessage(`Готово: ${plugin.name}`);
+      setMessage(`${labels.success}: ${getPluginDisplayName(plugin)}`);
     } catch (runError: any) {
-      setError(String(runError?.response?.data?.detail || runError?.message || 'Ошибка запуска плагина.'));
+      setError(String(runError?.response?.data?.detail || runError?.message || labels.runError));
     } finally {
       setRunningPluginId(null);
     }
@@ -123,8 +133,8 @@ const PluginsPanel: React.FC = () => {
               {group.items.map((plugin) => (
                 <div className="plugins-panel-item" key={plugin.id}>
                   <div className="plugins-panel-item-main">
-                    <div className="plugins-panel-item-name">{plugin.name}</div>
-                    <div className="plugins-panel-item-desc">{plugin.description || ''}</div>
+                    <div className="plugins-panel-item-name">{getPluginDisplayName(plugin)}</div>
+                    <div className="plugins-panel-item-desc">{getPluginDisplayDescription(plugin)}</div>
                   </div>
                   <button
                     type="button"

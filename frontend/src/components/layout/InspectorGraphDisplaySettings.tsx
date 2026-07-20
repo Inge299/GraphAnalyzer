@@ -12,6 +12,7 @@ type InspectorGraphDisplaySettingsProps = {
     tableFontSize: string;
     nodeLabelsZoom: string;
     edgeLabelsZoom: string;
+    maxGraphScale: string;
     autoLayoutDistance: string;
     resetDefaults: string;
   };
@@ -79,6 +80,19 @@ export const InspectorGraphDisplaySettings: React.FC<InspectorGraphDisplaySettin
             step={0.05}
             value={formatScale(settings.edgeLabelMinScale)}
             onChange={(event) => updateSettings({ edgeLabelMinScale: Number(event.target.value || 0.9) })}
+          />
+        </div>
+
+        <div className="property-group property-row-inline">
+          <label>{labels.maxGraphScale}</label>
+          <input
+            className="property-input settings-number-input"
+            type="number"
+            min={0.5}
+            max={6}
+            step={0.1}
+            value={formatScale(settings.maxGraphScale)}
+            onChange={(event) => updateSettings({ maxGraphScale: Number(event.target.value || 2) })}
           />
         </div>
 

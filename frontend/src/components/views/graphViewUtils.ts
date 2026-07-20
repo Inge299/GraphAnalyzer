@@ -14,7 +14,7 @@ export type NodeTypeAttributeRuntime = {
 
 const NODE_SYSTEM_KEYS = new Set(['visual', 'label', 'color', 'icon', 'iconScale', 'ringEnabled', 'ringWidth']);
 
-export const GRAPH_TOOLBAR_HEIGHT = 42;
+export const GRAPH_TOOLBAR_HEIGHT = 52;
 
 export const getNodeId = (node: any) => node.id || node.node_id;
 

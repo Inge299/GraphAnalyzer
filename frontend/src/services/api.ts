@@ -2,6 +2,7 @@
 import axios from 'axios';
 import type {
   ApiPluginExecuteResponse,
+  PluginArtifactDataOverride,
   CellTowerReferenceEnrichResponse,
   CellTowerReferenceLoadResponse,
   CellTowerReferenceStats,
@@ -20,6 +21,7 @@ import type {
   ProjectDataLoadResponse,
   ProjectDataStats,
 } from '../types/api';
+import { layoutConfig } from '../config/layout';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -30,7 +32,7 @@ export const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000,
+  timeout: layoutConfig.network.apiDefaultTimeoutMs,
 });
 
 // Request interceptor for logging
@@ -95,11 +97,17 @@ export const projectApi = {
 
 export const pluginApi = {
   list: () => api.get<PluginListResponse>('/api/v1/plugins').then(res => res.data),
-  applicable: (projectId: number, artifactId: number, context: PluginExecutionContext = {}) =>
+  applicable: (
+    projectId: number,
+    artifactId: number,
+    context: PluginExecutionContext = {},
+    artifactDataOverride?: PluginArtifactDataOverride,
+  ) =>
     api.post<PluginApplicableResponse>('/api/v1/plugins/applicable', {
       project_id: projectId,
       artifact_id: artifactId,
       context,
+      artifact_data_override: artifactDataOverride ?? undefined,
     }).then(res => res.data),
   execute: (
     pluginId: string,
@@ -107,12 +115,14 @@ export const pluginApi = {
     inputArtifactIds: number[],
     params: Record<string, any> = {},
     context: PluginExecutionContext = {},
+    artifactDataOverride?: PluginArtifactDataOverride,
   ) =>
     api.post<ApiPluginExecuteResponse>(`/api/v1/plugins/${pluginId}/execute`, {
       project_id: projectId,
       input_artifact_ids: inputArtifactIds,
       params,
       context,
+      artifact_data_override: artifactDataOverride ?? undefined,
     }, { timeout: 300000 }).then(res => res.data),
   uploadInput: (projectId: number, file: File) => {
     const formData = new FormData();
@@ -127,7 +137,11 @@ export const pluginApi = {
 
 export const projectDataApi = {
   load: (projectId: number, sourcePath: string) =>
-    api.post<ProjectDataLoadResponse>(`/api/v1/projects/${projectId}/data/load`, { source_path: sourcePath }).then(res => res.data),
+    api.post<ProjectDataLoadResponse>(
+      `/api/v1/projects/${projectId}/data/load`,
+      { source_path: sourcePath },
+      { timeout: layoutConfig.network.projectDataLoadTimeoutMs },
+    ).then(res => res.data),
   loadFromFiles: (projectId: number, files: File[]) => {
     const formData = new FormData();
     files.forEach((file) => {
@@ -136,19 +150,37 @@ export const projectDataApi = {
     });
     return api.post<ProjectDataLoadResponse>(`/api/v1/projects/${projectId}/data/load-upload`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
-      timeout: 300000,
+      timeout: layoutConfig.network.projectDataLoadTimeoutMs,
     }).then(res => res.data);
   },
   clear: (projectId: number) =>
-    api.post<ProjectDataClearResponse>(`/api/v1/projects/${projectId}/data/clear`, {}, { timeout: 300000 }).then(res => res.data),
+    api.post<ProjectDataClearResponse>(
+      `/api/v1/projects/${projectId}/data/clear`,
+      {},
+      { timeout: layoutConfig.network.projectDataClearTimeoutMs },
+    ).then(res => res.data),
   stats: (projectId: number) =>
-    api.get<ProjectDataStats>(`/api/v1/projects/${projectId}/data/stats`).then(res => res.data),
+    api.get<ProjectDataStats>(
+      `/api/v1/projects/${projectId}/data/stats`,
+      { timeout: layoutConfig.network.projectDataStatsTimeoutMs },
+    ).then(res => res.data),
   loadCellTowers: (sourcePath: string) =>
-    api.post<CellTowerReferenceLoadResponse>(`/api/v1/projects/data/cell-towers/load`, { source_path: sourcePath }, { timeout: 600000 }).then(res => res.data),
+    api.post<CellTowerReferenceLoadResponse>(
+      `/api/v1/projects/data/cell-towers/load`,
+      { source_path: sourcePath },
+      { timeout: layoutConfig.network.cellTowerLoadTimeoutMs },
+    ).then(res => res.data),
   cellTowerStats: () =>
-    api.get<CellTowerReferenceStats>(`/api/v1/projects/data/cell-towers/stats`).then(res => res.data),
+    api.get<CellTowerReferenceStats>(
+      `/api/v1/projects/data/cell-towers/stats`,
+      { timeout: layoutConfig.network.cellTowerStatsTimeoutMs },
+    ).then(res => res.data),
   enrichCellTowersByProjectAddresses: (projectId: number) =>
-    api.post<CellTowerReferenceEnrichResponse>(`/api/v1/projects/${projectId}/data/cell-towers/enrich-by-address`, {}).then(res => res.data),
+    api.post<CellTowerReferenceEnrichResponse>(
+      `/api/v1/projects/${projectId}/data/cell-towers/enrich-by-address`,
+      {},
+      { timeout: layoutConfig.network.cellTowerEnrichTimeoutMs },
+    ).then(res => res.data),
 };
 
 export const consoleApi = {
@@ -189,7 +221,7 @@ export const consoleApi = {
       params,
       context,
       context_artifact_id: contextArtifactId,
-    }, { timeout: 120000 }).then(res => res.data),
+    }, { timeout: layoutConfig.network.consoleRefreshTimeoutMs }).then(res => res.data),
 };
 export const domainModelApi = {
   get: () => api.get('/api/v1/config/domain-model').then(res => res.data),

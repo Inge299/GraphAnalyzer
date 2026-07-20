@@ -50,6 +50,7 @@ import {
   shouldShowNodeLabel,
   withAlpha,
 } from './graphViewUtils';
+import { layoutConfig } from '../../config/layout';
 import 'vis-network/styles/vis-network.css';
 import './GraphView.css';
 
@@ -66,6 +67,7 @@ interface GraphViewProps {
   onConnectComplete?: () => void;
   onUndo?: () => void;
   onRedo?: () => void;
+  onPasteGraphClipboard?: (payload: GraphClipboardPayload) => void;
   canUndo?: boolean;
   canRedo?: boolean;
   isRecording?: boolean;
@@ -79,9 +81,36 @@ interface PendingMove {
   y: number;
 }
 
+type GraphClipboardNode = {
+  originalId: string;
+  type: string;
+  label: string;
+  x: number;
+  y: number;
+  attributes: Record<string, unknown>;
+};
+
+type GraphClipboardEdge = {
+  originalId: string;
+  type: string;
+  from: string;
+  to: string;
+  label: string;
+  attributes: Record<string, unknown>;
+};
+
+type GraphClipboardPayload = {
+  copiedAt: string;
+  sourceArtifactId: number;
+  nodes: GraphClipboardNode[];
+  edges: GraphClipboardEdge[];
+  _pasteIndex?: number;
+};
+
 const DEFAULT_SOURCE_IDS = 'All';
 const PERIOD_START_KEYS = ['begtime', 'period_start', 'start_date', 'date_from', 'from_date', 'begin_date', 'beg_date'];
 const PERIOD_END_KEYS = ['endtime', 'period_end', 'end_date', 'date_to', 'to_date', 'finish_date'];
+const GRAPH_CLIPBOARD_STORAGE_KEY = 'graph-selection-clipboard-v1';
 
 const getParamKey = (param: any): string => String(param?.key || param?.name || '').trim();
 const getParamKeyLower = (param: any): string => getParamKey(param).toLowerCase();
@@ -105,6 +134,24 @@ const coerceParamValue = (type: string | undefined, value: string | boolean): un
   return String(value ?? '');
 };
 
+const readStoredGraphClipboard = (): GraphClipboardPayload | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(GRAPH_CLIPBOARD_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as GraphClipboardPayload;
+    if (!parsed || !Array.isArray(parsed.nodes) || !Array.isArray(parsed.edges)) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+};
+
+const getMaxGraphScale = (): number => {
+  const candidate = Number((layoutConfig as any)?.interaction?.maxGraphScale ?? 2);
+  return Number.isFinite(candidate) ? Math.max(0.5, candidate) : 2;
+};
+
 export const GraphView: React.FC<GraphViewProps> = ({ 
   artifact, 
   onNodeMove,
@@ -118,6 +165,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
   onConnectComplete,
   onUndo,
   onRedo,
+  onPasteGraphClipboard,
   canUndo = false,
   canRedo = false,
   isRecording = false,
@@ -144,7 +192,12 @@ export const GraphView: React.FC<GraphViewProps> = ({
   const [previewConfigRevision, setPreviewConfigRevision] = useState(0);
   const [, setGraphSettingsRevision] = useState(0);
   const [analysisProfiles, setAnalysisProfiles] = useState<ConsoleProfile[]>([]);
+  const [hasStoredClipboard, setHasStoredClipboard] = useState<boolean>(() => Boolean(readStoredGraphClipboard()?.nodes?.length));
+  const [labelsHidden, setLabelsHidden] = useState(false);
   const edgeTypesRef = useRef<Array<any>>([]);
+  const pasteCounterRef = useRef(0);
+  const selectionCountsRef = useRef({ nodes: 0, edges: 0 });
+  const [selectionCounts, setSelectionCounts] = useState({ nodes: 0, edges: 0 });
   const rulesRef = useRef<{ allow_parallel_edges: boolean }>({ allow_parallel_edges: true });
   const nodeTypeIconsRef = useRef<Record<string, string>>({});
   const nodeTypeAttributesRef = useRef<Record<string, Record<string, { label: string; type: string }>>>({});
@@ -455,6 +508,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
 
   const setLabelsSuppressed = useCallback((suppressed: boolean) => {
     labelsSuppressedStateRef.current = suppressed;
+    setLabelsHidden(suppressed);
     const scale = networkRef.current ? networkRef.current.getScale() : 1;
     updateNodeTooltipsByScale(scale);
     applyConnectPreview();
@@ -463,7 +517,10 @@ export const GraphView: React.FC<GraphViewProps> = ({
   useEffect(() => {
     const handleGraphSettingsChanged = () => {
       setGraphSettingsRevision((value) => value + 1);
-      const scale = networkRef.current ? networkRef.current.getScale() : 1;
+      const scale = networkRef.current ? Math.min(networkRef.current.getScale(), getMaxGraphScale()) : 1;
+      if (networkRef.current && networkRef.current.getScale() > scale) {
+        networkRef.current.moveTo({ scale, animation: false });
+      }
       updateNodeTooltipsByScale(scale, true);
     };
 
@@ -475,6 +532,9 @@ export const GraphView: React.FC<GraphViewProps> = ({
     if (!networkRef.current) return;
     const selectedNodeIds = networkRef.current.getSelectedNodes().map(id => String(id));
     const selectedEdgeIds = networkRef.current.getSelectedEdges().map(id => String(id));
+    const nextCounts = { nodes: selectedNodeIds.length, edges: selectedEdgeIds.length };
+    selectionCountsRef.current = nextCounts;
+    setSelectionCounts(nextCounts);
     const digest = selectedNodeIds.join(',') + '|' + selectedEdgeIds.join(',');
     if (digest === lastSelectionDigestRef.current) return;
     lastSelectionDigestRef.current = digest;
@@ -510,6 +570,10 @@ export const GraphView: React.FC<GraphViewProps> = ({
     containerRef,
     updateSelectionFromNetwork,
     toolbarHeight: GRAPH_TOOLBAR_HEIGHT,
+    getArtifactSnapshot: () => {
+      const snapshot = artifactDataRef.current;
+      return snapshot && typeof snapshot === 'object' ? { ...snapshot } : null;
+    },
   });
 
   const {
@@ -530,6 +594,10 @@ export const GraphView: React.FC<GraphViewProps> = ({
         networkRef.current.getSelectedNodes().map((id: any) => String(id)),
         networkRef.current.getSelectedEdges().map((id: any) => String(id)),
       );
+    },
+    getArtifactSnapshot: () => {
+      const snapshot = artifactDataRef.current;
+      return snapshot && typeof snapshot === 'object' ? { ...snapshot } : null;
     },
     onFinally: closePluginMenu,
   });
@@ -784,7 +852,13 @@ export const GraphView: React.FC<GraphViewProps> = ({
     updateNodeTooltipsByScale(network.getScale(), true);
 
     const onZoom = () => {
-      updateNodeTooltipsByScale(network.getScale(), false);
+      const maxScale = getMaxGraphScale();
+      const rawScale = network.getScale();
+      const nextScale = Math.min(rawScale, maxScale);
+      if (rawScale > maxScale) {
+        network.moveTo({ scale: nextScale, animation: false });
+      }
+      updateNodeTooltipsByScale(nextScale, false);
       const selected = network.getSelection();
       if ((selected.nodes?.length || 0) > 0 || (selected.edges?.length || 0) > 0) {
         network.setSelection({ nodes: selected.nodes || [], edges: selected.edges || [] }, { unselectAll: true, highlightEdges: false });
@@ -1016,6 +1090,119 @@ export const GraphView: React.FC<GraphViewProps> = ({
     onRedo?.();
   }, [onRedo]);
 
+  const handleCopySelectionClick = useCallback(() => {
+    const network = networkRef.current;
+    if (!network) return;
+
+    const selectedNodeIds = network.getSelectedNodes().map((id: any) => String(id));
+    const selectedEdgeIds = network.getSelectedEdges().map((id: any) => String(id));
+    if (!selectedNodeIds.length && !selectedEdgeIds.length) return;
+
+    const nodeIdSet = new Set(selectedNodeIds);
+    const edgeIdSet = new Set(selectedEdgeIds);
+    const nodes = (artifactDataRef.current?.nodes || [])
+      .filter((node: any) => nodeIdSet.has(String(getNodeId(node))))
+      .map((node: any) => ({
+        originalId: String(getNodeId(node)),
+        type: String(node?.type || ''),
+        label: String(node?.label || node?.attributes?.visual?.label || node?.attributes?.label || ''),
+        x: Number(node?.position_x || 0),
+        y: Number(node?.position_y || 0),
+        attributes: { ...(node?.attributes || {}) },
+      }));
+
+    const edges = (artifactDataRef.current?.edges || [])
+      .filter((edge: any) => edgeIdSet.has(String(edge?.id || '')))
+      .map((edge: any) => ({
+        originalId: String(edge?.id || ''),
+        type: String(edge?.type || ''),
+        from: String(edge?.from || edge?.source_node || ''),
+        to: String(edge?.to || edge?.target_node || ''),
+        label: String(edge?.label || edge?.attributes?.visual?.label || edge?.attributes?.label || ''),
+        attributes: { ...(edge?.attributes || {}) },
+      }));
+
+    const payload: GraphClipboardPayload = {
+      copiedAt: new Date().toISOString(),
+      sourceArtifactId: artifact.id,
+      nodes,
+      edges,
+    };
+
+    window.localStorage.setItem(GRAPH_CLIPBOARD_STORAGE_KEY, JSON.stringify(payload));
+    setHasStoredClipboard(nodes.length > 0);
+  }, [artifact.id]);
+
+  const handleCopyLabelsClick = useCallback(async () => {
+    const network = networkRef.current;
+    if (!network) return;
+
+    const selectedNodeIds = new Set(network.getSelectedNodes().map((id: any) => String(id)));
+    const selectedEdgeIds = new Set(network.getSelectedEdges().map((id: any) => String(id)));
+    const nodeLabels = (artifactDataRef.current?.nodes || [])
+      .filter((node: any) => selectedNodeIds.has(String(getNodeId(node))))
+      .map((node: any) => String(node?.label || node?.attributes?.visual?.label || node?.attributes?.label || ''))
+      .filter(Boolean);
+    const edgeLabels = (artifactDataRef.current?.edges || [])
+      .filter((edge: any) => selectedEdgeIds.has(String(edge?.id || '')))
+      .map((edge: any) => String(edge?.label || edge?.attributes?.visual?.label || edge?.attributes?.label || ''))
+      .filter(Boolean);
+    const text = [...nodeLabels, ...edgeLabels].join('\n').trim();
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // noop
+    }
+  }, []);
+
+  const handlePasteSelectionClick = useCallback(() => {
+    const payload = readStoredGraphClipboard();
+    if (!payload || !payload.nodes.length) return;
+    pasteCounterRef.current += 1;
+    onPasteGraphClipboard?.({ ...payload, _pasteIndex: pasteCounterRef.current });
+  }, [onPasteGraphClipboard]);
+
+  const handleZoomInClick = useCallback(() => {
+    const network = networkRef.current;
+    if (!network) return;
+    const scale = network.getScale();
+    network.moveTo({ scale: Math.min(scale * 1.15, getMaxGraphScale()), animation: { duration: 180, easingFunction: 'easeInOutQuad' } });
+  }, []);
+
+  const handleZoomOutClick = useCallback(() => {
+    const network = networkRef.current;
+    if (!network) return;
+    const scale = network.getScale();
+    network.moveTo({ scale: Math.max(scale / 1.15, 0.08), animation: { duration: 180, easingFunction: 'easeInOutQuad' } });
+  }, []);
+
+  const handleResetViewClick = useCallback(() => {
+    const network = networkRef.current;
+    if (!network) return;
+    network.moveTo({
+      position: { x: 0, y: 0 },
+      scale: Math.min(1, getMaxGraphScale()),
+      animation: { duration: 220, easingFunction: 'easeInOutQuad' },
+    });
+  }, []);
+
+  const handleToggleLabelsClick = useCallback(() => {
+    setLabelsSuppressed(!labelsSuppressedStateRef.current);
+  }, [setLabelsSuppressed]);
+
+  const handleExportPngClick = useCallback(() => {
+    const network = networkRef.current as any;
+    const canvas = network?.canvas?.frame?.canvas as HTMLCanvasElement | undefined;
+    if (!canvas) return;
+    const link = document.createElement('a');
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const safeName = String(artifact.name || 'graph').replace(/[\\/:*?"<>|]+/g, '-').trim() || 'graph';
+    link.href = canvas.toDataURL('image/png');
+    link.download = `${safeName}-${timestamp}.png`;
+    link.click();
+  }, [artifact.name]);
+
   const estimateNodeFootprint = (node: any) => {
     const nodeSize = Number(getNodeSize(node) || 24);
     const wrapped = getNodeLabel(node, nodeAttributePreviewRef.current, nodeTypeAttributesRef.current) || String(node?.label || '');
@@ -1042,7 +1229,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
 
   const {
     handleSelectConnectedEdges,
-    handleSelectEndpoints,
+    handleSelectConnected,
   } = useGraphSelectionActions({
     networkRef,
     artifactDataRef,
@@ -1053,8 +1240,6 @@ export const GraphView: React.FC<GraphViewProps> = ({
 
   const {
     handleFitClick,
-    handleFitSelectionClick,
-    handleInvertSelectionClick,
   } = useGraphViewportSelectionActions({
     networkRef,
     artifactDataRef,
@@ -1080,13 +1265,28 @@ export const GraphView: React.FC<GraphViewProps> = ({
       <GraphToolbar
         canUndo={canUndo}
         canRedo={canRedo}
+        canCopySelection={selectionCounts.nodes + selectionCounts.edges > 0}
+        canCopyLabels={selectionCounts.nodes + selectionCounts.edges > 0}
+        canPasteSelection={hasStoredClipboard}
+        canExportPng={!isGraphEmpty}
+        hasGraphContent={!isGraphEmpty}
+        labelsHidden={labelsHidden}
+        selectedCount={selectionCounts.nodes + selectionCounts.edges}
+        nodesCount={Array.isArray(artifact.data?.nodes) ? artifact.data.nodes.length : 0}
+        edgesCount={Array.isArray(artifact.data?.edges) ? artifact.data.edges.length : 0}
         onUndo={handleUndoClick}
         onRedo={handleRedoClick}
+        onCopySelection={handleCopySelectionClick}
+        onCopyLabels={handleCopyLabelsClick}
+        onPasteSelection={handlePasteSelectionClick}
         onAutoLayout={handleAutoLayoutClick}
         onBalancedLayout={handleBalancedLayoutClick}
         onFit={handleFitClick}
-        onFitSelection={handleFitSelectionClick}
-        onInvertSelection={handleInvertSelectionClick}
+        onZoomIn={handleZoomInClick}
+        onZoomOut={handleZoomOutClick}
+        onResetView={handleResetViewClick}
+        onToggleLabels={handleToggleLabelsClick}
+        onExportPng={handleExportPngClick}
         version={artifact.version}
       />
 
@@ -1113,7 +1313,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
         onRunPlugin={runPluginFromMenu}
         onRunAnalysis={handleRunAnalysisFromMenu}
         onSelectLinks={handleSelectConnectedEdges}
-        onSelectEndpoints={handleSelectEndpoints}
+        onSelectConnected={handleSelectConnected}
         onClose={closePluginMenu}
       />
       {isGraphEmpty && <GraphEmptyState />}

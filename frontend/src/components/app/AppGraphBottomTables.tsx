@@ -8,7 +8,7 @@ import {
   graphBottomPanelLabels,
 } from './graphBottomPanelUtils';
 
-type ColumnDefinition = {
+export type ColumnDefinition = {
   key: string;
   label: string;
   sortKey: string;
@@ -19,7 +19,7 @@ type ColumnDefinition = {
   defaultWidth?: number;
 };
 
-const DEFAULT_COLUMN_WIDTH = 160;
+export const DEFAULT_COLUMN_WIDTH = 160;
 
 const readStoredColumnWidths = (storageKey: string): Record<string, number> => {
   if (typeof window === 'undefined') return {};
@@ -51,7 +51,7 @@ const normalizeColumnWidths = (
     return acc;
   }, {});
 
-const useResizableColumns = (storageKey: string, columns: ColumnDefinition[]) => {
+export const useResizableColumns = (storageKey: string, columns: ColumnDefinition[]) => {
   const columnsRef = useRef(columns);
   columnsRef.current = columns;
 
@@ -122,7 +122,7 @@ type ResizableHeaderCellProps = {
   renderSortIndicator: (active: boolean, dir: GraphSortDirection) => React.ReactNode;
 };
 
-const ResizableHeaderCell = ({
+export const ResizableHeaderCell = ({
   column,
   width,
   onResizeStart,

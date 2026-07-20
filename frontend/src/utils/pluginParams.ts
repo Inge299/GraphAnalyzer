@@ -1,6 +1,7 @@
 ﻿// frontend/src/utils/pluginParams.ts
 import type { ApiPlugin, PluginParamSpec } from '../types/api';
 import { pluginApi } from '../services/api';
+import { comparePluginMenuPaths, normalizePluginMenuPath, sortPluginsByName } from './pluginMenu';
 
 const STORAGE_PREFIX = 'ga:project-plugin-defaults:';
 
@@ -511,16 +512,16 @@ export const groupPluginsByMenuPath = (plugins: ApiPlugin[]) => {
   const groups = new Map<string, ApiPlugin[]>();
 
   plugins.forEach((plugin) => {
-    const path = (plugin.menu_path || 'Прочее').trim() || 'Прочее';
+    const path = normalizePluginMenuPath(plugin.menu_path);
     if (!groups.has(path)) groups.set(path, []);
     groups.get(path)!.push(plugin);
   });
 
   return Array.from(groups.entries())
-    .sort(([a], [b]) => a.localeCompare(b, 'ru'))
+    .sort(([a], [b]) => comparePluginMenuPaths(a, b))
     .map(([path, list]) => ({
       path,
-      items: [...list].sort((a, b) => a.name.localeCompare(b.name, 'ru')),
+      items: sortPluginsByName(list),
     }));
 };
 

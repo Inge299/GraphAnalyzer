@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { setCurrentProject, fetchProjects } from '../../store/slices/projectsSlice';
 import { fetchArtifacts, setCurrentArtifact, createArtifact, deleteArtifact } from '../../store/slices/artifactsSlice';
@@ -11,8 +11,10 @@ interface SidebarProps {
   onToggleCollapse: () => void;
   onArtifactSelect: (artifact: ApiArtifact) => void;
   onOpenServiceScreen: () => void;
+  onOpenProjectDataScreen: () => void;
   onCloseServiceScreen: () => void;
   isServiceScreenActive: boolean;
+  isProjectDataScreenActive: boolean;
 }
 
 type ArtifactContextMenuState = {
@@ -22,6 +24,7 @@ type ArtifactContextMenuState = {
 } | null;
 
 type ArtifactCreateType = 'graph' | 'document' | 'map' | 'console';
+type ProjectPanelTab = 'artifacts' | 'project_data';
 
 const labels = {
   title: 'Рабочая область',
@@ -33,7 +36,12 @@ const labels = {
   recent: 'Недавние',
   projects: 'Проекты',
   currentProject: 'Текущий проект',
+  projectActions: 'Проектные действия',
+  projectData: 'Управление данными',
+  projectDataHint: 'Загрузка и очистка исходных данных проекта',
   createLabel: 'Создать',
+  artifactsTab: 'Артефакты',
+  projectDataTab: 'Данные проекта',
   createGraph: 'Новый граф',
   createDocument: 'Новый документ',
   createMap: 'Новая карта',
@@ -92,8 +100,10 @@ const Sidebar: React.FC<SidebarProps> = ({
   onToggleCollapse,
   onArtifactSelect,
   onOpenServiceScreen,
+  onOpenProjectDataScreen,
   onCloseServiceScreen,
   isServiceScreenActive,
+  isProjectDataScreenActive,
 }) => {
   const dispatch = useAppDispatch();
   const projects = useAppSelector((state) => state.projects.projects);
@@ -113,6 +123,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [contextMenu, setContextMenu] = useState<ArtifactContextMenuState>(null);
   const [recentArtifactIds, setRecentArtifactIds] = useState<number[]>([]);
   const [showRecent, setShowRecent] = useState(false);
+  const [projectPanelTab, setProjectPanelTab] = useState<ProjectPanelTab>('artifacts');
 
   const sidebarRef = useRef<HTMLDivElement | null>(null);
   const createMenuRef = useRef<HTMLDivElement | null>(null);
@@ -136,6 +147,14 @@ const Sidebar: React.FC<SidebarProps> = ({
       dispatch(fetchArtifacts(currentProject.id));
     }
   }, [currentProject?.id, dispatch]);
+
+  useEffect(() => {
+    setProjectPanelTab('artifacts');
+  }, [currentProject?.id]);
+
+  useEffect(() => {
+    setProjectPanelTab(isProjectDataScreenActive ? 'project_data' : 'artifacts');
+  }, [isProjectDataScreenActive]);
 
   useEffect(() => {
     if (!currentArtifactId) return;
@@ -236,11 +255,22 @@ const Sidebar: React.FC<SidebarProps> = ({
   }, [dispatch]);
 
   const handleSelectArtifact = useCallback((artifact: ApiArtifact) => {
+    setProjectPanelTab('artifacts');
     dispatch(setCurrentArtifact(artifact.id));
     onCloseServiceScreen();
     onArtifactSelect(artifact);
     setContextMenu(null);
   }, [dispatch, onArtifactSelect, onCloseServiceScreen]);
+
+  const handleOpenProjectDataTab = useCallback(() => {
+    setProjectPanelTab('project_data');
+    onOpenProjectDataScreen();
+  }, [onOpenProjectDataScreen]);
+
+  const handleOpenArtifactsTab = useCallback(() => {
+    setProjectPanelTab('artifacts');
+    onCloseServiceScreen();
+  }, [onCloseServiceScreen]);
 
   const handleDeleteProject = useCallback(async (projectId: number, projectNameValue: string) => {
     setDeletingProjectId(projectId);
@@ -533,7 +563,26 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </div>
               </div>
 
-              {creatingType && (
+              {currentProject?.id && (
+                <div className="project-panel-tabs" role="tablist" aria-label="Раздел проекта">
+                  <button
+                    type="button"
+                    className={`project-panel-tab ${projectPanelTab === 'artifacts' ? 'active' : ''}`}
+                    onClick={handleOpenArtifactsTab}
+                  >
+                    {labels.artifactsTab}
+                  </button>
+                  <button
+                    type="button"
+                    className={`project-panel-tab ${projectPanelTab === 'project_data' ? 'active' : ''}`}
+                    onClick={handleOpenProjectDataTab}
+                  >
+                    {labels.projectDataTab}
+                  </button>
+                </div>
+              )}
+
+              {projectPanelTab === 'artifacts' && creatingType && (
                 <div className="sidebar-create-row">
                   <input
                     className="create-input"
@@ -551,38 +600,49 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </div>
               )}
 
-              <div className="artifact-groups-scroll">
-                {artifactsLoading ? (
-                  <div className="sidebar-loading">{labels.loading}</div>
-                ) : groupedProjectArtifacts.length === 0 ? (
-                  <div className="sidebar-empty">{labels.noArtifacts}</div>
-                ) : (
-                  groupedProjectArtifacts.map((group) => (
-                    <div key={group.type} className="artifact-type-group">
-                      <div className="artifact-type-header">{group.title} ({group.items.length})</div>
-                      <div className="artifact-type-list">
-                        {group.items.map((artifact) => (
-                          <div
-                            key={artifact.id}
-                            className={`sidebar-item tree-artifact-item ${currentArtifactId === artifact.id ? 'active' : ''}`}
-                            onClick={() => handleSelectArtifact(artifact)}
-                            onContextMenu={(event) => openArtifactContextMenu(event, artifact)}
-                          >
-                            <div className={`item-icon type-${artifact.type}`}>{typeIcon[artifact.type] || '•'}</div>
-                            <div className="item-content">
-                              <div className="item-name">{artifact.name}</div>
-                              <div className="item-meta">
-                                <span className="item-type">{artifact.type}</span>
-                                <span className="item-version">v{artifact.version || 1}</span>
+              {projectPanelTab === 'artifacts' ? (
+                <div className="artifact-groups-scroll">
+                  {artifactsLoading ? (
+                    <div className="sidebar-loading">{labels.loading}</div>
+                  ) : groupedProjectArtifacts.length === 0 ? (
+                    <div className="sidebar-empty">{labels.noArtifacts}</div>
+                  ) : (
+                    groupedProjectArtifacts.map((group) => (
+                      <div key={group.type} className="artifact-type-group">
+                        <div className="artifact-type-header">{group.title} ({group.items.length})</div>
+                        <div className="artifact-type-list">
+                          {group.items.map((artifact) => (
+                            <div
+                              key={artifact.id}
+                              className={`sidebar-item tree-artifact-item ${currentArtifactId === artifact.id ? 'active' : ''}`}
+                              onClick={() => handleSelectArtifact(artifact)}
+                              onContextMenu={(event) => openArtifactContextMenu(event, artifact)}
+                            >
+                              <div className={`item-icon type-${artifact.type}`}>{typeIcon[artifact.type] || '•'}</div>
+                              <div className="item-content">
+                                <div className="item-name">{artifact.name}</div>
+                                <div className="item-meta">
+                                  <span className="item-type">{artifact.type}</span>
+                                  <span className="item-version">v{artifact.version || 1}</span>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  ))
-                )}
-              </div>
+                    ))
+                  )}
+                </div>
+              ) : (
+                <div className="project-data-entry-panel">
+                  <div className="project-actions-title">{labels.projectData}</div>
+                  <div className="project-data-entry-hint">{labels.projectDataHint}</div>
+                  <div className="project-data-entry project-data-entry-static">
+                    <span className="project-data-entry-title">Экран данных проекта открыт</span>
+                    <span className="project-data-entry-hint">Загрузка файлов, очистка данных и статистика уже доступны в центральной области.</span>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="sidebar-section recent-section">
@@ -654,3 +714,4 @@ const Sidebar: React.FC<SidebarProps> = ({
 };
 
 export default Sidebar;
+

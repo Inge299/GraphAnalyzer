@@ -1,6 +1,7 @@
 // store/slices/projectsSlice.ts
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { api } from '../../services/api';
+import { layoutConfig } from '../../config/layout';
 
 export interface Project {
   id: number;
@@ -17,9 +18,51 @@ interface ProjectsState {
   error: string | null;
 }
 
+const PROJECTS_CACHE_KEY = 'graph-analyzer.projects-cache';
+const CURRENT_PROJECT_ID_KEY = 'graph-analyzer.current-project-id';
+
+const loadCachedProjectsState = (): Pick<ProjectsState, 'projects' | 'currentProject'> => {
+  if (typeof window === 'undefined') {
+    return { projects: [], currentProject: null };
+  }
+
+  try {
+    const projectsRaw = window.localStorage.getItem(PROJECTS_CACHE_KEY);
+    const currentProjectIdRaw = window.localStorage.getItem(CURRENT_PROJECT_ID_KEY);
+    const projects = projectsRaw ? (JSON.parse(projectsRaw) as Project[]) : [];
+    const currentProjectId = currentProjectIdRaw ? Number(currentProjectIdRaw) : null;
+    const currentProject =
+      currentProjectId != null ? projects.find((project) => project.id === currentProjectId) || null : null;
+
+    return {
+      projects: Array.isArray(projects) ? projects : [],
+      currentProject,
+    };
+  } catch {
+    return { projects: [], currentProject: null };
+  }
+};
+
+const persistProjectsState = (projects: Project[], currentProject: Project | null) => {
+  if (typeof window === 'undefined') return;
+
+  try {
+    window.localStorage.setItem(PROJECTS_CACHE_KEY, JSON.stringify(projects));
+    if (currentProject?.id != null) {
+      window.localStorage.setItem(CURRENT_PROJECT_ID_KEY, String(currentProject.id));
+    } else {
+      window.localStorage.removeItem(CURRENT_PROJECT_ID_KEY);
+    }
+  } catch {
+    // Ignore cache persistence issues and keep app responsive.
+  }
+};
+
+const cachedState = loadCachedProjectsState();
+
 const initialState: ProjectsState = {
-  projects: [],
-  currentProject: null,
+  projects: cachedState.projects,
+  currentProject: cachedState.currentProject,
   isLoading: false,
   error: null,
 };
@@ -29,7 +72,9 @@ export const fetchProjects = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       console.log('[Projects] Fetching all projects');
-      const response = await api.get('/api/v1/projects');
+      const response = await api.get('/api/v1/projects', {
+        timeout: layoutConfig.network.projectsLoadTimeoutMs,
+      });
       console.log('[Projects] Response:', {
         status: response.status,
         dataType: typeof response.data,
@@ -56,6 +101,7 @@ const projectsSlice = createSlice({
       const project = state.projects.find(p => p.id === action.payload);
       if (project) {
         state.currentProject = project;
+        persistProjectsState(state.projects, state.currentProject);
         console.log('[Projects] Current project set to:', project.id, project.name);
       } else {
         console.warn('[Projects] Project not found:', action.payload);
@@ -83,6 +129,12 @@ const projectsSlice = createSlice({
             console.log('[Projects] Current project no longer exists, cleared');
           }
         }
+
+        if (!state.currentProject && state.projects.length > 0) {
+          state.currentProject = state.projects[0];
+        }
+
+        persistProjectsState(state.projects, state.currentProject);
       })
       .addCase(fetchProjects.rejected, (state, action) => {
         state.isLoading = false;

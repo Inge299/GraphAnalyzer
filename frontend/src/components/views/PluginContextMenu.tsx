@@ -1,6 +1,7 @@
 import React from 'react';
 import type { ApiPlugin, ConsoleProfile, PluginExecutionContext } from '../../types/api';
 import type { PluginContextMenuState, PluginMenuEntry, PluginMenuNode } from './graphPluginMenu';
+
 interface PluginContextMenuProps {
   pluginMenu: PluginContextMenuState | null;
   pluginMenuRef: React.MutableRefObject<HTMLDivElement | null>;
@@ -13,9 +14,21 @@ interface PluginContextMenuProps {
   onRunPlugin: (plugin: ApiPlugin, context: PluginExecutionContext) => void;
   onRunAnalysis: (profile: ConsoleProfile, context: PluginExecutionContext) => void;
   onSelectLinks: () => void;
-  onSelectEndpoints: () => void;
+  onSelectConnected: () => void;
   onClose: () => void;
 }
+
+const menuButtonStyle: React.CSSProperties = {
+  width: '100%',
+  textAlign: 'left',
+  border: 'none',
+  background: 'transparent',
+  color: '#0f172a',
+  borderRadius: 4,
+  padding: '5px 8px',
+  fontSize: 12,
+  lineHeight: '16px',
+};
 
 export const PluginContextMenu: React.FC<PluginContextMenuProps> = ({
   pluginMenu,
@@ -29,27 +42,20 @@ export const PluginContextMenu: React.FC<PluginContextMenuProps> = ({
   onRunPlugin,
   onRunAnalysis,
   onSelectLinks,
-  onSelectEndpoints,
+  onSelectConnected,
   onClose,
 }) => {
   if (!pluginMenu) return null;
 
   const hasSelectedNodes = !!pluginMenu.context.selected_nodes && pluginMenu.context.selected_nodes.length > 0;
+  const hasSelectedEdges = !!pluginMenu.context.selected_edges && pluginMenu.context.selected_edges.length > 0;
+  const hasSelection = hasSelectedNodes || hasSelectedEdges;
 
   const renderPluginMenuRows = (entries: PluginMenuEntry[], depth = 0): React.ReactNode => (
     <>
       {entries.map((entry) => {
         const rowBaseStyle: React.CSSProperties = {
-          width: '100%',
-          textAlign: 'left',
-          border: 'none',
-          background: 'transparent',
-          color: '#0f172a',
-          borderRadius: 4,
-          padding: '4px 8px',
-          cursor: 'pointer',
-          fontSize: 12,
-          lineHeight: '16px',
+          ...menuButtonStyle,
           display: 'block',
           whiteSpace: 'nowrap',
           paddingLeft: `${8 + depth * 14}px`,
@@ -59,9 +65,9 @@ export const PluginContextMenu: React.FC<PluginContextMenuProps> = ({
           return (
             <button
               key={entry.key}
-              type='button'
+              type="button"
               onClick={() => onRunPlugin(entry.plugin!, pluginMenu.context || {})}
-              style={rowBaseStyle}
+              style={{ ...rowBaseStyle, cursor: 'pointer' }}
             >
               {entry.label}
             </button>
@@ -112,51 +118,35 @@ export const PluginContextMenu: React.FC<PluginContextMenuProps> = ({
       onContextMenu={(event) => event.preventDefault()}
     >
       <button
-        type='button'
+        type="button"
         onClick={() => {
           onSelectLinks();
           onClose();
         }}
         disabled={!hasSelectedNodes}
         style={{
-          width: '100%',
-          textAlign: 'left',
-          border: 'none',
-          background: 'transparent',
-          color: '#0f172a',
-          borderRadius: 4,
-          padding: '5px 8px',
+          ...menuButtonStyle,
           cursor: hasSelectedNodes ? 'pointer' : 'not-allowed',
           opacity: hasSelectedNodes ? 1 : 0.5,
-          fontSize: 12,
-          lineHeight: '16px',
         }}
       >
-        {'Выделить связи'}
+        Выделить связи
       </button>
 
       <button
-        type='button'
+        type="button"
         onClick={() => {
-          onSelectEndpoints();
+          onSelectConnected();
           onClose();
         }}
-        disabled={!hasSelectedNodes}
+        disabled={!hasSelection}
         style={{
-          width: '100%',
-          textAlign: 'left',
-          border: 'none',
-          background: 'transparent',
-          color: '#0f172a',
-          borderRadius: 4,
-          padding: '5px 8px',
-          cursor: hasSelectedNodes ? 'pointer' : 'not-allowed',
-          opacity: hasSelectedNodes ? 1 : 0.5,
-          fontSize: 12,
-          lineHeight: '16px',
+          ...menuButtonStyle,
+          cursor: hasSelection ? 'pointer' : 'not-allowed',
+          opacity: hasSelection ? 1 : 0.5,
         }}
       >
-        {'Выделить окончания'}
+        Выделить связанные
       </button>
 
       <div style={{ height: 1, background: '#eef2f7', margin: '4px 0 6px 0' }} />
@@ -172,21 +162,13 @@ export const PluginContextMenu: React.FC<PluginContextMenuProps> = ({
         analysisProfiles.map((profile) => (
           <button
             key={String(profile.key || profile.id)}
-            type='button'
+            type="button"
             onClick={() => onRunAnalysis(profile, pluginMenu.context || {})}
             disabled={!hasSelectedNodes}
             style={{
-              width: '100%',
-              textAlign: 'left',
-              border: 'none',
-              background: 'transparent',
-              color: '#0f172a',
-              borderRadius: 4,
-              padding: '5px 8px',
+              ...menuButtonStyle,
               cursor: hasSelectedNodes ? 'pointer' : 'not-allowed',
               opacity: hasSelectedNodes ? 1 : 0.5,
-              fontSize: 12,
-              lineHeight: '16px',
             }}
           >
             {profile.name}
@@ -196,15 +178,19 @@ export const PluginContextMenu: React.FC<PluginContextMenuProps> = ({
 
       <div style={{ height: 1, background: '#eef2f7', margin: '4px 0 6px 0' }} />
 
+      <div style={{ padding: '0 8px 4px 8px', fontSize: 11, fontWeight: 700, color: '#475569' }}>
+        Преобразования и AI
+      </div>
+
       {pluginMenu.loading && (
-        <div style={{ fontSize: 12, color: '#334155', padding: '6px 8px' }}>{'Загрузка...'}</div>
+        <div style={{ fontSize: 12, color: '#334155', padding: '6px 8px' }}>Загрузка...</div>
       )}
       {!pluginMenu.loading && pluginMenuTree.length === 0 && (
-        <div style={{ fontSize: 12, color: '#64748b', padding: '6px 8px' }}>{'Нет доступных плагинов'}</div>
+        <div style={{ fontSize: 12, color: '#64748b', padding: '6px 8px' }}>Нет доступных плагинов</div>
       )}
       {!pluginMenu.loading && pluginExecutionMessage && (
         <div style={{ fontSize: 12, color: '#2563eb', padding: '6px 8px' }}>
-          Идет выполнение плагина. Запуск новых плагинов временно заблокирован.
+          Идёт выполнение плагина. Запуск новых плагинов временно заблокирован.
         </div>
       )}
       {!pluginMenu.loading && renderPluginMenuRows(getPluginMenuEntries(null))}
@@ -212,4 +198,4 @@ export const PluginContextMenu: React.FC<PluginContextMenuProps> = ({
   );
 };
 
-
+export default PluginContextMenu;

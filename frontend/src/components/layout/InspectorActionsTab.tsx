@@ -3,6 +3,7 @@ import { artifactApi, consoleApi } from '../../services/api';
 import { fetchArtifacts } from '../../store/slices/artifactsSlice';
 import { useAppDispatch } from '../../store';
 import { loadProjectPeriodDefaults, rememberProjectPeriodDefaults } from '../../utils/pluginParams';
+import { getPluginDisplayDescription, getPluginDisplayName } from '../../utils/pluginMenu';
 import type {
   ApiArtifact,
   ApiPlugin,
@@ -1000,8 +1001,8 @@ export const InspectorActionsTab: React.FC<InspectorActionsTabProps> = ({
                           className={`inspector-actions-plugin-item ${selectedPluginId === plugin.id ? 'active' : ''}`}
                           onClick={() => setSelectedPluginId(plugin.id)}
                         >
-                          <div className="inspector-actions-plugin-name">{plugin.name}</div>
-                          <div className="inspector-actions-plugin-description">{plugin.description}</div>
+                          <div className="inspector-actions-plugin-name">{getPluginDisplayName(plugin)}</div>
+                          <div className="inspector-actions-plugin-description">{getPluginDisplayDescription(plugin)}</div>
                         </button>
                       ))}
                     </div>
@@ -1016,7 +1017,7 @@ export const InspectorActionsTab: React.FC<InspectorActionsTabProps> = ({
               <div className="inspector-actions-step-title">3. Вход и запуск</div>
               <div className="inspector-actions-preview-card">
                 <div className="inspector-actions-preview-meta">
-                  <span>Плагин: <strong>{selectedPlugin.name}</strong></span>
+                  <span>Плагин: <strong>{getPluginDisplayName(selectedPlugin)}</strong></span>
                   <span>Узлов в выделении: <strong>{pluginContext.selected_nodes?.length || 0}</strong></span>
                   <span>Связей в выделении: <strong>{pluginContext.selected_edges?.length || 0}</strong></span>
                 </div>

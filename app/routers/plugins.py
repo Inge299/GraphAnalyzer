@@ -25,12 +25,14 @@ class PluginExecuteRequest(BaseModel):
     input_artifact_ids: List[int] = Field(..., description="Input artifact IDs")
     params: Optional[Dict[str, Any]] = Field(default=None)
     context: Optional[Dict[str, Any]] = Field(default=None, description="Selection/runtime context")
+    artifact_data_override: Optional[Any] = Field(default=None, description="Live artifact data override from client")
 
 
 class ApplicablePluginsRequest(BaseModel):
     project_id: int = Field(..., description="Project ID")
     artifact_id: int = Field(..., description="Target artifact ID")
     context: Optional[Dict[str, Any]] = Field(default=None, description="Selection/runtime context")
+    artifact_data_override: Optional[Any] = Field(default=None, description="Live artifact data override from client")
 
 
 class PluginSelectionRulesResponse(BaseModel):
@@ -187,7 +189,7 @@ async def list_applicable_plugins(
         "type": artifact.type,
         "name": artifact.name,
         "description": artifact.description,
-        "data": artifact.data,
+        "data": request.artifact_data_override if request.artifact_data_override is not None else artifact.data,
         "metadata": artifact.artifact_metadata,
     }
 
@@ -270,7 +272,7 @@ async def execute_plugin(
             "type": artifact.type,
             "name": artifact.name,
             "description": artifact.description,
-            "data": artifact.data,
+            "data": request.artifact_data_override if request.artifact_data_override is not None and artifact.id == request.input_artifact_ids[0] else artifact.data,
             "metadata": artifact.artifact_metadata
         }
         for artifact in artifacts

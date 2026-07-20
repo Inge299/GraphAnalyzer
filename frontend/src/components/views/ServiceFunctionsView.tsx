@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { consoleApi, projectDataApi } from '../../services/api';
 import type {
   ConsoleDataSource,
@@ -7,13 +7,16 @@ import type {
   ConsoleProcedureParam,
   ConsoleProcedureResultSet,
   ConsoleProfile,
+  ProjectDataLoadResponse,
 } from '../../types/api';
 import './ServiceFunctionsView.css';
 
-type ServiceCategory = 'cell_towers' | 'project_data' | 'console_registry';
+export type ServiceCategory = 'cell_towers' | 'project_data' | 'console_registry';
 
 interface ServiceFunctionsViewProps {
   projectId: number | null;
+  initialCategory?: ServiceCategory;
+  mode?: 'full' | 'project_data_only';
 }
 
 interface ProcedureParamFormItem {
@@ -54,6 +57,14 @@ interface ObjectTypeMappingFormItem {
   is_active: boolean;
 }
 
+interface ProjectDataSelectedFileItem {
+  id: string;
+  file: File;
+  name: string;
+  kind: string;
+  sizeBytes: number;
+}
+
 const categoryLabels: Record<ServiceCategory, string> = {
   cell_towers: 'Справочник БС',
   project_data: 'Данные проекта',
@@ -61,6 +72,28 @@ const categoryLabels: Record<ServiceCategory, string> = {
 };
 
 const defaultReferencePath = 'reference/cell_towers_full.csv';
+
+const detectProjectDataFileKind = (fileName: string): string => {
+  const normalized = fileName.trim().toLowerCase();
+  if (normalized.includes('communications')) return 'Связи абонентов';
+  if (normalized.includes('device_history')) return 'История устройств';
+  if (normalized.includes('location_events')) return 'События локаций';
+  if (normalized.includes('ip_bindings')) return 'IP-привязки';
+  if (normalized.includes('manifest')) return 'Манифест';
+  return 'Прочее';
+};
+
+const formatBytes = (sizeBytes: number): string => {
+  if (!Number.isFinite(sizeBytes) || sizeBytes <= 0) return '0 Б';
+  const units = ['Б', 'КБ', 'МБ', 'ГБ'];
+  let value = sizeBytes;
+  let unitIndex = 0;
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+  return `${value >= 10 || unitIndex === 0 ? value.toFixed(0) : value.toFixed(1)} ${units[unitIndex]}`;
+};
 
 const paramTypeOptions = [
   { value: 'string', label: 'Строка' },
@@ -168,7 +201,7 @@ const defaultProcedureForm = {
     {
       ...createDefaultProcedureParam(),
       name: 'selection_json',
-      label: 'Выделение графа (JSON)',
+      label: 'Р’С‹РґРµР»РµРЅРёРµ РіСЂР°С„Р° (JSON)',
       type: 'json',
       binding_mode: 'selection_json',
     },
@@ -180,14 +213,14 @@ const createObjectsAnalysisParamPreset = (): ProcedureParamFormItem[] => [
   {
     ...createDefaultProcedureParam(),
     name: 'Objects',
-    label: 'Объекты',
+    label: 'РћР±СЉРµРєС‚С‹',
     type: 'string',
     binding_mode: 'selected_node_labels_csv',
   },
   {
     ...createDefaultProcedureParam(),
     name: 'ObjectsType',
-    label: 'Типы объектов',
+    label: 'РўРёРїС‹ РѕР±СЉРµРєС‚РѕРІ',
     type: 'string',
     binding_mode: 'selected_node_types_csv',
   },
@@ -202,14 +235,14 @@ const createObjectsAnalysisParamPreset = (): ProcedureParamFormItem[] => [
   {
     ...createDefaultProcedureParam(),
     name: 'BegTime',
-    label: 'Начало периода',
+    label: 'РќР°С‡Р°Р»Рѕ РїРµСЂРёРѕРґР°',
     type: 'date',
     binding_mode: 'manual',
   },
   {
     ...createDefaultProcedureParam(),
     name: 'EndTime',
-    label: 'Конец периода',
+    label: 'РљРѕРЅРµС† РїРµСЂРёРѕРґР°',
     type: 'date',
     binding_mode: 'manual',
   },
@@ -222,11 +255,29 @@ const formatDateTime = (value: unknown): string => {
   return dt.toLocaleString('ru-RU');
 };
 
+const isTimeoutError = (error: unknown): boolean => {
+  if (error instanceof Error) {
+    const message = String(error.message || '').toLowerCase();
+    return message.includes('timeout');
+  }
+  const message = String((error as any)?.message || '').toLowerCase();
+  return message.includes('timeout');
+};
+
+const getRequestErrorMessage = (error: unknown, fallback: string, timeoutMessage?: string): string => {
+  const detail = (error as any)?.response?.data?.detail;
+  if (typeof detail === 'string' && detail.trim()) return detail;
+  if (timeoutMessage && isTimeoutError(error)) return timeoutMessage;
+  if (error instanceof Error && error.message) return error.message;
+  const message = String((error as any)?.message || '').trim();
+  return message || fallback;
+};
+
 const parseJsonInput = <T,>(raw: string, fallbackLabel: string): T => {
   try {
     return JSON.parse(raw) as T;
   } catch (error) {
-    throw new Error(`${fallbackLabel}: некорректный JSON`);
+    throw new Error(`${fallbackLabel}: РЅРµРєРѕСЂСЂРµРєС‚РЅС‹Р№ JSON`);
   }
 };
 
@@ -258,7 +309,7 @@ const mapResultSetToForm = (resultSet: ConsoleProcedureResultSet, index: number)
   id: createLocalId('result-set'),
   result_index: String(resultSet.result_index || index + 1),
   result_key: String(resultSet.result_key || `result_${index + 1}`).trim(),
-  name: String(resultSet.name || `Результат ${index + 1}`).trim(),
+  name: String(resultSet.name || `Р РµР·СѓР»СЊС‚Р°С‚ ${index + 1}`).trim(),
   visible: resultSet.visible !== false,
   columns: Array.isArray(resultSet.columns) ? resultSet.columns.map(mapColumnToForm) : [],
 });
@@ -333,8 +384,12 @@ const buildResultSetsPayload = (items: ProcedureResultSetFormItem[]) =>
     })
     .filter(Boolean);
 
-const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }) => {
-  const [activeCategory, setActiveCategory] = useState<ServiceCategory>('cell_towers');
+const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({
+  projectId,
+  initialCategory = 'cell_towers',
+  mode = 'full',
+}) => {
+  const [activeCategory, setActiveCategory] = useState<ServiceCategory>(initialCategory);
 
   const [referencePath, setReferencePath] = useState(defaultReferencePath);
   const [cellStats, setCellStats] = useState<any | null>(null);
@@ -344,6 +399,11 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
 
   const [projectStats, setProjectStats] = useState<any | null>(null);
   const [projectStatsLoading, setProjectStatsLoading] = useState(false);
+  const [projectDataLoading, setProjectDataLoading] = useState(false);
+  const [projectDataClearing, setProjectDataClearing] = useState(false);
+  const [projectDataLoadReport, setProjectDataLoadReport] = useState<any | null>(null);
+  const [projectDataLastLoadResult, setProjectDataLastLoadResult] = useState<ProjectDataLoadResponse | null>(null);
+  const [projectDataSelectedFiles, setProjectDataSelectedFiles] = useState<ProjectDataSelectedFileItem[]>([]);
   const [enrichLoading, setEnrichLoading] = useState(false);
   const [enrichReport, setEnrichReport] = useState<any | null>(null);
 
@@ -362,15 +422,38 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
 
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [projectStatsError, setProjectStatsError] = useState<string | null>(null);
+  const [cellStatsError, setCellStatsError] = useState<string | null>(null);
+  const projectDataFilesInputRef = useRef<HTMLInputElement | null>(null);
+  const projectDataFileInputId = 'project-data-files-input';
+
+  const projectDataSelectedSummary = useMemo(() => {
+    const totalSizeBytes = projectDataSelectedFiles.reduce((sum, item) => sum + item.sizeBytes, 0);
+    const byKind = projectDataSelectedFiles.reduce<Record<string, number>>((acc, item) => {
+      acc[item.kind] = (acc[item.kind] || 0) + 1;
+      return acc;
+    }, {});
+    return {
+      totalFiles: projectDataSelectedFiles.length,
+      totalSizeBytes,
+      byKind: Object.entries(byKind),
+    };
+  }, [projectDataSelectedFiles]);
 
   const fetchCellStats = useCallback(async () => {
     setCellStatsLoading(true);
-    setError(null);
+    setCellStatsError(null);
     try {
       const stats = await projectDataApi.cellTowerStats();
       setCellStats(stats);
     } catch (err: any) {
-      setError(String(err?.response?.data?.detail || err?.message || 'Не удалось получить статистику справочника БС'));
+      setCellStatsError(
+        getRequestErrorMessage(
+          err,
+          'Не удалось получить статистику справочника БС',
+          'Статистика справочника БС обновляется дольше обычного. Попробуй повторить через минуту.',
+        ),
+      );
     } finally {
       setCellStatsLoading(false);
     }
@@ -382,16 +465,151 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
       return;
     }
     setProjectStatsLoading(true);
-    setError(null);
+    setProjectStatsError(null);
     try {
       const stats = await projectDataApi.stats(projectId);
       setProjectStats(stats);
     } catch (err: any) {
-      setError(String(err?.response?.data?.detail || err?.message || 'Не удалось получить статистику проекта'));
+      setProjectStatsError(
+        getRequestErrorMessage(
+          err,
+          'Не удалось получить статистику проекта',
+          'Статистика проекта обновляется дольше обычного. Попробуй повторить через минуту.',
+        ),
+      );
     } finally {
       setProjectStatsLoading(false);
     }
   }, [projectId]);
+
+  const handleLoadProjectDataFiles = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? []);
+    event.target.value = '';
+    if (files.length === 0) return;
+    setError(null);
+    setProjectDataLoadReport(null);
+    setProjectDataLastLoadResult(null);
+    setMessage(`Выбрано файлов: ${files.length}. Проверь список и нажми «Загрузить выбранные».`);
+    setProjectDataSelectedFiles((prev) => {
+      const known = new Set(prev.map((item) => `${item.name}::${item.sizeBytes}::${item.file.lastModified}`));
+      const next = [...prev];
+      files.forEach((file) => {
+        const key = `${file.name}::${file.size}::${file.lastModified}`;
+        if (known.has(key)) return;
+        next.push({
+          id: createLocalId('project-file'),
+          file,
+          name: file.name,
+          kind: detectProjectDataFileKind(file.name),
+          sizeBytes: file.size,
+        });
+        known.add(key);
+      });
+      return next;
+    });
+  }, []);
+
+  const handleRemoveProjectDataFile = useCallback((fileId: string) => {
+    setProjectDataSelectedFiles((prev) => prev.filter((item) => item.id !== fileId));
+  }, []);
+
+  const handleClearProjectDataSelection = useCallback(() => {
+    setProjectDataSelectedFiles([]);
+    setMessage(null);
+  }, []);
+
+  const handleUploadProjectData = useCallback(async () => {
+    if (!projectId || projectDataSelectedFiles.length === 0) return;
+
+    const files = projectDataSelectedFiles.map((item) => item.file);
+    setProjectDataLoading(true);
+    setError(null);
+    setMessage(null);
+    setProjectDataLoadReport(null);
+    setProjectDataLastLoadResult(null);
+
+    try {
+      const result = await projectDataApi.loadFromFiles(projectId, files);
+      const totalRead =
+        Number(result.communications_rows || 0) +
+        Number(result.device_history_rows || 0) +
+        Number(result.location_events_rows || 0) +
+        Number(result.ip_bindings_rows || 0) +
+        Number(result.user_msisdn_facts_rows || 0) +
+        Number(result.ip_msisdn_facts_rows || 0) +
+        Number(result.msisdn_device_facts_rows || 0) +
+        Number(result.msisdn_text_facts_rows || 0);
+      const totalInserted =
+        Number(result.inserted_communications || 0) +
+        Number(result.inserted_device_history || 0) +
+        Number(result.inserted_location_events || 0) +
+        Number(result.inserted_ip_bindings || 0) +
+        Number(result.inserted_user_msisdn_facts || 0) +
+        Number(result.inserted_ip_msisdn_facts || 0) +
+        Number(result.inserted_msisdn_device_facts || 0) +
+        Number(result.inserted_msisdn_text_facts || 0);
+
+      setMessage(`Данные проекта загружены: прочитано ${totalRead} строк, добавлено ${totalInserted}.`);
+      setProjectDataLastLoadResult(result);
+      if (result.load_log) {
+        setProjectDataLoadReport(result.load_log);
+      }
+      setProjectDataSelectedFiles([]);
+      try {
+        await Promise.all([fetchProjectStats(), fetchCellStats()]);
+      } catch {
+        setMessage(
+          `Данные проекта загружены: прочитано ${totalRead} строк, добавлено ${totalInserted}. Статистика обновится чуть позже.`,
+        );
+      }
+    } catch (err: any) {
+      setError(
+        getRequestErrorMessage(
+          err,
+          'Не удалось загрузить данные проекта',
+          'Загрузка данных проекта выполняется слишком долго. Попробуй повторить запуск и дай операции больше времени.',
+        ),
+      );
+    } finally {
+      setProjectDataLoading(false);
+    }
+  }, [fetchCellStats, fetchProjectStats, projectDataSelectedFiles, projectId]);
+
+  const handleClearProjectData = useCallback(async () => {
+    if (!projectId) return;
+    const confirmed = window.confirm(`Очистить данные проекта?\n\nProject ID: ${projectId}`);
+    if (!confirmed) return;
+
+    setProjectDataClearing(true);
+    setError(null);
+    setMessage(null);
+    setProjectDataLoadReport(null);
+    setProjectDataLastLoadResult(null);
+
+    try {
+      const result = await projectDataApi.clear(projectId);
+      setMessage(
+        `Данные проекта очищены: удалено связей ${result.communications_deleted || 0}, устройств ${result.device_history_deleted || 0}, локаций ${result.location_events_deleted || 0}, IP ${result.ip_bindings_deleted || 0}.`,
+      );
+      try {
+        await fetchProjectStats();
+      } catch {
+        setMessage(
+          `Данные проекта очищены: удалено связей ${result.communications_deleted || 0}, устройств ${result.device_history_deleted || 0}, локаций ${result.location_events_deleted || 0}, IP ${result.ip_bindings_deleted || 0}. Статистика обновится чуть позже.`,
+        );
+      }
+    } catch (err: any) {
+      setError(
+        getRequestErrorMessage(
+          err,
+          'Не удалось очистить данные проекта',
+          'Очистка данных проекта выполняется дольше обычного. Попробуй повторить через минуту.',
+        ),
+      );
+    } finally {
+      setProjectDataClearing(false);
+    }
+  }, [fetchProjectStats, projectId]);
 
   const fetchConsoleRegistry = useCallback(async () => {
     setConsoleLoading(true);
@@ -436,10 +654,19 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
       const report = await projectDataApi.enrichCellTowersByProjectAddresses(projectId);
       setEnrichReport(report);
       setMessage('Справочник БС обогащён по адресам из данных проекта');
-      await fetchCellStats();
-      await fetchProjectStats();
+      try {
+        await Promise.all([fetchCellStats(), fetchProjectStats()]);
+      } catch {
+        setMessage('Справочник БС обогащён по адресам из данных проекта. Статистика обновится чуть позже.');
+      }
     } catch (err: any) {
-      setError(String(err?.response?.data?.detail || err?.message || 'Не удалось обогатить справочник по адресам'));
+      setError(
+        getRequestErrorMessage(
+          err,
+          'Не удалось обогатить справочник по адресам',
+          'Обогащение справочника БС по адресам выполняется дольше обычного. Попробуй повторить позже или увеличить объём времени на операцию.',
+        ),
+      );
     } finally {
       setEnrichLoading(false);
     }
@@ -458,6 +685,18 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
       void fetchConsoleRegistry();
     }
   }, [activeCategory, fetchConsoleRegistry]);
+
+  useEffect(() => {
+    setActiveCategory(initialCategory);
+    setMessage(null);
+    setError(null);
+  }, [initialCategory]);
+
+  useEffect(() => {
+    setProjectDataSelectedFiles([]);
+    setProjectDataLoadReport(null);
+    setProjectDataLastLoadResult(null);
+  }, [projectId]);
 
   const handleLoadReference = useCallback(async () => {
     const path = referencePath.trim();
@@ -480,14 +719,15 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
     }
   }, [referencePath, fetchCellStats]);
 
-  const categories = useMemo(() => (Object.keys(categoryLabels) as ServiceCategory[]), []);
-
-  const locationCoverage = useMemo(() => {
-    const total = Number(projectStats?.location_timeline_count || 0);
-    const geocoded = Number(projectStats?.location_timeline_geocoded_count || 0);
-    if (!total) return '0%';
-    return `${((geocoded / total) * 100).toFixed(1)}%`;
-  }, [projectStats]);
+  const categories = useMemo<ServiceCategory[]>(
+    () =>
+      mode === 'project_data_only'
+        ? ['project_data']
+        : (Object.keys(categoryLabels) as ServiceCategory[]).filter(
+            (category): category is Exclude<ServiceCategory, 'project_data'> => category !== 'project_data',
+          ),
+    [mode],
+  );
 
   const selectedSource = useMemo(
     () => consoleDataSources.find((item) => item.key === selectedSourceKey) || null,
@@ -610,20 +850,20 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
         auth_type: dataSourceForm.auth_type.trim() || 'sql',
         dbms: dataSourceForm.dbms.trim() || 'mssql',
         is_active: dataSourceForm.is_active,
-        options: parseJsonInput<Record<string, any>>(dataSourceForm.optionsText || '{}', 'Опции datasource'),
+        options: parseJsonInput<Record<string, any>>(dataSourceForm.optionsText || '{}', 'РћРїС†РёРё datasource'),
       };
 
       if (selectedSourceKey) {
         await consoleApi.updateDataSource(selectedSourceKey, payload);
-        setMessage(`Источник данных ${payload.key} обновлён`);
+        setMessage(`РСЃС‚РѕС‡РЅРёРє РґР°РЅРЅС‹С… ${payload.key} РѕР±РЅРѕРІР»С‘РЅ`);
       } else {
         await consoleApi.createDataSource(payload);
-        setMessage(`Источник данных ${payload.key} создан`);
+        setMessage(`РСЃС‚РѕС‡РЅРёРє РґР°РЅРЅС‹С… ${payload.key} СЃРѕР·РґР°РЅ`);
       }
       await fetchConsoleRegistry();
       setSelectedSourceKey(payload.key);
     } catch (err: any) {
-      setError(String(err?.response?.data?.detail || err?.message || 'Не удалось сохранить источник данных'));
+      setError(String(err?.response?.data?.detail || err?.message || 'РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕС…СЂР°РЅРёС‚СЊ РёСЃС‚РѕС‡РЅРёРє РґР°РЅРЅС‹С…'));
     } finally {
       setConsoleSaving(false);
     }
@@ -631,7 +871,7 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
 
   const handleTestDataSource = useCallback(async () => {
     if (!selectedSourceKey) {
-      setError('Сначала выбери или сохрани datasource');
+      setError('РЎРЅР°С‡Р°Р»Р° РІС‹Р±РµСЂРё РёР»Рё СЃРѕС…СЂР°РЅРё datasource');
       return;
     }
     setConsoleTestingSource(true);
@@ -643,7 +883,7 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
         `${response.message}. Server: ${response.server_name || 'unknown'}, DB: ${response.database_name || 'unknown'}`,
       );
     } catch (err: any) {
-      setError(String(err?.response?.data?.detail || err?.message || 'Не удалось проверить подключение'));
+      setError(String(err?.response?.data?.detail || err?.message || 'РќРµ СѓРґР°Р»РѕСЃСЊ РїСЂРѕРІРµСЂРёС‚СЊ РїРѕРґРєР»СЋС‡РµРЅРёРµ'));
     } finally {
       setConsoleTestingSource(false);
     }
@@ -651,11 +891,11 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
 
   const handleDeleteDataSource = useCallback(async () => {
     if (!selectedSourceKey || !selectedSource) {
-      setError('Сначала выбери datasource для удаления');
+      setError('РЎРЅР°С‡Р°Р»Р° РІС‹Р±РµСЂРё datasource РґР»СЏ СѓРґР°Р»РµРЅРёСЏ');
       return;
     }
     const confirmed = window.confirm(
-      `Удалить источник данных "${selectedSource.name}" (${selectedSource.key})?`,
+      `РЈРґР°Р»РёС‚СЊ РёСЃС‚РѕС‡РЅРёРє РґР°РЅРЅС‹С… "${selectedSource.name}" (${selectedSource.key})?`,
     );
     if (!confirmed) return;
 
@@ -668,7 +908,7 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
       await fetchConsoleRegistry();
       resetDataSourceForm();
     } catch (err: any) {
-      setError(String(err?.response?.data?.detail || err?.message || 'Не удалось удалить источник данных'));
+      setError(String(err?.response?.data?.detail || err?.message || 'РќРµ СѓРґР°Р»РѕСЃСЊ СѓРґР°Р»РёС‚СЊ РёСЃС‚РѕС‡РЅРёРє РґР°РЅРЅС‹С…'));
     } finally {
       setConsoleSaving(false);
     }
@@ -712,9 +952,9 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
       setConsoleObjectTypeMappings(
         items.length ? items.map(mapObjectTypeMappingToForm) : defaultObjectTypeMappings.map((item) => ({ ...item })),
       );
-      setMessage('Соответствия типов объектов сохранены');
+      setMessage('РЎРѕРѕС‚РІРµС‚СЃС‚РІРёСЏ С‚РёРїРѕРІ РѕР±СЉРµРєС‚РѕРІ СЃРѕС…СЂР°РЅРµРЅС‹');
     } catch (err: any) {
-      setError(String(err?.response?.data?.detail || err?.message || 'Не удалось сохранить соответствия типов объектов'));
+      setError(String(err?.response?.data?.detail || err?.message || 'РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕС…СЂР°РЅРёС‚СЊ СЃРѕРѕС‚РІРµС‚СЃС‚РІРёСЏ С‚РёРїРѕРІ РѕР±СЉРµРєС‚РѕРІ'));
     } finally {
       setConsoleSaving(false);
     }
@@ -742,15 +982,15 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
 
       if (selectedProcedureKey) {
         await consoleApi.updateProcedure(selectedProcedureKey, payload);
-        setMessage(`Процедура ${payload.key} обновлена`);
+        setMessage(`РџСЂРѕС†РµРґСѓСЂР° ${payload.key} РѕР±РЅРѕРІР»РµРЅР°`);
       } else {
         await consoleApi.createProcedure(payload);
-        setMessage(`Процедура ${payload.key} зарегистрирована`);
+        setMessage(`РџСЂРѕС†РµРґСѓСЂР° ${payload.key} Р·Р°СЂРµРіРёСЃС‚СЂРёСЂРѕРІР°РЅР°`);
       }
       await fetchConsoleRegistry();
       setSelectedProcedureKey(payload.key);
     } catch (err: any) {
-      setError(String(err?.response?.data?.detail || err?.message || 'Не удалось сохранить процедуру'));
+      setError(String(err?.response?.data?.detail || err?.message || 'РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕС…СЂР°РЅРёС‚СЊ РїСЂРѕС†РµРґСѓСЂСѓ'));
     } finally {
       setConsoleSaving(false);
     }
@@ -758,11 +998,11 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
 
   const handleDeleteProcedure = useCallback(async () => {
     if (!selectedProcedureKey || !selectedProcedure) {
-      setError('Сначала выбери процедуру для удаления');
+      setError('РЎРЅР°С‡Р°Р»Р° РІС‹Р±РµСЂРё РїСЂРѕС†РµРґСѓСЂСѓ РґР»СЏ СѓРґР°Р»РµРЅРёСЏ');
       return;
     }
     const confirmed = window.confirm(
-      `Удалить зарегистрированную процедуру "${selectedProcedure.name}" (${selectedProcedure.key || selectedProcedure.id})?`,
+      `РЈРґР°Р»РёС‚СЊ Р·Р°СЂРµРіРёСЃС‚СЂРёСЂРѕРІР°РЅРЅСѓСЋ РїСЂРѕС†РµРґСѓСЂСѓ "${selectedProcedure.name}" (${selectedProcedure.key || selectedProcedure.id})?`,
     );
     if (!confirmed) return;
 
@@ -775,7 +1015,7 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
       await fetchConsoleRegistry();
       resetProcedureForm();
     } catch (err: any) {
-      setError(String(err?.response?.data?.detail || err?.message || 'Не удалось удалить процедуру'));
+      setError(String(err?.response?.data?.detail || err?.message || 'РќРµ СѓРґР°Р»РѕСЃСЊ СѓРґР°Р»РёС‚СЊ РїСЂРѕС†РµРґСѓСЂСѓ'));
     } finally {
       setConsoleSaving(false);
     }
@@ -783,7 +1023,7 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
 
   const handleDuplicateProcedureTemplate = useCallback(() => {
     if (!selectedProcedure) {
-      setError('Сначала выбери процедуру, которую хочешь взять как шаблон');
+      setError('РЎРЅР°С‡Р°Р»Р° РІС‹Р±РµСЂРё РїСЂРѕС†РµРґСѓСЂСѓ, РєРѕС‚РѕСЂСѓСЋ С…РѕС‡РµС€СЊ РІР·СЏС‚СЊ РєР°Рє С€Р°Р±Р»РѕРЅ');
       return;
     }
 
@@ -793,7 +1033,7 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
     setSelectedProcedureKey('');
     setProcedureForm({
       key: baseKey ? `${baseKey}_copy` : '',
-      name: baseName ? `${baseName} (копия)` : '',
+      name: baseName ? `${baseName} (РєРѕРїРёСЏ)` : '',
       description: selectedProcedure.description || '',
       source_key: selectedProcedure.source_key || '',
       schema_name: selectedProcedure.schema_name || 'dbo',
@@ -809,7 +1049,7 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
         ? selectedProcedure.result_sets.map(mapResultSetToForm)
         : [createDefaultResultSet()],
     });
-    setMessage(`Процедура "${selectedProcedure.name}" скопирована в форму как шаблон`);
+    setMessage(`РџСЂРѕС†РµРґСѓСЂР° "${selectedProcedure.name}" СЃРєРѕРїРёСЂРѕРІР°РЅР° РІ С„РѕСЂРјСѓ РєР°Рє С€Р°Р±Р»РѕРЅ`);
     setError(null);
   }, [selectedProcedure]);
 
@@ -843,7 +1083,7 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
       supports_graph_selection: true,
       params: createObjectsAnalysisParamPreset(),
     }));
-    setMessage('Шаблон параметров для анализа объектов применён');
+    setMessage('РЁР°Р±Р»РѕРЅ РїР°СЂР°РјРµС‚СЂРѕРІ РґР»СЏ Р°РЅР°Р»РёР·Р° РѕР±СЉРµРєС‚РѕРІ РїСЂРёРјРµРЅС‘РЅ');
     setError(null);
   };
 
@@ -870,7 +1110,7 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
           ...createDefaultResultSet(),
           result_index: String(prev.resultSets.length + 1),
           result_key: `result_${prev.resultSets.length + 1}`,
-          name: `Результат ${prev.resultSets.length + 1}`,
+          name: `Р РµР·СѓР»СЊС‚Р°С‚ ${prev.resultSets.length + 1}`,
         },
       ],
     }));
@@ -924,9 +1164,9 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
   };
 
   return (
-    <div className="service-screen">
-      <aside className="service-screen-sidebar">
-        <div className="service-screen-title">Сервисные функции</div>
+    <div className={`service-screen ${mode === 'project_data_only' ? 'project-data-only' : ''}`}>
+      {mode === 'full' && <aside className="service-screen-sidebar">
+        <div className="service-screen-title">РЎРµСЂРІРёСЃРЅС‹Рµ С„СѓРЅРєС†РёРё</div>
         {categories.map((category) => (
           <button
             key={category}
@@ -941,7 +1181,7 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
             {categoryLabels[category]}
           </button>
         ))}
-      </aside>
+      </aside>}
 
       <section className="service-screen-content">
         {message && <div className="service-screen-banner success">{message}</div>}
@@ -949,12 +1189,12 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
 
         {activeCategory === 'cell_towers' && (
           <div className="service-card">
-            <h3>Загрузка справочника базовых станций</h3>
+            <h3>Р—Р°РіСЂСѓР·РєР° СЃРїСЂР°РІРѕС‡РЅРёРєР° Р±Р°Р·РѕРІС‹С… СЃС‚Р°РЅС†РёР№</h3>
             <p className="service-card-hint">
-              Загрузка полностью заменяет текущий справочник БС. Используется при определении координат по MCC/MNC/LAC/CID и fallback LAC/CID.
+              Р—Р°РіСЂСѓР·РєР° РїРѕР»РЅРѕСЃС‚СЊСЋ Р·Р°РјРµРЅСЏРµС‚ С‚РµРєСѓС‰РёР№ СЃРїСЂР°РІРѕС‡РЅРёРє Р‘РЎ. РСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ РїСЂРё РѕРїСЂРµРґРµР»РµРЅРёРё РєРѕРѕСЂРґРёРЅР°С‚ РїРѕ MCC/MNC/LAC/CID Рё fallback LAC/CID.
             </p>
 
-            <label className="service-label">Путь к CSV (относительно /app/data)</label>
+            <label className="service-label">РџСѓС‚СЊ Рє CSV (РѕС‚РЅРѕСЃРёС‚РµР»СЊРЅРѕ /app/data)</label>
             <div className="service-row">
               <input
                 className="service-input"
@@ -969,7 +1209,7 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
                 onClick={() => void handleLoadReference()}
                 disabled={cellLoadLoading}
               >
-                {cellLoadLoading ? 'Загрузка...' : 'Загрузить'}
+                {cellLoadLoading ? 'Р—Р°РіСЂСѓР·РєР°...' : 'Р—Р°РіСЂСѓР·РёС‚СЊ'}
               </button>
               <button
                 type="button"
@@ -977,17 +1217,17 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
                 onClick={() => void fetchCellStats()}
                 disabled={cellStatsLoading}
               >
-                {cellStatsLoading ? 'Обновление...' : 'Обновить статистику'}
+                {cellStatsLoading ? 'РћР±РЅРѕРІР»РµРЅРёРµ...' : 'РћР±РЅРѕРІРёС‚СЊ СЃС‚Р°С‚РёСЃС‚РёРєСѓ'}
               </button>
             </div>
 
             <div className="service-report-grid">
               <div className="service-report-item">
-                <span>Записей в справочнике</span>
+                <span>Р—Р°РїРёСЃРµР№ РІ СЃРїСЂР°РІРѕС‡РЅРёРєРµ</span>
                 <strong>{cellStats?.cell_tower_reference_count ?? 0}</strong>
               </div>
               <div className="service-report-item">
-                <span>Последняя загрузка</span>
+                <span>РџРѕСЃР»РµРґРЅСЏСЏ Р·Р°РіСЂСѓР·РєР°</span>
                 <strong>{formatDateTime(cellStats?.last_loaded_at)}</strong>
               </div>
             </div>
@@ -1000,25 +1240,63 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
 
         {activeCategory === 'project_data' && (
           <div className="service-card">
-            <h3>Состояние данных проекта</h3>
+            <h3>Данные проекта</h3>
             <p className="service-card-hint">
-              Сводная статистика загруженных данных и производных таблиц по активному проекту.
+              Здесь можно загрузить или очистить исходные данные проекта, а также посмотреть краткую статистику и производные таблицы.
             </p>
 
             <div className="service-row">
+              <input
+                ref={projectDataFilesInputRef}
+                id={projectDataFileInputId}
+                type="file"
+                multiple
+                className="service-file-input"
+                onChange={handleLoadProjectDataFiles}
+              />
+              <label
+                htmlFor={projectDataFileInputId}
+                className={`service-btn file-picker ${!projectId || projectDataLoading || projectDataClearing ? 'disabled' : ''}`}
+              >
+                Выбрать файлы
+              </label>
               <button
                 type="button"
                 className="service-btn"
                 onClick={() => void fetchProjectStats()}
-                disabled={!projectId || projectStatsLoading}
+                disabled={!projectId || projectStatsLoading || projectDataLoading || projectDataClearing}
               >
-                {projectStatsLoading ? 'Обновление...' : 'Обновить статистику проекта'}
+                {projectStatsLoading ? 'Обновление...' : 'Обновить статистику'}
               </button>
               <button
                 type="button"
                 className="service-btn primary"
+                onClick={() => void handleUploadProjectData()}
+                disabled={!projectId || projectDataLoading || projectDataClearing || projectDataSelectedFiles.length === 0}
+              >
+                {projectDataLoading ? 'Загрузка...' : 'Загрузить выбранные'}
+              </button>
+              <button
+                type="button"
+                className="service-btn"
+                onClick={handleClearProjectDataSelection}
+                disabled={projectDataLoading || projectDataSelectedFiles.length === 0}
+              >
+                Очистить список
+              </button>
+              <button
+                type="button"
+                className="service-btn danger"
+                onClick={() => void handleClearProjectData()}
+                disabled={!projectId || projectDataLoading || projectDataClearing}
+              >
+                {projectDataClearing ? 'Очистка...' : 'Очистить данные'}
+              </button>
+              <button
+                type="button"
+                className="service-btn"
                 onClick={() => void handleEnrichCellTowersByAddress()}
-                disabled={!projectId || enrichLoading}
+                disabled={!projectId || enrichLoading || projectDataLoading || projectDataClearing}
                 title="Добавить в справочник БС координаты по совпадающим адресам из данных проекта"
               >
                 {enrichLoading ? 'Обогащение...' : 'Обогатить БС по адресам'}
@@ -1026,30 +1304,194 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
             </div>
 
             {!projectId ? (
-              <div className="service-empty">Выбери проект в левой панели, чтобы увидеть статистику.</div>
+              <div className="service-empty">Выбери проект в левой панели, чтобы работать с его данными.</div>
             ) : (
               <>
-                <div className="service-report-grid">
-                  <div className="service-report-item">
-                    <span>Периодов локаций (всего)</span>
-                    <strong>{projectStats?.location_timeline_count ?? 0}</strong>
+                <div className="service-upload-panel">
+                  <div className="service-upload-summary">
+                    <div className="service-upload-summary-item">
+                      <span>Выбрано файлов</span>
+                      <strong>{projectDataSelectedSummary.totalFiles}</strong>
+                    </div>
+                    <div className="service-upload-summary-item">
+                      <span>Общий размер</span>
+                      <strong>{formatBytes(projectDataSelectedSummary.totalSizeBytes)}</strong>
+                    </div>
+                    <div className="service-upload-summary-kinds">
+                      {projectDataSelectedSummary.byKind.length > 0 ? (
+                        projectDataSelectedSummary.byKind.map(([kind, count]) => (
+                          <span key={kind} className="service-upload-kind-chip">{kind}: {count}</span>
+                        ))
+                      ) : (
+                         <span className="service-upload-placeholder">Выбери набор файлов для загрузки данных проекта.</span>
+                      )}
+                    </div>
                   </div>
-                  <div className="service-report-item">
-                    <span>Периодов с координатами</span>
-                    <strong>{projectStats?.location_timeline_geocoded_count ?? 0}</strong>
+
+                  {projectDataSelectedFiles.length > 0 && (
+                    <div className="service-upload-file-list">
+                      {projectDataSelectedFiles.map((item) => (
+                        <div key={item.id} className="service-upload-file-item">
+                          <div className="service-upload-file-main">
+                            <div className="service-upload-file-name">{item.name}</div>
+                            <div className="service-upload-file-meta">
+                              <span>{item.kind}</span>
+                              <span>{formatBytes(item.sizeBytes)}</span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            className="service-upload-file-remove"
+                            onClick={() => handleRemoveProjectDataFile(item.id)}
+                            title="Убрать файл из списка"
+                          >
+                            Убрать
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {projectDataLastLoadResult && (
+                  <div className="service-summary-block">
+                    <div className="service-summary-header">
+                      <h4>Итог последней загрузки</h4>
+                      <p>Показываем, сколько записей обработано и сколько из них реально добавилось в проект.</p>
+                    </div>
+                    <div className="service-report-grid">
+                      <div className="service-report-item">
+                        <span>Связи</span>
+                        <strong>
+                          добавлено {projectDataLastLoadResult.inserted_communications} из {projectDataLastLoadResult.communications_rows}
+                        </strong>
+                      </div>
+                      <div className="service-report-item">
+                        <span>Устройства</span>
+                        <strong>
+                          добавлено {projectDataLastLoadResult.inserted_device_history} из {projectDataLastLoadResult.device_history_rows}
+                        </strong>
+                      </div>
+                      <div className="service-report-item">
+                        <span>Локации</span>
+                        <strong>
+                          добавлено {projectDataLastLoadResult.inserted_location_events} из {projectDataLastLoadResult.location_events_rows}
+                        </strong>
+                      </div>
+                      <div className="service-report-item">
+                        <span>IP-привязки</span>
+                        <strong>
+                          добавлено {projectDataLastLoadResult.inserted_ip_bindings} из {projectDataLastLoadResult.ip_bindings_rows}
+                        </strong>
+                      </div>
+                      <div className="service-report-item">
+                        <span>Ид. пользователя → MSISDN</span>
+                        <strong>
+                          добавлено {projectDataLastLoadResult.inserted_user_msisdn_facts} из {projectDataLastLoadResult.user_msisdn_facts_rows}
+                        </strong>
+                      </div>
+                      <div className="service-report-item">
+                        <span>IP → MSISDN пользователя</span>
+                        <strong>
+                          добавлено {projectDataLastLoadResult.inserted_ip_msisdn_facts} из {projectDataLastLoadResult.ip_msisdn_facts_rows}
+                        </strong>
+                      </div>
+                      <div className="service-report-item">
+                        <span>MSISDN → Устройство</span>
+                        <strong>
+                          добавлено {projectDataLastLoadResult.inserted_msisdn_device_facts} из {projectDataLastLoadResult.msisdn_device_facts_rows}
+                        </strong>
+                      </div>
+                      <div className="service-report-item">
+                        <span>MSISDN → Номер файла и текст</span>
+                        <strong>
+                          добавлено {projectDataLastLoadResult.inserted_msisdn_text_facts} из {projectDataLastLoadResult.msisdn_text_facts_rows}
+                        </strong>
+                      </div>
+                    </div>
                   </div>
-                  <div className="service-report-item">
-                    <span>Покрытие геокодирования</span>
-                    <strong>{locationCoverage}</strong>
+                )}
+
+                <div className="service-summary-block">
+                  <div className="service-summary-header">
+                    <h4>Сейчас в проекте</h4>
+                    <p>Текущее количество записей в проектных таблицах после загрузки и дедупликации.</p>
                   </div>
-                  <div className="service-report-item">
-                    <span>Загружено записей БС</span>
-                    <strong>{projectStats?.cell_tower_reference_count ?? 0}</strong>
+                  {projectStatsError ? <p className="service-inline-error">{projectStatsError}</p> : null}
+                  <div className="service-report-grid">
+                    <div className="service-report-item">
+                      <span>Связей в проекте</span>
+                      <strong>{projectStats?.communications_count ?? 0}</strong>
+                    </div>
+                    <div className="service-report-item">
+                      <span>Устройств в проекте</span>
+                      <strong>{projectStats?.device_history_count ?? 0}</strong>
+                    </div>
+                    <div className="service-report-item">
+                      <span>Локационных событий</span>
+                      <strong>{projectStats?.location_events_count ?? 0}</strong>
+                    </div>
+                    <div className="service-report-item">
+                      <span>IP-привязок</span>
+                      <strong>{projectStats?.ip_bindings_count ?? 0}</strong>
+                    </div>
+                    <div className="service-report-item">
+                      <span>Ид. пользователя → MSISDN</span>
+                      <strong>{projectStats?.user_msisdn_facts_count ?? 0}</strong>
+                    </div>
+                    <div className="service-report-item">
+                      <span>IP → MSISDN пользователя</span>
+                      <strong>{projectStats?.ip_msisdn_facts_count ?? 0}</strong>
+                    </div>
+                    <div className="service-report-item">
+                      <span>MSISDN → Устройство</span>
+                      <strong>{projectStats?.msisdn_device_facts_count ?? 0}</strong>
+                    </div>
+                    <div className="service-report-item">
+                      <span>MSISDN → Номер файла и текст</span>
+                      <strong>{projectStats?.msisdn_text_facts_count ?? 0}</strong>
+                    </div>
                   </div>
                 </div>
-                <pre className="service-json">{JSON.stringify(projectStats ?? {}, null, 2)}</pre>
-                {enrichReport && (
-                  <pre className="service-json">{JSON.stringify(enrichReport, null, 2)}</pre>
+
+                <div className="service-summary-block">
+                  <div className="service-summary-header">
+                    <h4>Справочник БС</h4>
+                    <p>Этот блок наполняется после загрузки справочника БС и обогащения по адресам из данных проекта.</p>
+                  </div>
+                  {cellStatsError ? <p className="service-inline-error">{cellStatsError}</p> : null}
+                  <div className="service-report-grid">
+                    <div className="service-report-item">
+                      <span>Записей БС</span>
+                      <strong>{cellStats?.cell_tower_reference_count ?? 0}</strong>
+                    </div>
+                    <div className="service-report-item">
+                      <span>Последняя загрузка БС</span>
+                      <strong>{formatDateTime(cellStats?.last_loaded_at)}</strong>
+                    </div>
+                    <div className="service-report-item">
+                      <span>Совпадений по адресам</span>
+                      <strong>{enrichReport?.matched_by_address ?? 0}</strong>
+                    </div>
+                    <div className="service-report-item">
+                      <span>Добавлено при обогащении</span>
+                      <strong>{enrichReport?.inserted_rows ?? 0}</strong>
+                    </div>
+                  </div>
+                </div>
+                {(projectDataLoadReport || projectStats || enrichReport) && (
+                  <details className="service-technical-details">
+                    <summary>Технические детали</summary>
+                    {projectDataLoadReport && (
+                      <pre className="service-json">{JSON.stringify(projectDataLoadReport, null, 2)}</pre>
+                    )}
+                    {projectStats && (
+                      <pre className="service-json">{JSON.stringify(projectStats ?? {}, null, 2)}</pre>
+                    )}
+                    {enrichReport && (
+                      <pre className="service-json">{JSON.stringify(enrichReport, null, 2)}</pre>
+                    )}
+                  </details>
                 )}
               </>
             )}
@@ -1061,14 +1503,14 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
             <div className="service-card">
               <div className="service-card-header">
                 <div>
-                  <h3>Источники данных MS SQL</h3>
+                  <h3>РСЃС‚РѕС‡РЅРёРєРё РґР°РЅРЅС‹С… MS SQL</h3>
                   <p className="service-card-hint">
-                    Здесь регистрируем только подключения. Сами хранимые процедуры уже существуют и создаются другими разработчиками.
+                    Р—РґРµСЃСЊ СЂРµРіРёСЃС‚СЂРёСЂСѓРµРј С‚РѕР»СЊРєРѕ РїРѕРґРєР»СЋС‡РµРЅРёСЏ. РЎР°РјРё С…СЂР°РЅРёРјС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹ СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓСЋС‚ Рё СЃРѕР·РґР°СЋС‚СЃСЏ РґСЂСѓРіРёРјРё СЂР°Р·СЂР°Р±РѕС‚С‡РёРєР°РјРё.
                   </p>
                 </div>
                 <div className="service-row">
                   <button type="button" className="service-btn" onClick={() => void fetchConsoleRegistry()} disabled={consoleLoading}>
-                    {consoleLoading ? 'Обновление...' : 'Обновить'}
+                    {consoleLoading ? 'РћР±РЅРѕРІР»РµРЅРёРµ...' : 'РћР±РЅРѕРІРёС‚СЊ'}
                   </button>
                   <button
                     type="button"
@@ -1076,10 +1518,10 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
                     onClick={() => void handleTestDataSource()}
                     disabled={!selectedSourceKey || consoleTestingSource}
                   >
-                    {consoleTestingSource ? 'Проверка...' : 'Проверить подключение'}
+                    {consoleTestingSource ? 'РџСЂРѕРІРµСЂРєР°...' : 'РџСЂРѕРІРµСЂРёС‚СЊ РїРѕРґРєР»СЋС‡РµРЅРёРµ'}
                   </button>
                   <button type="button" className="service-btn" onClick={resetDataSourceForm}>
-                    Новый источник
+                    РќРѕРІС‹Р№ РёСЃС‚РѕС‡РЅРёРє
                   </button>
                   <button
                     type="button"
@@ -1087,7 +1529,7 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
                     onClick={() => void handleDeleteDataSource()}
                     disabled={!selectedSourceKey || consoleSaving}
                   >
-                    Удалить источник
+                    РЈРґР°Р»РёС‚СЊ РёСЃС‚РѕС‡РЅРёРє
                   </button>
                 </div>
               </div>
@@ -1098,7 +1540,7 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
                   type="text"
                   value={sourceSearch}
                   onChange={(event) => setSourceSearch(event.target.value)}
-                  placeholder="Поиск по источникам данных"
+                  placeholder="РџРѕРёСЃРє РїРѕ РёСЃС‚РѕС‡РЅРёРєР°Рј РґР°РЅРЅС‹С…"
                   style={{ minWidth: 0 }}
                 />
                 {filteredDataSources.map((source) => (
@@ -1115,22 +1557,22 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
                 ))}
                 {!filteredDataSources.length && (
                   <div className="service-empty">
-                    {consoleDataSources.length ? 'По текущему фильтру источники не найдены.' : 'Источники данных ещё не зарегистрированы.'}
+                    {consoleDataSources.length ? 'РџРѕ С‚РµРєСѓС‰РµРјСѓ С„РёР»СЊС‚СЂСѓ РёСЃС‚РѕС‡РЅРёРєРё РЅРµ РЅР°Р№РґРµРЅС‹.' : 'РСЃС‚РѕС‡РЅРёРєРё РґР°РЅРЅС‹С… РµС‰С‘ РЅРµ Р·Р°СЂРµРіРёСЃС‚СЂРёСЂРѕРІР°РЅС‹.'}
                   </div>
                 )}
               </div>
 
               <div className="service-form-grid">
                 <label className="service-field">
-                  <span>Ключ</span>
+                  <span>РљР»СЋС‡</span>
                   <input className="service-input" value={dataSourceForm.key} onChange={(event) => setDataSourceForm((prev) => ({ ...prev, key: event.target.value }))} />
                 </label>
                 <label className="service-field">
-                  <span>Название</span>
+                  <span>РќР°Р·РІР°РЅРёРµ</span>
                   <input className="service-input" value={dataSourceForm.name} onChange={(event) => setDataSourceForm((prev) => ({ ...prev, name: event.target.value }))} />
                 </label>
                 <label className="service-field service-field-wide">
-                  <span>Описание</span>
+                  <span>РћРїРёСЃР°РЅРёРµ</span>
                   <input className="service-input" value={dataSourceForm.description} onChange={(event) => setDataSourceForm((prev) => ({ ...prev, description: event.target.value }))} />
                 </label>
                 <label className="service-field">
@@ -1142,16 +1584,16 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
                   <input className="service-input" value={dataSourceForm.port} onChange={(event) => setDataSourceForm((prev) => ({ ...prev, port: event.target.value }))} />
                 </label>
                 <label className="service-field">
-                  <span>База данных</span>
+                  <span>Р‘Р°Р·Р° РґР°РЅРЅС‹С…</span>
                   <input className="service-input" value={dataSourceForm.database_name} onChange={(event) => setDataSourceForm((prev) => ({ ...prev, database_name: event.target.value }))} />
                 </label>
                 <label className="service-field">
-                  <span>Пользователь</span>
+                  <span>РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ</span>
                   <input className="service-input" value={dataSourceForm.username} onChange={(event) => setDataSourceForm((prev) => ({ ...prev, username: event.target.value }))} />
                 </label>
                 <label className="service-field">
-                  <span>Пароль</span>
-                  <input className="service-input" type="password" value={dataSourceForm.password} onChange={(event) => setDataSourceForm((prev) => ({ ...prev, password: event.target.value }))} placeholder={selectedSource?.has_password ? 'Оставь пустым, чтобы не менять' : ''} />
+                  <span>РџР°СЂРѕР»СЊ</span>
+                  <input className="service-input" type="password" value={dataSourceForm.password} onChange={(event) => setDataSourceForm((prev) => ({ ...prev, password: event.target.value }))} placeholder={selectedSource?.has_password ? 'РћСЃС‚Р°РІСЊ РїСѓСЃС‚С‹Рј, С‡С‚РѕР±С‹ РЅРµ РјРµРЅСЏС‚СЊ' : ''} />
                 </label>
                 <label className="service-field">
                   <span>Driver</span>
@@ -1167,17 +1609,17 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
                 </label>
                 <label className="service-checkbox">
                   <input type="checkbox" checked={dataSourceForm.is_active} onChange={(event) => setDataSourceForm((prev) => ({ ...prev, is_active: event.target.checked }))} />
-                  <span>Источник активен</span>
+                  <span>РСЃС‚РѕС‡РЅРёРє Р°РєС‚РёРІРµРЅ</span>
                 </label>
                 <label className="service-field service-field-wide">
-                  <span>Опции подключения (JSON)</span>
+                  <span>РћРїС†РёРё РїРѕРґРєР»СЋС‡РµРЅРёСЏ (JSON)</span>
                   <textarea className="service-textarea" rows={6} value={dataSourceForm.optionsText} onChange={(event) => setDataSourceForm((prev) => ({ ...prev, optionsText: event.target.value }))} />
                 </label>
               </div>
 
               <div className="service-row">
                 <button type="button" className="service-btn primary" onClick={() => void handleSaveDataSource()} disabled={consoleSaving}>
-                  {consoleSaving ? 'Сохранение...' : (selectedSourceKey ? 'Сохранить источник' : 'Создать источник')}
+                  {consoleSaving ? 'РЎРѕС…СЂР°РЅРµРЅРёРµ...' : (selectedSourceKey ? 'РЎРѕС…СЂР°РЅРёС‚СЊ РёСЃС‚РѕС‡РЅРёРє' : 'РЎРѕР·РґР°С‚СЊ РёСЃС‚РѕС‡РЅРёРє')}
                 </button>
               </div>
             </div>
@@ -1185,16 +1627,16 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
             <div className="service-card">
               <div className="service-card-header">
                 <div>
-                  <h3>Соответствия типов объектов</h3>
+                  <h3>РЎРѕРѕС‚РІРµС‚СЃС‚РІРёСЏ С‚РёРїРѕРІ РѕР±СЉРµРєС‚РѕРІ</h3>
                   <p className="service-card-hint">
-                    Граф продолжает жить со своими типами, а процедуры получают ожидаемые типы объектов вроде
+                    Р“СЂР°С„ РїСЂРѕРґРѕР»Р¶Р°РµС‚ Р¶РёС‚СЊ СЃРѕ СЃРІРѕРёРјРё С‚РёРїР°РјРё, Р° РїСЂРѕС†РµРґСѓСЂС‹ РїРѕР»СѓС‡Р°СЋС‚ РѕР¶РёРґР°РµРјС‹Рµ С‚РёРїС‹ РѕР±СЉРµРєС‚РѕРІ РІСЂРѕРґРµ
                     {' '}
                     <code>MSISDN</code>
                     ,
                     {' '}
                     <code>IMEI</code>
                     {' '}
-                    и
+                    Рё
                     {' '}
                     <code>IMSI</code>
                     .
@@ -1202,22 +1644,22 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
                 </div>
                 <div className="service-row">
                   <button type="button" className="service-btn" onClick={resetObjectTypeMappings}>
-                    Базовые соответствия
+                    Р‘Р°Р·РѕРІС‹Рµ СЃРѕРѕС‚РІРµС‚СЃС‚РІРёСЏ
                   </button>
                   <button type="button" className="service-btn" onClick={addObjectTypeMapping}>
-                    Добавить строку
+                    Р”РѕР±Р°РІРёС‚СЊ СЃС‚СЂРѕРєСѓ
                   </button>
                 </div>
               </div>
 
               {consoleObjectTypeMappings.length === 0 ? (
-                <div className="service-empty">Соответствия пока не заданы.</div>
+                <div className="service-empty">РЎРѕРѕС‚РІРµС‚СЃС‚РІРёСЏ РїРѕРєР° РЅРµ Р·Р°РґР°РЅС‹.</div>
               ) : (
                 <div className="service-mapping-table">
                   <div className="service-mapping-row service-mapping-row-header">
-                    <div>Тип на графе</div>
-                    <div>Тип для процедуры</div>
-                    <div>Активно</div>
+                    <div>РўРёРї РЅР° РіСЂР°С„Рµ</div>
+                    <div>РўРёРї РґР»СЏ РїСЂРѕС†РµРґСѓСЂС‹</div>
+                    <div>РђРєС‚РёРІРЅРѕ</div>
                     <div />
                   </div>
                   {consoleObjectTypeMappings.map((mapping) => (
@@ -1240,14 +1682,14 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
                           checked={mapping.is_active}
                           onChange={(event) => updateObjectTypeMapping(mapping.id, { is_active: event.target.checked })}
                         />
-                        <span>Да</span>
+                        <span>Р”Р°</span>
                       </label>
                       <button
                         type="button"
                         className="service-btn danger"
                         onClick={() => removeObjectTypeMapping(mapping.id)}
                       >
-                        Удалить
+                        РЈРґР°Р»РёС‚СЊ
                       </button>
                     </div>
                   ))}
@@ -1261,7 +1703,7 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
                   onClick={() => void handleSaveObjectTypeMappings()}
                   disabled={consoleSaving}
                 >
-                  {consoleSaving ? 'Сохранение...' : 'Сохранить соответствия'}
+                  {consoleSaving ? 'РЎРѕС…СЂР°РЅРµРЅРёРµ...' : 'РЎРѕС…СЂР°РЅРёС‚СЊ СЃРѕРѕС‚РІРµС‚СЃС‚РІРёСЏ'}
                 </button>
               </div>
             </div>
@@ -1269,14 +1711,14 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
             <div className="service-card">
               <div className="service-card-header">
                 <div>
-                  <h3>Реестр хранимых процедур</h3>
+                  <h3>Р РµРµСЃС‚СЂ С…СЂР°РЅРёРјС‹С… РїСЂРѕС†РµРґСѓСЂ</h3>
                   <p className="service-card-hint">
-                    Описываем уже существующие процедуры: источник, schema/name, параметры, связи с графовым контекстом и маппинг result set в интерфейс.
+                    РћРїРёСЃС‹РІР°РµРј СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓСЋС‰РёРµ РїСЂРѕС†РµРґСѓСЂС‹: РёСЃС‚РѕС‡РЅРёРє, schema/name, РїР°СЂР°РјРµС‚СЂС‹, СЃРІСЏР·Рё СЃ РіСЂР°С„РѕРІС‹Рј РєРѕРЅС‚РµРєСЃС‚РѕРј Рё РјР°РїРїРёРЅРі result set РІ РёРЅС‚РµСЂС„РµР№СЃ.
                   </p>
                 </div>
                 <div className="service-row">
                   <button type="button" className="service-btn" onClick={resetProcedureForm}>
-                    Новая процедура
+                    РќРѕРІР°СЏ РїСЂРѕС†РµРґСѓСЂР°
                   </button>
                   <button
                     type="button"
@@ -1284,7 +1726,7 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
                     onClick={handleDuplicateProcedureTemplate}
                     disabled={!selectedProcedure}
                   >
-                    Дублировать как шаблон
+                    Р”СѓР±Р»РёСЂРѕРІР°С‚СЊ РєР°Рє С€Р°Р±Р»РѕРЅ
                   </button>
                   <button
                     type="button"
@@ -1292,7 +1734,7 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
                     onClick={() => void handleDeleteProcedure()}
                     disabled={!selectedProcedureKey || consoleSaving}
                   >
-                    Удалить процедуру
+                    РЈРґР°Р»РёС‚СЊ РїСЂРѕС†РµРґСѓСЂСѓ
                   </button>
                 </div>
               </div>
@@ -1303,7 +1745,7 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
                   type="text"
                   value={procedureSearch}
                   onChange={(event) => setProcedureSearch(event.target.value)}
-                  placeholder="Поиск по процедурам"
+                  placeholder="РџРѕРёСЃРє РїРѕ РїСЂРѕС†РµРґСѓСЂР°Рј"
                   style={{ minWidth: 0 }}
                 />
                 {filteredProcedures.map((procedure) => (
@@ -1315,33 +1757,33 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
                   >
                     <strong>{procedure.name}</strong>
                     <span>{procedure.key || procedure.id}</span>
-                    <span>{procedure.source_name || procedure.source_key || 'Источник не задан'}</span>
+                    <span>{procedure.source_name || procedure.source_key || 'РСЃС‚РѕС‡РЅРёРє РЅРµ Р·Р°РґР°РЅ'}</span>
                   </button>
                 ))}
                 {!filteredProcedures.length && (
                   <div className="service-empty">
-                    {consoleProcedures.length ? 'По текущему фильтру процедуры не найдены.' : 'Процедуры ещё не зарегистрированы.'}
+                    {consoleProcedures.length ? 'РџРѕ С‚РµРєСѓС‰РµРјСѓ С„РёР»СЊС‚СЂСѓ РїСЂРѕС†РµРґСѓСЂС‹ РЅРµ РЅР°Р№РґРµРЅС‹.' : 'РџСЂРѕС†РµРґСѓСЂС‹ РµС‰С‘ РЅРµ Р·Р°СЂРµРіРёСЃС‚СЂРёСЂРѕРІР°РЅС‹.'}
                   </div>
                 )}
               </div>
 
               <div className="service-form-grid">
                 <label className="service-field">
-                  <span>Ключ</span>
+                  <span>РљР»СЋС‡</span>
                   <input className="service-input" value={procedureForm.key} onChange={(event) => setProcedureForm((prev) => ({ ...prev, key: event.target.value }))} />
                 </label>
                 <label className="service-field">
-                  <span>Название</span>
+                  <span>РќР°Р·РІР°РЅРёРµ</span>
                   <input className="service-input" value={procedureForm.name} onChange={(event) => setProcedureForm((prev) => ({ ...prev, name: event.target.value }))} />
                 </label>
                 <label className="service-field service-field-wide">
-                  <span>Описание</span>
+                  <span>РћРїРёСЃР°РЅРёРµ</span>
                   <input className="service-input" value={procedureForm.description} onChange={(event) => setProcedureForm((prev) => ({ ...prev, description: event.target.value }))} />
                 </label>
                 <label className="service-field">
-                  <span>Источник</span>
+                  <span>РСЃС‚РѕС‡РЅРёРє</span>
                   <select className="service-input" value={procedureForm.source_key} onChange={(event) => setProcedureForm((prev) => ({ ...prev, source_key: event.target.value }))}>
-                    <option value="">Выбери источник</option>
+                    <option value="">Р’С‹Р±РµСЂРё РёСЃС‚РѕС‡РЅРёРє</option>
                     {consoleDataSources.map((source) => (
                       <option key={source.key} value={source.key}>{source.name} ({source.key})</option>
                     ))}
@@ -1353,10 +1795,10 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
                 </label>
                 <label className="service-field service-field-wide">
                   <span>Procedure name</span>
-                  <input className="service-input" value={procedureForm.procedure_name} onChange={(event) => setProcedureForm((prev) => ({ ...prev, procedure_name: event.target.value }))} placeholder="Например usp_GetAbonentDossier" />
+                  <input className="service-input" value={procedureForm.procedure_name} onChange={(event) => setProcedureForm((prev) => ({ ...prev, procedure_name: event.target.value }))} placeholder="РќР°РїСЂРёРјРµСЂ usp_GetAbonentDossier" />
                 </label>
                 <label className="service-field">
-                  <span>Timeout, сек</span>
+                  <span>Timeout, СЃРµРє</span>
                   <input className="service-input" value={procedureForm.timeout_seconds} onChange={(event) => setProcedureForm((prev) => ({ ...prev, timeout_seconds: event.target.value }))} />
                 </label>
                 <label className="service-field">
@@ -1365,54 +1807,54 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
                 </label>
                 <label className="service-checkbox">
                   <input type="checkbox" checked={procedureForm.supports_graph_selection} onChange={(event) => setProcedureForm((prev) => ({ ...prev, supports_graph_selection: event.target.checked }))} />
-                  <span>Поддерживает выделение графа</span>
+                  <span>РџРѕРґРґРµСЂР¶РёРІР°РµС‚ РІС‹РґРµР»РµРЅРёРµ РіСЂР°С„Р°</span>
                 </label>
                 <label className="service-checkbox">
                   <input type="checkbox" checked={procedureForm.is_active} onChange={(event) => setProcedureForm((prev) => ({ ...prev, is_active: event.target.checked }))} />
-                  <span>Процедура активна</span>
+                  <span>РџСЂРѕС†РµРґСѓСЂР° Р°РєС‚РёРІРЅР°</span>
                 </label>
               </div>
 
               <div className="service-editor-block">
                 <div className="service-editor-header">
                   <div>
-                    <h4>Параметры процедуры</h4>
-                    <p>Здесь настраиваем форму запуска и правила автопривязки к графовому выделению.</p>
+                    <h4>РџР°СЂР°РјРµС‚СЂС‹ РїСЂРѕС†РµРґСѓСЂС‹</h4>
+                    <p>Р—РґРµСЃСЊ РЅР°СЃС‚СЂР°РёРІР°РµРј С„РѕСЂРјСѓ Р·Р°РїСѓСЃРєР° Рё РїСЂР°РІРёР»Р° Р°РІС‚РѕРїСЂРёРІСЏР·РєРё Рє РіСЂР°С„РѕРІРѕРјСѓ РІС‹РґРµР»РµРЅРёСЋ.</p>
                   </div>
                   <div className="service-row">
                     <button type="button" className="service-btn" onClick={applyObjectsAnalysisPreset}>
-                      Шаблон Objects/Types
+                      РЁР°Р±Р»РѕРЅ Objects/Types
                     </button>
                     <button type="button" className="service-btn" onClick={addProcedureParam}>
-                      Добавить параметр
+                      Р”РѕР±Р°РІРёС‚СЊ РїР°СЂР°РјРµС‚СЂ
                     </button>
                   </div>
                 </div>
 
                 {procedureForm.params.length === 0 ? (
-                  <div className="service-empty">Параметры пока не описаны.</div>
+                  <div className="service-empty">РџР°СЂР°РјРµС‚СЂС‹ РїРѕРєР° РЅРµ РѕРїРёСЃР°РЅС‹.</div>
                 ) : (
                   <div className="service-editor-list">
                     {procedureForm.params.map((param, index) => (
                       <div key={param.id} className="service-editor-card">
                         <div className="service-editor-card-header">
-                          <strong>Параметр #{index + 1}</strong>
+                          <strong>РџР°СЂР°РјРµС‚СЂ #{index + 1}</strong>
                           <button type="button" className="service-btn danger" onClick={() => removeProcedureParam(param.id)}>
-                            Удалить
+                            РЈРґР°Р»РёС‚СЊ
                           </button>
                         </div>
 
                         <div className="service-form-grid">
                           <label className="service-field">
-                            <span>Имя параметра</span>
-                            <input className="service-input" value={param.name} onChange={(event) => updateProcedureParam(param.id, { name: event.target.value })} placeholder="Например msisdn или selection_json" />
+                            <span>РРјСЏ РїР°СЂР°РјРµС‚СЂР°</span>
+                            <input className="service-input" value={param.name} onChange={(event) => updateProcedureParam(param.id, { name: event.target.value })} placeholder="РќР°РїСЂРёРјРµСЂ msisdn РёР»Рё selection_json" />
                           </label>
                           <label className="service-field">
-                            <span>Подпись в UI</span>
+                            <span>РџРѕРґРїРёСЃСЊ РІ UI</span>
                             <input className="service-input" value={param.label} onChange={(event) => updateProcedureParam(param.id, { label: event.target.value })} />
                           </label>
                           <label className="service-field">
-                            <span>Тип</span>
+                            <span>РўРёРї</span>
                             <select className="service-input" value={param.type} onChange={(event) => updateProcedureParam(param.id, { type: event.target.value })}>
                               {paramTypeOptions.map((option) => (
                                 <option key={option.value} value={option.value}>{option.label}</option>
@@ -1420,7 +1862,7 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
                             </select>
                           </label>
                           <label className="service-field">
-                            <span>Режим заполнения</span>
+                            <span>Р РµР¶РёРј Р·Р°РїРѕР»РЅРµРЅРёСЏ</span>
                             <select className="service-input" value={param.binding_mode} onChange={(event) => updateProcedureParam(param.id, { binding_mode: event.target.value })}>
                               {bindingModeOptions.map((option) => (
                                 <option key={option.value} value={option.value}>{option.label}</option>
@@ -1430,16 +1872,16 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
 
                           {(param.binding_mode === 'manual' || param.binding_mode === 'fixed') && (
                             <label className="service-field">
-                              <span>{param.binding_mode === 'fixed' ? 'Фиксированное значение' : 'Значение по умолчанию'}</span>
+                              <span>{param.binding_mode === 'fixed' ? 'Р¤РёРєСЃРёСЂРѕРІР°РЅРЅРѕРµ Р·РЅР°С‡РµРЅРёРµ' : 'Р—РЅР°С‡РµРЅРёРµ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ'}</span>
                               <input className="service-input" value={param.defaultValue} onChange={(event) => updateProcedureParam(param.id, { defaultValue: event.target.value })} />
                             </label>
                           )}
 
                           {param.binding_mode === 'project_context' && (
                             <label className="service-field">
-                              <span>Что брать из контекста</span>
+                              <span>Р§С‚Рѕ Р±СЂР°С‚СЊ РёР· РєРѕРЅС‚РµРєСЃС‚Р°</span>
                               <select className="service-input" value={param.binding_source} onChange={(event) => updateProcedureParam(param.id, { binding_source: event.target.value })}>
-                                <option value="">Выбери источник значения</option>
+                                <option value="">Р’С‹Р±РµСЂРё РёСЃС‚РѕС‡РЅРёРє Р·РЅР°С‡РµРЅРёСЏ</option>
                                 {projectContextSourceOptions.map((option) => (
                                   <option key={option.value} value={option.value}>{option.label}</option>
                                 ))}
@@ -1449,18 +1891,18 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
 
                           {param.binding_mode === 'selected_node_attr_csv' && (
                             <label className="service-field">
-                              <span>Ключ атрибута узла</span>
-                              <input className="service-input" value={param.binding_attr_key} onChange={(event) => updateProcedureParam(param.id, { binding_attr_key: event.target.value })} placeholder="Например msisdn или imsi" />
+                              <span>РљР»СЋС‡ Р°С‚СЂРёР±СѓС‚Р° СѓР·Р»Р°</span>
+                              <input className="service-input" value={param.binding_attr_key} onChange={(event) => updateProcedureParam(param.id, { binding_attr_key: event.target.value })} placeholder="РќР°РїСЂРёРјРµСЂ msisdn РёР»Рё imsi" />
                             </label>
                           )}
 
                           <label className="service-checkbox">
                             <input type="checkbox" checked={param.required} onChange={(event) => updateProcedureParam(param.id, { required: event.target.checked })} />
-                            <span>Обязательный параметр</span>
+                            <span>РћР±СЏР·Р°С‚РµР»СЊРЅС‹Р№ РїР°СЂР°РјРµС‚СЂ</span>
                           </label>
                           <label className="service-checkbox">
                             <input type="checkbox" checked={param.hidden} onChange={(event) => updateProcedureParam(param.id, { hidden: event.target.checked })} />
-                            <span>Скрыть в форме запуска</span>
+                            <span>РЎРєСЂС‹С‚СЊ РІ С„РѕСЂРјРµ Р·Р°РїСѓСЃРєР°</span>
                           </label>
                         </div>
                       </div>
@@ -1472,16 +1914,16 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
               <div className="service-editor-block">
                 <div className="service-editor-header">
                   <div>
-                    <h4>Result set и колонки</h4>
-                    <p>Здесь задаём вкладки результата и человекочитаемые названия колонок, которые вернёт процедура.</p>
+                    <h4>Result set Рё РєРѕР»РѕРЅРєРё</h4>
+                    <p>Р—РґРµСЃСЊ Р·Р°РґР°С‘Рј РІРєР»Р°РґРєРё СЂРµР·СѓР»СЊС‚Р°С‚Р° Рё С‡РµР»РѕРІРµРєРѕС‡РёС‚Р°РµРјС‹Рµ РЅР°Р·РІР°РЅРёСЏ РєРѕР»РѕРЅРѕРє, РєРѕС‚РѕСЂС‹Рµ РІРµСЂРЅС‘С‚ РїСЂРѕС†РµРґСѓСЂР°.</p>
                   </div>
                   <button type="button" className="service-btn" onClick={addResultSet}>
-                    Добавить result set
+                    Р”РѕР±Р°РІРёС‚СЊ result set
                   </button>
                 </div>
 
                 {procedureForm.resultSets.length === 0 ? (
-                  <div className="service-empty">Result set пока не описаны.</div>
+                  <div className="service-empty">Result set РїРѕРєР° РЅРµ РѕРїРёСЃР°РЅС‹.</div>
                 ) : (
                   <div className="service-editor-list">
                     {procedureForm.resultSets.map((resultSet, resultSetIndex) => (
@@ -1490,56 +1932,56 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
                           <strong>Result set #{resultSetIndex + 1}</strong>
                           <div className="service-row">
                             <button type="button" className="service-btn" onClick={() => addColumnToResultSet(resultSet.id)}>
-                              Добавить колонку
+                              Р”РѕР±Р°РІРёС‚СЊ РєРѕР»РѕРЅРєСѓ
                             </button>
                             <button type="button" className="service-btn danger" onClick={() => removeResultSet(resultSet.id)}>
-                              Удалить
+                              РЈРґР°Р»РёС‚СЊ
                             </button>
                           </div>
                         </div>
 
                         <div className="service-form-grid">
                           <label className="service-field">
-                            <span>Порядковый индекс</span>
+                            <span>РџРѕСЂСЏРґРєРѕРІС‹Р№ РёРЅРґРµРєСЃ</span>
                             <input className="service-input" value={resultSet.result_index} onChange={(event) => updateResultSet(resultSet.id, { result_index: event.target.value })} />
                           </label>
                           <label className="service-field">
-                            <span>Ключ вкладки</span>
+                            <span>РљР»СЋС‡ РІРєР»Р°РґРєРё</span>
                             <input className="service-input" value={resultSet.result_key} onChange={(event) => updateResultSet(resultSet.id, { result_key: event.target.value })} />
                           </label>
                           <label className="service-field service-field-wide">
-                            <span>Название вкладки</span>
+                            <span>РќР°Р·РІР°РЅРёРµ РІРєР»Р°РґРєРё</span>
                             <input className="service-input" value={resultSet.name} onChange={(event) => updateResultSet(resultSet.id, { name: event.target.value })} />
                           </label>
                           <label className="service-checkbox">
                             <input type="checkbox" checked={resultSet.visible} onChange={(event) => updateResultSet(resultSet.id, { visible: event.target.checked })} />
-                            <span>Показывать вкладку</span>
+                            <span>РџРѕРєР°Р·С‹РІР°С‚СЊ РІРєР»Р°РґРєСѓ</span>
                           </label>
                         </div>
 
                         {resultSet.columns.length === 0 ? (
-                          <div className="service-empty">Колонки ещё не описаны. Их можно добавлять по мере договорённости с авторами процедуры.</div>
+                          <div className="service-empty">РљРѕР»РѕРЅРєРё РµС‰С‘ РЅРµ РѕРїРёСЃР°РЅС‹. РС… РјРѕР¶РЅРѕ РґРѕР±Р°РІР»СЏС‚СЊ РїРѕ РјРµСЂРµ РґРѕРіРѕРІРѕСЂС‘РЅРЅРѕСЃС‚Рё СЃ Р°РІС‚РѕСЂР°РјРё РїСЂРѕС†РµРґСѓСЂС‹.</div>
                         ) : (
                           <div className="service-column-grid">
                             {resultSet.columns.map((column, columnIndex) => (
                               <div key={column.id} className="service-column-card">
                                 <div className="service-editor-card-header">
-                                  <strong>Колонка #{columnIndex + 1}</strong>
+                                  <strong>РљРѕР»РѕРЅРєР° #{columnIndex + 1}</strong>
                                   <button type="button" className="service-btn danger" onClick={() => removeColumnFromResultSet(resultSet.id, column.id)}>
-                                    Удалить
+                                    РЈРґР°Р»РёС‚СЊ
                                   </button>
                                 </div>
                                 <div className="service-form-grid">
                                   <label className="service-field">
-                                    <span>Оригинальное имя</span>
-                                    <input className="service-input" value={column.key} onChange={(event) => updateColumnInResultSet(resultSet.id, column.id, { key: event.target.value })} placeholder="Например subscriber_id" />
+                                    <span>РћСЂРёРіРёРЅР°Р»СЊРЅРѕРµ РёРјСЏ</span>
+                                    <input className="service-input" value={column.key} onChange={(event) => updateColumnInResultSet(resultSet.id, column.id, { key: event.target.value })} placeholder="РќР°РїСЂРёРјРµСЂ subscriber_id" />
                                   </label>
                                   <label className="service-field">
-                                    <span>Подпись в интерфейсе</span>
+                                    <span>РџРѕРґРїРёСЃСЊ РІ РёРЅС‚РµСЂС„РµР№СЃРµ</span>
                                     <input className="service-input" value={column.label} onChange={(event) => updateColumnInResultSet(resultSet.id, column.id, { label: event.target.value })} />
                                   </label>
                                   <label className="service-field">
-                                    <span>Тип</span>
+                                    <span>РўРёРї</span>
                                     <select className="service-input" value={column.type} onChange={(event) => updateColumnInResultSet(resultSet.id, column.id, { type: event.target.value })}>
                                       {columnTypeOptions.map((option) => (
                                         <option key={option.value} value={option.value}>{option.label}</option>
@@ -1547,12 +1989,12 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
                                     </select>
                                   </label>
                                   <label className="service-field">
-                                    <span>Ширина колонки, px</span>
-                                    <input className="service-input" value={column.width} onChange={(event) => updateColumnInResultSet(resultSet.id, column.id, { width: event.target.value })} placeholder="Например 180" />
+                                    <span>РЁРёСЂРёРЅР° РєРѕР»РѕРЅРєРё, px</span>
+                                    <input className="service-input" value={column.width} onChange={(event) => updateColumnInResultSet(resultSet.id, column.id, { width: event.target.value })} placeholder="РќР°РїСЂРёРјРµСЂ 180" />
                                   </label>
                                   <label className="service-checkbox">
                                     <input type="checkbox" checked={column.visible} onChange={(event) => updateColumnInResultSet(resultSet.id, column.id, { visible: event.target.checked })} />
-                                    <span>Показывать колонку</span>
+                                    <span>РџРѕРєР°Р·С‹РІР°С‚СЊ РєРѕР»РѕРЅРєСѓ</span>
                                   </label>
                                 </div>
                               </div>
@@ -1567,7 +2009,7 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
 
               <div className="service-row">
                 <button type="button" className="service-btn primary" onClick={() => void handleSaveProcedure()} disabled={consoleSaving}>
-                  {consoleSaving ? 'Сохранение...' : (selectedProcedureKey ? 'Сохранить процедуру' : 'Зарегистрировать процедуру')}
+                  {consoleSaving ? 'РЎРѕС…СЂР°РЅРµРЅРёРµ...' : (selectedProcedureKey ? 'РЎРѕС…СЂР°РЅРёС‚СЊ РїСЂРѕС†РµРґСѓСЂСѓ' : 'Р—Р°СЂРµРіРёСЃС‚СЂРёСЂРѕРІР°С‚СЊ РїСЂРѕС†РµРґСѓСЂСѓ')}
                 </button>
               </div>
             </div>
@@ -1579,3 +2021,5 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({ projectId }
 };
 
 export default ServiceFunctionsView;
+
+

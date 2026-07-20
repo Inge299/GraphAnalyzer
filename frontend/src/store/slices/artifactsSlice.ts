@@ -1,6 +1,7 @@
 ﻿// frontend/src/store/slices/artifactsSlice.ts
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { api } from '../../services/api';
+import { layoutConfig } from '../../config/layout';
 import { ApiArtifact, ApiArtifactCreate } from '../../types/api';
 
 interface ArtifactsState {
@@ -26,7 +27,9 @@ export const fetchArtifacts = createAsyncThunk(
   async (projectId: number, { rejectWithValue }) => {
     try {
       console.log(`[Artifacts] Fetching artifacts for project ${projectId}`);
-      const response = await api.get(`/api/v2/projects/${projectId}/artifacts`);
+      const response = await api.get(`/api/v2/projects/${projectId}/artifacts`, {
+        timeout: layoutConfig.network.artifactsLoadTimeoutMs,
+      });
       return response.data;
     } catch (error: any) {
       console.error('[Artifacts] Error fetching artifacts:', error);

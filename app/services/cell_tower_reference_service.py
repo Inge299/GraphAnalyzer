@@ -8,7 +8,7 @@ from fastapi import HTTPException
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.services.project_data_import_utils import open_csv_reader
+from app.services.project_data_import_utils import normalize_address, open_csv_reader
 
 DATA_ROOT = Path("/app/data")
 
@@ -73,6 +73,7 @@ async def load_cell_tower_reference(db: AsyncSession, source_path: str) -> dict[
                 "azimuth": _parse_float(row.get("Azimuth") or ""),
                 "height": _parse_float(row.get("Height") or ""),
                 "address": (row.get("Address") or "").strip() or None,
+                "address_norm": normalize_address((row.get("Address") or "").strip()),
                 "beg_date": _parse_date(row.get("BegDate") or ""),
                 "end_date": _parse_date(row.get("EndDate") or ""),
                 "region_id": (row.get("RegionID") or "").strip() or None,
@@ -93,10 +94,10 @@ async def load_cell_tower_reference(db: AsyncSession, source_path: str) -> dict[
                 """
                 INSERT INTO cell_tower_reference (
                     id, mcc, mnc, lac, cid, g, latitude, longitude, azimuth, height,
-                    address, beg_date, end_date, region_id, ref_source, loaded_at
+                    address, address_norm, beg_date, end_date, region_id, ref_source, loaded_at
                 ) VALUES (
                     :id, :mcc, :mnc, :lac, :cid, :g, :latitude, :longitude, :azimuth, :height,
-                    :address, :beg_date, :end_date, :region_id, :ref_source, :loaded_at
+                    :address, :address_norm, :beg_date, :end_date, :region_id, :ref_source, :loaded_at
                 )
                 """
             ),
@@ -111,196 +112,219 @@ async def load_cell_tower_reference(db: AsyncSession, source_path: str) -> dict[
 
 
 async def enrich_cell_tower_reference_from_project_addresses(db: AsyncSession, project_id: int) -> dict[str, Any]:
-    raw_candidates_sql = text(
-        """
-        WITH raw_keys AS (
-          SELECT DISTINCT
-            NULLIF(BTRIM(e.mcc), '') AS mcc,
-            NULLIF(BTRIM(e.mnc), '') AS mnc,
-            NULLIF(BTRIM(e.lac), '') AS lac,
-            NULLIF(BTRIM(e.bs), '') AS cid,
-            NULLIF(BTRIM(e.address), '') AS address,
-            regexp_replace(lower(coalesce(NULLIF(BTRIM(e.address), ''), '')), '[^[:alnum:]]', '', 'g') AS address_norm
-          FROM project_location_events_raw e
-          WHERE e.project_id = :project_id
-            AND NULLIF(BTRIM(e.address), '') IS NOT NULL
-            AND NULLIF(BTRIM(e.lac), '') IS NOT NULL
-            AND NULLIF(BTRIM(e.bs), '') IS NOT NULL
-        )
-        SELECT COUNT(*) FROM raw_keys
-        """
-    )
-    raw_candidates = int((await db.execute(raw_candidates_sql, {"project_id": project_id})).scalar() or 0)
+    await db.execute(text("DROP TABLE IF EXISTS tmp_project_address_keys"))
+    await db.execute(text("DROP TABLE IF EXISTS tmp_unresolved_address_keys"))
+    await db.execute(text("DROP TABLE IF EXISTS tmp_ref_by_address"))
+    await db.execute(text("DROP TABLE IF EXISTS tmp_matched_address_keys"))
 
-    matched_candidates_sql = text(
-        """
-        WITH raw_keys AS (
-          SELECT DISTINCT
-            NULLIF(BTRIM(e.mcc), '') AS mcc,
-            NULLIF(BTRIM(e.mnc), '') AS mnc,
-            NULLIF(BTRIM(e.lac), '') AS lac,
-            NULLIF(BTRIM(e.bs), '') AS cid,
-            NULLIF(BTRIM(e.address), '') AS address,
-            regexp_replace(lower(coalesce(NULLIF(BTRIM(e.address), ''), '')), '[^[:alnum:]]', '', 'g') AS address_norm
-          FROM project_location_events_raw e
-          WHERE e.project_id = :project_id
-            AND NULLIF(BTRIM(e.address), '') IS NOT NULL
-            AND NULLIF(BTRIM(e.lac), '') IS NOT NULL
-            AND NULLIF(BTRIM(e.bs), '') IS NOT NULL
-        )
-        SELECT COUNT(*)
-        FROM raw_keys r
-        JOIN LATERAL (
-          SELECT 1
-          FROM cell_tower_reference c
-          WHERE c.latitude IS NOT NULL
-            AND c.longitude IS NOT NULL
-            AND regexp_replace(lower(coalesce(c.address, '')), '[^[:alnum:]]', '', 'g') = r.address_norm
-          ORDER BY c.id DESC
-          LIMIT 1
-        ) m ON TRUE
-        """
-    )
-    matched_candidates = int((await db.execute(matched_candidates_sql, {"project_id": project_id})).scalar() or 0)
-
-    insert_sql = text(
-        """
-        WITH raw_keys AS (
-          SELECT DISTINCT ON (
-            coalesce(NULLIF(BTRIM(e.mcc), ''), ''),
-            coalesce(NULLIF(BTRIM(e.mnc), ''), ''),
-            NULLIF(BTRIM(e.lac), ''),
-            NULLIF(BTRIM(e.bs), ''),
-            regexp_replace(lower(coalesce(NULLIF(BTRIM(e.address), ''), '')), '[^[:alnum:]]', '', 'g')
-          )
-            NULLIF(BTRIM(e.mcc), '') AS mcc,
-            NULLIF(BTRIM(e.mnc), '') AS mnc,
-            NULLIF(BTRIM(e.lac), '') AS lac,
-            NULLIF(BTRIM(e.bs), '') AS cid,
-            NULLIF(BTRIM(e.address), '') AS address,
-            regexp_replace(lower(coalesce(NULLIF(BTRIM(e.address), ''), '')), '[^[:alnum:]]', '', 'g') AS address_norm,
-            e.event_time
-          FROM project_location_events_raw e
-          WHERE e.project_id = :project_id
-            AND NULLIF(BTRIM(e.address), '') IS NOT NULL
-            AND NULLIF(BTRIM(e.lac), '') IS NOT NULL
-            AND NULLIF(BTRIM(e.bs), '') IS NOT NULL
-          ORDER BY
-            coalesce(NULLIF(BTRIM(e.mcc), ''), ''),
-            coalesce(NULLIF(BTRIM(e.mnc), ''), ''),
-            NULLIF(BTRIM(e.lac), ''),
-            NULLIF(BTRIM(e.bs), ''),
-            regexp_replace(lower(coalesce(NULLIF(BTRIM(e.address), ''), '')), '[^[:alnum:]]', '', 'g'),
-            e.event_time DESC
+    await db.execute(
+        text(
+            """
+            CREATE TEMP TABLE tmp_project_address_keys ON COMMIT DROP AS
+            SELECT DISTINCT ON (
+              coalesce(NULLIF(BTRIM(e.mcc), ''), ''),
+              coalesce(NULLIF(BTRIM(e.mnc), ''), ''),
+              NULLIF(BTRIM(e.lac), ''),
+              NULLIF(BTRIM(e.bs), ''),
+              coalesce(NULLIF(BTRIM(e.address_norm), ''), regexp_replace(lower(coalesce(NULLIF(BTRIM(e.address), ''), '')), '[^[:alnum:]]', '', 'g'))
+            )
+              NULLIF(BTRIM(e.mcc), '') AS mcc,
+              NULLIF(BTRIM(e.mnc), '') AS mnc,
+              NULLIF(BTRIM(e.lac), '') AS lac,
+              NULLIF(BTRIM(e.bs), '') AS cid,
+              NULLIF(BTRIM(e.address), '') AS address,
+              coalesce(NULLIF(BTRIM(e.address_norm), ''), regexp_replace(lower(coalesce(NULLIF(BTRIM(e.address), ''), '')), '[^[:alnum:]]', '', 'g')) AS address_norm,
+              e.event_time
+            FROM project_location_events_raw e
+            WHERE e.project_id = :project_id
+              AND NULLIF(BTRIM(e.address), '') IS NOT NULL
+              AND NULLIF(BTRIM(e.lac), '') IS NOT NULL
+              AND NULLIF(BTRIM(e.bs), '') IS NOT NULL
+            ORDER BY
+              coalesce(NULLIF(BTRIM(e.mcc), ''), ''),
+              coalesce(NULLIF(BTRIM(e.mnc), ''), ''),
+              NULLIF(BTRIM(e.lac), ''),
+              NULLIF(BTRIM(e.bs), ''),
+              coalesce(NULLIF(BTRIM(e.address_norm), ''), regexp_replace(lower(coalesce(NULLIF(BTRIM(e.address), ''), '')), '[^[:alnum:]]', '', 'g')),
+              e.event_time DESC
+            """
         ),
-        unresolved AS (
-          SELECT r.*
-          FROM raw_keys r
-          WHERE NOT EXISTS (
-            SELECT 1
-            FROM cell_tower_reference c
-            WHERE c.lac = r.lac
-              AND c.cid = r.cid
-              AND c.latitude IS NOT NULL
-              AND c.longitude IS NOT NULL
-              AND (
-                (r.mcc IS NOT NULL AND r.mnc IS NOT NULL AND c.mcc IS NOT DISTINCT FROM r.mcc AND c.mnc IS NOT DISTINCT FROM r.mnc)
-                OR (r.mcc IS NULL OR r.mnc IS NULL)
+        {"project_id": project_id},
+    )
+    await db.execute(text("CREATE INDEX tmp_project_address_keys_address_norm_idx ON tmp_project_address_keys (address_norm)"))
+    await db.execute(text("CREATE INDEX tmp_project_address_keys_lac_cid_idx ON tmp_project_address_keys (lac, cid, mcc, mnc)"))
+
+    raw_candidates = int((await db.execute(text("SELECT COUNT(*) FROM tmp_project_address_keys"))).scalar() or 0)
+
+    await db.execute(
+        text(
+            """
+            CREATE TEMP TABLE tmp_unresolved_address_keys ON COMMIT DROP AS
+            SELECT r.*
+            FROM tmp_project_address_keys r
+            WHERE r.address_norm IS NOT NULL
+              AND r.address_norm <> ''
+              AND NOT EXISTS (
+                SELECT 1
+                FROM cell_tower_reference c
+                WHERE c.lac = r.lac
+                  AND c.cid = r.cid
+                  AND c.latitude IS NOT NULL
+                  AND c.longitude IS NOT NULL
+                  AND (
+                    (r.mcc IS NOT NULL AND r.mnc IS NOT NULL AND c.mcc IS NOT DISTINCT FROM r.mcc AND c.mnc IS NOT DISTINCT FROM r.mnc)
+                    OR (r.mcc IS NULL OR r.mnc IS NULL)
+                  )
               )
-          )
-        ),
-        matched AS (
-          SELECT
-            u.mcc,
-            u.mnc,
-            u.lac,
-            u.cid,
-            u.address,
-            ref.latitude,
-            ref.longitude,
-            ref.azimuth,
-            ref.height,
-            ref.beg_date,
-            ref.end_date,
-            ref.region_id,
-            ref.ref_source
-          FROM unresolved u
-          JOIN LATERAL (
-            SELECT c.*
-            FROM cell_tower_reference c
-            WHERE c.latitude IS NOT NULL
-              AND c.longitude IS NOT NULL
-              AND regexp_replace(lower(coalesce(c.address, '')), '[^[:alnum:]]', '', 'g') = u.address_norm
-            ORDER BY c.id DESC
-            LIMIT 1
-          ) ref ON TRUE
-        ),
-        to_insert AS (
-          SELECT DISTINCT ON (
-            coalesce(m.mcc, ''),
-            coalesce(m.mnc, ''),
-            m.lac,
-            m.cid,
-            coalesce(m.address, ''),
-            m.latitude,
-            m.longitude
-          )
-            m.*
-          FROM matched m
-          WHERE NOT EXISTS (
-            SELECT 1
-            FROM cell_tower_reference c
-            WHERE c.lac = m.lac
-              AND c.cid = m.cid
-              AND c.mcc IS NOT DISTINCT FROM m.mcc
-              AND c.mnc IS NOT DISTINCT FROM m.mnc
-              AND c.address IS NOT DISTINCT FROM m.address
-              AND c.latitude IS NOT DISTINCT FROM m.latitude
-              AND c.longitude IS NOT DISTINCT FROM m.longitude
-          )
-          ORDER BY
-            coalesce(m.mcc, ''),
-            coalesce(m.mnc, ''),
-            m.lac,
-            m.cid,
-            coalesce(m.address, ''),
-            m.latitude,
-            m.longitude
-        ),
-        numbered AS (
-          SELECT t.*, row_number() OVER (ORDER BY coalesce(t.mcc, ''), coalesce(t.mnc, ''), t.lac, t.cid, coalesce(t.address, '')) AS rn
-          FROM to_insert t
-        ),
-        max_id AS (
-          SELECT coalesce(MAX(id), 0) AS base_id FROM cell_tower_reference
+            """
         )
-        INSERT INTO cell_tower_reference (
-          id, mcc, mnc, lac, cid, g, latitude, longitude, azimuth, height,
-          address, beg_date, end_date, region_id, ref_source, loaded_at
-        )
-        SELECT
-          max_id.base_id + n.rn,
-          n.mcc,
-          n.mnc,
-          n.lac,
-          n.cid,
-          NULL,
-          n.latitude,
-          n.longitude,
-          n.azimuth,
-          n.height,
-          n.address,
-          n.beg_date,
-          n.end_date,
-          n.region_id,
-          concat(coalesce(n.ref_source, 'address_match'), ' [project_', :project_id::text, '_addr_enrich]'),
-          NOW()
-        FROM numbered n
-        CROSS JOIN max_id
-        """
     )
-    inserted_result = await db.execute(insert_sql, {"project_id": project_id})
-    inserted_rows = inserted_result.rowcount or 0
+    await db.execute(text("CREATE INDEX tmp_unresolved_address_keys_address_norm_idx ON tmp_unresolved_address_keys (address_norm)"))
+
+    await db.execute(
+        text(
+            """
+            CREATE TEMP TABLE tmp_ref_by_address ON COMMIT DROP AS
+            WITH relevant_norms AS (
+              SELECT DISTINCT address_norm
+              FROM tmp_unresolved_address_keys
+            )
+            SELECT DISTINCT ON (address_norm)
+              address_norm,
+              latitude,
+              longitude,
+              azimuth,
+              height,
+              beg_date,
+              end_date,
+              region_id,
+              ref_source,
+              id
+            FROM (
+              SELECT
+                coalesce(NULLIF(BTRIM(c.address_norm), ''), regexp_replace(lower(coalesce(c.address, '')), '[^[:alnum:]]', '', 'g')) AS address_norm,
+                c.latitude,
+                c.longitude,
+                c.azimuth,
+                c.height,
+                c.beg_date,
+                c.end_date,
+                c.region_id,
+                c.ref_source,
+                c.id
+              FROM cell_tower_reference c
+              JOIN relevant_norms r
+                ON coalesce(NULLIF(BTRIM(c.address_norm), ''), regexp_replace(lower(coalesce(c.address, '')), '[^[:alnum:]]', '', 'g')) = r.address_norm
+              WHERE c.latitude IS NOT NULL
+                AND c.longitude IS NOT NULL
+            ) refs
+            ORDER BY address_norm, id DESC
+            """
+        )
+    )
+    await db.execute(text("CREATE INDEX tmp_ref_by_address_address_norm_idx ON tmp_ref_by_address (address_norm)"))
+
+    await db.execute(
+        text(
+            """
+            CREATE TEMP TABLE tmp_matched_address_keys ON COMMIT DROP AS
+            SELECT
+              u.mcc,
+              u.mnc,
+              u.lac,
+              u.cid,
+              u.address,
+              u.address_norm,
+              r.latitude,
+              r.longitude,
+              r.azimuth,
+              r.height,
+              r.beg_date,
+              r.end_date,
+              r.region_id,
+              r.ref_source
+            FROM tmp_unresolved_address_keys u
+            JOIN tmp_ref_by_address r ON r.address_norm = u.address_norm
+            """
+        )
+    )
+    matched_candidates = int((await db.execute(text("SELECT COUNT(*) FROM tmp_matched_address_keys"))).scalar() or 0)
+
+    inserted_result = await db.execute(
+        text(
+            """
+            WITH to_insert AS (
+              SELECT DISTINCT ON (
+                coalesce(m.mcc, ''),
+                coalesce(m.mnc, ''),
+                m.lac,
+                m.cid,
+                coalesce(m.address, ''),
+                m.latitude,
+                m.longitude
+              )
+                m.*
+              FROM tmp_matched_address_keys m
+              WHERE NOT EXISTS (
+                SELECT 1
+                FROM cell_tower_reference c
+                WHERE c.lac = m.lac
+                  AND c.cid = m.cid
+                  AND c.mcc IS NOT DISTINCT FROM m.mcc
+                  AND c.mnc IS NOT DISTINCT FROM m.mnc
+                  AND c.address IS NOT DISTINCT FROM m.address
+                  AND c.latitude IS NOT DISTINCT FROM m.latitude
+                  AND c.longitude IS NOT DISTINCT FROM m.longitude
+              )
+              ORDER BY
+                coalesce(m.mcc, ''),
+                coalesce(m.mnc, ''),
+                m.lac,
+                m.cid,
+                coalesce(m.address, ''),
+                m.latitude,
+                m.longitude
+            ),
+            numbered AS (
+              SELECT
+                t.*,
+                row_number() OVER (
+                  ORDER BY coalesce(t.mcc, ''), coalesce(t.mnc, ''), t.lac, t.cid, coalesce(t.address, '')
+                ) AS rn
+              FROM to_insert t
+            ),
+            max_id AS (
+              SELECT coalesce(MAX(id), 0) AS base_id FROM cell_tower_reference
+            )
+            INSERT INTO cell_tower_reference (
+              id, mcc, mnc, lac, cid, g, latitude, longitude, azimuth, height,
+              address, address_norm, beg_date, end_date, region_id, ref_source, loaded_at
+            )
+            SELECT
+              max_id.base_id + n.rn,
+              n.mcc,
+              n.mnc,
+              n.lac,
+              n.cid,
+              NULL,
+              n.latitude,
+              n.longitude,
+              n.azimuth,
+              n.height,
+              n.address,
+              n.address_norm,
+              n.beg_date,
+              n.end_date,
+              n.region_id,
+              concat(coalesce(n.ref_source, 'address_match'), ' [project_', :project_id::text, '_addr_enrich]'),
+              NOW()
+            FROM numbered n
+            CROSS JOIN max_id
+            """
+        ),
+        {"project_id": project_id},
+    )
+    inserted_rows = int(inserted_result.rowcount or 0)
 
     return {
         "project_id": project_id,

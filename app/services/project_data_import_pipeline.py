@@ -11,8 +11,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.services.project_data_import_utils import (
     read_communications_rows,
     read_device_history_rows,
+    read_ip_msisdn_fact_rows,
     read_ip_binding_rows,
     read_location_event_rows,
+    read_msisdn_device_fact_rows,
+    read_msisdn_text_fact_rows,
+    read_user_msisdn_fact_rows,
 )
 
 
@@ -22,10 +26,18 @@ class ImportInsertResult:
     device_history_rows: int
     location_events_rows: int
     ip_bindings_rows: int
+    user_msisdn_facts_rows: int
+    ip_msisdn_facts_rows: int
+    msisdn_device_facts_rows: int
+    msisdn_text_facts_rows: int
     inserted_communications: int
     inserted_device_history: int
     inserted_location_events: int
     inserted_ip_bindings: int
+    inserted_user_msisdn_facts: int
+    inserted_ip_msisdn_facts: int
+    inserted_msisdn_device_facts: int
+    inserted_msisdn_text_facts: int
 
 
 def _canon_pair(a: str, b: str) -> tuple[str, str]:
@@ -131,6 +143,169 @@ def _merge_device(base: dict[str, Any], incoming: dict[str, Any]) -> dict[str, A
     return base
 
 
+def _location_key(row: dict[str, Any]) -> tuple[Any, ...]:
+    return (
+        str(row.get("identifier_type") or "").strip().lower(),
+        str(row.get("identifier_value") or "").strip(),
+        row.get("event_time"),
+        str(row.get("address") or "").strip(),
+        str(row.get("address_norm") or "").strip(),
+        str(row.get("mcc") or "").strip(),
+        str(row.get("mnc") or "").strip(),
+        str(row.get("lac") or "").strip(),
+        str(row.get("bs") or "").strip(),
+    )
+
+
+def _ip_key(row: dict[str, Any]) -> tuple[Any, ...]:
+    return (
+        str(row.get("identifier_type") or "").strip().lower(),
+        str(row.get("identifier_value") or "").strip(),
+        str(row.get("ip_address") or "").strip(),
+        row.get("event_time"),
+        str(row.get("address") or "").strip(),
+        str(row.get("address_norm") or "").strip(),
+        str(row.get("mcc") or "").strip(),
+        str(row.get("mnc") or "").strip(),
+        str(row.get("lac") or "").strip(),
+        str(row.get("bs") or "").strip(),
+        str(row.get("user_id") or "").strip(),
+        str(row.get("device_info") or "").strip(),
+        str(row.get("message_text") or "").strip(),
+    )
+
+
+def _user_msisdn_fact_key(row: dict[str, Any]) -> tuple[Any, ...]:
+    return (
+        row.get("event_time"),
+        str(row.get("user_id") or "").strip(),
+        str(row.get("user_msisdn") or "").strip(),
+    )
+
+
+def _ip_msisdn_fact_key(row: dict[str, Any]) -> tuple[Any, ...]:
+    return (
+        row.get("event_time"),
+        str(row.get("ip_address") or "").strip(),
+        str(row.get("user_msisdn") or "").strip(),
+    )
+
+
+def _msisdn_device_fact_key(row: dict[str, Any]) -> tuple[Any, ...]:
+    return (
+        row.get("event_time"),
+        str(row.get("user_msisdn") or "").strip(),
+        str(row.get("device_info") or "").strip(),
+    )
+
+
+def _msisdn_text_fact_key(row: dict[str, Any]) -> tuple[Any, ...]:
+    return (
+        row.get("event_time"),
+        str(row.get("user_msisdn") or "").strip(),
+        str(row.get("file_msisdn") or "").strip(),
+        str(row.get("message_text") or "").strip(),
+    )
+
+
+async def _get_project_data_stats_cache(db: AsyncSession, project_id: int) -> dict[str, int] | None:
+    result = await db.execute(
+        text(
+            """
+            SELECT
+                communications_count,
+                device_history_count,
+                location_events_count,
+                ip_bindings_count,
+                user_msisdn_facts_count,
+                ip_msisdn_facts_count,
+                msisdn_device_facts_count,
+                msisdn_text_facts_count
+            FROM project_data_stats_cache
+            WHERE project_id = :project_id
+            """
+        ),
+        {"project_id": project_id},
+    )
+    row = result.mappings().first()
+    if row is None:
+        return None
+    return {
+        "communications_count": int(row["communications_count"] or 0),
+        "device_history_count": int(row["device_history_count"] or 0),
+        "location_events_count": int(row["location_events_count"] or 0),
+        "ip_bindings_count": int(row["ip_bindings_count"] or 0),
+        "user_msisdn_facts_count": int(row["user_msisdn_facts_count"] or 0),
+        "ip_msisdn_facts_count": int(row["ip_msisdn_facts_count"] or 0),
+        "msisdn_device_facts_count": int(row["msisdn_device_facts_count"] or 0),
+        "msisdn_text_facts_count": int(row["msisdn_text_facts_count"] or 0),
+    }
+
+
+async def _set_project_data_stats_cache(
+    db: AsyncSession,
+    project_id: int,
+    communications_count: int,
+    device_history_count: int,
+    location_events_count: int,
+    ip_bindings_count: int,
+    user_msisdn_facts_count: int,
+    ip_msisdn_facts_count: int,
+    msisdn_device_facts_count: int,
+    msisdn_text_facts_count: int,
+) -> None:
+    await db.execute(
+        text(
+            """
+            INSERT INTO project_data_stats_cache (
+                project_id,
+                communications_count,
+                device_history_count,
+                location_events_count,
+                ip_bindings_count,
+                user_msisdn_facts_count,
+                ip_msisdn_facts_count,
+                msisdn_device_facts_count,
+                msisdn_text_facts_count,
+                updated_at
+            ) VALUES (
+                :project_id,
+                :communications_count,
+                :device_history_count,
+                :location_events_count,
+                :ip_bindings_count,
+                :user_msisdn_facts_count,
+                :ip_msisdn_facts_count,
+                :msisdn_device_facts_count,
+                :msisdn_text_facts_count,
+                NOW()
+            )
+            ON CONFLICT (project_id) DO UPDATE SET
+                communications_count = EXCLUDED.communications_count,
+                device_history_count = EXCLUDED.device_history_count,
+                location_events_count = EXCLUDED.location_events_count,
+                ip_bindings_count = EXCLUDED.ip_bindings_count,
+                user_msisdn_facts_count = EXCLUDED.user_msisdn_facts_count,
+                ip_msisdn_facts_count = EXCLUDED.ip_msisdn_facts_count,
+                msisdn_device_facts_count = EXCLUDED.msisdn_device_facts_count,
+                msisdn_text_facts_count = EXCLUDED.msisdn_text_facts_count,
+                updated_at = NOW()
+            """
+        ),
+        {
+            "project_id": project_id,
+            "communications_count": int(communications_count),
+            "device_history_count": int(device_history_count),
+            "location_events_count": int(location_events_count),
+            "ip_bindings_count": int(ip_bindings_count),
+            "user_msisdn_facts_count": int(user_msisdn_facts_count),
+            "ip_msisdn_facts_count": int(ip_msisdn_facts_count),
+            "msisdn_device_facts_count": int(msisdn_device_facts_count),
+            "msisdn_text_facts_count": int(msisdn_text_facts_count),
+        },
+    )
+
+
 async def insert_converted_rows(
     db: AsyncSession,
     project_id: int,
@@ -138,6 +313,10 @@ async def insert_converted_rows(
     device_history_path: Path,
     location_events_path: Path,
     ip_bindings_path: Path,
+    user_msisdn_facts_path: Path,
+    ip_msisdn_facts_path: Path,
+    msisdn_device_facts_path: Path,
+    msisdn_text_facts_path: Path,
     load_batch_id: str,
 ) -> ImportInsertResult:
     communications_rows = read_communications_rows(communications_path, project_id)
@@ -145,6 +324,10 @@ async def insert_converted_rows(
     batch_marker = datetime.utcnow()
     location_rows = read_location_event_rows(location_events_path, project_id, load_batch_id, batch_marker)
     ip_rows = read_ip_binding_rows(ip_bindings_path, project_id, load_batch_id, batch_marker)
+    user_msisdn_fact_rows = read_user_msisdn_fact_rows(user_msisdn_facts_path, project_id, load_batch_id, batch_marker)
+    ip_msisdn_fact_rows = read_ip_msisdn_fact_rows(ip_msisdn_facts_path, project_id, load_batch_id, batch_marker)
+    msisdn_device_fact_rows = read_msisdn_device_fact_rows(msisdn_device_facts_path, project_id, load_batch_id, batch_marker)
+    msisdn_text_fact_rows = read_msisdn_text_fact_rows(msisdn_text_facts_path, project_id, load_batch_id, batch_marker)
 
     existing_comm_result = await db.execute(
         text(
@@ -170,25 +353,13 @@ async def insert_converted_rows(
 
     existing_comm_rows = [dict(row._mapping) for row in existing_comm_result]
     existing_device_rows = [dict(row._mapping) for row in existing_device_result]
-
-    before_loc_count = int(
-        (
-            await db.execute(
-                text("SELECT COUNT(*) FROM project_location_events_raw WHERE project_id = :project_id"),
-                {"project_id": project_id},
-            )
-        ).scalar()
-        or 0
-    )
-    before_ip_count = int(
-        (
-            await db.execute(
-                text("SELECT COUNT(*) FROM project_identifier_ip_bindings WHERE project_id = :project_id"),
-                {"project_id": project_id},
-            )
-        ).scalar()
-        or 0
-    )
+    cached_stats = await _get_project_data_stats_cache(db, project_id)
+    before_loc_count = int((cached_stats or {}).get("location_events_count", 0))
+    before_ip_count = int((cached_stats or {}).get("ip_bindings_count", 0))
+    before_user_msisdn_fact_count = int((cached_stats or {}).get("user_msisdn_facts_count", 0))
+    before_ip_msisdn_fact_count = int((cached_stats or {}).get("ip_msisdn_facts_count", 0))
+    before_msisdn_device_fact_count = int((cached_stats or {}).get("msisdn_device_facts_count", 0))
+    before_msisdn_text_fact_count = int((cached_stats or {}).get("msisdn_text_facts_count", 0))
 
     comm_by_key: dict[tuple[str, str], dict[str, Any]] = {}
     for raw in existing_comm_rows + communications_rows:
@@ -220,6 +391,59 @@ async def insert_converted_rows(
 
     final_comm_rows = list(comm_by_key.values())
     final_device_rows = list(device_by_key.values())
+    final_location_rows: list[dict[str, Any]] = []
+    seen_location_keys: set[tuple[Any, ...]] = set()
+    for row in location_rows:
+        key = _location_key(row)
+        if key in seen_location_keys:
+            continue
+        seen_location_keys.add(key)
+        final_location_rows.append(row)
+
+    final_ip_rows: list[dict[str, Any]] = []
+    seen_ip_keys: set[tuple[Any, ...]] = set()
+    for row in ip_rows:
+        key = _ip_key(row)
+        if key in seen_ip_keys:
+            continue
+        seen_ip_keys.add(key)
+        final_ip_rows.append(row)
+
+    final_user_msisdn_fact_rows: list[dict[str, Any]] = []
+    seen_user_msisdn_fact_keys: set[tuple[Any, ...]] = set()
+    for row in user_msisdn_fact_rows:
+        key = _user_msisdn_fact_key(row)
+        if key in seen_user_msisdn_fact_keys:
+            continue
+        seen_user_msisdn_fact_keys.add(key)
+        final_user_msisdn_fact_rows.append(row)
+
+    final_ip_msisdn_fact_rows: list[dict[str, Any]] = []
+    seen_ip_msisdn_fact_keys: set[tuple[Any, ...]] = set()
+    for row in ip_msisdn_fact_rows:
+        key = _ip_msisdn_fact_key(row)
+        if key in seen_ip_msisdn_fact_keys:
+            continue
+        seen_ip_msisdn_fact_keys.add(key)
+        final_ip_msisdn_fact_rows.append(row)
+
+    final_msisdn_device_fact_rows: list[dict[str, Any]] = []
+    seen_msisdn_device_fact_keys: set[tuple[Any, ...]] = set()
+    for row in msisdn_device_fact_rows:
+        key = _msisdn_device_fact_key(row)
+        if key in seen_msisdn_device_fact_keys:
+            continue
+        seen_msisdn_device_fact_keys.add(key)
+        final_msisdn_device_fact_rows.append(row)
+
+    final_msisdn_text_fact_rows: list[dict[str, Any]] = []
+    seen_msisdn_text_fact_keys: set[tuple[Any, ...]] = set()
+    for row in msisdn_text_fact_rows:
+        key = _msisdn_text_fact_key(row)
+        if key in seen_msisdn_text_fact_keys:
+            continue
+        seen_msisdn_text_fact_keys.add(key)
+        final_msisdn_text_fact_rows.append(row)
 
     for row in final_comm_rows:
         row["created_at"] = batch_marker
@@ -256,71 +480,244 @@ async def insert_converted_rows(
             final_device_rows,
         )
 
-    if location_rows:
+    if final_location_rows:
         await db.execute(
             text(
                 """
                 INSERT INTO project_location_events_raw (
                     project_id, load_batch_id, identifier_type, identifier_value,
-                    event_time, address, mcc, mnc, lac, bs, created_at
+                    event_time, address, address_norm, mcc, mnc, lac, bs, created_at
                 ) VALUES (
                     :project_id, :load_batch_id, :identifier_type, :identifier_value,
-                    :event_time, :address, :mcc, :mnc, :lac, :bs, :created_at
+                    :event_time, :address, :address_norm, :mcc, :mnc, :lac, :bs, :created_at
                 )
+                ON CONFLICT DO NOTHING
                 """
             ),
-            location_rows,
+            final_location_rows,
         )
 
-    if ip_rows:
+    if final_ip_rows:
         await db.execute(
             text(
                 """
                 INSERT INTO project_identifier_ip_bindings (
                     project_id, load_batch_id, identifier_type, identifier_value,
-                    ip_address, event_time, address, mcc, mnc, lac, bs, created_at
+                    ip_address, event_time, address, address_norm, mcc, mnc, lac, bs,
+                    user_id, device_info, message_text, created_at
                 ) VALUES (
                     :project_id, :load_batch_id, :identifier_type, :identifier_value,
-                    :ip_address, :event_time, :address, :mcc, :mnc, :lac, :bs, :created_at
+                    :ip_address, :event_time, :address, :address_norm, :mcc, :mnc, :lac, :bs,
+                    :user_id, :device_info, :message_text, :created_at
                 )
+                ON CONFLICT DO NOTHING
                 """
             ),
-            ip_rows,
+            final_ip_rows,
+        )
+
+    if final_user_msisdn_fact_rows:
+        await db.execute(
+            text(
+                """
+                INSERT INTO project_user_msisdn_facts (
+                    project_id, load_batch_id, event_time, user_id, user_msisdn, created_at
+                ) VALUES (
+                    :project_id, :load_batch_id, :event_time, :user_id, :user_msisdn, :created_at
+                )
+                ON CONFLICT DO NOTHING
+                """
+            ),
+            final_user_msisdn_fact_rows,
+        )
+
+    if final_ip_msisdn_fact_rows:
+        await db.execute(
+            text(
+                """
+                INSERT INTO project_ip_msisdn_facts (
+                    project_id, load_batch_id, event_time, ip_address, user_msisdn, created_at
+                ) VALUES (
+                    :project_id, :load_batch_id, :event_time, :ip_address, :user_msisdn, :created_at
+                )
+                ON CONFLICT DO NOTHING
+                """
+            ),
+            final_ip_msisdn_fact_rows,
+        )
+
+    if final_msisdn_device_fact_rows:
+        await db.execute(
+            text(
+                """
+                INSERT INTO project_msisdn_device_facts (
+                    project_id, load_batch_id, event_time, user_msisdn, device_info, created_at
+                ) VALUES (
+                    :project_id, :load_batch_id, :event_time, :user_msisdn, :device_info, :created_at
+                )
+                ON CONFLICT DO NOTHING
+                """
+            ),
+            final_msisdn_device_fact_rows,
+        )
+
+    if final_msisdn_text_fact_rows:
+        await db.execute(
+            text(
+                """
+                INSERT INTO project_msisdn_text_facts (
+                    project_id, load_batch_id, event_time, user_msisdn, file_msisdn, message_text, created_at
+                ) VALUES (
+                    :project_id, :load_batch_id, :event_time, :user_msisdn, :file_msisdn, :message_text, :created_at
+                )
+                ON CONFLICT DO NOTHING
+                """
+            ),
+            final_msisdn_text_fact_rows,
         )
 
     after_comm_count = len(final_comm_rows)
     after_device_count = len(final_device_rows)
-    after_loc_count = int(
+    inserted_loc = int(
         (
             await db.execute(
-                text("SELECT COUNT(*) FROM project_location_events_raw WHERE project_id = :project_id"),
-                {"project_id": project_id},
+                text(
+                    """
+                    SELECT COUNT(*)
+                    FROM project_location_events_raw
+                    WHERE project_id = :project_id
+                      AND load_batch_id = :load_batch_id
+                    """
+                ),
+                {"project_id": project_id, "load_batch_id": load_batch_id},
             )
         ).scalar()
         or 0
     )
-    after_ip_count = int(
+    inserted_ip = int(
         (
             await db.execute(
-                text("SELECT COUNT(*) FROM project_identifier_ip_bindings WHERE project_id = :project_id"),
-                {"project_id": project_id},
+                text(
+                    """
+                    SELECT COUNT(*)
+                    FROM project_identifier_ip_bindings
+                    WHERE project_id = :project_id
+                      AND load_batch_id = :load_batch_id
+                    """
+                ),
+                {"project_id": project_id, "load_batch_id": load_batch_id},
             )
         ).scalar()
         or 0
     )
+    inserted_user_msisdn_facts = int(
+        (
+            await db.execute(
+                text(
+                    """
+                    SELECT COUNT(*)
+                    FROM project_user_msisdn_facts
+                    WHERE project_id = :project_id
+                      AND load_batch_id = :load_batch_id
+                    """
+                ),
+                {"project_id": project_id, "load_batch_id": load_batch_id},
+            )
+        ).scalar()
+        or 0
+    )
+    inserted_ip_msisdn_facts = int(
+        (
+            await db.execute(
+                text(
+                    """
+                    SELECT COUNT(*)
+                    FROM project_ip_msisdn_facts
+                    WHERE project_id = :project_id
+                      AND load_batch_id = :load_batch_id
+                    """
+                ),
+                {"project_id": project_id, "load_batch_id": load_batch_id},
+            )
+        ).scalar()
+        or 0
+    )
+    inserted_msisdn_device_facts = int(
+        (
+            await db.execute(
+                text(
+                    """
+                    SELECT COUNT(*)
+                    FROM project_msisdn_device_facts
+                    WHERE project_id = :project_id
+                      AND load_batch_id = :load_batch_id
+                    """
+                ),
+                {"project_id": project_id, "load_batch_id": load_batch_id},
+            )
+        ).scalar()
+        or 0
+    )
+    inserted_msisdn_text_facts = int(
+        (
+            await db.execute(
+                text(
+                    """
+                    SELECT COUNT(*)
+                    FROM project_msisdn_text_facts
+                    WHERE project_id = :project_id
+                      AND load_batch_id = :load_batch_id
+                    """
+                ),
+                {"project_id": project_id, "load_batch_id": load_batch_id},
+            )
+        ).scalar()
+        or 0
+    )
+    after_loc_count = before_loc_count + inserted_loc
+    after_ip_count = before_ip_count + inserted_ip
+    after_user_msisdn_fact_count = before_user_msisdn_fact_count + inserted_user_msisdn_facts
+    after_ip_msisdn_fact_count = before_ip_msisdn_fact_count + inserted_ip_msisdn_facts
+    after_msisdn_device_fact_count = before_msisdn_device_fact_count + inserted_msisdn_device_facts
+    after_msisdn_text_fact_count = before_msisdn_text_fact_count + inserted_msisdn_text_facts
 
     inserted_comm = max(0, after_comm_count - before_comm_count)
     inserted_device = max(0, after_device_count - before_device_count)
-    inserted_loc = max(0, after_loc_count - before_loc_count)
-    inserted_ip = max(0, after_ip_count - before_ip_count)
+    inserted_loc = max(0, inserted_loc)
+    inserted_ip = max(0, inserted_ip)
+    inserted_user_msisdn_facts = max(0, inserted_user_msisdn_facts)
+    inserted_ip_msisdn_facts = max(0, inserted_ip_msisdn_facts)
+    inserted_msisdn_device_facts = max(0, inserted_msisdn_device_facts)
+    inserted_msisdn_text_facts = max(0, inserted_msisdn_text_facts)
+
+    await _set_project_data_stats_cache(
+        db=db,
+        project_id=project_id,
+        communications_count=after_comm_count,
+        device_history_count=after_device_count,
+        location_events_count=after_loc_count,
+        ip_bindings_count=after_ip_count,
+        user_msisdn_facts_count=after_user_msisdn_fact_count,
+        ip_msisdn_facts_count=after_ip_msisdn_fact_count,
+        msisdn_device_facts_count=after_msisdn_device_fact_count,
+        msisdn_text_facts_count=after_msisdn_text_fact_count,
+    )
 
     return ImportInsertResult(
         communications_rows=len(communications_rows),
         device_history_rows=len(device_rows),
         location_events_rows=len(location_rows),
         ip_bindings_rows=len(ip_rows),
+        user_msisdn_facts_rows=len(user_msisdn_fact_rows),
+        ip_msisdn_facts_rows=len(ip_msisdn_fact_rows),
+        msisdn_device_facts_rows=len(msisdn_device_fact_rows),
+        msisdn_text_facts_rows=len(msisdn_text_fact_rows),
         inserted_communications=inserted_comm,
         inserted_device_history=inserted_device,
         inserted_location_events=inserted_loc,
         inserted_ip_bindings=inserted_ip,
+        inserted_user_msisdn_facts=inserted_user_msisdn_facts,
+        inserted_ip_msisdn_facts=inserted_ip_msisdn_facts,
+        inserted_msisdn_device_facts=inserted_msisdn_device_facts,
+        inserted_msisdn_text_facts=inserted_msisdn_text_facts,
     )

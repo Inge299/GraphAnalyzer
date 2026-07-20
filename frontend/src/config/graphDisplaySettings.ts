@@ -4,6 +4,7 @@ export type GraphDisplaySettings = {
   bottomTableFontSizePx: number;
   nodeLabelMinScale: number;
   edgeLabelMinScale: number;
+  maxGraphScale: number;
   nodeDistancePx: number;
 };
 
@@ -29,6 +30,11 @@ const sanitizeSettings = (candidate: Partial<GraphDisplaySettings>): GraphDispla
       0.05,
       3,
     ),
+    maxGraphScale: clamp(
+      Number(candidate.maxGraphScale ?? current?.interaction?.maxGraphScale ?? 2) || 2,
+      0.5,
+      6,
+    ),
     nodeDistancePx: clamp(
       Number(candidate.nodeDistancePx ?? current?.layoutSpacing?.nodeDistancePx ?? 260) || 260,
       80,
@@ -43,6 +49,7 @@ export const getDefaultGraphDisplaySettings = (): GraphDisplaySettings => {
     bottomTableFontSizePx: current?.ui?.bottomTableFontSizePx,
     nodeLabelMinScale: current?.interaction?.nodeLabelMinScale,
     edgeLabelMinScale: current?.interaction?.edgeLabelMinScale,
+    maxGraphScale: current?.interaction?.maxGraphScale,
     nodeDistancePx: current?.layoutSpacing?.nodeDistancePx,
   });
 };
@@ -67,6 +74,7 @@ export const applyGraphDisplaySettings = (
   cfg.ui.bottomTableFontSizePx = settings.bottomTableFontSizePx;
   cfg.interaction.nodeLabelMinScale = settings.nodeLabelMinScale;
   cfg.interaction.edgeLabelMinScale = settings.edgeLabelMinScale;
+  cfg.interaction.maxGraphScale = settings.maxGraphScale;
   cfg.layoutSpacing.nodeDistancePx = settings.nodeDistancePx;
 
   if (typeof document !== 'undefined') {

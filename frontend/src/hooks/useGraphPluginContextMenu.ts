@@ -18,6 +18,7 @@ interface UseGraphPluginContextMenuArgs {
   containerRef: MutableRefObject<HTMLDivElement | null>;
   updateSelectionFromNetwork: () => void;
   toolbarHeight: number;
+  getArtifactSnapshot: () => Record<string, any> | null;
 }
 
 export const useGraphPluginContextMenu = ({
@@ -27,6 +28,7 @@ export const useGraphPluginContextMenu = ({
   containerRef,
   updateSelectionFromNetwork,
   toolbarHeight,
+  getArtifactSnapshot,
 }: UseGraphPluginContextMenuArgs) => {
   const [pluginMenu, setPluginMenu] = useState<PluginContextMenuState | null>(null);
   const pluginMenuRef = useRef<HTMLDivElement | null>(null);
@@ -79,7 +81,8 @@ export const useGraphPluginContextMenu = ({
     });
 
     try {
-      const response: PluginApplicableResponse = await pluginApi.applicable(projectId, artifactId, context);
+      const liveArtifactData = getArtifactSnapshot();
+      const response: PluginApplicableResponse = await pluginApi.applicable(projectId, artifactId, context, liveArtifactData);
       const contextual = (response.plugins || []).filter((plugin: ApiPlugin) => String(plugin?.plugin_scope || 'context') !== 'global');
       setPluginMenu((prev) => {
         if (!prev) return prev;
@@ -91,7 +94,7 @@ export const useGraphPluginContextMenu = ({
         return { ...prev, loading: false, plugins: [] };
       });
     }
-  }, [artifactId, networkRef, projectId, updateSelectionFromNetwork]);
+  }, [artifactId, getArtifactSnapshot, networkRef, projectId, updateSelectionFromNetwork]);
 
   const pluginMenuTree = useMemo(() => buildPluginMenuTree(pluginMenu?.plugins || []), [pluginMenu?.plugins]);
 

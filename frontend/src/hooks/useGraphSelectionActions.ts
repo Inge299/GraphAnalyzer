@@ -33,31 +33,44 @@ export const useGraphSelectionActions = ({
     updateSelectionFromNetwork();
   }, [artifactDataRef, networkRef, updateSelectionFromNetwork]);
 
-  const handleSelectEndpoints = useCallback(() => {
+  const handleSelectConnected = useCallback(() => {
     if (!networkRef.current) return;
 
     const data = artifactDataRef.current || {};
     const selectedNodeIds = new Set<string>(networkRef.current.getSelectedNodes().map((id: any) => String(id)));
-    if (selectedNodeIds.size === 0) return;
-
     const selectedEdgeIds = new Set<string>(networkRef.current.getSelectedEdges().map((id: any) => String(id)));
+    if (selectedNodeIds.size === 0 && selectedEdgeIds.size === 0) return;
+
+    const expandedNodeIds = new Set<string>(selectedNodeIds);
+    const expandedEdgeIds = new Set<string>(selectedEdgeIds);
 
     (data.edges || []).forEach((edge: any) => {
+      const edgeId = String(edge.id || '');
       const fromId = String(edge.from || edge.source_node || '');
       const toId = String(edge.to || edge.target_node || '');
+
+      if (selectedEdgeIds.has(edgeId)) {
+        if (fromId) expandedNodeIds.add(fromId);
+        if (toId) expandedNodeIds.add(toId);
+        return;
+      }
+
       if (selectedNodeIds.has(fromId) || selectedNodeIds.has(toId)) {
-        selectedNodeIds.add(fromId);
-        selectedNodeIds.add(toId);
-        selectedEdgeIds.add(String(edge.id));
+        expandedEdgeIds.add(edgeId);
+        if (fromId) expandedNodeIds.add(fromId);
+        if (toId) expandedNodeIds.add(toId);
       }
     });
 
-    networkRef.current.setSelection({ nodes: Array.from(selectedNodeIds), edges: Array.from(selectedEdgeIds) }, { unselectAll: true, highlightEdges: false });
+    networkRef.current.setSelection(
+      { nodes: Array.from(expandedNodeIds), edges: Array.from(expandedEdgeIds) },
+      { unselectAll: true, highlightEdges: false },
+    );
     updateSelectionFromNetwork();
   }, [artifactDataRef, networkRef, updateSelectionFromNetwork]);
 
   return {
     handleSelectConnectedEdges,
-    handleSelectEndpoints,
+    handleSelectConnected,
   };
 };

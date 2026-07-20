@@ -147,6 +147,15 @@ def open_csv_reader(path: Path, delimiter: str = ";") -> csv.DictReader:
     return csv.DictReader(text_data.splitlines(), delimiter=delimiter)
 
 
+def normalize_address(value: str | None) -> str | None:
+    clean = str(value or "").strip().lower()
+    if not clean:
+        return None
+
+    normalized = "".join(char for char in clean if char.isalnum())
+    return normalized or None
+
+
 def read_location_event_rows(
     path: Path,
     project_id: int,
@@ -171,6 +180,7 @@ def read_location_event_rows(
             "identifier_value": identifier_value,
             "event_time": event_time,
             "address": (str(first_present(row, ["address"]) or "").strip()) or None,
+            "address_norm": normalize_address(first_present(row, ["address"])),
             "mcc": (str(first_present(row, ["mcc"]) or "").strip()) or None,
             "mnc": (str(first_present(row, ["mnc"]) or "").strip()) or None,
             "lac": (str(first_present(row, ["lac"]) or "").strip()) or None,
@@ -206,12 +216,138 @@ def read_ip_binding_rows(
             "ip_address": ip_address,
             "event_time": event_time,
             "address": (str(first_present(row, ["address"]) or "").strip()) or None,
+            "address_norm": normalize_address(first_present(row, ["address"])),
             "mcc": (str(first_present(row, ["mcc"]) or "").strip()) or None,
             "mnc": (str(first_present(row, ["mnc"]) or "").strip()) or None,
             "lac": (str(first_present(row, ["lac"]) or "").strip()) or None,
             "bs": (str(first_present(row, ["bs"]) or "").strip()) or None,
+            "user_id": (str(first_present(row, ["user_id", "Ид. пользователя"]) or "").strip()) or None,
+            "device_info": (str(first_present(row, ["device_info", "Устройство пользователя"]) or "").strip()) or None,
+            "message_text": (str(first_present(row, ["message_text", "Текст"]) or "").strip()) or None,
             "created_at": created_at,
         })
+    return rows
+
+
+def read_user_msisdn_fact_rows(
+    path: Path,
+    project_id: int,
+    load_batch_id: str,
+    created_at: datetime,
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    if not path.exists():
+        return rows
+
+    reader = open_csv_reader(path, ";")
+    for row in reader:
+        event_time = parse_iso_datetime(str(first_present(row, ["event_time"]) or ""))
+        user_id = str(first_present(row, ["user_id"]) or "").strip()
+        user_msisdn = str(first_present(row, ["user_msisdn"]) or "").strip()
+        if event_time is None or not user_id or not user_msisdn:
+            continue
+        rows.append(
+            {
+                "project_id": project_id,
+                "load_batch_id": load_batch_id,
+                "event_time": event_time,
+                "user_id": user_id,
+                "user_msisdn": user_msisdn,
+                "created_at": created_at,
+            }
+        )
+    return rows
+
+
+def read_ip_msisdn_fact_rows(
+    path: Path,
+    project_id: int,
+    load_batch_id: str,
+    created_at: datetime,
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    if not path.exists():
+        return rows
+
+    reader = open_csv_reader(path, ";")
+    for row in reader:
+        event_time = parse_iso_datetime(str(first_present(row, ["event_time"]) or ""))
+        ip_address = str(first_present(row, ["ip_address"]) or "").strip()
+        user_msisdn = str(first_present(row, ["user_msisdn"]) or "").strip()
+        if event_time is None or not ip_address or not user_msisdn:
+            continue
+        rows.append(
+            {
+                "project_id": project_id,
+                "load_batch_id": load_batch_id,
+                "event_time": event_time,
+                "ip_address": ip_address,
+                "user_msisdn": user_msisdn,
+                "created_at": created_at,
+            }
+        )
+    return rows
+
+
+def read_msisdn_device_fact_rows(
+    path: Path,
+    project_id: int,
+    load_batch_id: str,
+    created_at: datetime,
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    if not path.exists():
+        return rows
+
+    reader = open_csv_reader(path, ";")
+    for row in reader:
+        event_time = parse_iso_datetime(str(first_present(row, ["event_time"]) or ""))
+        user_msisdn = str(first_present(row, ["user_msisdn"]) or "").strip()
+        device_info = str(first_present(row, ["device_info"]) or "").strip()
+        if event_time is None or not user_msisdn or not device_info:
+            continue
+        rows.append(
+            {
+                "project_id": project_id,
+                "load_batch_id": load_batch_id,
+                "event_time": event_time,
+                "user_msisdn": user_msisdn,
+                "device_info": device_info,
+                "created_at": created_at,
+            }
+        )
+    return rows
+
+
+def read_msisdn_text_fact_rows(
+    path: Path,
+    project_id: int,
+    load_batch_id: str,
+    created_at: datetime,
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    if not path.exists():
+        return rows
+
+    reader = open_csv_reader(path, ";")
+    for row in reader:
+        event_time = parse_iso_datetime(str(first_present(row, ["event_time"]) or ""))
+        user_msisdn = str(first_present(row, ["user_msisdn"]) or "").strip()
+        file_msisdn = str(first_present(row, ["file_msisdn"]) or "").strip()
+        message_text = str(first_present(row, ["message_text"]) or "").strip()
+        if event_time is None or not user_msisdn or not file_msisdn or not message_text:
+            continue
+        rows.append(
+            {
+                "project_id": project_id,
+                "load_batch_id": load_batch_id,
+                "event_time": event_time,
+                "user_msisdn": user_msisdn,
+                "file_msisdn": file_msisdn,
+                "message_text": message_text,
+                "created_at": created_at,
+            }
+        )
     return rows
 
 

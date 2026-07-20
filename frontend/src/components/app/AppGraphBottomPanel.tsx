@@ -2,11 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { artifactApi } from '../../services/api';
 import { useAppDispatch } from '../../store';
 import { fetchArtifacts } from '../../store/slices/artifactsSlice';
-import { AppGraphEdgesTable, AppGraphNodesTable } from './AppGraphBottomTables';
+import { AppGraphEdgesTable, AppGraphNodesTable, ResizableHeaderCell, useResizableColumns } from './AppGraphBottomTables';
 import AppGraphBottomSearch from './AppGraphBottomSearch';
 import AppGraphBottomToolbar from './AppGraphBottomToolbar';
 import type { AppGraphBottomPanelProps, GraphWorkbenchResultTab } from './graphBottomPanelTypes';
 import { formatGraphTableCellValue, graphBottomPanelLabels } from './graphBottomPanelUtils';
+import type { ColumnDefinition } from './AppGraphBottomTables';
 
 type ResultRunGroup = {
   sourceArtifactId: number;
@@ -40,6 +41,39 @@ const compareResultCellValues = (left: unknown, right: unknown): number =>
     'ru',
     { sensitivity: 'base', numeric: true },
   );
+
+const escapeCsvCell = (value: unknown): string => {
+  const text = formatGraphTableCellValue(value);
+  return `"${text.replace(/"/g, '""')}"`;
+};
+
+const buildCsvContent = (
+  columns: ColumnDefinition[],
+  rows: Record<string, unknown>[],
+): string => {
+  const header = columns.map((column) => escapeCsvCell(column.label)).join(';');
+  const body = rows.map((row) => columns.map((column) => escapeCsvCell(row[column.key])).join(';'));
+  return [header, ...body].join('\r\n');
+};
+
+const sanitizeFileNamePart = (value: string): string =>
+  value
+    .replace(/[\\/:*?"<>|]+/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 80) || 'result';
+
+const readStoredHiddenColumns = (storageKey: string): string[] => {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.localStorage.getItem(storageKey);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : [];
+  } catch {
+    return [];
+  }
+};
 
 export const AppGraphBottomPanel = ({
   projectId,
@@ -119,6 +153,8 @@ export const AppGraphBottomPanel = ({
   const [deletingRunId, setDeletingRunId] = useState<number | null>(null);
   const [isDeletingAllResults, setIsDeletingAllResults] = useState(false);
   const [resultsSearchQuery, setResultsSearchQuery] = useState('');
+  const [isResultColumnsOpen, setIsResultColumnsOpen] = useState(false);
+  const [hiddenResultColumnKeys, setHiddenResultColumnKeys] = useState<string[]>([]);
 
   const clearFilters = () => {
     setSearchQuery('');
@@ -235,6 +271,64 @@ export const AppGraphBottomPanel = ({
     [activeResultId, visibleResultTabs],
   );
 
+  const handleResultSort = (key: string) => {
+    if (resultSortKey === key) {
+      setResultSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+      return;
+    }
+    setResultSortKey(key);
+    setResultSortDir('asc');
+  };
+
+  const resultColumns = useMemo<ColumnDefinition[]>(
+    () => (activeResultTab?.columns || []).map((column) => ({
+      key: column.key,
+      label: column.label || column.key,
+      sortKey: column.key,
+      isActive: resultSortKey === column.key,
+      sortDir: resultSortDir,
+      onSort: handleResultSort,
+      minWidth: 120,
+      defaultWidth: column.width ?? 180,
+    })),
+    [activeResultTab?.columns, resultSortDir, resultSortKey],
+  );
+
+  const resultWidthsStorageKey = useMemo(
+    () => activeResultTab
+      ? `graph-bottom-table-widths-results-v1:${activeResultTab.sourceArtifactId}:${activeResultTab.tabId}`
+      : 'graph-bottom-table-widths-results-v1:empty',
+    [activeResultTab],
+  );
+
+  const resultHiddenColumnsStorageKey = useMemo(
+    () => activeResultTab
+      ? `graph-bottom-table-hidden-results-v1:${activeResultTab.sourceArtifactId}:${activeResultTab.tabId}`
+      : 'graph-bottom-table-hidden-results-v1:empty',
+    [activeResultTab],
+  );
+
+  useEffect(() => {
+    setHiddenResultColumnKeys(readStoredHiddenColumns(resultHiddenColumnsStorageKey));
+    setIsResultColumnsOpen(false);
+  }, [resultHiddenColumnsStorageKey]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(resultHiddenColumnsStorageKey, JSON.stringify(hiddenResultColumnKeys));
+  }, [hiddenResultColumnKeys, resultHiddenColumnsStorageKey]);
+
+  const visibleResultColumns = useMemo(
+    () => resultColumns.filter((column) => !hiddenResultColumnKeys.includes(column.key)),
+    [hiddenResultColumnKeys, resultColumns],
+  );
+
+  const {
+    columnWidths: resultColumnWidths,
+    handleResizeStart: handleResultResizeStart,
+    handleResizeReset: handleResultResizeReset,
+  } = useResizableColumns(resultWidthsStorageKey, resultColumns);
+
   const sortedResultRows = useMemo(() => {
     if (!activeResultTab) return [];
     if (!resultSortKey) return activeResultTab.rows;
@@ -244,13 +338,12 @@ export const AppGraphBottomPanel = ({
     });
   }, [activeResultTab, resultSortDir, resultSortKey]);
 
-  const handleResultSort = (key: string) => {
-    if (resultSortKey === key) {
-      setResultSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'));
-      return;
-    }
-    setResultSortKey(key);
-    setResultSortDir('asc');
+  const toggleResultColumnVisibility = (columnKey: string) => {
+    setHiddenResultColumnKeys((prev) => (
+      prev.includes(columnKey)
+        ? prev.filter((item) => item !== columnKey)
+        : [...prev, columnKey]
+    ));
   };
 
   const toggleRunExpanded = (runId: number) => {
@@ -287,6 +380,28 @@ export const AppGraphBottomPanel = ({
     } finally {
       setIsDeletingAllResults(false);
     }
+  };
+
+  const handleExportResultCsv = () => {
+    if (!activeResultTab || visibleResultColumns.length === 0) return;
+
+    const csvContent = buildCsvContent(visibleResultColumns, sortedResultRows);
+    const blob = new Blob(['\ufeff', csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const timePart = formatResultTimeShort(activeResultTab.executedAt).replace(/:/g, '-');
+    const fileName = [
+      sanitizeFileNamePart(activeResultTab.profileName),
+      sanitizeFileNamePart(activeResultTab.tabName),
+      timePart || 'export',
+    ].join('_');
+
+    link.href = url;
+    link.download = `${fileName}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
   };
 
   return (
@@ -340,6 +455,41 @@ export const AppGraphBottomPanel = ({
                       Здесь собраны console-результаты, выполненные по текущему графу. Они сгруппированы по запускам и отсортированы по времени.
                     </div>
                     <div className="bottom-panel-results-toolbar-actions">
+                      <div className="bottom-panel-results-columns">
+                        <button
+                          type="button"
+                          className="property-action secondary"
+                          onClick={() => setIsResultColumnsOpen((prev) => !prev)}
+                          disabled={!activeResultTab || resultColumns.length === 0}
+                        >
+                          Колонки
+                        </button>
+                        {isResultColumnsOpen && (
+                          <div className="bottom-panel-results-columns-menu">
+                            {resultColumns.map((column) => {
+                              const checked = !hiddenResultColumnKeys.includes(column.key);
+                              return (
+                                <label key={column.key} className="bottom-panel-results-columns-option">
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={() => toggleResultColumnVisibility(column.key)}
+                                  />
+                                  <span>{column.label}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        className="property-action secondary"
+                        onClick={handleExportResultCsv}
+                        disabled={visibleResultColumns.length === 0}
+                      >
+                        Экспорт CSV
+                      </button>
                       <button
                         type="button"
                         className="property-action secondary"
@@ -516,34 +666,36 @@ export const AppGraphBottomPanel = ({
                           </div>
                         </div>
 
-                        {activeResultTab.columns.length === 0 ? (
+                        {visibleResultColumns.length === 0 ? (
+                          <div className="bottom-panel-results-placeholder-copy">Все колонки скрыты. Покажите нужные через меню «Колонки».</div>
+                        ) : activeResultTab.columns.length === 0 ? (
                           <div className="bottom-panel-results-placeholder-copy">У этого результата нет табличных данных для показа.</div>
                         ) : (
                           <div className="bottom-panel-results-table-wrap">
-                            <table className="bottom-table">
+                            <table className="bottom-table bottom-table-results">
+                              <colgroup>
+                                {visibleResultColumns.map((column) => (
+                                  <col key={column.key} style={{ width: `${resultColumnWidths[column.key]}px` }} />
+                                ))}
+                              </colgroup>
                               <thead>
                                 <tr>
-                                  {activeResultTab.columns.map((column) => (
-                                    <th
+                                  {visibleResultColumns.map((column) => (
+                                    <ResizableHeaderCell
                                       key={column.key}
-                                      style={column.width ? { width: `${column.width}px`, minWidth: `${column.width}px` } : undefined}
-                                    >
-                                      <button
-                                        type="button"
-                                        className="bottom-sort-btn"
-                                        onClick={() => handleResultSort(column.key)}
-                                      >
-                                        {column.label || column.key}
-                                        {renderSortIndicator(resultSortKey === column.key, resultSortDir)}
-                                      </button>
-                                    </th>
+                                      column={column}
+                                      width={resultColumnWidths[column.key]}
+                                      onResizeStart={handleResultResizeStart}
+                                      onResizeReset={handleResultResizeReset}
+                                      renderSortIndicator={renderSortIndicator}
+                                    />
                                   ))}
                                 </tr>
                               </thead>
                               <tbody>
                                 {sortedResultRows.map((row, rowIndex) => (
                                   <tr key={`result-row-${rowIndex}`}>
-                                    {activeResultTab.columns.map((column) => (
+                                    {visibleResultColumns.map((column) => (
                                       <td key={`${column.key}-${rowIndex}`}>{formatGraphTableCellValue(row[column.key])}</td>
                                     ))}
                                   </tr>
@@ -566,3 +718,4 @@ export const AppGraphBottomPanel = ({
 };
 
 export default AppGraphBottomPanel;
+

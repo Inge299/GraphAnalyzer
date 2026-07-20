@@ -64,6 +64,38 @@ class IpBinding:
     mnc: str
     lac: str
     bs: str
+    user_id: str = ""
+    device_info: str = ""
+    message_text: str = ""
+
+
+@dataclass
+class UserMsisdnFact:
+    event_time: datetime
+    user_id: str
+    user_msisdn: str
+
+
+@dataclass
+class IpMsisdnFact:
+    event_time: datetime
+    ip_address: str
+    user_msisdn: str
+
+
+@dataclass
+class MsisdnDeviceFact:
+    event_time: datetime
+    user_msisdn: str
+    device_info: str
+
+
+@dataclass
+class MsisdnTextFact:
+    event_time: datetime
+    user_msisdn: str
+    file_msisdn: str
+    message_text: str
 
 
 @dataclass
@@ -162,6 +194,26 @@ def parse_args() -> argparse.Namespace:
         help="Output path for identifier-to-ip bindings CSV.",
     )
     parser.add_argument(
+        "--out-user-msisdn-facts",
+        default="user_msisdn_facts.csv",
+        help="Output path for user-id to MSISDN facts CSV.",
+    )
+    parser.add_argument(
+        "--out-ip-msisdn-facts",
+        default="ip_msisdn_facts.csv",
+        help="Output path for IP to MSISDN facts CSV.",
+    )
+    parser.add_argument(
+        "--out-msisdn-device-facts",
+        default="msisdn_device_facts.csv",
+        help="Output path for MSISDN to device facts CSV.",
+    )
+    parser.add_argument(
+        "--out-msisdn-text-facts",
+        default="msisdn_text_facts.csv",
+        help="Output path for MSISDN text facts CSV.",
+    )
+    parser.add_argument(
         "--out-manifest",
         default="nodex_manifest.json",
         help="Output path for run manifest (json) with processing metrics.",
@@ -248,10 +300,37 @@ def parse_dt(value: str) -> datetime | None:
     text = normalize_text(value)
     if not text:
         return None
-    try:
-        return datetime.strptime(text, INPUT_TIME_FORMAT)
-    except ValueError:
-        return None
+    for fmt in (INPUT_TIME_FORMAT, "%d.%m.%Y %H:%M", "%d.%m.%Y %H"):
+        try:
+            return datetime.strptime(text, fmt)
+        except ValueError:
+            continue
+    return None
+
+
+def extract_user_identity_fields(value: str) -> tuple[str, str, str]:
+    text = str(value or "").strip()
+    if not text:
+        return "", "", ""
+
+    ip_match = re.search(r"IP-адрес:\s*([^;]+)", text, flags=re.IGNORECASE)
+    msisdn_match = re.search(r"Номер:\s*([^;]+)", text, flags=re.IGNORECASE)
+    device_match = re.search(r"Программа:\s*(.+)$", text, flags=re.IGNORECASE)
+
+    ip_address = normalize_text(ip_match.group(1)) if ip_match else ""
+    msisdn = normalize_phone(msisdn_match.group(1)) if msisdn_match else ""
+    device_info = normalize_text(device_match.group(1)) if device_match else ""
+    return ip_address, msisdn, device_info
+
+
+def extract_file_msisdn(source_name: str) -> str:
+    text = str(source_name or "").replace("\\", "/")
+    leaf = text.split("!")[-1].split("/")[-1]
+    for candidate in re.findall(r"\b7\d{10}\b", leaf):
+        normalized = normalize_phone(candidate)
+        if len(normalized) == 11 and normalized.startswith("7"):
+            return normalized
+    return ""
 
 
 def format_dt(value: datetime, postgres_friendly: bool) -> str:
@@ -329,6 +408,10 @@ def build_events_and_devices(
     dict[tuple[str, str, str], list[datetime]],
     list[LocationEvent],
     list[IpBinding],
+    list[UserMsisdnFact],
+    list[IpMsisdnFact],
+    list[MsisdnDeviceFact],
+    list[MsisdnTextFact],
     BuildStats,
 ]:
     seen_hashes: set[str] = set()
@@ -336,6 +419,10 @@ def build_events_and_devices(
     devices: dict[tuple[str, str, str], list[datetime]] = {}
     location_events: list[LocationEvent] = []
     ip_bindings: list[IpBinding] = []
+    user_msisdn_facts: list[UserMsisdnFact] = []
+    ip_msisdn_facts: list[IpMsisdnFact] = []
+    msisdn_device_facts: list[MsisdnDeviceFact] = []
+    msisdn_text_facts: list[MsisdnTextFact] = []
     stats = BuildStats()
 
     for source_name, raw in iter_source_bytes(input_dir):
@@ -349,6 +436,53 @@ def build_events_and_devices(
 
         for row in read_csv_rows(raw, source_name):
             stats.rows_read_total += 1
+
+            user_identity_blob = normalize_text(row.get("Техданные, идент. пользователя", ""))
+            if user_identity_blob:
+                event_time = parse_dt(row.get("Дата и время", ""))
+                if event_time is None:
+                    continue
+
+                stats.rows_with_valid_start += 1
+                ip_address, msisdn, device_info = extract_user_identity_fields(user_identity_blob)
+                user_id = normalize_text(row.get("Ид. пользователя", ""))
+                message_text = normalize_text(row.get("Текст сообщения", "") or row.get("Текст", ""))
+                file_msisdn = extract_file_msisdn(source_name)
+
+                if user_id and msisdn:
+                    user_msisdn_facts.append(
+                        UserMsisdnFact(
+                            event_time=event_time,
+                            user_id=user_id,
+                            user_msisdn=msisdn,
+                        )
+                    )
+                if ip_address and msisdn:
+                    ip_msisdn_facts.append(
+                        IpMsisdnFact(
+                            event_time=event_time,
+                            ip_address=ip_address,
+                            user_msisdn=msisdn,
+                        )
+                    )
+                if msisdn and device_info:
+                    msisdn_device_facts.append(
+                        MsisdnDeviceFact(
+                            event_time=event_time,
+                            user_msisdn=msisdn,
+                            device_info=device_info,
+                        )
+                    )
+                if msisdn and file_msisdn and message_text:
+                    msisdn_text_facts.append(
+                        MsisdnTextFact(
+                            event_time=event_time,
+                            user_msisdn=msisdn,
+                            file_msisdn=file_msisdn,
+                            message_text=message_text,
+                        )
+                    )
+                continue
 
             conn_start = parse_dt(row.get("Время начала соединения", ""))
             location_time = parse_dt(row.get("Время определения местоположения", ""))
@@ -505,7 +639,17 @@ def build_events_and_devices(
                     devices[key][0] = min(devices[key][0], location_time)
                     devices[key][1] = max(devices[key][1], location_time)
 
-    return events, devices, location_events, ip_bindings, stats
+    return (
+        events,
+        devices,
+        location_events,
+        ip_bindings,
+        user_msisdn_facts,
+        ip_msisdn_facts,
+        msisdn_device_facts,
+        msisdn_text_facts,
+        stats,
+    )
 
 
 def cluster_events(events: list[Event], dedup_window_sec: int) -> list[Cluster]:
@@ -705,7 +849,20 @@ def write_ip_bindings(
     postgres_friendly: bool,
     null_token: str,
 ) -> int:
-    fieldnames = ["identifier_type", "identifier_value", "ip_address", "event_time", "address", "mcc", "mnc", "lac", "bs"]
+    fieldnames = [
+        "identifier_type",
+        "identifier_value",
+        "ip_address",
+        "event_time",
+        "address",
+        "mcc",
+        "mnc",
+        "lac",
+        "bs",
+        "user_id",
+        "device_info",
+        "message_text",
+    ]
     out_rows: list[dict[str, str]] = []
     for row in rows:
         out_rows.append(
@@ -719,10 +876,114 @@ def write_ip_bindings(
                 "mnc": str(out_value(row.mnc, postgres_friendly, null_token)),
                 "lac": str(out_value(row.lac, postgres_friendly, null_token)),
                 "bs": str(out_value(row.bs, postgres_friendly, null_token)),
+                "user_id": str(out_value(row.user_id, postgres_friendly, null_token)),
+                "device_info": str(out_value(row.device_info, postgres_friendly, null_token)),
+                "message_text": str(out_value(row.message_text, postgres_friendly, null_token)),
             }
         )
 
-    out_rows.sort(key=lambda r: (r["identifier_type"], r["identifier_value"], r["event_time"], r["ip_address"]))
+    out_rows.sort(
+        key=lambda r: (
+            r["identifier_type"],
+            r["identifier_value"],
+            r["event_time"],
+            r["ip_address"],
+            r["user_id"],
+        )
+    )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8", newline="") as fh:
+        writer = csv.DictWriter(fh, fieldnames=fieldnames, delimiter=";")
+        writer.writeheader()
+        writer.writerows(out_rows)
+    return len(out_rows)
+
+
+def write_user_msisdn_facts(
+    path: Path,
+    rows: list[UserMsisdnFact],
+    postgres_friendly: bool,
+) -> int:
+    fieldnames = ["event_time", "user_id", "user_msisdn"]
+    out_rows = [
+        {
+            "event_time": format_dt(row.event_time, postgres_friendly),
+            "user_id": row.user_id,
+            "user_msisdn": row.user_msisdn,
+        }
+        for row in rows
+    ]
+    out_rows.sort(key=lambda r: (r["event_time"], r["user_id"], r["user_msisdn"]))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8", newline="") as fh:
+        writer = csv.DictWriter(fh, fieldnames=fieldnames, delimiter=";")
+        writer.writeheader()
+        writer.writerows(out_rows)
+    return len(out_rows)
+
+
+def write_ip_msisdn_facts(
+    path: Path,
+    rows: list[IpMsisdnFact],
+    postgres_friendly: bool,
+) -> int:
+    fieldnames = ["event_time", "ip_address", "user_msisdn"]
+    out_rows = [
+        {
+            "event_time": format_dt(row.event_time, postgres_friendly),
+            "ip_address": row.ip_address,
+            "user_msisdn": row.user_msisdn,
+        }
+        for row in rows
+    ]
+    out_rows.sort(key=lambda r: (r["event_time"], r["ip_address"], r["user_msisdn"]))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8", newline="") as fh:
+        writer = csv.DictWriter(fh, fieldnames=fieldnames, delimiter=";")
+        writer.writeheader()
+        writer.writerows(out_rows)
+    return len(out_rows)
+
+
+def write_msisdn_device_facts(
+    path: Path,
+    rows: list[MsisdnDeviceFact],
+    postgres_friendly: bool,
+) -> int:
+    fieldnames = ["event_time", "user_msisdn", "device_info"]
+    out_rows = [
+        {
+            "event_time": format_dt(row.event_time, postgres_friendly),
+            "user_msisdn": row.user_msisdn,
+            "device_info": row.device_info,
+        }
+        for row in rows
+    ]
+    out_rows.sort(key=lambda r: (r["event_time"], r["user_msisdn"], r["device_info"]))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8", newline="") as fh:
+        writer = csv.DictWriter(fh, fieldnames=fieldnames, delimiter=";")
+        writer.writeheader()
+        writer.writerows(out_rows)
+    return len(out_rows)
+
+
+def write_msisdn_text_facts(
+    path: Path,
+    rows: list[MsisdnTextFact],
+    postgres_friendly: bool,
+) -> int:
+    fieldnames = ["event_time", "user_msisdn", "file_msisdn", "message_text"]
+    out_rows = [
+        {
+            "event_time": format_dt(row.event_time, postgres_friendly),
+            "user_msisdn": row.user_msisdn,
+            "file_msisdn": row.file_msisdn,
+            "message_text": row.message_text,
+        }
+        for row in rows
+    ]
+    out_rows.sort(key=lambda r: (r["event_time"], r["user_msisdn"], r["file_msisdn"], r["message_text"]))
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline="") as fh:
         writer = csv.DictWriter(fh, fieldnames=fieldnames, delimiter=";")
@@ -742,6 +1003,10 @@ def write_manifest(
     device_rows: int,
     location_events_rows: int,
     ip_bindings_rows: int,
+    user_msisdn_facts_rows: int,
+    ip_msisdn_facts_rows: int,
+    msisdn_device_facts_rows: int,
+    msisdn_text_facts_rows: int,
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = {
@@ -771,6 +1036,10 @@ def write_manifest(
             "device_history_rows": device_rows,
             "location_events_rows": location_events_rows,
             "ip_bindings_rows": ip_bindings_rows,
+            "user_msisdn_facts_rows": user_msisdn_facts_rows,
+            "ip_msisdn_facts_rows": ip_msisdn_facts_rows,
+            "msisdn_device_facts_rows": msisdn_device_facts_rows,
+            "msisdn_text_facts_rows": msisdn_text_facts_rows,
         },
     }
     with path.open("w", encoding="utf-8") as fh:
@@ -783,13 +1052,27 @@ def main() -> None:
     if not input_dir.exists() or not input_dir.is_dir():
         raise SystemExit(f"Input directory does not exist: {input_dir}")
 
-    events, devices, location_events, ip_bindings, stats = build_events_and_devices(input_dir)
+    (
+        events,
+        devices,
+        location_events,
+        ip_bindings,
+        user_msisdn_facts,
+        ip_msisdn_facts,
+        msisdn_device_facts,
+        msisdn_text_facts,
+        stats,
+    ) = build_events_and_devices(input_dir)
     clusters = cluster_events(events, args.dedup_window_sec)
 
     communications_path = Path(args.out_communications)
     device_history_path = Path(args.out_device_history)
     location_events_path = Path(args.out_location_events)
     ip_bindings_path = Path(args.out_ip_bindings)
+    user_msisdn_facts_path = Path(args.out_user_msisdn_facts)
+    ip_msisdn_facts_path = Path(args.out_ip_msisdn_facts)
+    msisdn_device_facts_path = Path(args.out_msisdn_device_facts)
+    msisdn_text_facts_path = Path(args.out_msisdn_text_facts)
     manifest_path = Path(args.out_manifest)
 
     communications_rows = write_communications(
@@ -816,6 +1099,26 @@ def main() -> None:
         postgres_friendly=args.postgres_friendly,
         null_token=args.null_token,
     )
+    user_msisdn_rows = write_user_msisdn_facts(
+        user_msisdn_facts_path,
+        user_msisdn_facts,
+        postgres_friendly=args.postgres_friendly,
+    )
+    ip_msisdn_rows = write_ip_msisdn_facts(
+        ip_msisdn_facts_path,
+        ip_msisdn_facts,
+        postgres_friendly=args.postgres_friendly,
+    )
+    msisdn_device_rows = write_msisdn_device_facts(
+        msisdn_device_facts_path,
+        msisdn_device_facts,
+        postgres_friendly=args.postgres_friendly,
+    )
+    msisdn_text_rows = write_msisdn_text_facts(
+        msisdn_text_facts_path,
+        msisdn_text_facts,
+        postgres_friendly=args.postgres_friendly,
+    )
     write_manifest(
         manifest_path,
         input_dir,
@@ -827,6 +1130,10 @@ def main() -> None:
         device_rows=device_rows,
         location_events_rows=location_rows,
         ip_bindings_rows=ip_rows,
+        user_msisdn_facts_rows=user_msisdn_rows,
+        ip_msisdn_facts_rows=ip_msisdn_rows,
+        msisdn_device_facts_rows=msisdn_device_rows,
+        msisdn_text_facts_rows=msisdn_text_rows,
     )
 
     print(f"Nodex converter done. Sources processed from: {input_dir}")
@@ -841,10 +1148,18 @@ def main() -> None:
     print(f"Device history rows written: {device_rows}")
     print(f"Location events rows written: {location_rows}")
     print(f"IP bindings rows written: {ip_rows}")
+    print(f"User-MSISDN facts written: {user_msisdn_rows}")
+    print(f"IP-MSISDN facts written: {ip_msisdn_rows}")
+    print(f"MSISDN-device facts written: {msisdn_device_rows}")
+    print(f"MSISDN-text facts written: {msisdn_text_rows}")
     print(f"Communications written to: {communications_path.resolve()}")
     print(f"Device history written to: {device_history_path.resolve()}")
     print(f"Location events written to: {location_events_path.resolve()}")
     print(f"IP bindings written to: {ip_bindings_path.resolve()}")
+    print(f"User-MSISDN facts written to: {user_msisdn_facts_path.resolve()}")
+    print(f"IP-MSISDN facts written to: {ip_msisdn_facts_path.resolve()}")
+    print(f"MSISDN-device facts written to: {msisdn_device_facts_path.resolve()}")
+    print(f"MSISDN-text facts written to: {msisdn_text_facts_path.resolve()}")
     print(f"Manifest written to: {manifest_path.resolve()}")
 
 

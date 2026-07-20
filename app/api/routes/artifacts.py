@@ -136,7 +136,26 @@ async def list_artifacts(
     List all artifacts in a project with optional filtering.
     """
     try:
-        query = select(Artifact).where(Artifact.project_id == project_id)
+        latest_version_subquery = (
+            select(
+                ArtifactVersion.artifact_id.label("artifact_id"),
+                func.max(ArtifactVersion.version).label("latest_version"),
+            )
+            .group_by(ArtifactVersion.artifact_id)
+            .subquery()
+        )
+
+        query = (
+            select(
+                Artifact,
+                func.coalesce(latest_version_subquery.c.latest_version, 1).label("latest_version"),
+            )
+            .outerjoin(
+                latest_version_subquery,
+                latest_version_subquery.c.artifact_id == Artifact.id,
+            )
+            .where(Artifact.project_id == project_id)
+        )
         
         # Р В¤Р С‘Р В»РЎРЉРЎвЂљРЎР‚ Р С—Р С• РЎвЂљР С‘Р С—РЎС“
         if type:
@@ -155,19 +174,11 @@ async def list_artifacts(
         query = query.order_by(Artifact.updated_at.desc()).limit(limit).offset(offset)
         
         result = await db.execute(query)
-        artifacts = result.scalars().all()
+        rows = result.all()
         
         # Р СџР С•Р В»РЎС“РЎвЂЎР В°Р ВµР С Р С—Р С•РЎРѓР В»Р ВµР Т‘Р Р…РЎР‹РЎР‹ Р Р†Р ВµРЎР‚РЎРѓР С‘РЎР‹ Р Т‘Р В»РЎРЏ Р С”Р В°Р В¶Р Т‘Р С•Р С–Р С• Р В°РЎР‚РЎвЂљР ВµРЎвЂћР В°Р С”РЎвЂљР В°
         response = []
-        for artifact in artifacts:
-            latest_version = await db.execute(
-                select(ArtifactVersion)
-                .where(ArtifactVersion.artifact_id == artifact.id)
-                .order_by(ArtifactVersion.version.desc())
-                .limit(1)
-            )
-            version = latest_version.scalar_one_or_none()
-            
+        for artifact, latest_version in rows:
             response.append({
                 "id": artifact.id,
                 "project_id": artifact.project_id,
@@ -178,7 +189,7 @@ async def list_artifacts(
                 "metadata": artifact.artifact_metadata,
                 "created_at": artifact.created_at.isoformat() if artifact.created_at else None,
                 "updated_at": artifact.updated_at.isoformat() if artifact.updated_at else None,
-                "version": version.version if version else 1
+                "version": int(latest_version or 1),
             })
         
         return response
