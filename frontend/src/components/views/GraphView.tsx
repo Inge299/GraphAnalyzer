@@ -73,6 +73,7 @@ interface GraphViewProps {
   isRecording?: boolean;
   lastError?: Error | null;
   onRequestAnalysisProfile?: (profileKey: string) => void;
+  onHistoryChanged?: () => Promise<void> | void;
 }
 
 interface PendingMove {
@@ -171,6 +172,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
   isRecording = false,
   lastError = null,
   onRequestAnalysisProfile,
+  onHistoryChanged,
 }) => {
   const dispatch = useAppDispatch();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -599,6 +601,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
       const snapshot = artifactDataRef.current;
       return snapshot && typeof snapshot === 'object' ? { ...snapshot } : null;
     },
+    onHistoryChanged,
     onFinally: closePluginMenu,
   });
 

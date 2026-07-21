@@ -1,6 +1,8 @@
 ﻿from __future__ import annotations
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
+import json
+
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,6 +22,10 @@ from app.services.project_data_service import (
     get_project_data_stats,
     load_project_data,
     load_project_data_from_upload,
+)
+from app.services.project_data_import_plugins import (
+    list_project_data_import_plugins,
+    update_project_data_import_plugin,
 )
 
 router = APIRouter(prefix="/projects", tags=["project-data"])
@@ -60,6 +66,8 @@ class ProjectDataLoadResponse(BaseModel):
     project_id: int
     source_path: str
     output_dir: str
+    import_plugin_id: str
+    import_plugin_name: str
     communications_rows: int
     device_history_rows: int
     location_events_rows: int
@@ -114,6 +122,23 @@ class CellTowerReferenceStatsResponse(BaseModel):
     last_loaded_at: str | None = None
 
 
+class ProjectDataImportPluginResponse(BaseModel):
+    id: str
+    name: str
+    description: str
+    priority: int
+    enabled: bool
+    extensions: list[str]
+    recognition_hint: str
+
+
+class ProjectDataImportPluginUpdateRequest(BaseModel):
+    name: str | None = None
+    description: str | None = None
+    priority: int | None = None
+    enabled: bool | None = None
+
+
 def _build_project_data_load_response(
     project_id: int,
     result,
@@ -124,6 +149,8 @@ def _build_project_data_load_response(
         project_id=project_id,
         source_path=result.source_path,
         output_dir=result.output_dir,
+        import_plugin_id=result.import_plugin_id,
+        import_plugin_name=result.import_plugin_name,
         communications_rows=result.communications_rows,
         device_history_rows=result.device_history_rows,
         location_events_rows=result.location_events_rows,
@@ -174,14 +201,37 @@ async def load_data_for_project_upload(
     project_id: int,
     background_tasks: BackgroundTasks,
     files: list[UploadFile] = File(...),
+    plugin_overrides_json: str | None = Form(None),
     db: AsyncSession = Depends(get_db),
 ):
     project = (await db.execute(select(Project).where(Project.id == project_id))).scalar_one_or_none()
     if not project:
         raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
 
+    plugin_overrides: dict[str, str] | None = None
+    if plugin_overrides_json:
+        try:
+            raw_payload = json.loads(plugin_overrides_json)
+        except json.JSONDecodeError as exc:
+            raise HTTPException(status_code=400, detail=f"Invalid plugin_overrides_json: {exc.msg}") from exc
+        if not isinstance(raw_payload, list):
+            raise HTTPException(status_code=400, detail="plugin_overrides_json must be a JSON array")
+        plugin_overrides = {}
+        for item in raw_payload:
+            if not isinstance(item, dict):
+                continue
+            path = str(item.get("path") or "").strip()
+            plugin_id = str(item.get("plugin_id") or "").strip()
+            if path and plugin_id:
+                plugin_overrides[path] = plugin_id
+
     await acquire_project_data_lock(db=db, project_id=project_id)
-    result = await load_project_data_from_upload(db=db, project_id=project_id, files=files)
+    result = await load_project_data_from_upload(
+        db=db,
+        project_id=project_id,
+        files=files,
+        plugin_overrides=plugin_overrides,
+    )
     await db.commit()
     background_tasks.add_task(_sync_project_data_graph_artifact_in_background, project_id)
 
@@ -203,6 +253,26 @@ async def get_data_stats_for_project(
 
     stats = await get_project_data_stats(db=db, project_id=project_id)
     return ProjectDataStatsResponse(project_id=project_id, **stats)
+
+
+@router.get("/data/import-plugins", response_model=list[ProjectDataImportPluginResponse])
+async def list_data_import_plugins():
+    return [ProjectDataImportPluginResponse(**plugin.__dict__) for plugin in list_project_data_import_plugins()]
+
+
+@router.put("/data/import-plugins/{plugin_id}", response_model=ProjectDataImportPluginResponse)
+async def update_data_import_plugin(
+    plugin_id: str,
+    payload: ProjectDataImportPluginUpdateRequest,
+):
+    result = update_project_data_import_plugin(
+        plugin_id,
+        name=payload.name,
+        description=payload.description,
+        priority=payload.priority,
+        enabled=payload.enabled,
+    )
+    return ProjectDataImportPluginResponse(**result.__dict__)
 
 
 @router.post("/{project_id}/data/clear", response_model=ProjectDataClearResponse)

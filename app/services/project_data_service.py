@@ -1,6 +1,7 @@
 ﻿from __future__ import annotations
 
 import asyncio
+import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -17,6 +18,10 @@ from app.services.project_data_import_utils import (
     read_manifest,
     save_uploaded_files,
 )
+from app.services.project_data_import_plugins import (
+    ProjectDataImportExecutionResult,
+    classify_project_data_import_files,
+)
 from app.services.project_data_import_pipeline import insert_converted_rows
 
 DATA_ROOT = Path("/app/data")
@@ -28,6 +33,8 @@ class LoadResult:
     source_path: str
     output_dir: str
     load_batch_id: str
+    import_plugin_id: str
+    import_plugin_name: str
     communications_rows: int
     device_history_rows: int
     location_events_rows: int
@@ -757,109 +764,156 @@ async def load_project_data(db: AsyncSession, project_id: int, source_path: str)
     load_batch_id = timestamp
     output_dir = DATA_ROOT / "imports" / f"project_{project_id}" / timestamp
     input_files = collect_input_files(source_dir)
-    converter_result = _run_converter(source_dir, output_dir)
-
-    await ensure_project_data_tables(db)
-    insert_result = await insert_converted_rows(
-        db,
-        project_id,
-        converter_result.communications_path,
-        converter_result.device_history_path,
-        converter_result.location_events_path,
-        converter_result.ip_bindings_path,
-        converter_result.user_msisdn_facts_path,
-        converter_result.ip_msisdn_facts_path,
-        converter_result.msisdn_device_facts_path,
-        converter_result.msisdn_text_facts_path,
-        load_batch_id,
-    )
-
-    load_log = {
-        "mode": "source_path",
-        "source_dir": str(source_dir),
-        "input_files": input_files,
-        "converter_stdout": converter_result.stdout,
-        "converter_stderr": converter_result.stderr,
-        "manifest": read_manifest(converter_result.manifest_path),
-    }
-
-    return LoadResult(
-        source_path=str(source_dir),
-        output_dir=str(output_dir),
+    return await _load_project_data_from_collected_files(
+        db=db,
+        project_id=project_id,
+        source_dir=source_dir,
+        input_files=input_files,
+        output_dir=output_dir,
         load_batch_id=load_batch_id,
-        communications_rows=insert_result.communications_rows,
-        device_history_rows=insert_result.device_history_rows,
-        location_events_rows=insert_result.location_events_rows,
-        ip_bindings_rows=insert_result.ip_bindings_rows,
-        user_msisdn_facts_rows=insert_result.user_msisdn_facts_rows,
-        ip_msisdn_facts_rows=insert_result.ip_msisdn_facts_rows,
-        msisdn_device_facts_rows=insert_result.msisdn_device_facts_rows,
-        msisdn_text_facts_rows=insert_result.msisdn_text_facts_rows,
-        inserted_communications=insert_result.inserted_communications,
-        inserted_device_history=insert_result.inserted_device_history,
-        inserted_location_events=insert_result.inserted_location_events,
-        inserted_ip_bindings=insert_result.inserted_ip_bindings,
-        inserted_user_msisdn_facts=insert_result.inserted_user_msisdn_facts,
-        inserted_ip_msisdn_facts=insert_result.inserted_ip_msisdn_facts,
-        inserted_msisdn_device_facts=insert_result.inserted_msisdn_device_facts,
-        inserted_msisdn_text_facts=insert_result.inserted_msisdn_text_facts,
-        load_log=load_log,
+        mode="source_path",
     )
 
 
-async def load_project_data_from_upload(db: AsyncSession, project_id: int, files: list[Any]) -> LoadResult:
+async def load_project_data_from_upload(
+    db: AsyncSession,
+    project_id: int,
+    files: list[Any],
+    plugin_overrides: dict[str, str] | None = None,
+) -> LoadResult:
     timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
     load_batch_id = timestamp
     source_dir = DATA_ROOT / "uploads" / f"project_{project_id}" / timestamp
     uploaded_files = await save_uploaded_files(source_dir, files)
     output_dir = DATA_ROOT / "imports" / f"project_{project_id}" / timestamp
-    converter_result = _run_converter(source_dir, output_dir)
-
-    await ensure_project_data_tables(db)
-    insert_result = await insert_converted_rows(
-        db,
-        project_id,
-        converter_result.communications_path,
-        converter_result.device_history_path,
-        converter_result.location_events_path,
-        converter_result.ip_bindings_path,
-        converter_result.user_msisdn_facts_path,
-        converter_result.ip_msisdn_facts_path,
-        converter_result.msisdn_device_facts_path,
-        converter_result.msisdn_text_facts_path,
-        load_batch_id,
+    return await _load_project_data_from_collected_files(
+        db=db,
+        project_id=project_id,
+        source_dir=source_dir,
+        input_files=uploaded_files,
+        output_dir=output_dir,
+        load_batch_id=load_batch_id,
+        mode="upload",
+        plugin_overrides=plugin_overrides,
     )
 
-    load_log = {
-        "mode": "upload",
-        "source_dir": str(source_dir),
-        "uploaded_files": uploaded_files,
-        "converter_stdout": converter_result.stdout,
-        "converter_stderr": converter_result.stderr,
-        "manifest": read_manifest(converter_result.manifest_path),
+
+def _copy_input_group(source_dir: Path, target_dir: Path, files: list[dict[str, Any]]) -> None:
+    for item in files:
+        relative_path = Path(str(item.get("path") or ""))
+        if not relative_path.parts:
+            continue
+        source_path = source_dir / relative_path
+        target_path = target_dir / relative_path
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source_path, target_path)
+
+
+async def _load_project_data_from_collected_files(
+    *,
+    db: AsyncSession,
+    project_id: int,
+    source_dir: Path,
+    input_files: list[dict[str, Any]],
+    output_dir: Path,
+    load_batch_id: str,
+    mode: str,
+    plugin_overrides: dict[str, str] | None = None,
+) -> LoadResult:
+    matches = classify_project_data_import_files(source_dir, input_files, plugin_overrides=plugin_overrides)
+    groups: dict[str, list[dict[str, Any]]] = {}
+    for input_file, match in zip(input_files, matches, strict=False):
+        groups.setdefault(match.plugin_id, []).append(input_file)
+
+    await ensure_project_data_tables(db)
+
+    total_rows = {
+        "communications_rows": 0,
+        "device_history_rows": 0,
+        "location_events_rows": 0,
+        "ip_bindings_rows": 0,
+        "user_msisdn_facts_rows": 0,
+        "ip_msisdn_facts_rows": 0,
+        "msisdn_device_facts_rows": 0,
+        "msisdn_text_facts_rows": 0,
+        "inserted_communications": 0,
+        "inserted_device_history": 0,
+        "inserted_location_events": 0,
+        "inserted_ip_bindings": 0,
+        "inserted_user_msisdn_facts": 0,
+        "inserted_ip_msisdn_facts": 0,
+        "inserted_msisdn_device_facts": 0,
+        "inserted_msisdn_text_facts": 0,
     }
+    import_runs: list[dict[str, Any]] = []
+
+    for plugin_id, grouped_files in groups.items():
+        match = next(item for item in matches if item.plugin_id == plugin_id)
+        plugin_source_dir = source_dir / "_plugin_groups" / plugin_id
+        plugin_output_dir = output_dir / plugin_id
+        _copy_input_group(source_dir, plugin_source_dir, grouped_files)
+
+        from app.services.project_data_import_plugins import IMPORT_PLUGIN_BY_ID
+        import_plugin = IMPORT_PLUGIN_BY_ID[plugin_id]
+        converter_result: ProjectDataImportExecutionResult = import_plugin.run(plugin_source_dir, plugin_output_dir)
+        insert_result = await insert_converted_rows(
+            db,
+            project_id,
+            converter_result.communications_path,
+            converter_result.device_history_path,
+            converter_result.location_events_path,
+            converter_result.ip_bindings_path,
+            converter_result.user_msisdn_facts_path,
+            converter_result.ip_msisdn_facts_path,
+            converter_result.msisdn_device_facts_path,
+            converter_result.msisdn_text_facts_path,
+            load_batch_id,
+        )
+
+        for key in total_rows:
+            total_rows[key] += int(getattr(insert_result, key, 0))
+
+        import_runs.append(
+            {
+                "plugin": {
+                    "id": converter_result.plugin_id,
+                    "name": converter_result.plugin_name,
+                    "description": converter_result.plugin_description,
+                },
+                "recognized_files": [item["path"] for item in grouped_files],
+                "converter_stdout": converter_result.stdout,
+                "converter_stderr": converter_result.stderr,
+                "manifest": read_manifest(converter_result.manifest_path),
+                "score": match.score,
+            }
+        )
+
+    load_log = {
+        "mode": mode,
+        "source_dir": str(source_dir),
+        "input_files": input_files,
+        "recognized_files": [
+            {
+                "path": match.path,
+                "plugin_id": match.plugin_id,
+                "plugin_name": match.plugin_name,
+                "score": match.score,
+            }
+            for match in matches
+        ],
+        "import_runs": import_runs,
+    }
+    primary_plugin_id = matches[0].plugin_id if len(groups) == 1 and matches else "mixed_batch"
+    primary_plugin_name = matches[0].plugin_name if len(groups) == 1 and matches else "Несколько import-плагинов"
 
     return LoadResult(
         source_path=str(source_dir),
         output_dir=str(output_dir),
         load_batch_id=load_batch_id,
-        communications_rows=insert_result.communications_rows,
-        device_history_rows=insert_result.device_history_rows,
-        location_events_rows=insert_result.location_events_rows,
-        ip_bindings_rows=insert_result.ip_bindings_rows,
-        user_msisdn_facts_rows=insert_result.user_msisdn_facts_rows,
-        ip_msisdn_facts_rows=insert_result.ip_msisdn_facts_rows,
-        msisdn_device_facts_rows=insert_result.msisdn_device_facts_rows,
-        msisdn_text_facts_rows=insert_result.msisdn_text_facts_rows,
-        inserted_communications=insert_result.inserted_communications,
-        inserted_device_history=insert_result.inserted_device_history,
-        inserted_location_events=insert_result.inserted_location_events,
-        inserted_ip_bindings=insert_result.inserted_ip_bindings,
-        inserted_user_msisdn_facts=insert_result.inserted_user_msisdn_facts,
-        inserted_ip_msisdn_facts=insert_result.inserted_ip_msisdn_facts,
-        inserted_msisdn_device_facts=insert_result.inserted_msisdn_device_facts,
-        inserted_msisdn_text_facts=insert_result.inserted_msisdn_text_facts,
+        import_plugin_id=primary_plugin_id,
+        import_plugin_name=primary_plugin_name,
         load_log=load_log,
+        **total_rows,
     )
 
 

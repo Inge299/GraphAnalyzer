@@ -103,6 +103,12 @@
   color: #475569;
 }
 
+.service-card-meta {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
 .service-label {
   font-size: 12px;
   font-weight: 600;
@@ -145,6 +151,7 @@
   gap: 8px;
   max-height: 220px;
   overflow: auto;
+  padding-right: 2px;
 }
 
 .service-list-item {
@@ -489,6 +496,12 @@
   gap: 10px;
 }
 
+.service-importer-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
 .service-upload-summary-item {
   display: flex;
   flex-direction: column;
@@ -503,6 +516,12 @@
 .service-upload-summary-item strong {
   font-size: 16px;
   color: #0f172a;
+}
+
+.service-inline-note {
+  margin-bottom: 12px;
+  color: #475569;
+  font-size: 13px;
 }
 
 .service-upload-summary-kinds {
@@ -600,6 +619,95 @@
   background: #feecec;
 }
 
+.service-type-split {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.service-color-row {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+}
+
+.service-color-input {
+  width: 48px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.service-type-allow-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.service-type-allow-card {
+  border: 1px solid #dbe4f0;
+  border-radius: 10px;
+  background: #ffffff;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.service-type-allow-card strong {
+  color: #0f172a;
+  font-size: 13px;
+}
+
+.service-type-chip-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.service-type-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid #dbe4f0;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.service-type-chip input {
+  margin: 0;
+}
+
+.service-type-chip.active {
+  border-color: #93b4ff;
+  background: #e8f0ff;
+  color: #1d4ed8;
+}
+
+.service-preview-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px dashed #bfdbfe;
+  border-radius: 10px;
+  background: #f8fbff;
+}
+
+.service-preview-label {
+  font-size: 12px;
+  color: #64748b;
+}
+
 @media (max-width: 1200px) {
   .service-console-grid {
     grid-template-columns: 1fr;
@@ -623,5 +731,10 @@
 
   .service-mapping-row-header {
     display: none;
+  }
+
+  .service-type-split,
+  .service-type-allow-grid {
+    grid-template-columns: 1fr;
   }
 }

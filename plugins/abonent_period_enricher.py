@@ -9,9 +9,9 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.services.domain_model_service import get_domain_model
 from app.services.plugins_config_service import get_plugin_config
 from plugins import PluginBase
+from plugins.graph_toolkit import GraphPluginToolkit, dedupe_preserve_order, node_label, normalize_phone, normalize_text
 
 
 def _as_date(value: Any) -> Optional[date]:
@@ -21,24 +21,6 @@ def _as_date(value: Any) -> Optional[date]:
         return date.fromisoformat(value)
     except Exception:
         return None
-
-
-def _next_node_id(nodes: List[Dict[str, Any]], prefix: str = "auto_node_") -> str:
-    existing = {str(node.get("id") or node.get("node_id") or "") for node in nodes}
-    index = 1
-    while True:
-        candidate = f"{prefix}{index}"
-        if candidate not in existing:
-            return candidate
-        index += 1
-
-
-def _normalize_phone(value: Any) -> str:
-    return str(value or "").strip()
-
-
-def _normalize_text(value: Any) -> str:
-    return str(value or "").strip()
 
 
 def _format_operator_country(operator_name: str, country: str) -> str:
@@ -57,17 +39,7 @@ def _format_ownership_line(row_date: str, fio: str, address: str) -> str:
 
 
 def _dedupe_preserve_order(items: List[str]) -> List[str]:
-    seen = set()
-    result: List[str] = []
-    for item in items:
-        normalized = item.strip()
-        if not normalized:
-            continue
-        if normalized in seen:
-            continue
-        seen.add(normalized)
-        result.append(normalized)
-    return result
+    return dedupe_preserve_order(items)
 
 
 def _build_mssql_url(db_cfg: Dict[str, Any]) -> str:
@@ -119,6 +91,9 @@ class AbonentPeriodEnricherPlugin(PluginBase):
         "history_action": "plugin_execute",
     }
 
+    def __init__(self) -> None:
+        self.graph = GraphPluginToolkit()
+
     async def execute(
         self,
         input_artifacts: List[Dict[str, Any]],
@@ -128,7 +103,7 @@ class AbonentPeriodEnricherPlugin(PluginBase):
             return []
 
         params = params or {}
-        phone_number = _normalize_phone(params.get("phone_number"))
+        phone_number = normalize_phone(params.get("phone_number"))
         period_start = _as_date(params.get("period_start"))
         period_end = _as_date(params.get("period_end"))
 
@@ -151,8 +126,7 @@ class AbonentPeriodEnricherPlugin(PluginBase):
 
         target_node = self._find_person_node(nodes, phone_number)
         if target_node is None:
-            target_node = self._create_person_node(nodes, phone_number)
-            nodes.append(target_node)
+            target_node = self.graph.find_or_create_node(nodes, "person", phone_number)
 
         self._merge_attributes(target_node, phone_number, operator_lines, ownership_lines)
 
@@ -287,7 +261,7 @@ class AbonentPeriodEnricherPlugin(PluginBase):
             event_date = self._to_iso_date(event_date_raw)
             normalized_rows.append(
                 {
-                    "phone_number": _normalize_phone(row.get("phone_number")),
+                    "phone_number": normalize_phone(row.get("phone_number")),
                     "operator_name": _normalize_text(row.get("operator_name")),
                     "fio": _normalize_text(row.get("fio")),
                     "address_value": _normalize_text(row.get("address_value")),
@@ -343,60 +317,10 @@ class AbonentPeriodEnricherPlugin(PluginBase):
             node_type = str(node.get("type") or "").strip().lower()
             if node_type != "person":
                 continue
-            node_label = str(node.get("label") or node.get("attributes", {}).get("visual", {}).get("label") or "").strip().lower()
-            if node_label == normalized:
+            current_label = str(node_label(node)).strip().lower()
+            if current_label == normalized:
                 return node
         return None
-
-    @staticmethod
-    def _person_visual_defaults() -> Dict[str, Any]:
-        model = get_domain_model()
-        node_types = model.get("node_types") if isinstance(model, dict) else []
-        if isinstance(node_types, list):
-            for node_type in node_types:
-                if not isinstance(node_type, dict):
-                    continue
-                if str(node_type.get("id") or "") != "person":
-                    continue
-                visual = node_type.get("default_visual") if isinstance(node_type.get("default_visual"), dict) else {}
-                return {
-                    "icon": str(node_type.get("icon") or "person_phone"),
-                    "color": str(visual.get("color") or "#2563eb"),
-                    "iconScale": float(visual.get("iconScale") or 2),
-                    "ringEnabled": bool(visual.get("ringEnabled", False)),
-                    "ringWidth": float(visual.get("ringWidth") or 1.5),
-                }
-
-        return {
-            "icon": "person_phone",
-            "color": "#2563eb",
-            "iconScale": 2.0,
-            "ringEnabled": False,
-            "ringWidth": 1.5,
-        }
-
-    def _create_person_node(self, nodes: List[Dict[str, Any]], phone_number: str) -> Dict[str, Any]:
-        visual_defaults = self._person_visual_defaults()
-        node_id = _next_node_id(nodes)
-        return {
-            "id": node_id,
-            "type": "person",
-            "label": phone_number,
-            "position_x": 0,
-            "position_y": 0,
-            "attributes": {
-                "label": phone_number,
-                "visual": {
-                    "label": phone_number,
-                    "icon": visual_defaults["icon"],
-                    "color": visual_defaults["color"],
-                    "iconScale": visual_defaults["iconScale"],
-                    "ringEnabled": False,
-                    "ringWidth": visual_defaults["ringWidth"],
-                    "fontColor": "#0f172a",
-                },
-            },
-        }
 
     @staticmethod
     def _merge_attributes(
@@ -424,5 +348,3 @@ class AbonentPeriodEnricherPlugin(PluginBase):
 
         attributes["operator"] = _dedupe_preserve_order([*existing_operator, *operator_lines])
         attributes["ownership"] = _dedupe_preserve_order([*existing_ownership, *ownership_lines])
-
-

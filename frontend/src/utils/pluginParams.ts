@@ -1,7 +1,7 @@
 ﻿// frontend/src/utils/pluginParams.ts
 import type { ApiPlugin, PluginParamSpec } from '../types/api';
 import { pluginApi } from '../services/api';
-import { comparePluginMenuPaths, normalizePluginMenuPath, sortPluginsByName } from './pluginMenu';
+import { comparePluginMenuPaths, filterVisiblePlugins, normalizePluginMenuPath, sortPluginsByName } from './pluginMenu';
 
 const STORAGE_PREFIX = 'ga:project-plugin-defaults:';
 
@@ -511,7 +511,7 @@ export const rememberProjectPeriodDefaults = (projectId: number, params: Record<
 export const groupPluginsByMenuPath = (plugins: ApiPlugin[]) => {
   const groups = new Map<string, ApiPlugin[]>();
 
-  plugins.forEach((plugin) => {
+  filterVisiblePlugins(plugins).forEach((plugin) => {
     const path = normalizePluginMenuPath(plugin.menu_path);
     if (!groups.has(path)) groups.set(path, []);
     groups.get(path)!.push(plugin);

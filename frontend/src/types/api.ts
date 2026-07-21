@@ -75,6 +75,8 @@ export interface ProjectDataLoadResponse {
   project_id: number;
   source_path: string;
   output_dir: string;
+  import_plugin_id: string;
+  import_plugin_name: string;
   communications_rows: number;
   device_history_rows: number;
   location_events_rows: number;
@@ -94,6 +96,32 @@ export interface ProjectDataLoadResponse {
   load_batch_id: string;
   load_log: Record<string, any>;
   graph_artifact?: ApiArtifact | Record<string, any> | null;
+}
+
+export interface ProjectDataImportPlugin {
+  id: string;
+  name: string;
+  description: string;
+  priority: number;
+  enabled: boolean;
+  extensions: string[];
+  recognition_hint: string;
+}
+
+export interface MetadataBundle {
+  version: number;
+  exported_at_utc?: string;
+  domain_model: DomainModelConfig;
+  project_data_import_plugins: {
+    version: number;
+    plugins: Array<{
+      id: string;
+      name: string;
+      description: string;
+      priority: number;
+      enabled: boolean;
+    }>;
+  };
 }
 
 export interface ProjectDataClearResponse {
@@ -127,6 +155,54 @@ export interface CellTowerReferenceEnrichResponse {
 export interface CellTowerReferenceStats {
   cell_tower_reference_count: number;
   last_loaded_at: string | null;
+}
+
+export interface DomainAttributeDefinition {
+  key: string;
+  type: string;
+  label: string;
+  required?: boolean;
+  multiline?: boolean;
+}
+
+export interface DomainNodeType {
+  id: string;
+  label: string;
+  icon: string;
+  default_visual: {
+    color: string;
+    iconScale: number;
+    ringEnabled: boolean;
+    ringWidth: number;
+  };
+  attributes: DomainAttributeDefinition[];
+}
+
+export interface DomainEdgeType {
+  id: string;
+  label: string;
+  allowed_from: string[];
+  allowed_to: string[];
+  attributes: DomainAttributeDefinition[];
+  directed?: boolean;
+  default_visual?: {
+    color: string;
+    width: number;
+    direction: string;
+    dashed: boolean;
+  };
+  plugin_id?: string;
+  show_in_context_menu?: boolean;
+  context_menu_section?: string;
+  context_menu_label?: string;
+  menu_order?: number;
+}
+
+export interface DomainModelConfig {
+  version: number;
+  node_types: DomainNodeType[];
+  edge_types: DomainEdgeType[];
+  rules?: Record<string, any>;
 }
 
 export interface ConsoleProcedureParam {
@@ -273,6 +349,8 @@ export interface ApiPlugin {
   version: string;
   description: string;
   menu_path: string;
+  hidden_from_menu?: boolean;
+  menu_order?: number;
   input_types: string[];
   output_types: string[];
   applicable_to: string[];
@@ -320,25 +398,4 @@ export interface ApiPluginExecuteResponse {
   created: ApiArtifact[];
   updated: ApiArtifact[];
 }
-
-export interface DomainModelNodeType {
-  id: string;
-  label?: string;
-  icon?: string;
-}
-
-export interface DomainModelRules {
-  edge_direction_values?: string[];
-  allow_parallel_edges?: boolean;
-  merge_nodes_with_same_label?: boolean;
-}
-
-export interface DomainModelConfig {
-  version: number;
-  node_types: DomainModelNodeType[];
-  edge_types: Array<Record<string, any>>;
-  rules?: DomainModelRules;
-}
-
-
 

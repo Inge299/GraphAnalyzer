@@ -64,13 +64,33 @@ export function useActionWithUndo<T extends object>(
   }, []);
 
   const refreshHistory = useCallback(async () => {
-    try {
-      const response = await api.get(`/api/v2/artifacts/${artifactId}/history?limit=100`);
-      dispatch(setHistoryActions(response.data));
-    } catch (error) {
-      console.error('Failed to refresh history:', error);
+    const maxAttempts = 3;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        const response = await api.get(`/api/v2/artifacts/${artifactId}/history?limit=100`);
+        dispatch(setHistoryActions(response.data));
+        dispatch(setRedoAvailable(false));
+        return;
+      } catch (error) {
+        if (attempt === maxAttempts) {
+          console.error('Failed to refresh history:', error);
+          return;
+        }
+        await new Promise((resolve) => setTimeout(resolve, attempt * 250));
+      }
     }
   }, [artifactId, dispatch]);
+
+  useEffect(() => {
+    if (!artifactId) {
+      dispatch(setHistoryActions([]));
+      dispatch(setRedoAvailable(false));
+      return;
+    }
+    void refreshHistory();
+    dispatch(setRedoAvailable(false));
+  }, [artifactId, dispatch, refreshHistory]);
 
   const scheduleHistoryRefresh = useCallback(() => {
     if (historyRefreshTimerRef.current) {
@@ -107,7 +127,7 @@ export function useActionWithUndo<T extends object>(
       const result = await actionFn();
       afterState = (result as T) || JSON.parse(JSON.stringify(lastStateRef.current || {}));
 
-      // 1) Р вЂ”Р В°Р С—Р С‘РЎРѓРЎвЂ№Р Р†Р В°Р ВµР С Р Т‘Р ВµР в„–РЎРѓРЎвЂљР Р†Р С‘Р Вµ Р Р† Р С‘РЎРѓРЎвЂљР С•РЎР‚Р С‘РЎР‹
+      // 1) Сохраняем действие в истории
       const historyResponse = await api.post<HistoryActionDto>(`/api/v2/artifacts/${artifactId}/history/actions`, {
         action_type: options.actionType,
         before_state: beforeState,
@@ -118,18 +138,18 @@ export function useActionWithUndo<T extends object>(
         group_id: options.groupId || null
       });
 
-      // 2) Р С›Р В±Р Р…Р С•Р Р†Р В»РЎРЏР ВµР С Р В°РЎР‚РЎвЂљР ВµРЎвЂћР В°Р С”РЎвЂљ
+      // 2) Обновляем артефакт
       const updateResponse = await api.put(
         `/api/v2/projects/${projectId}/artifacts/${artifactId}`,
         { data: afterState }
       );
 
-      // 3) Р С›Р В±Р Р…Р С•Р Р†Р В»РЎРЏР ВµР С Redux Р В°РЎР‚РЎвЂљР ВµРЎвЂћР В°Р С”РЎвЂљР С•Р Р†
+      // 3) Обновляем Redux-состояние
       dispatch(updateArtifactSync(updateResponse.data));
       lastStateRef.current = updateResponse.data.data;
       onStateChange(lastStateRef.current as T);
 
-      // 4) Р вЂєР С•Р С”Р В°Р В»РЎРЉР Р…Р С• Р Т‘Р С•Р В±Р В°Р Р†Р В»РЎРЏР ВµР С Р В·Р В°Р С—Р С‘РЎРѓРЎРЉ Р Р† Р С‘РЎРѓРЎвЂљР С•РЎР‚Р С‘РЎР‹ Р Т‘Р В»РЎРЏ Р СР С–Р Р…Р С•Р Р†Р ВµР Р…Р Р…Р С•Р С–Р С• UI
+      // 4) Локально добавляем запись в историю для мгновенного UI
       dispatch(addAction({
         id: String(historyResponse.data.id),
         artifactId: Number(historyResponse.data.artifact_id),
@@ -143,7 +163,7 @@ export function useActionWithUndo<T extends object>(
         groupId: historyResponse.data.group_id || undefined
       }));
 
-      // 5) Р СњР С•Р Р†РЎвЂ№Р в„– action Р С‘Р Р…Р Р†Р В°Р В»Р С‘Р Т‘Р С‘РЎР‚РЎС“Р ВµРЎвЂљ redo, Р В° РЎРѓР С‘Р Р…РЎвЂ¦РЎР‚Р С•Р Р…Р С‘Р В·Р В°РЎвЂ Р С‘РЎР‹ Р С‘РЎРѓРЎвЂљР С•РЎР‚Р С‘Р С‘ Р Т‘Р ВµР В»Р В°Р ВµР С Р Р† РЎвЂћР С•Р Р…Р Вµ
+      // 5) Новый action инвалидирует redo, а синхронизацию истории делаем в фоне
       dispatch(setRedoAvailable(false));
       scheduleHistoryRefresh();
     } catch (error: any) {
@@ -202,6 +222,7 @@ export function useActionWithUndo<T extends object>(
     execute,
     undo,
     redo,
+    refreshHistory,
     createBatchGroup,
     isRecording,
     lastError,

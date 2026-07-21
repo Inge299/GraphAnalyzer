@@ -4,6 +4,11 @@ export const PLUGIN_MENU_FALLBACK_LABEL = 'Прочее';
 
 const TOP_LEVEL_ORDER = ['Связи', 'Создать объект', 'Анализ', 'Преобразования', 'AI', PLUGIN_MENU_FALLBACK_LABEL];
 
+const HIDDEN_PLUGIN_IDS = new Set([
+  'graph_styler',
+  'graph_expander_report',
+]);
+
 const normalizeRawSegment = (segment: string) => segment.trim().replace(/\s+/g, ' ');
 
 const normalizeTopLevelSegment = (segment: string) => {
@@ -60,6 +65,11 @@ const PLUGIN_DISPLAY_OVERRIDES: Record<string, { name?: string; description?: st
   },
 };
 
+export const isPluginVisible = (plugin: ApiPlugin) =>
+  !plugin?.hidden_from_menu && !HIDDEN_PLUGIN_IDS.has(String(plugin?.id || '').trim());
+
+export const filterVisiblePlugins = (plugins: ApiPlugin[]) => plugins.filter(isPluginVisible);
+
 export const normalizePluginMenuPath = (rawPath?: string | null) => {
   const value = String(rawPath || '').trim();
   if (!value) return PLUGIN_MENU_FALLBACK_LABEL;
@@ -115,10 +125,6 @@ export const comparePluginMenuPaths = (left: string, right: string) => {
   return leftPath.localeCompare(rightPath, 'ru');
 };
 
-export const sortPluginsByName = (plugins: ApiPlugin[]) => {
-  return [...plugins].sort((a, b) => getPluginDisplayName(a).localeCompare(getPluginDisplayName(b), 'ru'));
-};
-
 export const getPluginDisplayName = (plugin: ApiPlugin) => {
   const override = PLUGIN_DISPLAY_OVERRIDES[plugin.id];
   return String(override?.name || plugin.name || plugin.id).trim();
@@ -127,4 +133,12 @@ export const getPluginDisplayName = (plugin: ApiPlugin) => {
 export const getPluginDisplayDescription = (plugin: ApiPlugin) => {
   const override = PLUGIN_DISPLAY_OVERRIDES[plugin.id];
   return String(override?.description || plugin.description || '').trim();
+};
+
+export const sortPluginsByName = (plugins: ApiPlugin[]) => {
+  return [...filterVisiblePlugins(plugins)].sort((a, b) => {
+    const orderDiff = Number(a?.menu_order || 0) - Number(b?.menu_order || 0);
+    if (orderDiff !== 0) return orderDiff;
+    return getPluginDisplayName(a).localeCompare(getPluginDisplayName(b), 'ru');
+  });
 };

@@ -12,6 +12,7 @@ interface UsePluginRunnerArgs {
   getCurrentGraphNodeIds: () => string[];
   buildLiveContext: (fallback: PluginExecutionContext) => PluginExecutionContext;
   getArtifactSnapshot: () => PluginArtifactDataOverride;
+  onHistoryChanged?: () => Promise<void> | void;
   onFinally?: () => void;
 }
 
@@ -27,6 +28,14 @@ interface PluginExecuteResponse {
   created?: Array<{ id: number }>;
   updated?: UpdatedArtifactResponse[];
 }
+
+const serializeComparable = (value: unknown): string => {
+  try {
+    return JSON.stringify(value ?? null);
+  } catch {
+    return '';
+  }
+};
 
 const getErrorMessage = (error: unknown): string => {
   const fallback = 'Не удалось запустить плагин.';
@@ -84,6 +93,7 @@ export const usePluginRunner = ({
   getCurrentGraphNodeIds,
   buildLiveContext,
   getArtifactSnapshot,
+  onHistoryChanged,
   onFinally,
 }: UsePluginRunnerArgs) => {
   const pluginExecutionRef = useRef(false);
@@ -117,6 +127,10 @@ export const usePluginRunner = ({
       ) as PluginExecuteResponse;
 
       await dispatch(fetchArtifacts(projectId));
+      await onHistoryChanged?.();
+      window.setTimeout(() => {
+        void onHistoryChanged?.();
+      }, 500);
 
       const created = response?.created || [];
       if (created.length > 0) {
@@ -128,6 +142,12 @@ export const usePluginRunner = ({
       const newNodeIds = nextNodes
         .map((node) => String(node?.id ?? node?.node_id ?? ''))
         .filter((id: string) => id && !beforeNodeIds.has(id));
+      const artifactChanged = updatedCurrent
+        ? serializeComparable(updatedCurrent.data) !== serializeComparable(liveArtifactData)
+        : false;
+      const noVisibleResult = created.length === 0
+        && newNodeIds.length === 0
+        && !artifactChanged;
 
       const updatedMeta = updatedCurrent?.metadata || {};
       const liveSelectedNodeCount = Array.isArray(liveContext?.selected_nodes) ? liveContext.selected_nodes.length : 0;
@@ -154,6 +174,10 @@ export const usePluginRunner = ({
         const autoLayout = newNodeIds.length <= maxAutoLayout;
         window.dispatchEvent(new CustomEvent('graph:run-physics-layout', { detail: { newNodeIds, autoLayout } }));
       }
+
+      if (noVisibleResult) {
+        window.alert('Результат отсутствует.');
+      }
     } catch (error: unknown) {
       window.alert(getErrorMessage(error));
     } finally {
@@ -161,7 +185,7 @@ export const usePluginRunner = ({
       setPluginExecutionMessage(null);
       onFinally?.();
     }
-  }, [artifactId, buildLiveContext, getArtifactSnapshot, getCurrentGraphNodeIds, onFinally, projectId]);
+  }, [artifactId, buildLiveContext, getArtifactSnapshot, getCurrentGraphNodeIds, onFinally, onHistoryChanged, projectId]);
 
   return {
     runPlugin,

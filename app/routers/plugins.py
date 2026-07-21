@@ -63,6 +63,8 @@ class PluginMetadataResponse(BaseModel):
     version: str
     description: str
     menu_path: str
+    hidden_from_menu: bool = False
+    menu_order: int = 0
     input_types: List[str]
     output_types: List[str]
     applicable_to: List[str]
@@ -226,7 +228,7 @@ async def get_plugin(plugin_id: str):
         plugin = service.get_plugin(plugin_id)
     except KeyError:
         raise HTTPException(status_code=404, detail="Plugin not found")
-    return plugin.to_metadata()
+    return service._apply_domain_menu_overrides(plugin.to_metadata())
 
 
 @router.post("/{plugin_id}/execute", response_model=PluginExecuteResponse)

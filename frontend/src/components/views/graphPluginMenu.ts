@@ -1,6 +1,7 @@
 import type { ApiPlugin, PluginExecutionContext } from '../../types/api';
 import {
   comparePluginMenuPaths,
+  filterVisiblePlugins,
   getPluginDisplayName,
   normalizePluginMenuPath,
   PLUGIN_MENU_FALLBACK_LABEL,
@@ -81,7 +82,7 @@ export const buildPluginMenuTree = (plugins: ApiPlugin[]): PluginMenuNode[] => {
     return nodeByPath.get(parentPath);
   };
 
-  plugins.forEach((plugin) => {
+  filterVisiblePlugins(plugins).forEach((plugin) => {
     const normalizedPath = normalizePluginMenuPath(plugin.menu_path);
     const segments = normalizedPath.split('/').map((segment) => segment.trim()).filter(Boolean);
     const target = ensureNode(segments.length > 0 ? segments : [PLUGIN_MENU_FALLBACK_LABEL]);

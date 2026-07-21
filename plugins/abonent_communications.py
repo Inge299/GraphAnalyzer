@@ -10,53 +10,12 @@ from typing import Any, Dict, List, Optional, Tuple
 from sqlalchemy import bindparam, text
 
 from app.database import AsyncSessionLocal
-from app.services.domain_model_service import get_domain_model
 from app.services.plugins_config_service import get_plugin_config
 from plugins import PluginBase
 from plugins.graph_domain import resolve_edge_type
+from plugins.graph_toolkit import GraphPluginToolkit, dedupe_preserve_order, format_datetime, node_id, node_label, normalize_phone, normalize_text
 
 MAX_SELECTED_ABONENTS = 150
-
-
-
-def _node_id(node: Dict[str, Any]) -> str:
-    return str(node.get("id") or node.get("node_id") or "")
-
-
-def _node_label(node: Dict[str, Any]) -> str:
-    attributes = node.get("attributes") or {}
-    visual = attributes.get("visual") or {}
-    return str(
-        node.get("label")
-        or visual.get("label")
-        or attributes.get("label")
-        or attributes.get("name")
-        or _node_id(node)
-        or ""
-    ).strip()
-
-
-def _normalize_phone(value: Any) -> str:
-    return str(value or "").strip()
-
-
-def _normalize_text(value: Any) -> str:
-    return str(value or "").strip()
-
-
-def _dedupe_preserve_order(items: List[str]) -> List[str]:
-    seen = set()
-    result: List[str] = []
-    for item in items:
-        value = item.strip()
-        if not value:
-            continue
-        if value in seen:
-            continue
-        seen.add(value)
-        result.append(value)
-    return result
-
 
 def _as_datetime(value: Any) -> Optional[datetime]:
     if isinstance(value, datetime):
@@ -81,13 +40,7 @@ def _as_datetime(value: Any) -> Optional[datetime]:
 
 
 def _format_dt(value: Any) -> str:
-    dt = _as_datetime(value)
-    if dt is None:
-        return _normalize_text(value)
-    # If time is empty (00:00:00), show only date.
-    if dt.hour == 0 and dt.minute == 0 and dt.second == 0:
-        return dt.strftime("%d.%m.%Y")
-    return dt.strftime("%d.%m.%Y %H:%M")
+    return format_datetime(value)
 
 def _build_mssql_url(db_cfg: Dict[str, Any]) -> str:
     driver = str(db_cfg.get("driver") or "").strip() or "mssql+pymssql"
@@ -134,9 +87,7 @@ class AbonentCommunicationsPlugin(PluginBase):
     }
 
     def __init__(self) -> None:
-        # Sequence for deterministic initial placement of newly created nodes.
-        self._new_node_sequence = 0
-        self._rng = random.Random()
+        self.graph = GraphPluginToolkit()
 
     def is_applicable_with_context(self, input_artifacts: List[Dict[str, Any]], context: Optional[Dict[str, Any]] = None) -> bool:
         if not input_artifacts:
@@ -243,13 +194,13 @@ class AbonentCommunicationsPlugin(PluginBase):
             contacts_count = max(1, int(row.get("contacts_count") or 1))
             calls_count_approx = bool(row.get("calls_count_approx") or False)
 
-            existing = self._find_existing_edge(edges, _node_id(left_node), _node_id(right_node), edge_type)
+            existing = self._find_existing_edge(edges, node_id(left_node), node_id(right_node), edge_type)
             if existing is None:
                 edges.append(
                     self._build_edge(
                         edges=edges,
-                        from_id=_node_id(left_node),
-                        to_id=_node_id(right_node),
+                        from_id=node_id(left_node),
+                        to_id=node_id(right_node),
                         edge_type=edge_type,
                         start_raw=start_raw,
                         end_raw=end_raw,
@@ -346,13 +297,13 @@ class AbonentCommunicationsPlugin(PluginBase):
         selected_id_set = set(selected_ids)
         phones: List[str] = []
         for node in nodes:
-            node_id = _node_id(node)
-            if node_id not in selected_id_set:
+            current_node_id = node_id(node)
+            if current_node_id not in selected_id_set:
                 continue
             node_type = str(node.get("type") or "").strip().lower()
             if node_type and node_type not in {"person", "abonent", "subscriber"}:
                 continue
-            label = _node_label(node)
+            label = node_label(node)
             if label:
                 phones.append(label)
         return _dedupe_preserve_order(phones)
@@ -360,69 +311,6 @@ class AbonentCommunicationsPlugin(PluginBase):
     @staticmethod
     def _format_ownership(fio: str, address: str) -> str:
         return ", ".join([part for part in [fio, address] if part])
-
-    @staticmethod
-    def _person_visual_defaults() -> Dict[str, Any]:
-        model = get_domain_model()
-        node_types = model.get("node_types") if isinstance(model, dict) else []
-        if isinstance(node_types, list):
-            for node_type in node_types:
-                if not isinstance(node_type, dict):
-                    continue
-                if str(node_type.get("id") or "") != "person":
-                    continue
-                visual = node_type.get("default_visual") if isinstance(node_type.get("default_visual"), dict) else {}
-                return {
-                    "icon": str(node_type.get("icon") or "person_phone"),
-                    "color": str(visual.get("color") or "#2563eb"),
-                    "iconScale": float(visual.get("iconScale") or 2),
-                    "ringEnabled": bool(visual.get("ringEnabled", False)),
-                    "ringWidth": float(visual.get("ringWidth") or 1.5),
-                }
-
-        return {
-            "icon": "person_phone",
-            "color": "#2563eb",
-            "iconScale": 2.0,
-            "ringEnabled": False,
-            "ringWidth": 1.5,
-        }
-
-    @staticmethod
-    def _node_xy(node: Optional[Dict[str, Any]]) -> Tuple[float, float]:
-        if not isinstance(node, dict):
-            return (0.0, 0.0)
-        return (float(node.get("position_x") or 0.0), float(node.get("position_y") or 0.0))
-
-    def _pick_new_node_position(
-        self,
-        nodes: List[Dict[str, Any]],
-        anchor_node: Optional[Dict[str, Any]] = None,
-    ) -> Tuple[float, float]:
-        ax, ay = self._node_xy(anchor_node)
-        radius_base = 240.0
-        radius_step = 80.0
-        min_distance = 150.0
-
-        for attempt in range(48):
-            ring = (self._new_node_sequence + attempt) // 10
-            angle = self._rng.uniform(0.0, 2.0 * math.pi)
-            radius = self._rng.uniform(140.0, 320.0) + ring * radius_step
-            x = ax + radius * math.cos(angle)
-            y = ay + radius * math.sin(angle)
-
-            collision = False
-            for existing in nodes:
-                ex, ey = self._node_xy(existing)
-                if math.hypot(x - ex, y - ey) < min_distance:
-                    collision = True
-                    break
-            if not collision:
-                self._new_node_sequence = self._new_node_sequence + attempt + 1
-                return (round(x, 1), round(y, 1))
-
-        self._new_node_sequence += 1
-        return (ax + radius_base, ay)
 
     def _find_or_create_abonent_node(
         self,
@@ -434,53 +322,9 @@ class AbonentCommunicationsPlugin(PluginBase):
         for node in nodes:
             if str(node.get("type") or "").strip().lower() != "person":
                 continue
-            if _node_label(node).strip().lower() == normalized:
+            if node_label(node).strip().lower() == normalized:
                 return node
-
-        visual_defaults = self._person_visual_defaults()
-        node_id = self._next_node_id(nodes)
-        x, y = self._pick_new_node_position(nodes, anchor_node=anchor_node)
-        node = {
-            "id": node_id,
-            "type": "person",
-            "label": phone,
-            "position_x": x,
-            "position_y": y,
-            "attributes": {
-                "label": phone,
-                "visual": {
-                    "label": phone,
-                    "icon": visual_defaults["icon"],
-                    "color": visual_defaults["color"],
-                    "iconScale": visual_defaults["iconScale"],
-                    "ringEnabled": False,
-                    "ringWidth": visual_defaults["ringWidth"],
-                    "fontColor": "#0f172a",
-                },
-            },
-        }
-        nodes.append(node)
-        return node
-
-    @staticmethod
-    def _next_node_id(nodes: List[Dict[str, Any]], prefix: str = "auto_node_") -> str:
-        existing = {_node_id(node) for node in nodes}
-        index = 1
-        while True:
-            candidate = f"{prefix}{index}"
-            if candidate not in existing:
-                return candidate
-            index += 1
-
-    @staticmethod
-    def _next_edge_id(edges: List[Dict[str, Any]], prefix: str = "auto_edge_") -> str:
-        existing = {str(edge.get("id") or "") for edge in edges}
-        index = 1
-        while True:
-            candidate = f"{prefix}{index}"
-            if candidate not in existing:
-                return candidate
-            index += 1
+        return self.graph.find_or_create_node(nodes, "person", phone, anchor_node=anchor_node)
 
     @staticmethod
     def _merge_node_attributes(node: Dict[str, Any], operator: str, ownership: str) -> None:
@@ -494,7 +338,7 @@ class AbonentCommunicationsPlugin(PluginBase):
             visual = {}
             attributes["visual"] = visual
 
-        label = _node_label(node)
+        label = node_label(node)
         node["label"] = label
         attributes["label"] = label
         visual["label"] = label
@@ -517,17 +361,7 @@ class AbonentCommunicationsPlugin(PluginBase):
         right_id: str,
         edge_type: str,
     ) -> Optional[Dict[str, Any]]:
-        for edge in edges:
-            current_type = str(edge.get("type") or "")
-            if current_type != edge_type:
-                continue
-
-            src = str(edge.get("from") or edge.get("source_node") or "")
-            dst = str(edge.get("to") or edge.get("target_node") or "")
-            if (src == left_id and dst == right_id) or (src == right_id and dst == left_id):
-                return edge
-
-        return None
+        return GraphPluginToolkit.find_existing_edge(edges, left_id, right_id, edge_type)
 
     def _build_edge(
         self,
@@ -541,7 +375,7 @@ class AbonentCommunicationsPlugin(PluginBase):
         contacts_count: int = 1,
         calls_count_approx: bool = False,
     ) -> Dict[str, Any]:
-        edge_id = self._next_edge_id(edges)
+        edge_id = self.graph.next_edge_id(edges)
         start_str = _format_dt(start_raw)
         end_str = _format_dt(end_raw)
         interval_label = self._interval_label(start_str, end_str)

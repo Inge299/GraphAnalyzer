@@ -9,6 +9,10 @@ import type {
   ConsoleDataSource,
   ConsoleDataSourcesResponse,
   ConsoleDataSourceTestResponse,
+  DomainEdgeType,
+  DomainModelConfig,
+  MetadataBundle,
+  DomainNodeType,
   ConsoleObjectTypeMappingsResponse,
   ConsoleProfilesResponse,
   ConsoleProfile,
@@ -18,6 +22,7 @@ import type {
   PluginListResponse,
   PluginUploadInputResponse,
   ProjectDataClearResponse,
+  ProjectDataImportPlugin,
   ProjectDataLoadResponse,
   ProjectDataStats,
 } from '../types/api';
@@ -136,18 +141,29 @@ export const pluginApi = {
 };
 
 export const projectDataApi = {
+  listImportPlugins: () =>
+    api.get<ProjectDataImportPlugin[]>('/api/v1/projects/data/import-plugins').then(res => res.data),
+  updateImportPlugin: (pluginId: string, payload: Partial<ProjectDataImportPlugin>) =>
+    api.put<ProjectDataImportPlugin>(`/api/v1/projects/data/import-plugins/${encodeURIComponent(pluginId)}`, payload, { timeout: 120000 }).then(res => res.data),
   load: (projectId: number, sourcePath: string) =>
     api.post<ProjectDataLoadResponse>(
       `/api/v1/projects/${projectId}/data/load`,
       { source_path: sourcePath },
       { timeout: layoutConfig.network.projectDataLoadTimeoutMs },
     ).then(res => res.data),
-  loadFromFiles: (projectId: number, files: File[]) => {
+  loadFromFiles: (
+    projectId: number,
+    files: File[],
+    pluginOverrides: Array<{ path: string; plugin_id: string }> = [],
+  ) => {
     const formData = new FormData();
     files.forEach((file) => {
       const relativeName = (file as any).webkitRelativePath || file.name;
       formData.append('files', file, relativeName);
     });
+    if (pluginOverrides.length > 0) {
+      formData.append('plugin_overrides_json', JSON.stringify(pluginOverrides));
+    }
     return api.post<ProjectDataLoadResponse>(`/api/v1/projects/${projectId}/data/load-upload`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
       timeout: layoutConfig.network.projectDataLoadTimeoutMs,
@@ -224,7 +240,21 @@ export const consoleApi = {
     }, { timeout: layoutConfig.network.consoleRefreshTimeoutMs }).then(res => res.data),
 };
 export const domainModelApi = {
-  get: () => api.get('/api/v1/config/domain-model').then(res => res.data),
+  get: () => api.get<DomainModelConfig>('/api/v1/config/domain-model').then(res => res.data),
+  listNodeTypes: () => api.get<DomainNodeType[]>('/api/v1/config/domain-model/node-types').then(res => res.data),
+  saveNodeType: (payload: DomainNodeType) =>
+    api.post<DomainModelConfig>('/api/v1/config/domain-model/node-types', payload, { timeout: 120000 }).then(res => res.data),
+  deleteNodeType: (nodeTypeId: string) =>
+    api.delete<DomainModelConfig>(`/api/v1/config/domain-model/node-types/${encodeURIComponent(nodeTypeId)}`, { timeout: 120000 }).then(res => res.data),
+  listEdgeTypes: () => api.get<DomainEdgeType[]>('/api/v1/config/domain-model/edge-types').then(res => res.data),
+  saveEdgeType: (payload: DomainEdgeType) =>
+    api.post<DomainModelConfig>('/api/v1/config/domain-model/edge-types', payload, { timeout: 120000 }).then(res => res.data),
+  deleteEdgeType: (edgeTypeId: string) =>
+    api.delete<DomainModelConfig>(`/api/v1/config/domain-model/edge-types/${encodeURIComponent(edgeTypeId)}`, { timeout: 120000 }).then(res => res.data),
+  exportMetadataBundle: () =>
+    api.get<MetadataBundle>('/api/v1/config/metadata-bundle', { timeout: 120000 }).then(res => res.data),
+  importMetadataBundle: (payload: MetadataBundle) =>
+    api.post<MetadataBundle>('/api/v1/config/metadata-bundle', { payload }, { timeout: 120000 }).then(res => res.data),
 };
 
 export default api;

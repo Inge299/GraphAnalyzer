@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "plugins": [
+    {
+      "id": "nodex_archive_bundle",
+      "name": "Nodex: архивы и пакетные выгрузки",
+      "description": "Распознаёт ZIP-архивы и пакетные выгрузки, которые конвертируются штатным конвертером Nodex.",
+      "priority": 120,
+      "enabled": true
+    },
+    {
+      "id": "nodex_identity_facts",
+      "name": "Nodex: адресная книга и идентификаторы",
+      "description": "Распознаёт CSV и архивы с адресной книгой, техданными пользователя, MSISDN, IP и устройством.",
+      "priority": 110,
+      "enabled": true
+    },
+    {
+      "id": "nodex_traffic_geo",
+      "name": "Nodex: связи, устройства и локации",
+      "description": "Распознаёт CSV и архивы со связями, историей устройств, локациями и IP-привязками.",
+      "priority": 100,
+      "enabled": true
+    }
+  ]
+}

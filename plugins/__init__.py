@@ -15,6 +15,7 @@ class PluginBase:
     """Base class for all plugins."""
 
     # Stable identifiers
+    abstract_plugin: bool = False
     id: str = "base_plugin"
     name: str = "Base Plugin"
     version: str = "0.1.0"
@@ -101,7 +102,13 @@ def _discover_plugin_classes() -> List[Type[PluginBase]]:
             module = importlib.import_module(name)
             for attr_name in dir(module):
                 attr = getattr(module, attr_name)
-                if isinstance(attr, type) and issubclass(attr, PluginBase) and attr is not PluginBase:
+                if (
+                    isinstance(attr, type)
+                    and issubclass(attr, PluginBase)
+                    and attr is not PluginBase
+                    and not attr_name.startswith("_")
+                    and not getattr(attr, "abstract_plugin", False)
+                ):
                     classes.append(attr)
         except Exception as e:
             logger.error(f"Failed to load plugin module {name}: {e}")

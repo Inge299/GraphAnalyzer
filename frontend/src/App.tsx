@@ -345,6 +345,7 @@ function App() {
     lastError,
     undo: undoAction,
     redo: redoAction,
+    refreshHistory,
     canUndo,
     canRedo
   } = useActionWithUndo(
@@ -1071,6 +1072,7 @@ function App() {
                   onConnectComplete: handleFinishEdgeCreation,
                   onUndo: handleUndo,
                   onRedo: handleRedo,
+                  onHistoryChanged: refreshHistory,
                   canUndo,
                   canRedo,
                   isRecording,
