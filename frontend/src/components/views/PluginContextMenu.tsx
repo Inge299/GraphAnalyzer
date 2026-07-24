@@ -128,13 +128,13 @@ const buildMenuSections = (
     appendSection(sections, root.label, directLeaves, subsections);
   });
 
-  if (hasSelectedNodes) {
+  {
     const analysisGroups = new Map<string, { top: string; subsection: string | null; leaves: MenuLeaf[] }>();
     profiles
       .filter((profile) =>
         profile.is_active !== false &&
         profile.hidden_from_menu !== true &&
-        profile.supports_graph_selection === true)
+        (hasSelectedNodes || profile.supports_graph_selection !== true))
       .forEach((profile) => {
         const path = normalizeAnalysisPath(profile);
         const top = path[0] || 'Анализ';
