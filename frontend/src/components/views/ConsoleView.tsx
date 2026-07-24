@@ -956,7 +956,7 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
         </div>
         </> )}`n      </div>
         {isLocationTimeline && locationTopTab === 'map' && locationMapTab?.map_data && (
-          <MapView artifact={artifact} _onUpdate={() => {}} dataOverride={locationMapTab.map_data} titleOverride={`${artifact.name}: \u041a\u0430\u0440\u0442\u0430`} descriptionOverride="\u041c\u0430\u0440\u0448\u0440\u0443\u0442 \u043f\u043e \u0441\u043e\u0431\u044b\u0442\u0438\u044f\u043c \u043b\u043e\u043a\u0430\u0446\u0438\u0439." selectedPointId={selectedLocationIds[0] || null} onSelectPointIds={setSelectedLocationIds} />
+          <MapView artifact={artifact} _onUpdate={() => {}} dataOverride={locationMapTab.map_data} titleOverride={`${artifact.name}: \u041a\u0430\u0440\u0442\u0430`} descriptionOverride={'\u041c\u0430\u0440\u0448\u0440\u0443\u0442 \u043f\u043e \u0441\u043e\u0431\u044b\u0442\u0438\u044f\u043c \u043b\u043e\u043a\u0430\u0446\u0438\u0439.'} selectedPointId={selectedLocationIds[0] || null} onSelectPointIds={setSelectedLocationIds} />
         )}
 
       {tabs.length > 1 && (

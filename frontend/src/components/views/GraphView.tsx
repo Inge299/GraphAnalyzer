@@ -712,6 +712,10 @@ export const GraphView: React.FC<GraphViewProps> = ({
         },
       });
 
+      // Open the placeholder immediately. The analyst sees the new result while the plugin runs.
+      dispatch(updateArtifactSync(consoleArtifact));
+      dispatch(setCurrentArtifact(consoleArtifact.id));
+      onOpenArtifact?.(consoleArtifact);
       const refreshedConsole = await consoleApi.refresh(
         artifact.project_id,
         consoleArtifact.id,
