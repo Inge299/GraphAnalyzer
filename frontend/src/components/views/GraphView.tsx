@@ -724,13 +724,16 @@ export const GraphView: React.FC<GraphViewProps> = ({
         : [];
       const mapArtifactId = Number(derivedArtifacts.find((item: any) => item?.type === 'map')?.id || 0);
       const refreshedArtifact = await artifactApi.get(artifact.project_id, consoleArtifact.id);
+      let targetArtifact = refreshedArtifact;
       dispatch(updateArtifactSync(refreshedArtifact));
       if (mapArtifactId) {
         const mapArtifact = await artifactApi.get(artifact.project_id, mapArtifactId);
         dispatch(updateArtifactSync(mapArtifact));
+        targetArtifact = mapArtifact;
       }
-      await dispatch(fetchArtifacts(artifact.project_id));
-      dispatch(setCurrentArtifact(mapArtifactId || consoleArtifact.id));
+      dispatch(setCurrentArtifact(targetArtifact.id));
+      window.dispatchEvent(new CustomEvent('nodex:open-artifact', { detail: { artifact: targetArtifact } }));
+      void dispatch(fetchArtifacts(artifact.project_id));
     } finally {
       closePluginMenu();
     }

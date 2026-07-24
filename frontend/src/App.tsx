@@ -864,6 +864,14 @@ function App() {
       lastNodesStateRef.current = artifact.data;
     }
   }, [dispatch]);
+  useEffect(() => {
+    const handleOpenArtifact = (event: Event) => {
+      const artifact = (event as CustomEvent<{ artifact?: any }>).detail?.artifact;
+      if (artifact?.id) handleArtifactSelect(artifact);
+    };
+    window.addEventListener('nodex:open-artifact', handleOpenArtifact);
+    return () => window.removeEventListener('nodex:open-artifact', handleOpenArtifact);
+  }, [handleArtifactSelect]);
   const { refreshConsole: handleRefreshConsole } = useConsoleArtifact({
     activeArtifact,
     currentProjectId: currentProject?.id,

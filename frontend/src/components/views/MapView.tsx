@@ -63,6 +63,13 @@ const MapView: React.FC<MapViewProps> = ({ artifact }) => {
     };
   }, [points]);
 
+  const osmEmbedUrl = useMemo(() => {
+    if (!viewport) return null;
+    const bbox = [viewport.minLng, viewport.minLat, viewport.maxLng, viewport.maxLat]
+      .map((value) => value.toFixed(6))
+      .join('%2C');
+    return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik`;
+  }, [viewport]);
   const coordinateCounts = useMemo(() => {
     const counts = new Map<string, number>();
     points.forEach((point) => {
@@ -102,7 +109,9 @@ const MapView: React.FC<MapViewProps> = ({ artifact }) => {
       </header>
       <div className="map-layout">
         <section className="map-canvas-wrap" aria-label="Схема маршрута">
-          <svg className="map-canvas" viewBox={`0 0 ${viewport.width} ${viewport.height}`} role="img" aria-label="Карта событий локаций">
+          <div className="map-stage">
+            {osmEmbedUrl && <iframe className="map-osm" title="Карта OpenStreetMap" src={osmEmbedUrl} loading="lazy" />}
+            <svg className="map-canvas" viewBox={`0 0 ${viewport.width} ${viewport.height}`} role="img" aria-label="Карта событий локаций">
             <defs>
               <pattern id="map-grid" width="44" height="44" patternUnits="userSpaceOnUse">
                 <path d="M 44 0 L 0 0 0 44" fill="none" stroke="#d9e2ef" strokeWidth="1" />
@@ -128,9 +137,9 @@ const MapView: React.FC<MapViewProps> = ({ artifact }) => {
               );
             }))}
             <text x="20" y="28" className="map-axis">С: {viewport.maxLat.toFixed(4)} · З: {viewport.minLng.toFixed(4)}</text>
-            <text x="20" y={viewport.height - 18} className="map-axis">Ю: {viewport.minLat.toFixed(4)} · В: {viewport.maxLng.toFixed(4)}</text>
-          </svg>
-          <p className="map-attribution">Схема координат. Источник: {artifact.data?.provider === 'cell_tower_reference' ? 'справочник базовых станций проекта' : 'данные артефакта'}.</p>
+            <text x="20" y={viewport.height - 18} className="map-axis">Ю: {viewport.minLat.toFixed(4)} · В: {viewport.maxLng.toFixed(4)}</text>            </svg>
+          </div>
+          <p className="map-attribution">Картографическая основа OpenStreetMap. Источник: {artifact.data?.provider === 'cell_tower_reference' ? 'справочник базовых станций проекта' : 'данные артефакта'}.</p>
         </section>
         <aside className="map-details">
           <h3>Событие</h3>
