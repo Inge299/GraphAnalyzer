@@ -732,7 +732,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
         targetArtifact = mapArtifact;
       }
       dispatch(setCurrentArtifact(targetArtifact.id));
-      window.dispatchEvent(new CustomEvent('nodex:open-artifact', { detail: { artifact: targetArtifact } }));
+      window.dispatchEvent(new CustomEvent('nodex:open-artifact', { detail: { artifacts: [refreshedArtifact, targetArtifact] } }));
       void dispatch(fetchArtifacts(artifact.project_id));
     } finally {
       closePluginMenu();

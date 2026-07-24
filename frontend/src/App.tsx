@@ -866,8 +866,10 @@ function App() {
   }, [dispatch]);
   useEffect(() => {
     const handleOpenArtifact = (event: Event) => {
-      const artifact = (event as CustomEvent<{ artifact?: any }>).detail?.artifact;
-      if (artifact?.id) handleArtifactSelect(artifact);
+      const artifacts = (event as CustomEvent<{ artifacts?: any[] }>).detail?.artifacts || [];
+      artifacts.forEach((artifact) => {
+        if (artifact?.id) handleArtifactSelect(artifact);
+      });
     };
     window.addEventListener('nodex:open-artifact', handleOpenArtifact);
     return () => window.removeEventListener('nodex:open-artifact', handleOpenArtifact);

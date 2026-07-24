@@ -7,6 +7,7 @@
 .map-canvas-wrap, .map-details, .map-empty { border: 1px solid #cdd8e7; border-radius: 10px; background: #fff; box-shadow: 0 8px 22px rgb(38 58 88 / 7%); }
 .map-stage { position: relative; height: min(600px, calc(100vh - 230px)); min-height: 520px; overflow: hidden; }
 .map-osm, .map-canvas { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.map-osm { pointer-events: none; }
 .map-canvas { display: block; pointer-events: none; }
 .map-point { pointer-events: all; }
 .map-point { cursor: pointer; }
