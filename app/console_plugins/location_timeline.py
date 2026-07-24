@@ -149,9 +149,9 @@ class LocationTimelineExecutor(ConsoleExecutorPlugin):
             "tabs": [
                 tab("summary", "Итог", [column("requested_msisdns", "Запрашиваемые MSISDN", "string", 260), column("events_total", "Событий", "integer", 120), column("mapped_events", "С координатами", "integer", 150), column("map_points", "На карте", "integer", 120), column("unmapped_events", "Без координат", "integer", 150)], [{"requested_msisdns": ", ".join(msisdns), "events_total": len(rows), "mapped_events": mapped_events_total, "map_points": len(points), "unmapped_events": len(rows) - mapped_events_total}]),
                 tab("locations", "События локаций", [column("sequence", "№", "integer", 70), column("msisdn", "MSISDN", "string", 150), column("event_time", "Время", "datetime", 180), column("address", "Адрес", "string", 440), column("mcc", "MCC", "string", 80), column("mnc", "MNC", "string", 80), column("lac", "LAC", "string", 110), column("bs", "БС", "string", 110), column("coordinates", "Координаты", "string", 220)], rows),
+                {"id": "map", "name": "Карта", "view": "map", "columns": [], "rows": [], "row_count": len(points), "map_data": map_data},
             ],
             "active_tab_id": "summary",
-            "derived_artifacts": [{"type": "map", "name": "Карта локаций: " + ", ".join(msisdns), "description": "Маршрут по событиям локаций и координатам из справочника базовых станций.", "data": map_data}],
         }
 
     def _empty(self, status: str) -> Dict[str, Any]:

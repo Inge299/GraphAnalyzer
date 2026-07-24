@@ -6,6 +6,8 @@ export interface RawConsoleTab {
   columns?: Array<string | ConsoleProcedureColumn>;
   rows?: Record<string, unknown>[];
   row_count?: number;
+  view?: 'map';
+  map_data?: Record<string, unknown>;
 }
 
 export interface RawConsoleArtifactData {
@@ -24,6 +26,8 @@ export interface NormalizedConsoleTab {
   columns: NormalizedConsoleColumn[];
   rows: Record<string, unknown>[];
   row_count: number;
+  view?: 'map';
+  map_data?: Record<string, unknown>;
 }
 
 const normalizeText = (value: unknown): string => {
@@ -104,6 +108,8 @@ export const normalizeConsoleTabs = (data: RawConsoleArtifactData): NormalizedCo
         columns,
         rows,
         row_count: typeof tab.row_count === 'number' ? tab.row_count : rows.length,
+        view: tab.view === 'map' ? ('map' as const) : undefined,
+        map_data: tab.map_data && typeof tab.map_data === 'object' ? tab.map_data : undefined,
       };
     });
 

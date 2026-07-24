@@ -12,6 +12,7 @@ import type {
 } from '../../types/api';
 import { normalizeConsoleTabs } from '../../utils/consoleResultTabs';
 import { formatDateTime } from '../../utils/formatters';
+import MapView from './MapView';
 
 type SortDir = 'asc' | 'desc';
 type ParamInputValues = Record<string, string | boolean>;
@@ -37,6 +38,8 @@ interface ConsoleTabData {
   columns: Array<string | ConsoleColumnData>;
   rows: Record<string, unknown>[];
   row_count?: number;
+  view?: 'map';
+  map_data?: Record<string, unknown>;
 }
 
 interface ConsoleArtifactData {
@@ -956,7 +959,15 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
       )}
 
       <div style={{ flex: '1 1 420px', overflow: 'auto', minHeight: 320 }}>
-        {columns.length === 0 ? (
+        {activeTab?.view === 'map' && activeTab.map_data ? (
+          <MapView
+            artifact={artifact}
+            _onUpdate={() => {}}
+            dataOverride={activeTab.map_data}
+            titleOverride={`${artifact.name}: ${activeTab.name}`}
+            descriptionOverride="Маршрут по событиям локаций и координатам из справочника базовых станций."
+          />
+        ) : columns.length === 0 ? (
           <div style={{ padding: 16, color: '#64748b' }}>
             {'\u041d\u0435\u0442 \u0434\u0430\u043d\u043d\u044b\u0445 \u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0439 \u0432\u043a\u043b\u0430\u0434\u043a\u0435. \u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u043f\u043b\u0430\u0433\u0438\u043d \u0438\u043b\u0438 \u043f\u0440\u043e\u0446\u0435\u0434\u0443\u0440\u0443 \u0438 \u0437\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u0435 \u0435\u0435.'}
           </div>

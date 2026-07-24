@@ -372,12 +372,23 @@ async def _upsert_derived_artifacts(
     The source console is the stable key, so rerunning the plugin updates its
     previous map instead of filling the project with duplicate maps.
     """
-    if not isinstance(descriptors, list):
+    map_descriptors = [
+        descriptor
+        for descriptor in (descriptors if isinstance(descriptors, list) else [])
+        if isinstance(descriptor, dict) and descriptor.get("type") == "map"
+    ]
+    if not map_descriptors:
+        # A plugin that no longer returns a map must not leave a stale derived artifact behind.
+        result = await db.execute(
+            select(Artifact).where(Artifact.project_id == project_id, Artifact.type == "map")
+        )
+        for target in result.scalars().all():
+            if isinstance(target.artifact_metadata, dict) and target.artifact_metadata.get("source_console_artifact_id") == source_artifact.id:
+                await db.delete(target)
         return []
+
     created: list[Dict[str, Any]] = []
-    for descriptor in descriptors:
-        if not isinstance(descriptor, dict) or descriptor.get("type") != "map":
-            continue
+    for descriptor in map_descriptors:
         name = str(descriptor.get("name") or "").strip()
         data = descriptor.get("data") if isinstance(descriptor.get("data"), dict) else {}
         if not name:

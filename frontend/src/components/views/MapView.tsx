@@ -6,6 +6,9 @@ import './MapView.css';
 interface MapViewProps {
   artifact: ApiArtifact;
   _onUpdate: (updates: Partial<ApiArtifact>) => void;
+  dataOverride?: Record<string, unknown>;
+  titleOverride?: string;
+  descriptionOverride?: string;
 }
 
 type MapPoint = {
@@ -22,13 +25,13 @@ type MapPoint = {
 
 const palette = ['#2563eb', '#dc2626', '#059669', '#7c3aed', '#b45309', '#0f766e'];
 
-const MapView: React.FC<MapViewProps> = ({ artifact }) => {
+const MapView: React.FC<MapViewProps> = ({ artifact, dataOverride, titleOverride, descriptionOverride }) => {
   const points = useMemo(() => {
-    const raw: unknown[] = Array.isArray(artifact.data?.points) ? artifact.data.points : [];
+    const raw: unknown[] = Array.isArray(dataOverride?.points) ? dataOverride.points : Array.isArray(artifact.data?.points) ? artifact.data.points : [];
     return raw
       .filter((item: unknown): item is MapPoint => Boolean(item && typeof item === 'object' && Number.isFinite(Number((item as MapPoint).latitude)) && Number.isFinite(Number((item as MapPoint).longitude))))
       .map((item: MapPoint) => ({ ...item, latitude: Number(item.latitude), longitude: Number(item.longitude) }));
-  }, [artifact.data]);
+  }, [artifact.data, dataOverride]);
   const [selectedId, setSelectedId] = useState<string | null>(points[0]?.id || null);
   const selected = points.find((point) => point.id === selectedId) || points[0] || null;
 
@@ -53,8 +56,8 @@ const MapView: React.FC<MapViewProps> = ({ artifact }) => {
       width,
       height,
       point: (point: MapPoint) => ({
-        x: 54 + ((point.longitude - viewportMinLng) / (viewportMaxLng - viewportMinLng)) * (width - 108),
-        y: height - 46 - ((point.latitude - viewportMinLat) / (viewportMaxLat - viewportMinLat)) * (height - 92),
+        x: ((point.longitude - viewportMinLng) / (viewportMaxLng - viewportMinLng)) * width,
+        y: height - ((point.latitude - viewportMinLat) / (viewportMaxLat - viewportMinLat)) * height,
       }),
       minLat: viewportMinLat,
       maxLat: viewportMaxLat,
@@ -91,7 +94,7 @@ const MapView: React.FC<MapViewProps> = ({ artifact }) => {
     return (
       <div className="map-view">
         <div className="map-empty">
-          <h2>{artifact.name}</h2>
+          <h2>{titleOverride || artifact.name}</h2>
           <p>В этом результате пока нет событий с координатами. Загрузите справочник базовых станций или уточните исходные LAC и БС.</p>
         </div>
       </div>
@@ -102,8 +105,8 @@ const MapView: React.FC<MapViewProps> = ({ artifact }) => {
     <div className="map-view">
       <header className="map-header">
         <div>
-          <h2>{artifact.name}</h2>
-          <p>{artifact.description || 'Маршрут строится по известным координатам базовых станций.'}</p>
+          <h2>{titleOverride || artifact.name}</h2>
+          <p>{descriptionOverride || artifact.description || 'Маршрут строится по известным координатам базовых станций.'}</p>
         </div>
         <div className="map-summary">Точек: {points.length} · Абонентов: {groups.length}</div>
       </header>
@@ -112,13 +115,6 @@ const MapView: React.FC<MapViewProps> = ({ artifact }) => {
           <div className="map-stage">
             {osmEmbedUrl && <iframe className="map-osm" title="Карта OpenStreetMap" src={osmEmbedUrl} loading="lazy" />}
             <svg className="map-canvas" viewBox={`0 0 ${viewport.width} ${viewport.height}`} role="img" aria-label="Карта событий локаций">
-            <defs>
-              <pattern id="map-grid" width="44" height="44" patternUnits="userSpaceOnUse">
-                <path d="M 44 0 L 0 0 0 44" fill="none" stroke="#d9e2ef" strokeWidth="1" />
-              </pattern>
-            </defs>
-            <rect width={viewport.width} height={viewport.height} fill="#f8fbff" />
-            <rect width={viewport.width} height={viewport.height} fill="url(#map-grid)" />
             {groups.map(([msisdn, group], index) => {
               const color = palette[index % palette.length];
               const path = group.map((point) => viewport.point(point)).map((position, pointIndex) => `${pointIndex ? 'L' : 'M'} ${position.x} ${position.y}`).join(' ');
@@ -139,7 +135,7 @@ const MapView: React.FC<MapViewProps> = ({ artifact }) => {
             <text x="20" y="28" className="map-axis">С: {viewport.maxLat.toFixed(4)} · З: {viewport.minLng.toFixed(4)}</text>
             <text x="20" y={viewport.height - 18} className="map-axis">Ю: {viewport.minLat.toFixed(4)} · В: {viewport.maxLng.toFixed(4)}</text>            </svg>
           </div>
-          <p className="map-attribution">Картографическая основа OpenStreetMap. Источник: {artifact.data?.provider === 'cell_tower_reference' ? 'справочник базовых станций проекта' : 'данные артефакта'}.</p>
+          <p className="map-attribution">Картографическая основа OpenStreetMap. Источник: {(dataOverride || artifact.data)?.provider === 'cell_tower_reference' ? 'справочник базовых станций проекта' : 'данные артефакта'}.</p>
         </section>
         <aside className="map-details">
           <h3>Событие</h3>

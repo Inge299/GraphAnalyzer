@@ -69,7 +69,7 @@ def _normalize_console_tab(
     if not isinstance(row_count, int):
         row_count = len(rows)
 
-    return {
+    result = {
         "id": tab_id,
         "key": tab_id,
         "name": tab_name,
@@ -78,6 +78,10 @@ def _normalize_console_tab(
         "rows": rows,
         "row_count": row_count,
     }
+    if item.get("view") == "map" and isinstance(item.get("map_data"), dict):
+        result["view"] = "map"
+        result["map_data"] = deepcopy(item["map_data"])
+    return result
 
 
 def normalize_console_artifact_data(
@@ -154,6 +158,7 @@ def normalize_console_artifact_data(
             "columns": item["columns"],
             "rows": item["rows"],
             "row_count": item["row_count"],
+            **({"view": "map", "map_data": item["map_data"]} if item.get("view") == "map" and isinstance(item.get("map_data"), dict) else {}),
         }
         for item in tabs
     ]
