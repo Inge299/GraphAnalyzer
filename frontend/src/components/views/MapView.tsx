@@ -11,6 +11,8 @@ interface MapViewProps {
   dataOverride?: Record<string, unknown>;
   titleOverride?: string;
   descriptionOverride?: string;
+  selectedPointId?: string | null;
+  onSelectPointIds?: (pointIds: string[]) => void;
 }
 
 type MapPoint = {
@@ -36,7 +38,7 @@ const palette = ['#2563eb', '#dc2626', '#059669', '#7c3aed', '#b45309', '#0f766e
 const defaultTileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 const defaultAttribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
-const MapView: React.FC<MapViewProps> = ({ artifact, dataOverride, titleOverride, descriptionOverride }) => {
+const MapView: React.FC<MapViewProps> = ({ artifact, dataOverride, titleOverride, descriptionOverride, selectedPointId, onSelectPointIds }) => {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const layersRef = useRef<L.LayerGroup | null>(null);
@@ -57,11 +59,18 @@ const MapView: React.FC<MapViewProps> = ({ artifact, dataOverride, titleOverride
     return [...next.entries()];
   }, [points]);
   const selected = points.find((point) => point.id === selectedId) || points[0] || null;
+  const selectedEvents = useMemo(() => {
+    if (!selected) return [] as MapPoint[];
+    return points.filter((point) =>
+      point.latitude.toFixed(6) === selected.latitude.toFixed(6) &&
+      point.longitude.toFixed(6) === selected.longitude.toFixed(6),
+    );
+  }, [points, selected]);
 
   useEffect(() => {
     if (!points.length) return;
-    setSelectedId((current) => points.some((point) => point.id === current) ? current : points[0].id);
-  }, [points]);
+    setSelectedId((current) => selectedPointId && points.some((point) => point.id === selectedPointId) ? selectedPointId : points.some((point) => point.id === current) ? current : points[0].id);
+  }, [points, selectedPointId]);
 
   useEffect(() => {
     const container = mapContainerRef.current;
@@ -112,7 +121,7 @@ const MapView: React.FC<MapViewProps> = ({ artifact, dataOverride, titleOverride
           fillOpacity: 0.96,
         }).addTo(layers);
         marker.bindTooltip(`${msisdn}: ${samePlace.length}`, { direction: 'top' });
-        marker.on('click', () => setSelectedId(point.id));
+        marker.on('click', () => { setSelectedId(point.id); onSelectPointIds?.(samePlace.map((item) => item.id)); });
       });
     });
 
@@ -158,7 +167,19 @@ const MapView: React.FC<MapViewProps> = ({ artifact, dataOverride, titleOverride
               <dt>{'\u041a\u043e\u043e\u0440\u0434\u0438\u043d\u0430\u0442\u044b'}</dt><dd>{selected.latitude.toFixed(6)}, {selected.longitude.toFixed(6)}</dd>
               <dt>LAC / {'\u0411\u0421'}</dt><dd>{selected.lac || '-'} / {selected.bs || '-'}</dd>
             </dl>
-          ) : null}
+                    ) : null}
+          {selectedEvents.length > 1 && (
+            <div className="map-point-events">
+              <h4>{`\u0421\u043e\u0431\u044b\u0442\u0438\u044f \u0432 \u0442\u043e\u0447\u043a\u0435 (${selectedEvents.length})`}</h4>
+              {selectedEvents.map((event) => (
+                <button type="button" key={event.id} onClick={() => { setSelectedId(event.id); onSelectPointIds?.([event.id]); }}>
+                  <strong>{event.event_time ? formatDateTime(event.event_time) : '-'}</strong>
+                  <span>{event.address || '-'}</span>
+                  <span>{`${event.lac || '-'} / ${event.bs || '-'}`}</span>
+                </button>
+              ))}
+            </div>
+          )}
           <div className="map-legend">
             <h3>{'\u041c\u0430\u0440\u0448\u0440\u0443\u0442\u044b'}</h3>
             {groups.map(([msisdn], index) => <div key={msisdn}><span style={{ backgroundColor: palette[index % palette.length] }} />{msisdn}</div>)}

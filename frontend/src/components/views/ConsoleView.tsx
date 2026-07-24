@@ -363,6 +363,7 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [dateFilters, setDateFilters] = useState<Record<string, DateFilterValue>>({});
+  const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
 
   const [profiles, setProfiles] = useState<ConsoleProfile[]>([]);
   const [profilesLoading, setProfilesLoading] = useState(false);
@@ -392,7 +393,15 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
   const activeTab = useMemo(
     () => tabs.find((tab) => tab.id === activeTabId) || tabs[0],
     [tabs, activeTabId],
+  );  const isLocationTimeline = String(data.profile_id || data.profile_key || '') === 'location_timeline';
+  const locationMapTab = useMemo(
+    () => tabs.find((tab) => tab.view === 'map' && tab.map_data),
+    [tabs],
   );
+
+  useEffect(() => {
+    if (isLocationTimeline && activeTab?.view === 'map') setActiveTabId('summary');
+  }, [activeTab?.view, isLocationTimeline]);
 
   const columns = useMemo(() => {
     if (!activeTab) return [] as ConsoleColumnData[];
@@ -936,7 +945,7 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
 
       {tabs.length > 1 && (
         <div style={{ display: 'flex', gap: 8, padding: '8px 12px', borderBottom: '1px solid #dbe3f0', overflowX: 'auto', flexShrink: 0 }}>
-          {tabs.map((tab) => (
+          {tabs.filter((tab) => !isLocationTimeline || tab.view !== 'map').map((tab) => (
             <button
               key={tab.id}
               type="button"
@@ -959,6 +968,9 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
       )}
 
       <div style={{ flex: '1 1 420px', overflow: 'auto', minHeight: 320 }}>
+        {isLocationTimeline && locationMapTab?.map_data && (
+          <MapView artifact={artifact} _onUpdate={() => {}} dataOverride={locationMapTab.map_data} titleOverride={`${artifact.name}: Карта`} descriptionOverride="Маршрут по событиям локаций и координатам из справочника базовых станций." selectedPointId={selectedLocationIds[0] || null} onSelectPointIds={setSelectedLocationIds} />
+        )}
         {activeTab?.view === 'map' && activeTab.map_data ? (
           <MapView
             artifact={artifact}
@@ -1054,9 +1066,12 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
               {filteredRows.map((row, index) => (
                 <tr
                   key={`row-${index}`}
-                  onClick={() => { if (canOpenArtifactFromRow(row)) handleOpenArtifact(row); }}
-                  style={canOpenArtifactFromRow(row) ? { cursor: 'pointer' } : undefined}
-                >
+                  onClick={() => {
+                    const locationPointId = isLocationTimeline ? `${String(row.msisdn || '')}-${String(row.sequence || '')}` : '';
+                    if (locationPointId && locationPointId !== '-') setSelectedLocationIds([locationPointId]);
+                    if (canOpenArtifactFromRow(row)) handleOpenArtifact(row);
+                  }}
+                  style={isLocationTimeline && selectedLocationIds.includes(`${String(row.msisdn || '')}-${String(row.sequence || '')}`) ? { cursor: 'pointer', background: '#dbeafe' } : canOpenArtifactFromRow(row) ? { cursor: 'pointer' } : undefined}                >
                   {columns.map((column) => (
                     <td key={`row-${index}-${column.key}`}>{column.key === 'type' ? getFriendlyArtifactType(row[column.key]) : (['date', 'datetime'].includes(String(column.type || '').toLowerCase()) ? formatDateTime(row[column.key]) : normalize(row[column.key]))}</td>
                   ))}
