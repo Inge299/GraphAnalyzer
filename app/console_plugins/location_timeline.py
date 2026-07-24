@@ -116,8 +116,10 @@ class LocationTimelineExecutor(ConsoleExecutorPlugin):
         for index, row in enumerate(source_rows, start=1):
             latitude, longitude = row.get("latitude"), row.get("longitude")
             has_coordinates = latitude is not None and longitude is not None
+            event_time = row.get("event_time")
+            event_time_value = event_time.isoformat() if hasattr(event_time, "isoformat") else event_time
             rows.append({
-                "sequence": index, "msisdn": row.get("msisdn"), "event_time": row.get("event_time"),
+                "sequence": index, "msisdn": row.get("msisdn"), "event_time": event_time_value,
                 "address": row.get("resolved_address") or row.get("address") or "-", "mcc": row.get("mcc") or "-",
                 "mnc": row.get("mnc") or "-", "lac": row.get("lac") or "-", "bs": row.get("bs") or "-",
                 "coordinates": f"{float(latitude):.6f}, {float(longitude):.6f}" if has_coordinates else "Нет координат в справочнике БС",
@@ -125,7 +127,7 @@ class LocationTimelineExecutor(ConsoleExecutorPlugin):
             if has_coordinates:
                 points.append({
                     "id": f"{row.get('msisdn')}-{index}", "sequence": index, "msisdn": row.get("msisdn"),
-                    "event_time": row.get("event_time").isoformat() if hasattr(row.get("event_time"), "isoformat") else row.get("event_time"),
+                    "event_time": event_time_value,
                     "latitude": float(latitude), "longitude": float(longitude),
                     "address": row.get("resolved_address") or row.get("address") or "-", "lac": row.get("lac"), "bs": row.get("bs"),
                 })

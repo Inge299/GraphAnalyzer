@@ -316,13 +316,13 @@ async def enrich_cell_tower_reference_from_project_addresses(db: AsyncSession, p
               n.beg_date,
               n.end_date,
               n.region_id,
-              concat(coalesce(n.ref_source, 'address_match'), ' [project_', :project_id::text, '_addr_enrich]'),
+              concat(coalesce(n.ref_source, 'address_match'), ' [project_', CAST(:project_id AS text), '_addr_enrich]'),
               NOW()
             FROM numbered n
             CROSS JOIN max_id
             """
         ),
-        {"project_id": project_id},
+        {"project_id": str(project_id)},
     )
     inserted_rows = int(inserted_result.rowcount or 0)
 
