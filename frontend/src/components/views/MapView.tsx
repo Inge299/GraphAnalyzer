@@ -171,13 +171,13 @@ const MapView: React.FC<MapViewProps> = ({ artifact, dataOverride, titleOverride
           {selectedEvents.length > 1 && (
             <div className="map-point-events">
               <h4>{`\u0421\u043e\u0431\u044b\u0442\u0438\u044f \u0432 \u0442\u043e\u0447\u043a\u0435 (${selectedEvents.length})`}</h4>
-              {selectedEvents.map((event) => (
-                <button type="button" key={event.id} onClick={() => { setSelectedId(event.id); onSelectPointIds?.([event.id]); }}>
-                  <strong>{event.event_time ? formatDateTime(event.event_time) : '-'}</strong>
-                  <span>{event.address || '-'}</span>
-                  <span>{`${event.lac || '-'} / ${event.bs || '-'}`}</span>
-                </button>
-              ))}
+              <div className="map-point-event-times">
+                {selectedEvents.map((event) => (
+                  <button type="button" key={event.id} onClick={() => { setSelectedId(event.id); onSelectPointIds?.([event.id]); }}>
+                    {event.event_time ? formatDateTime(event.event_time) : '-'}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
           <div className="map-legend">

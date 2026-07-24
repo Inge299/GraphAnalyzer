@@ -18,4 +18,8 @@
 .map-legend span { width: 14px; height: 4px; border-radius: 4px; }
 .map-empty { max-width: 700px; margin: 64px auto; padding: 24px; }
 .map-empty h2 { margin-top: 0; }
-@media (max-width: 900px) { .map-header, .map-layout { grid-template-columns: 1fr; display: grid; } .map-summary { justify-self: start; } .map-stage { min-height: 390px; } }
+@media (max-width: 900px) { .map-header, .map-layout { grid-template-columns: 1fr; display: grid; } .map-summary { justify-self: start; } .map-stage { min-height: 390px; } }.map-details { max-height: min(600px, calc(100vh - 230px)); overflow: hidden; display: flex; flex-direction: column; }
+.map-point-events { min-height: 0; display: flex; flex: 1 1 auto; flex-direction: column; }
+.map-point-event-times { overflow: auto; min-height: 0; padding-right: 4px; }
+.map-point-event-times button { display: block; width: 100%; border: 0; border-bottom: 1px solid #e2e8f0; background: transparent; padding: 6px 2px; color: #334155; text-align: left; font: inherit; font-size: 12px; cursor: pointer; }
+.map-point-event-times button:hover { color: #1d4ed8; background: #eff6ff; }

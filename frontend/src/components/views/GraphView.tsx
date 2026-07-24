@@ -733,8 +733,8 @@ export const GraphView: React.FC<GraphViewProps> = ({
         dispatch(updateArtifactSync(mapArtifact));
         targetArtifact = mapArtifact;
       }
-      // Fetch can return before the console transaction becomes visible. Refresh first,
-      // then put the known artifact back into the store and open it deterministically.
+      // Let the successful refresh transaction become visible to the list query.
+      await new Promise<void>((resolve) => window.setTimeout(resolve, 120));
       await dispatch(fetchArtifacts(artifact.project_id));
       dispatch(updateArtifactSync(targetArtifact));
       dispatch(setCurrentArtifact(targetArtifact.id));
