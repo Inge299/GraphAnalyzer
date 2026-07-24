@@ -689,7 +689,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
     }
 
     const selectionPayload = buildSelectionPayloadFromContext(context);
-    if (!selectionPayload.selected_nodes.length) {
+    if (!selectionPayload.selected_nodes.length && profile.supports_graph_selection === true) {
       closePluginMenu();
       return;
     }
