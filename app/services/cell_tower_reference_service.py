@@ -112,6 +112,20 @@ async def load_cell_tower_reference(db: AsyncSession, source_path: str) -> dict[
 
 
 async def enrich_cell_tower_reference_from_project_addresses(db: AsyncSession, project_id: int) -> dict[str, Any]:
+    cleanup_result = await db.execute(
+        text(
+            """
+            DELETE FROM cell_tower_reference
+            WHERE ref_source LIKE '%' || :source_marker || '%'
+              AND (
+                lower(BTRIM(coalesce(address, ''))) IN ('', 'null', 'none', 'n/a', 'na', '-')
+                OR lower(BTRIM(coalesce(cid, ''))) IN ('', '0', 'null', 'none', 'n/a', 'na', '-')
+              )
+            """
+        ),
+        {"source_marker": f"[project_{project_id}_addr_enrich]"},
+    )
+    removed_invalid_rows = int(cleanup_result.rowcount or 0)
     await db.execute(text("DROP TABLE IF EXISTS tmp_project_address_keys"))
     await db.execute(text("DROP TABLE IF EXISTS tmp_unresolved_address_keys"))
     await db.execute(text("DROP TABLE IF EXISTS tmp_ref_by_address"))
@@ -138,8 +152,10 @@ async def enrich_cell_tower_reference_from_project_addresses(db: AsyncSession, p
             FROM project_location_events_raw e
             WHERE e.project_id = :project_id
               AND NULLIF(BTRIM(e.address), '') IS NOT NULL
+              AND lower(BTRIM(e.address)) NOT IN ('null', 'none', 'n/a', 'na', '-')
               AND NULLIF(BTRIM(e.lac), '') IS NOT NULL
               AND NULLIF(BTRIM(e.bs), '') IS NOT NULL
+              AND lower(BTRIM(e.bs)) NOT IN ('0', 'null', 'none', 'n/a', 'na', '-')
             ORDER BY
               coalesce(NULLIF(BTRIM(e.mcc), ''), ''),
               coalesce(NULLIF(BTRIM(e.mnc), ''), ''),
@@ -331,6 +347,7 @@ async def enrich_cell_tower_reference_from_project_addresses(db: AsyncSession, p
         "raw_candidates": raw_candidates,
         "matched_by_address": matched_candidates,
         "inserted_rows": int(inserted_rows),
+        "removed_invalid_rows": removed_invalid_rows,
     }
 
 

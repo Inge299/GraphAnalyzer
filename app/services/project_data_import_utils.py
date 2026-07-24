@@ -9,6 +9,7 @@ from typing import Any
 from fastapi import HTTPException
 
 KNOWN_ENCODINGS = ("utf-8-sig", "cp1251", "cp866", "utf-8")
+MISSING_TEXT_MARKERS = {"null", "none", "n/a", "na", "-"}
 
 
 def parse_iso_datetime(value: str) -> datetime | None:
@@ -51,6 +52,13 @@ def first_present(row: dict[str, Any], candidates: list[str]) -> Any:
         if key in row and row.get(key) is not None:
             return row.get(key)
     return None
+
+
+def optional_text(value: Any) -> str | None:
+    text_value = str(value or "").strip()
+    if not text_value or text_value.casefold() in MISSING_TEXT_MARKERS:
+        return None
+    return text_value
 
 
 def read_communications_rows(path: Path, project_id: int) -> list[dict[str, Any]]:
@@ -148,7 +156,7 @@ def open_csv_reader(path: Path, delimiter: str = ";") -> csv.DictReader:
 
 
 def normalize_address(value: str | None) -> str | None:
-    clean = str(value or "").strip().lower()
+    clean = (optional_text(value) or "").lower()
     if not clean:
         return None
 
@@ -178,14 +186,15 @@ def read_location_event_rows(
         event_time = parse_iso_datetime(str(first_present(row, ["event_time"]) or ""))
         if identifier_type not in {"msisdn", "imsi", "imei"} or not identifier_value or event_time is None:
             continue
+        address = optional_text(first_present(row, ["address"]))
         rows.append({
             "project_id": project_id,
             "load_batch_id": load_batch_id,
             "identifier_type": identifier_type,
             "identifier_value": identifier_value,
             "event_time": event_time,
-            "address": (str(first_present(row, ["address"]) or "").strip()) or None,
-            "address_norm": normalize_address(first_present(row, ["address"])),
+            "address": address,
+            "address_norm": normalize_address(address),
             "mcc": (str(first_present(row, ["mcc"]) or "").strip()) or None,
             "mnc": (str(first_present(row, ["mnc"]) or "").strip()) or None,
             "lac": (str(first_present(row, ["lac"]) or "").strip()) or None,

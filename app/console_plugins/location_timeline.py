@@ -16,6 +16,10 @@ def _digits(value: object) -> str:
     return re.sub(r"\D", "", str(value or ""))
 
 
+def _display_value(value: object, fallback: str = "-") -> str:
+    text_value = str(value or "").strip()
+    return fallback if text_value.casefold() in {"", "null", "none", "n/a", "na", "-"} else text_value
+
 def _requested_msisdns(value: object) -> list[str]:
     result = [_digits(part) for part in re.split(r"[\s,;]+", str(value or ""))]
     return [item for item in dict.fromkeys(result) if item]
@@ -71,7 +75,13 @@ class LocationTimelineExecutor(ConsoleExecutorPlugin):
             key = f"msisdn_{index}"
             bind[key] = msisdn
             placeholders.append(f":{key}")
-        filters = ["location.project_id = :project_id", "regexp_replace(location.identifier_value, '\\D', '', 'g') IN (" + ", ".join(placeholders) + ")"]
+        filters = [
+            "location.project_id = :project_id",
+            "regexp_replace(location.identifier_value, '\\D', '', 'g') IN (" + ", ".join(placeholders) + ")",
+            "NULLIF(BTRIM(location.lac), '') IS NOT NULL",
+            "NULLIF(BTRIM(location.bs), '') IS NOT NULL",
+            "lower(BTRIM(location.bs)) NOT IN ('0', 'null', 'none', 'n/a', 'na', '-')",
+        ]
         if date_from:
             filters.append("location.event_time >= :date_from")
             bind["date_from"] = date_from
@@ -120,8 +130,8 @@ class LocationTimelineExecutor(ConsoleExecutorPlugin):
             event_time_value = event_time.isoformat() if hasattr(event_time, "isoformat") else event_time
             rows.append({
                 "sequence": index, "msisdn": row.get("msisdn"), "event_time": event_time_value,
-                "address": row.get("resolved_address") or row.get("address") or "-", "mcc": row.get("mcc") or "-",
-                "mnc": row.get("mnc") or "-", "lac": row.get("lac") or "-", "bs": row.get("bs") or "-",
+                "address": _display_value(row.get("resolved_address") or row.get("address")), "mcc": _display_value(row.get("mcc")),
+                "mnc": _display_value(row.get("mnc")), "lac": _display_value(row.get("lac")), "bs": _display_value(row.get("bs")),
                 "coordinates": f"{float(latitude):.6f}, {float(longitude):.6f}" if has_coordinates else "Нет координат в справочнике БС",
             })
             if has_coordinates:
@@ -129,7 +139,7 @@ class LocationTimelineExecutor(ConsoleExecutorPlugin):
                     "id": f"{row.get('msisdn')}-{index}", "sequence": index, "msisdn": row.get("msisdn"),
                     "event_time": event_time_value,
                     "latitude": float(latitude), "longitude": float(longitude),
-                    "address": row.get("resolved_address") or row.get("address") or "-", "lac": row.get("lac"), "bs": row.get("bs"),
+                    "address": _display_value(row.get("resolved_address") or row.get("address")), "lac": _display_value(row.get("lac")), "bs": _display_value(row.get("bs")),
                 })
         map_data = {"provider": "cell_tower_reference", "points": points, "route": [point["id"] for point in points], "source": {"plugin_id": self.id, "msisdns": msisdns}}
         return {
