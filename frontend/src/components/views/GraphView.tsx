@@ -73,6 +73,7 @@ interface GraphViewProps {
   isRecording?: boolean;
   lastError?: Error | null;
   onRequestAnalysisProfile?: (profileKey: string) => void;
+  onOpenArtifact?: (artifact: ApiArtifact) => void;
   onHistoryChanged?: () => Promise<void> | void;
 }
 
@@ -172,6 +173,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
   isRecording = false,
   lastError = null,
   onRequestAnalysisProfile,
+  onOpenArtifact,
   onHistoryChanged,
 }) => {
   const dispatch = useAppDispatch();
@@ -732,7 +734,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
         targetArtifact = mapArtifact;
       }
       dispatch(setCurrentArtifact(targetArtifact.id));
-      window.dispatchEvent(new CustomEvent('nodex:open-artifact', { detail: { artifacts: [refreshedArtifact, targetArtifact] } }));
+      onOpenArtifact?.(targetArtifact);
       void dispatch(fetchArtifacts(artifact.project_id));
     } finally {
       closePluginMenu();
@@ -746,6 +748,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
     dispatch,
     hasRequiredManualParams,
     onRequestAnalysisProfile,
+    onOpenArtifact,
   ]);
 
   useEffect(() => {

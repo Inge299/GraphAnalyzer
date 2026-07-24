@@ -1,4 +1,4 @@
-﻿// frontend/src/App.tsx
+// frontend/src/App.tsx
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useAppDispatch, useAppSelector } from './store';
 import { fetchProjects, setCurrentProject } from './store/slices/projectsSlice';
@@ -864,16 +864,6 @@ function App() {
       lastNodesStateRef.current = artifact.data;
     }
   }, [dispatch]);
-  useEffect(() => {
-    const handleOpenArtifact = (event: Event) => {
-      const artifacts = (event as CustomEvent<{ artifacts?: any[] }>).detail?.artifacts || [];
-      artifacts.forEach((artifact) => {
-        if (artifact?.id) handleArtifactSelect(artifact);
-      });
-    };
-    window.addEventListener('nodex:open-artifact', handleOpenArtifact);
-    return () => window.removeEventListener('nodex:open-artifact', handleOpenArtifact);
-  }, [handleArtifactSelect]);
   const { refreshConsole: handleRefreshConsole } = useConsoleArtifact({
     activeArtifact,
     currentProjectId: currentProject?.id,
@@ -1088,6 +1078,7 @@ function App() {
                   isRecording,
                   lastError,
                   onRequestAnalysisProfile: handleRequestGraphAnalysis,
+                  onOpenArtifact: handleArtifactSelect,
                 }}
               />
             )}
