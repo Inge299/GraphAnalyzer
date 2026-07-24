@@ -95,7 +95,10 @@ class LocationTimelineExecutor(ConsoleExecutorPlugin):
                 FROM cell_tower_reference tower
                 WHERE tower.lac = location.lac AND tower.cid = location.bs
                   AND (location.mcc IS NULL OR location.mcc = '' OR tower.mcc = location.mcc)
-                  AND (location.mnc IS NULL OR location.mnc = '' OR tower.mnc = location.mnc)
+                  AND (
+                      location.mnc IS NULL OR location.mnc = ''
+                      OR NULLIF(ltrim(tower.mnc, '0'), '') = NULLIF(ltrim(location.mnc, '0'), '')
+                  )
                 ORDER BY tower.loaded_at DESC
                 LIMIT 1
             ) tower ON TRUE

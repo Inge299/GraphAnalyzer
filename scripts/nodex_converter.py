@@ -285,6 +285,42 @@ def parse_lac_bs(value: str) -> tuple[str, str]:
     return parts[0], parts[1]
 
 
+def append_location_event(
+    target: list[LocationEvent],
+    seen: set[tuple[str, str, datetime, str, str, str, str, str]],
+    *,
+    identifier_type: str,
+    identifier_value: str,
+    event_time: datetime | None,
+    address: str,
+    imsi: str,
+    location_value: str,
+) -> None:
+    """Keep a location fact only when the source actually contains location data."""
+    if not identifier_value or event_time is None:
+        return
+    lac, bs = parse_lac_bs(location_value)
+    if not (address or lac or bs):
+        return
+    mcc, mnc = extract_mcc_mnc(imsi)
+    key = (identifier_type, identifier_value, event_time, address, mcc, mnc, lac, bs)
+    if key in seen:
+        return
+    seen.add(key)
+    target.append(
+        LocationEvent(
+            identifier_type=identifier_type,
+            identifier_value=identifier_value,
+            event_time=event_time,
+            address=address,
+            mcc=mcc,
+            mnc=mnc,
+            lac=lac,
+            bs=bs,
+        )
+    )
+
+
 def parse_int(value: str) -> int:
     text = normalize_text(value).replace(",", ".")
     if not text:
@@ -417,6 +453,7 @@ def build_events_and_devices(
     events: list[Event] = []
     devices: dict[tuple[str, str, str], list[datetime]] = {}
     location_events: list[LocationEvent] = []
+    location_event_keys: set[tuple[str, str, datetime, str, str, str, str, str]] = set()
     ip_bindings: list[IpBinding] = []
     user_msisdn_facts: list[UserMsisdnFact] = []
     ip_msisdn_facts: list[IpMsisdnFact] = []
@@ -509,14 +546,12 @@ def build_events_and_devices(
                 operator_abon = detect_operator(abon_num, abon_imsi, row.get("Номер абонента", ""))
                 operator_contact = detect_operator(contact_num, contact_imsi, row.get("Номер контакта", ""))
 
-                address_abon = normalize_text(
-                    row.get("Адрес БС абонента на начало", "")
-                    or row.get("Адрес БС абонента на завершение", "")
-                )
-                address_contact = normalize_text(
-                    row.get("Адрес БС контакта на начало", "")
-                    or row.get("Адрес БС контакта на завершение", "")
-                )
+                address_abon_start = normalize_text(row.get("Адрес БС абонента на начало", ""))
+                address_abon_end = normalize_text(row.get("Адрес БС абонента на завершение", ""))
+                address_contact_start = normalize_text(row.get("Адрес БС контакта на начало", ""))
+                address_contact_end = normalize_text(row.get("Адрес БС контакта на завершение", ""))
+                address_abon = address_abon_start or address_abon_end
+                address_contact = address_contact_start or address_contact_end
 
                 loc_abon_start = normalize_text(row.get("М/П абонента на начало", ""))
                 loc_abon_end = normalize_text(row.get("М/П абонента на конец", ""))
@@ -562,6 +597,24 @@ def build_events_and_devices(
                     )
                 )
 
+                for phone, imsi, imei, event_time, location_value, address in (
+                    (abon_num, abon_imsi, abon_imei, conn_start, loc_abon_start, address_abon_start),
+                    (abon_num, abon_imsi, abon_imei, conn_end, loc_abon_end, address_abon_end),
+                    (contact_num, contact_imsi, contact_imei, conn_start, loc_contact_start, address_contact_start),
+                    (contact_num, contact_imsi, contact_imei, conn_end, loc_contact_end, address_contact_end),
+                ):
+                    for identifier_type, identifier_value in (("msisdn", phone), ("imsi", imsi), ("imei", imei)):
+                        append_location_event(
+                            location_events,
+                            location_event_keys,
+                            identifier_type=identifier_type,
+                            identifier_value=identifier_value,
+                            event_time=event_time,
+                            address=address,
+                            imsi=imsi,
+                            location_value=location_value,
+                        )
+
                 for phone, imsi, imei in (
                     (abon_num, abon_imsi, abon_imei),
                     (contact_num, contact_imsi, contact_imei),
@@ -588,8 +641,6 @@ def build_events_and_devices(
             ip_address = normalize_text(row.get("IP-адрес абонента", ""))
             location_value = normalize_text(row.get("М/П абонента", ""))
             address = normalize_text(row.get("Адрес БС абонента", ""))
-            lac, bs = parse_lac_bs(location_value)
-            mcc, mnc = extract_mcc_mnc(abon_imsi)
 
             identifiers: list[tuple[str, str]] = []
             if abon_num:
@@ -602,17 +653,15 @@ def build_events_and_devices(
                 continue
 
             for identifier_type, identifier_value in identifiers:
-                location_events.append(
-                    LocationEvent(
-                        identifier_type=identifier_type,
-                        identifier_value=identifier_value,
-                        event_time=location_time,
-                        address=address,
-                        mcc=mcc,
-                        mnc=mnc,
-                        lac=lac,
-                        bs=bs,
-                    )
+                append_location_event(
+                    location_events,
+                    location_event_keys,
+                    identifier_type=identifier_type,
+                    identifier_value=identifier_value,
+                    event_time=location_time,
+                    address=address,
+                    imsi=abon_imsi,
+                    location_value=location_value,
                 )
 
             if ip_address:
