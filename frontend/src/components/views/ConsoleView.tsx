@@ -614,7 +614,7 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
   );
 
   return (
-    <div className="console-view" style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0, overflowY: 'auto', overflowX: 'hidden', scrollbarGutter: 'stable' }}>
+    <div className="console-view" style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
       <div
         style={{
           padding: '12px',
@@ -623,6 +623,10 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
           flexDirection: 'column',
           gap: 12,
           background: '#f8fafc',
+          flex: '0 1 auto',
+          maxHeight: '52%',
+          overflowY: 'auto',
+          overflowX: 'hidden',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
@@ -951,13 +955,13 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
         </div>
       )}
 
-      <div style={{ flex: '1 0 240px', overflow: 'auto', minHeight: 240 }}>
+      <div style={{ flex: '1 1 420px', overflow: 'auto', minHeight: 320 }}>
         {columns.length === 0 ? (
           <div style={{ padding: 16, color: '#64748b' }}>
             {'\u041d\u0435\u0442 \u0434\u0430\u043d\u043d\u044b\u0445 \u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0439 \u0432\u043a\u043b\u0430\u0434\u043a\u0435. \u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u043f\u043b\u0430\u0433\u0438\u043d \u0438\u043b\u0438 \u043f\u0440\u043e\u0446\u0435\u0434\u0443\u0440\u0443 \u0438 \u0437\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u0435 \u0435\u0435.'}
           </div>
         ) : (
-          <table className="bottom-table" style={{ minWidth: '100%', borderCollapse: 'collapse' }}>
+          <table className="bottom-table" style={{ width: 'max-content', minWidth: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
                 {columns.map((column) => (
@@ -977,18 +981,20 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
                 {columns.map((column) => {
                   if (isDateTimeColumn(column)) {
                     const dateFilter = dateFilters[column.key] || { mode: 'between' as DateFilterMode, from: '', to: '' };
+                    const isPeriod = dateFilter.mode === 'between';
                     const setDateFilter = (updates: Partial<DateFilterValue>) => setDateFilters((prev) => ({
                       ...prev,
                       [column.key]: { ...dateFilter, ...updates },
                     }));
+                    const inputStyle: React.CSSProperties = { width: 164, minWidth: 164, padding: '2px 4px', border: '1px solid #cbd5e1', borderRadius: 4, fontSize: 11, boxSizing: 'border-box' };
                     return (
-                      <th key={`flt-${column.key}`}>
-                        <div style={{ display: 'grid', gap: 3, minWidth: 190 }}>
+                      <th key={`flt-${column.key}`} style={{ minWidth: isPeriod ? 420 : 260 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, width: 'max-content' }}>
                           <select
                             value={dateFilter.mode}
                             onChange={(event) => setDateFilter({ mode: event.target.value as DateFilterMode })}
                             aria-label={`${column.label || column.key}: \u0440\u0435\u0436\u0438\u043c \u0444\u0438\u043b\u044c\u0442\u0440\u0430`}
-                            style={{ width: '100%', padding: '2px 4px', border: '1px solid #cbd5e1', borderRadius: 4, fontSize: 11 }}
+                            style={{ width: 86, minWidth: 86, padding: '2px 4px', border: '1px solid #cbd5e1', borderRadius: 4, fontSize: 11 }}
                           >
                             <option value="before">{'\u0414\u043e'}</option>
                             <option value="after">{'\u041f\u043e\u0441\u043b\u0435'}</option>
@@ -998,19 +1004,22 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
                             type="datetime-local"
                             value={dateFilter.from}
                             onChange={(event) => setDateFilter({ from: event.target.value })}
-                            title={dateFilter.mode === 'before' ? '\u0414\u043e' : dateFilter.mode === 'after' ? '\u041f\u043e\u0441\u043b\u0435' : '\u041d\u0430\u0447\u0430\u043b\u043e \u043f\u0435\u0440\u0438\u043e\u0434\u0430'}
+                            title={isPeriod ? '\u041d\u0430\u0447\u0430\u043b\u043e \u043f\u0435\u0440\u0438\u043e\u0434\u0430' : dateFilter.mode === 'before' ? '\u0414\u043e' : '\u041f\u043e\u0441\u043b\u0435'}
                             aria-label={`${column.label || column.key}: \u043f\u0435\u0440\u0432\u0430\u044f \u0433\u0440\u0430\u043d\u0438\u0446\u0430`}
-                            style={{ width: '100%', padding: '2px 4px', border: '1px solid #cbd5e1', borderRadius: 4, fontSize: 11, boxSizing: 'border-box' }}
+                            style={inputStyle}
                           />
-                          {dateFilter.mode === 'between' && (
-                            <input
-                              type="datetime-local"
-                              value={dateFilter.to}
-                              onChange={(event) => setDateFilter({ to: event.target.value })}
-                              title={'\u041e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u0435 \u043f\u0435\u0440\u0438\u043e\u0434\u0430'}
-                              aria-label={`${column.label || column.key}: \u0432\u0442\u043e\u0440\u0430\u044f \u0433\u0440\u0430\u043d\u0438\u0446\u0430`}
-                              style={{ width: '100%', padding: '2px 4px', border: '1px solid #cbd5e1', borderRadius: 4, fontSize: 11, boxSizing: 'border-box' }}
-                            />
+                          {isPeriod && (
+                            <>
+                              <span style={{ color: '#64748b', fontSize: 12 }}>{'\u2014'}</span>
+                              <input
+                                type="datetime-local"
+                                value={dateFilter.to}
+                                onChange={(event) => setDateFilter({ to: event.target.value })}
+                                title={'\u041e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u0435 \u043f\u0435\u0440\u0438\u043e\u0434\u0430'}
+                                aria-label={`${column.label || column.key}: \u0432\u0442\u043e\u0440\u0430\u044f \u0433\u0440\u0430\u043d\u0438\u0446\u0430`}
+                                style={inputStyle}
+                              />
+                            </>
                           )}
                         </div>
                       </th>
@@ -1022,7 +1031,7 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
                         value={filters[column.key] || ''}
                         onChange={(event) => setFilters((prev) => ({ ...prev, [column.key]: event.target.value }))}
                         placeholder={'\u0424\u0438\u043b\u044c\u0442\u0440'}
-                        style={{ width: '100%', padding: '2px 6px', border: '1px solid #cbd5e1', borderRadius: 4, fontSize: 11 }}
+                        style={{ width: '100%', minWidth: 90, padding: '2px 6px', border: '1px solid #cbd5e1', borderRadius: 4, fontSize: 11, boxSizing: 'border-box' }}
                       />
                     </th>
                   );
