@@ -45,7 +45,7 @@ maplibregl.addProtocol('pmtiles', pmtilesProtocol.tile);
 
 const makeFallbackStyle = (pmtilesUrl: string): maplibregl.StyleSpecification => ({
   version: 8,
-  sources: pmtilesUrl ? { russia: { type: 'vector', url: `pmtiles://${pmtilesUrl}` } } : {},
+  sources: pmtilesUrl ? { russia: { type: 'vector', url: `pmtiles://${pmtilesUrl}` } } : { osm: { type: 'raster', tiles: ['https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize: 256, attribution: '&copy; OpenStreetMap contributors' } },
   glyphs: defaultGlyphsUrl || undefined,
   layers: pmtilesUrl ? [
     { id: 'background', type: 'background', paint: { 'background-color': '#f2efe9' } },
@@ -58,7 +58,7 @@ const makeFallbackStyle = (pmtilesUrl: string): maplibregl.StyleSpecification =>
     { id: 'buildings', type: 'fill', source: 'russia', 'source-layer': 'building', minzoom: 13, paint: { 'fill-color': '#d4b28c', 'fill-opacity': 0.5, 'fill-outline-color': '#c39f79' } },
     { id: 'place-labels', type: 'symbol', source: 'russia', 'source-layer': 'place', layout: { 'text-field': ['coalesce', ['get', 'name:ru'], ['get', 'name']], 'text-font': ['Open Sans Regular'], 'text-size': ['interpolate', ['linear'], ['zoom'], 5, 11, 12, 16], 'text-max-width': 8 }, paint: { 'text-color': '#303030', 'text-halo-color': '#ffffff', 'text-halo-width': 1.4 } },
     { id: 'housenumbers', type: 'symbol', source: 'russia', 'source-layer': 'housenumber', minzoom: 17, layout: { 'text-field': ['get', 'housenumber'], 'text-font': ['Open Sans Regular'], 'text-size': 10 }, paint: { 'text-color': '#222222', 'text-halo-color': '#ffffff', 'text-halo-width': 1.2 } },
-  ] : [{ id: 'background', type: 'background', paint: { 'background-color': '#f2efe9' } }],
+  ] : [{ id: 'background', type: 'background', paint: { 'background-color': '#f2efe9' } }, { id: 'osm-raster', type: 'raster', source: 'osm' }],
 });
 
 const MapView: React.FC<MapViewProps> = ({ artifact, dataOverride, titleOverride, descriptionOverride, selectedPointId, onSelectPointIds }) => {
