@@ -156,6 +156,11 @@ def normalize_address(value: str | None) -> str | None:
     return normalized or None
 
 
+def normalize_location_identifier_type(value: str | None) -> str:
+    """Keep legacy location files compatible with the canonical MSISDN type."""
+    identifier_type = str(value or "").strip().lower()
+    return "msisdn" if identifier_type == "phone" else identifier_type
+
 def read_location_event_rows(
     path: Path,
     project_id: int,
@@ -168,10 +173,10 @@ def read_location_event_rows(
 
     reader = open_csv_reader(path, ";")
     for row in reader:
-        identifier_type = str(first_present(row, ["identifier_type"]) or "").strip().lower()
+        identifier_type = normalize_location_identifier_type(first_present(row, ["identifier_type"]))
         identifier_value = str(first_present(row, ["identifier_value"]) or "").strip()
         event_time = parse_iso_datetime(str(first_present(row, ["event_time"]) or ""))
-        if identifier_type not in {"phone", "imsi", "imei"} or not identifier_value or event_time is None:
+        if identifier_type not in {"msisdn", "imsi", "imei"} or not identifier_value or event_time is None:
             continue
         rows.append({
             "project_id": project_id,
@@ -202,11 +207,11 @@ def read_ip_binding_rows(
 
     reader = open_csv_reader(path, ";")
     for row in reader:
-        identifier_type = str(first_present(row, ["identifier_type"]) or "").strip().lower()
+        identifier_type = normalize_location_identifier_type(first_present(row, ["identifier_type"]))
         identifier_value = str(first_present(row, ["identifier_value"]) or "").strip()
         ip_address = str(first_present(row, ["ip_address"]) or "").strip()
         event_time = parse_iso_datetime(str(first_present(row, ["event_time"]) or ""))
-        if identifier_type not in {"phone", "imsi", "imei"} or not identifier_value or not ip_address or event_time is None:
+        if identifier_type not in {"msisdn", "imsi", "imei"} or not identifier_value or not ip_address or event_time is None:
             continue
         rows.append({
             "project_id": project_id,
