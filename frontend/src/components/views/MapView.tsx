@@ -73,6 +73,11 @@ const MapView: React.FC<MapViewProps> = ({ artifact, dataOverride, titleOverride
   }, [points, selectedPointId]);
 
   useEffect(() => {
+    const map = mapRef.current;
+    if (map && selected) map.panTo([selected.latitude, selected.longitude], { animate: true, duration: 0.25 });
+  }, [selected]);
+
+  useEffect(() => {
     const container = mapContainerRef.current;
     if (!container || mapRef.current || !points.length) return;
 

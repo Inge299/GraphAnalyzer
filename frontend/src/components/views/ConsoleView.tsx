@@ -365,6 +365,7 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
   const [dateFilters, setDateFilters] = useState<Record<string, DateFilterValue>>({});
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
   const [locationTopTab, setLocationTopTab] = useState<'params' | 'map'>('map');
+  const [showUnmappedLocationRows, setShowUnmappedLocationRows] = useState(false);
 
   const [profiles, setProfiles] = useState<ConsoleProfile[]>([]);
   const [profilesLoading, setProfilesLoading] = useState(false);
@@ -455,6 +456,10 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
     });
   }, [rows, columns, filters, dateFilters, sortKey, sortDir]);
 
+  const displayedRows = useMemo(() => {
+    if (!isLocationTimeline || activeTab?.id !== 'locations' || showUnmappedLocationRows) return filteredRows;
+    return filteredRows.filter((row) => /^[-+]?\d+(?:\.\d+)?\s*,\s*[-+]?\d+(?:\.\d+)?$/.test(normalize(row.coordinates).trim()));
+  }, [activeTab?.id, filteredRows, isLocationTimeline, showUnmappedLocationRows]);
   const graphArtifacts = useMemo(
     () =>
       Object.values(artifacts)
@@ -956,7 +961,11 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
 
       {tabs.length > 1 && (
         <div style={{ display: 'flex', gap: 8, padding: '8px 12px', borderBottom: '1px solid #dbe3f0', overflowX: 'auto', flexShrink: 0 }}>
-          {tabs.filter((tab) => !isLocationTimeline || tab.view !== 'map').map((tab) => (
+          {isLocationTimeline && activeTab?.id === 'locations' && (
+            <button type="button" className="service-btn" onClick={() => setShowUnmappedLocationRows((value) => !value)}>
+              {showUnmappedLocationRows ? 'Скрыть без координат' : 'Показать без координат'}
+            </button>
+          )}          {tabs.filter((tab) => !isLocationTimeline || tab.view !== 'map').map((tab) => (
             <button
               key={tab.id}
               type="button"
@@ -1074,7 +1083,7 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
               </tr>
             </thead>
             <tbody>
-              {filteredRows.map((row, index) => (
+              {displayedRows.map((row, index) => (
                 <tr
                   key={`row-${index}`}
                   onClick={() => {
