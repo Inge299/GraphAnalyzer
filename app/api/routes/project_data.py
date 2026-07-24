@@ -16,6 +16,7 @@ from app.services.cell_tower_reference_service import (
     load_cell_tower_reference,
 )
 from app.services.project_data_graph_service import sync_project_data_graph_artifact
+from app.services.import_quality_service import get_import_quality_report
 from app.services.project_data_service import (
     acquire_project_data_lock,
     clear_project_data,
@@ -303,6 +304,17 @@ async def get_data_stats_for_project(
 
     stats = await get_project_data_stats(db=db, project_id=project_id)
     return ProjectDataStatsResponse(project_id=project_id, **stats)
+
+
+@router.get("/{project_id}/data/import-quality", response_model=dict)
+async def get_import_quality_for_project(
+    project_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    project = (await db.execute(select(Project).where(Project.id == project_id))).scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
+    return get_import_quality_report(project_id)
 
 
 @router.get("/data/import-plugins", response_model=list[ProjectDataImportPluginResponse])

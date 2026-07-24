@@ -24,7 +24,7 @@ import type {
   PluginListResponse,
   PluginUploadInputResponse,
   ProjectDataClearResponse,
-  ProjectDataImportPlugin, ProjectDataImportPluginInstallResponse,
+  ProjectDataImportPlugin, ProjectDataImportPluginInstallResponse, ProjectDataImportQualityReport,
   ProjectDataLoadResponse,
   ProjectDataPreviewResponse,
   ProjectDataStats,
@@ -229,6 +229,11 @@ export const projectDataApi = {
   stats: (projectId: number) =>
     api.get<ProjectDataStats>(
       `/api/v1/projects/${projectId}/data/stats`,
+      { timeout: layoutConfig.network.projectDataStatsTimeoutMs },
+    ).then(res => res.data),
+  importQuality: (projectId: number) =>
+    api.get<ProjectDataImportQualityReport>(
+      `/api/v1/projects/${projectId}/data/import-quality`,
       { timeout: layoutConfig.network.projectDataStatsTimeoutMs },
     ).then(res => res.data),
   loadCellTowers: (sourcePath: string) =>

@@ -1,7 +1,82 @@
 import React from 'react';
-import type { ProjectDataImportPlugin, ProjectDataLoadResponse, ProjectDataPreviewResponse } from '../../../types/api';
+import { projectDataApi } from '../../../services/api';
+import type { ProjectDataImportPlugin, ProjectDataImportQualityReport, ProjectDataLoadResponse, ProjectDataPreviewResponse } from '../../../types/api';
 import type { ProjectDataSelectedFileItem } from './types';
 
+const ImportQualityBlock: React.FC<{
+  projectId: number;
+  refreshToken: unknown;
+  formatDateTime: (value: unknown) => string;
+}> = ({ projectId, refreshToken, formatDateTime }) => {
+  const [report, setReport] = React.useState<ProjectDataImportQualityReport | null>(null);
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const loadReport = React.useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      setReport(await projectDataApi.importQuality(projectId));
+    } catch (err: any) {
+      setError(String(err?.response?.data?.detail || err?.message || '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u043e\u0442\u0447\u0451\u0442 \u043a\u0430\u0447\u0435\u0441\u0442\u0432\u0430 \u0438\u043c\u043f\u043e\u0440\u0442\u0430'));
+    } finally {
+      setLoading(false);
+    }
+  }, [projectId]);
+
+  React.useEffect(() => {
+    void loadReport();
+  }, [loadReport, refreshToken]);
+
+  const summary = report?.summary;
+  return (
+    <div className="service-summary-block">
+      <div className="service-summary-header">
+        <h4>{'\u041a\u043e\u043d\u0442\u0440\u043e\u043b\u044c \u043a\u0430\u0447\u0435\u0441\u0442\u0432\u0430 \u0438\u043c\u043f\u043e\u0440\u0442\u0430'}</h4>
+        <p>{'\u041f\u0440\u043e\u0438\u0441\u0445\u043e\u0436\u0434\u0435\u043d\u0438\u0435 \u0434\u0430\u043d\u043d\u044b\u0445, \u0440\u0435\u0437\u0443\u043b\u044c\u0442\u0430\u0442\u044b \u0437\u0430\u043f\u0443\u0441\u043a\u043e\u0432 \u0438 \u043f\u0440\u0435\u0434\u0443\u043f\u0440\u0435\u0436\u0434\u0435\u043d\u0438\u044f. \u0422\u043e\u043b\u044c\u043a\u043e \u0447\u0442\u0435\u043d\u0438\u0435, \u0434\u0430\u043d\u043d\u044b\u0435 \u043f\u0440\u043e\u0435\u043a\u0442\u0430 \u043d\u0435 \u0438\u0437\u043c\u0435\u043d\u044f\u044e\u0442\u0441\u044f.'}</p>
+      </div>
+      <button type="button" className="service-btn" onClick={() => void loadReport()} disabled={loading}>
+        {loading ? '\u041e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u0435...' : '\u041e\u0431\u043d\u043e\u0432\u0438\u0442\u044c \u043e\u0442\u0447\u0451\u0442'}
+      </button>
+      {error ? <p className="service-inline-error">{error}</p> : null}
+      {!loading && summary && summary.import_runs === 0 ? (
+        <p className="service-inline-note">{'\u0417\u0430\u043f\u0443\u0441\u043a\u043e\u0432 \u0438\u043c\u043f\u043e\u0440\u0442\u0430 \u0435\u0449\u0451 \u043d\u0435\u0442.'}</p>
+      ) : summary ? (
+        <>
+          <div className="service-report-grid">
+            <div className="service-report-item"><span>{'\u041f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0439 \u043f\u0430\u043a\u0435\u0442'}</span><strong>{summary.latest_batch}</strong></div>
+            <div className="service-report-item"><span>{'\u0417\u0430\u043f\u0443\u0441\u043a\u043e\u0432 \u0438\u043c\u043f\u043e\u0440\u0442\u0430'}</span><strong>{summary.import_runs}</strong></div>
+            <div className="service-report-item"><span>{'\u0418\u0441\u0442\u043e\u0447\u043d\u0438\u043a\u043e\u0432 \u0432 \u043f\u0430\u043a\u0435\u0442\u0435'}</span><strong>{summary.latest_sources}</strong></div>
+            <div className="service-report-item"><span>{'\u041f\u0440\u043e\u0447\u0438\u0442\u0430\u043d\u043e \u0441\u0442\u0440\u043e\u043a'}</span><strong>{summary.read_total}</strong></div>
+            <div className="service-report-item"><span>{'\u0421\u0442\u0440\u043e\u043a \u0441\u0432\u044f\u0437\u0435\u0439'}</span><strong>{summary.communications_rows}</strong></div>
+            <div className="service-report-item"><span>{'\u041f\u043e\u0441\u043b\u0435 \u0434\u0435\u0434\u0443\u043f\u043b\u0438\u043a\u0430\u0446\u0438\u0438'}</span><strong>{summary.events_after_dedup}</strong></div>
+          </div>
+          {report && report.warnings.length > 0 && (
+            <details className="service-technical-details">
+              <summary>{'\u041f\u0440\u0435\u0434\u0443\u043f\u0440\u0435\u0436\u0434\u0435\u043d\u0438\u044f'}: {report.warnings.length}</summary>
+              {report.warnings.map((warning, index) => (
+                <p key={`${String(warning.batch_id)}-${index}`} className="service-inline-note">
+                  {formatDateTime(warning.generated_at)} · {String(warning.message)} ({String(warning.rows)})
+                </p>
+              ))}
+            </details>
+          )}
+          {report && report.runs.length > 0 && (
+            <details className="service-technical-details">
+              <summary>{'\u0418\u0441\u0442\u043e\u0440\u0438\u044f \u0437\u0430\u043f\u0443\u0441\u043a\u043e\u0432'}: {report.runs.length}</summary>
+              <div className="service-preview-table-wrap">
+                <table className="service-preview-table">
+                  <thead><tr><th>{'\u0412\u0440\u0435\u043c\u044f'}</th><th>{'\u041f\u0430\u043a\u0435\u0442'}</th><th>{'\u041f\u0440\u043e\u0447\u0438\u0442\u0430\u043d\u043e'}</th><th>{'\u0421\u0432\u044f\u0437\u0435\u0439'}</th><th>{'\u0423\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432'}</th><th>{'\u041b\u043e\u043a\u0430\u0446\u0438\u0439'}</th></tr></thead>
+                  <tbody>{report.runs.map((run, index) => <tr key={`${String(run.manifest_path)}-${index}`}><td>{formatDateTime(run.generated_at)}</td><td>{String(run.batch_id)}</td><td>{String(run.read_total)}</td><td>{String(run.communications_rows)}</td><td>{String(run.device_rows)}</td><td>{String(run.location_rows)}</td></tr>)}</tbody>
+                </table>
+              </div>
+            </details>
+          )}
+        </>
+      ) : null}
+    </div>
+  );
+};
 interface ProjectDataSectionProps {
   projectId: number | null;
   projectDataFilesInputRef: React.Ref<HTMLInputElement>;
@@ -386,6 +461,11 @@ const ProjectDataSection: React.FC<ProjectDataSectionProps> = ({
           </div>
         </div>
 
+        <ImportQualityBlock
+          projectId={projectId}
+          refreshToken={`${String(projectDataLastLoadResult?.load_batch_id || '')}:${JSON.stringify(projectStats || {})}`}
+          formatDateTime={formatDateTime}
+        />
         {(projectDataLoadReport || projectStats || enrichReport) && (
           <details className="service-technical-details">
             <summary>Технические детали</summary>

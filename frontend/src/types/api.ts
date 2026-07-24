@@ -70,6 +70,20 @@ export interface ProjectDataStats {
   msisdn_text_facts_count: number;
 }
 
+export interface ProjectDataImportQualityReport {
+  project_id: number;
+  summary: {
+    latest_batch: string;
+    import_runs: number;
+    latest_sources: number;
+    read_total: number;
+    communications_rows: number;
+    technical_rows: number;
+    events_after_dedup: number;
+  };
+  runs: Array<Record<string, string | number>>;
+  warnings: Array<Record<string, string | number>>;
+}
 export interface ProjectDataLoadResponse {
   message: string;
   project_id: number;
