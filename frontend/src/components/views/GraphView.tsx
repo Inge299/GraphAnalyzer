@@ -1,7 +1,7 @@
 // frontend/src/components/views/GraphView.tsx
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useAppDispatch } from '../../store';
-import { fetchArtifacts } from '../../store/slices/artifactsSlice';
+import { fetchArtifacts, setCurrentArtifact } from '../../store/slices/artifactsSlice';
 import { setSelectedElements } from '../../store/slices/uiSlice';
 import type { SelectedElement } from '../../store/slices/uiSlice';
 import { Network } from 'vis-network/standalone';
@@ -710,7 +710,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
         },
       });
 
-      await consoleApi.refresh(
+      const refreshedConsole = await consoleApi.refresh(
         artifact.project_id,
         consoleArtifact.id,
         String(profile.key || profile.id),
@@ -720,6 +720,11 @@ export const GraphView: React.FC<GraphViewProps> = ({
       );
 
       await dispatch(fetchArtifacts(artifact.project_id));
+      const derivedArtifacts = Array.isArray(refreshedConsole.metadata?.derived_artifacts)
+        ? refreshedConsole.metadata.derived_artifacts
+        : [];
+      const mapArtifactId = Number(derivedArtifacts.find((item: any) => item?.type === 'map')?.id || 0);
+      dispatch(setCurrentArtifact(mapArtifactId || consoleArtifact.id));
     } finally {
       closePluginMenu();
     }
