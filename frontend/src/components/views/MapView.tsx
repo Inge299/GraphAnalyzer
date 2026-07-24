@@ -45,20 +45,32 @@ const MapView: React.FC<MapViewProps> = ({ artifact }) => {
     const padding = 0.12;
     const width = 960;
     const height = 600;
+    const viewportMinLat = minLat - latSpan * padding;
+    const viewportMaxLat = maxLat + latSpan * padding;
+    const viewportMinLng = minLng - lngSpan * padding;
+    const viewportMaxLng = maxLng + lngSpan * padding;
     return {
       width,
       height,
       point: (point: MapPoint) => ({
-        x: 54 + ((point.longitude - minLng) / lngSpan) * (width - 108),
-        y: height - 46 - ((point.latitude - minLat) / latSpan) * (height - 92),
+        x: 54 + ((point.longitude - viewportMinLng) / (viewportMaxLng - viewportMinLng)) * (width - 108),
+        y: height - 46 - ((point.latitude - viewportMinLat) / (viewportMaxLat - viewportMinLat)) * (height - 92),
       }),
-      minLat: minLat - latSpan * padding,
-      maxLat: maxLat + latSpan * padding,
-      minLng: minLng - lngSpan * padding,
-      maxLng: maxLng + lngSpan * padding,
+      minLat: viewportMinLat,
+      maxLat: viewportMaxLat,
+      minLng: viewportMinLng,
+      maxLng: viewportMaxLng,
     };
   }, [points]);
 
+  const coordinateCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    points.forEach((point) => {
+      const key = `${point.latitude.toFixed(6)},${point.longitude.toFixed(6)}`;
+      counts.set(key, (counts.get(key) || 0) + 1);
+    });
+    return counts;
+  }, [points]);
   const groups = useMemo(() => {
     const next = new Map<string, MapPoint[]>();
     points.forEach((point: MapPoint) => {
@@ -106,10 +118,12 @@ const MapView: React.FC<MapViewProps> = ({ artifact }) => {
             {groups.map(([_msisdn, group], index) => group.map((point) => {
               const position = viewport.point(point);
               const selectedPoint = selected?.id === point.id;
+              const coordinateKey = `${point.latitude.toFixed(6)},${point.longitude.toFixed(6)}`;
+              const locationCount = coordinateCounts.get(coordinateKey) || 1;
               return (
                 <g key={point.id} className="map-point" onClick={() => setSelectedId(point.id)}>
                   <circle cx={position.x} cy={position.y} r={selectedPoint ? 11 : 8} fill="#ffffff" stroke={palette[index % palette.length]} strokeWidth={selectedPoint ? 4 : 3} />
-                  <text x={position.x} y={position.y + 4} textAnchor="middle">{point.sequence || ''}</text>
+                  <text x={position.x} y={position.y + 4} textAnchor="middle">{locationCount > 1 ? locationCount : point.sequence || ''}</text>
                 </g>
               );
             }))}

@@ -1,7 +1,7 @@
 // frontend/src/components/views/GraphView.tsx
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useAppDispatch } from '../../store';
-import { fetchArtifacts, setCurrentArtifact } from '../../store/slices/artifactsSlice';
+import { fetchArtifacts, setCurrentArtifact, updateArtifactSync } from '../../store/slices/artifactsSlice';
 import { setSelectedElements } from '../../store/slices/uiSlice';
 import type { SelectedElement } from '../../store/slices/uiSlice';
 import { Network } from 'vis-network/standalone';
@@ -719,11 +719,17 @@ export const GraphView: React.FC<GraphViewProps> = ({
         artifact.id,
       );
 
-      await dispatch(fetchArtifacts(artifact.project_id));
       const derivedArtifacts = Array.isArray(refreshedConsole.metadata?.derived_artifacts)
         ? refreshedConsole.metadata.derived_artifacts
         : [];
       const mapArtifactId = Number(derivedArtifacts.find((item: any) => item?.type === 'map')?.id || 0);
+      const refreshedArtifact = await artifactApi.get(artifact.project_id, consoleArtifact.id);
+      dispatch(updateArtifactSync(refreshedArtifact));
+      if (mapArtifactId) {
+        const mapArtifact = await artifactApi.get(artifact.project_id, mapArtifactId);
+        dispatch(updateArtifactSync(mapArtifact));
+      }
+      await dispatch(fetchArtifacts(artifact.project_id));
       dispatch(setCurrentArtifact(mapArtifactId || consoleArtifact.id));
     } finally {
       closePluginMenu();

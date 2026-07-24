@@ -90,7 +90,6 @@ class LocationTimelineExecutor(ConsoleExecutorPlugin):
             bind["date_to"] = date_to
         if limit:
             bind["limit"] = limit
-        limit_sql = " LIMIT :limit" if limit else ""
         sql = """
             SELECT DISTINCT ON (
                 regexp_replace(location.identifier_value, '\\D', '', 'g'), location.event_time,
@@ -115,7 +114,7 @@ class LocationTimelineExecutor(ConsoleExecutorPlugin):
             WHERE """ + " AND ".join(filters) + """
             ORDER BY regexp_replace(location.identifier_value, '\\D', '', 'g'), location.event_time,
                      COALESCE(location.address_norm, location.address, ''), COALESCE(location.lac, ''), COALESCE(location.bs, '')
-        """ + limit_sql
+        """
         async with AsyncSessionLocal() as db:
             await ensure_project_data_tables(db)
             result = await db.execute(text(sql), bind)
@@ -123,9 +122,12 @@ class LocationTimelineExecutor(ConsoleExecutorPlugin):
 
         rows: list[dict[str, Any]] = []
         points: list[dict[str, Any]] = []
+        mapped_events_total = 0
         for index, row in enumerate(source_rows, start=1):
             latitude, longitude = row.get("latitude"), row.get("longitude")
             has_coordinates = latitude is not None and longitude is not None
+            if has_coordinates:
+                mapped_events_total += 1
             event_time = row.get("event_time")
             event_time_value = event_time.isoformat() if hasattr(event_time, "isoformat") else event_time
             rows.append({
@@ -134,7 +136,7 @@ class LocationTimelineExecutor(ConsoleExecutorPlugin):
                 "mnc": _display_value(row.get("mnc")), "lac": _display_value(row.get("lac")), "bs": _display_value(row.get("bs")),
                 "coordinates": f"{float(latitude):.6f}, {float(longitude):.6f}" if has_coordinates else "Нет координат в справочнике БС",
             })
-            if has_coordinates:
+            if has_coordinates and (not limit or len(points) < limit):
                 points.append({
                     "id": f"{row.get('msisdn')}-{index}", "sequence": index, "msisdn": row.get("msisdn"),
                     "event_time": event_time_value,
@@ -145,7 +147,7 @@ class LocationTimelineExecutor(ConsoleExecutorPlugin):
         return {
             "profile_id": self.id, "profile_name": self.name,
             "tabs": [
-                tab("summary", "Итог", [column("requested_msisdns", "Запрашиваемые MSISDN", "string", 260), column("events_total", "Событий", "integer", 120), column("mapped_events", "С координатами", "integer", 150), column("unmapped_events", "Без координат", "integer", 150)], [{"requested_msisdns": ", ".join(msisdns), "events_total": len(rows), "mapped_events": len(points), "unmapped_events": len(rows) - len(points)}]),
+                tab("summary", "Итог", [column("requested_msisdns", "Запрашиваемые MSISDN", "string", 260), column("events_total", "Событий", "integer", 120), column("mapped_events", "С координатами", "integer", 150), column("map_points", "На карте", "integer", 120), column("unmapped_events", "Без координат", "integer", 150)], [{"requested_msisdns": ", ".join(msisdns), "events_total": len(rows), "mapped_events": mapped_events_total, "map_points": len(points), "unmapped_events": len(rows) - mapped_events_total}]),
                 tab("locations", "События локаций", [column("sequence", "№", "integer", 70), column("msisdn", "MSISDN", "string", 150), column("event_time", "Время", "datetime", 180), column("address", "Адрес", "string", 440), column("mcc", "MCC", "string", 80), column("mnc", "MNC", "string", 80), column("lac", "LAC", "string", 110), column("bs", "БС", "string", 110), column("coordinates", "Координаты", "string", 220)], rows),
             ],
             "active_tab_id": "summary",
