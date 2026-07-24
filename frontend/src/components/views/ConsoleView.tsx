@@ -986,9 +986,9 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
                       ...prev,
                       [column.key]: { ...dateFilter, ...updates },
                     }));
-                    const inputStyle: React.CSSProperties = { width: 164, minWidth: 164, padding: '2px 4px', border: '1px solid #cbd5e1', borderRadius: 4, fontSize: 11, boxSizing: 'border-box' };
+                    const inputStyle: React.CSSProperties = { width: 148, minWidth: 148, padding: '2px 4px', border: '1px solid #cbd5e1', borderRadius: 4, fontSize: 11, boxSizing: 'border-box' };
                     return (
-                      <th key={`flt-${column.key}`} style={{ minWidth: isPeriod ? 420 : 260 }}>
+                      <th key={`flt-${column.key}`} style={{ minWidth: isPeriod ? 388 : 244 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, width: 'max-content' }}>
                           <select
                             value={dateFilter.mode}
