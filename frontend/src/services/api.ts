@@ -31,7 +31,9 @@ import type {
 } from '../types/api';
 import { layoutConfig } from '../config/layout';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+// An empty URL keeps API requests on the same origin. Production Nginx proxies
+// them to the backend, while Vite handles the same paths during development.
+const API_BASE_URL = import.meta.env.VITE_API_URL ?? '';
 
 console.log('[API] Initializing with base URL:', API_BASE_URL);
 

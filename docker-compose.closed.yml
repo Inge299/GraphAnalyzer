@@ -1,0 +1,104 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-osint_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-osint_password}
+      POSTGRES_DB: ${POSTGRES_DB:-osint_db}
+    volumes:
+      - nodex_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [nodex]
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - nodex_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [nodex]
+
+  app:
+    image: nodex/app:pilot
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-osint_user}:${POSTGRES_PASSWORD:-osint_password}@postgres:5432/${POSTGRES_DB:-osint_db}
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${SECRET_KEY:-nodex-test-secret}
+      ENVIRONMENT: closed-contour
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      GEOCODER_ENABLED: ${GEOCODER_ENABLED:-true}
+      GEOCODER_BASE_URL: ${GEOCODER_BASE_URL}
+      GEOCODER_USER_AGENT: ${GEOCODER_USER_AGENT:-Nodex/1.0}
+      GEOCODER_TIMEOUT_SECONDS: ${GEOCODER_TIMEOUT_SECONDS:-10}
+      GEOCODER_MIN_INTERVAL_SECONDS: ${GEOCODER_MIN_INTERVAL_SECONDS:-0}
+      SNI_SERVICE_URL: http://sni:8012
+      SNI_TIMEOUT_SECONDS: ${SNI_TIMEOUT_SECONDS:-900}
+      SNI1_SERVICE_URL: http://sni1:8013
+      SNI1_TIMEOUT_SECONDS: ${SNI1_TIMEOUT_SECONDS:-900}
+      SNI1_REFS_DIR: /app/data/sni/current
+    volumes:
+      - ./plugins:/app/plugins
+      - ./data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks: [nodex]
+
+  frontend:
+    image: nodex/frontend:pilot
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        VITE_PMTILES_URL: ${VITE_PMTILES_URL:-}
+        VITE_MAP_STYLE_URL: ${VITE_MAP_STYLE_URL:-}
+        VITE_MAP_GLYPHS_URL: ${VITE_MAP_GLYPHS_URL:-}
+    ports:
+      - "${NODEX_PORT:-8080}:80"
+    depends_on:
+      app:
+        condition: service_started
+    networks: [nodex]
+
+  sni:
+    image: nodex/sni:pilot
+    build:
+      context: .
+      dockerfile: sni_service/Dockerfile
+    environment:
+      SNI_REFS_DIR: /app/data/sni/current
+    volumes:
+      - ./data:/app/data
+    networks: [nodex]
+
+  sni1:
+    image: nodex/sni1:pilot
+    build:
+      context: .
+      dockerfile: sni1_service/Dockerfile
+    environment:
+      SNI_REFS_DIR: /app/data/sni/current
+    volumes:
+      - ./data:/app/data
+    networks: [nodex]
+
+networks:
+  nodex:
+    driver: bridge
+
+volumes:
+  nodex_postgres:
+  nodex_redis:
