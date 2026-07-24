@@ -660,7 +660,7 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
 
                 {isLocationTimeline && (
           <div style={{ display: 'flex', gap: 8, borderBottom: '1px solid #dbe3f0', paddingBottom: 8 }}>
-            {([['map', 'Map'], ['params', 'Params']] as const).map(([id, label]) => (
+            {([['map', '\\u041a\\u0430\\u0440\\u0442\\u0430'], ['params', '\\u041f\\u0430\\u0440\\u0430\\u043c\\u0435\\u0442\\u0440\\u044b']] as const).map(([id, label]) => (
               <button key={id} type="button" className="service-btn" onClick={() => setLocationTopTab(id)} style={locationTopTab === id ? { borderColor: '#2563eb', background: '#eff6ff', color: '#1d4ed8' } : undefined}>{label}</button>
             ))}
           </div>
@@ -951,7 +951,7 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
         </div>
         </> )}`n      </div>
         {isLocationTimeline && locationTopTab === 'map' && locationMapTab?.map_data && (
-          <MapView artifact={artifact} _onUpdate={() => {}} dataOverride={locationMapTab.map_data} titleOverride={`${artifact.name}: Map`} descriptionOverride="Location route." selectedPointId={selectedLocationIds[0] || null} onSelectPointIds={setSelectedLocationIds} />
+          <MapView artifact={artifact} _onUpdate={() => {}} dataOverride={locationMapTab.map_data} titleOverride={`${artifact.name}: \\u041a\\u0430\\u0440\\u0442\\u0430`} descriptionOverride="\\u041c\\u0430\\u0440\\u0448\\u0440\\u0443\\u0442 \\u043f\\u043e \\u0441\\u043e\\u0431\\u044b\\u0442\\u0438\\u044f\\u043c \\u043b\\u043e\\u043a\\u0430\\u0446\\u0438\\u0439." selectedPointId={selectedLocationIds[0] || null} onSelectPointIds={setSelectedLocationIds} />
         )}
 
       {tabs.length > 1 && (
