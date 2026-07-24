@@ -55,9 +55,9 @@ export type GraphSelectionState = {
 
 export const fallbackIconOptions = [
   { value: 'smartphone', label: 'Smartphone' },
-  { value: 'sim', label: 'SIM card' },
+  { value: 'imsi', label: 'IMSI' },
   { value: 'person_phone', label: 'Subscriber' },
-  { value: 'ip', label: 'IP' },
+  { value: 'ip_address', label: 'IP' },
   { value: 'mail', label: 'Email' },
   { value: 'social', label: 'Social ID' },
   { value: 'passport', label: 'Passport' },

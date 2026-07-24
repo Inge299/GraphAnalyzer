@@ -12,10 +12,10 @@ from sqlalchemy import bindparam, text
 from app.database import AsyncSessionLocal
 from app.services.plugins_config_service import get_plugin_config
 from plugins import PluginBase
-from plugins.graph_domain import resolve_edge_type
-from plugins.graph_toolkit import GraphPluginToolkit, dedupe_preserve_order, format_datetime, node_id, node_label, normalize_phone, normalize_text
+from plugins.graph_toolkit import GraphPluginToolkit, dedupe_preserve_order, format_datetime, is_phone_value, node_id, node_label, normalize_phone, normalize_text
 
 MAX_SELECTED_ABONENTS = 150
+EDGE_TYPE = "msisdn_communication"
 
 def _as_datetime(value: Any) -> Optional[datetime]:
     if isinstance(value, datetime):
@@ -64,10 +64,10 @@ def _build_mssql_url(db_cfg: Dict[str, Any]) -> str:
 
 class AbonentCommunicationsPlugin(PluginBase):
     id = "abonent_communications"
-    name = "\u0421\u0432\u044f\u0437\u0438 \u0430\u0431\u043e\u043d\u0435\u043d\u0442\u0430"
-    version = "0.1.0"
-    description = "Builds abonent communications from SQL for selected abonent nodes"
-    menu_path = "\u0421\u043e\u0437\u0434\u0430\u0442\u044c \u043e\u0431\u044a\u0435\u043a\u0442"
+    name = "\u0421\u0432\u044f\u0437\u0438"
+    version = "1.0.0"
+    description = "\u0414\u043e\u0431\u0430\u0432\u043b\u044f\u0435\u0442 \u0430\u0431\u043e\u043d\u0435\u043d\u0442\u0441\u043a\u0438\u0435 \u043d\u043e\u043c\u0435\u0440\u0430 \u0438 \u0430\u0433\u0440\u0435\u0433\u0438\u0440\u043e\u0432\u0430\u043d\u043d\u044b\u0435 \u0441\u0432\u044f\u0437\u0438 \u0430\u0431\u043e\u043d\u0435\u043d\u0442-\u0430\u0431\u043e\u043d\u0435\u043d\u0442 \u0434\u043b\u044f \u0432\u044b\u0434\u0435\u043b\u0435\u043d\u043d\u044b\u0445 MSISDN."
+    menu_path = "\u0421\u0432\u044f\u0437\u0438"
     input_types = ["graph"]
     output_types = ["graph"]
     applicable_to = ["graph"]
@@ -174,8 +174,10 @@ class AbonentCommunicationsPlugin(PluginBase):
             ]
 
         for row in rows:
-            abon1 = _normalize_phone(row.get("abon1"))
-            abon2 = _normalize_phone(row.get("abon2"))
+            if not is_phone_value(row.get("abon1")) or not is_phone_value(row.get("abon2")):
+                continue
+            abon1 = normalize_phone(row.get("abon1"))
+            abon2 = normalize_phone(row.get("abon2"))
             if not abon1 or not abon2:
                 continue
 
@@ -184,10 +186,10 @@ class AbonentCommunicationsPlugin(PluginBase):
 
             left_node = self._find_or_create_abonent_node(nodes, abon1)
             right_node = self._find_or_create_abonent_node(nodes, abon2, anchor_node=left_node)
-            if _node_id(left_node) == _node_id(right_node):
+            if node_id(left_node) == node_id(right_node):
                 continue
 
-            edge_type = resolve_edge_type("person", "person")
+            edge_type = EDGE_TYPE
             start_raw = row.get("time_start")
             end_raw = row.get("time_end")
             calls_count = int(row.get("calls_count") or 0)
@@ -240,73 +242,51 @@ class AbonentCommunicationsPlugin(PluginBase):
         if not selected_phones or project_id <= 0:
             return []
 
-        sql = text(
-            """
-            SELECT
-              abon1,
-              abon2,
-              time_start,
-              time_end,
-              calls_count,
-              contacts_count,
-              calls_count_approx
-            FROM project_communications
-            WHERE project_id = :project_id
-              AND (abon1 IN :phones OR abon2 IN :phones)
-            ORDER BY time_start ASC
-            """
-        ).bindparams(bindparam("phones", expanding=True))
-
-        phones = _dedupe_preserve_order([_normalize_phone(item) for item in selected_phones])
+        phones = dedupe_preserve_order([normalize_phone(item) for item in selected_phones])
         if not phones:
             return []
 
-        rows: List[Dict[str, Any]] = []
-        seen: set[tuple] = set()
+        sql = text(
+            """
+            SELECT
+                LEAST(abon1, abon2) AS abon1,
+                GREATEST(abon1, abon2) AS abon2,
+                MIN(time_start) AS time_start,
+                MAX(COALESCE(time_end, time_start)) AS time_end,
+                SUM(GREATEST(COALESCE(calls_count, 0), COALESCE(contacts_count, 1), 1))::INTEGER AS calls_count,
+                SUM(GREATEST(COALESCE(contacts_count, 1), 1))::INTEGER AS contacts_count,
+                BOOL_OR(calls_count_approx) AS calls_count_approx
+            FROM project_communications
+            WHERE project_id = :project_id
+              AND NULLIF(BTRIM(abon1), '') IS NOT NULL
+              AND NULLIF(BTRIM(abon2), '') IS NOT NULL
+              AND (abon1 IN :phones OR abon2 IN :phones)
+            GROUP BY LEAST(abon1, abon2), GREATEST(abon1, abon2)
+            ORDER BY MIN(time_start) ASC NULLS LAST, LEAST(abon1, abon2), GREATEST(abon1, abon2)
+            """
+        ).bindparams(bindparam("phones", expanding=True))
 
         try:
             async with AsyncSessionLocal() as session:
                 result = await session.execute(sql, {"project_id": project_id, "phones": phones})
-                for row in result.mappings().all():
-                    payload = dict(row)
-                    key = (
-                        _normalize_phone(payload.get("abon1")),
-                        _normalize_phone(payload.get("abon2")),
-                        _normalize_text(payload.get("time_start")),
-                        _normalize_text(payload.get("time_end")),
-                        _normalize_text(payload.get("calls_count")),
-                        _normalize_text(payload.get("contacts_count")),
-                        bool(payload.get("calls_count_approx") or False),
-                    )
-                    if key in seen:
-                        continue
-                    seen.add(key)
-                    rows.append(payload)
+                return [dict(row) for row in result.mappings().all()]
         except Exception:
             return []
-
-        rows.sort(key=lambda item: (
-            _as_datetime(item.get("time_start")) or datetime.min,
-            _normalize_phone(item.get("abon1")),
-            _normalize_phone(item.get("abon2"))
-        ))
-        return rows
-
     @staticmethod
     def _collect_selected_abonents(nodes: List[Dict[str, Any]], selected_ids: List[str]) -> List[str]:
         selected_id_set = set(selected_ids)
         phones: List[str] = []
         for node in nodes:
-            current_node_id = node_id(node)
-            if current_node_id not in selected_id_set:
+            currentnode_id = node_id(node)
+            if currentnode_id not in selected_id_set:
                 continue
             node_type = str(node.get("type") or "").strip().lower()
-            if node_type and node_type not in {"person", "abonent", "subscriber"}:
+            if node_type and node_type not in {"msisdn", "person", "abonent", "subscriber"}:
                 continue
             label = node_label(node)
             if label:
                 phones.append(label)
-        return _dedupe_preserve_order(phones)
+        return dedupe_preserve_order(phones)
 
     @staticmethod
     def _format_ownership(fio: str, address: str) -> str:
@@ -320,11 +300,11 @@ class AbonentCommunicationsPlugin(PluginBase):
     ) -> Dict[str, Any]:
         normalized = phone.strip().lower()
         for node in nodes:
-            if str(node.get("type") or "").strip().lower() != "person":
+            if str(node.get("type") or "").strip().lower() not in {"msisdn", "person", "abonent", "subscriber"}:
                 continue
             if node_label(node).strip().lower() == normalized:
                 return node
-        return self.graph.find_or_create_node(nodes, "person", phone, anchor_node=anchor_node)
+        return self.graph.find_or_create_node(nodes, "msisdn", phone, anchor_node=anchor_node)
 
     @staticmethod
     def _merge_node_attributes(node: Dict[str, Any], operator: str, ownership: str) -> None:
@@ -346,8 +326,8 @@ class AbonentCommunicationsPlugin(PluginBase):
         existing_operator = attributes.get("operator") if isinstance(attributes.get("operator"), list) else []
         existing_ownership = attributes.get("ownership") if isinstance(attributes.get("ownership"), list) else []
 
-        next_operator = _dedupe_preserve_order([*existing_operator, operator])
-        next_ownership = _dedupe_preserve_order([*existing_ownership, ownership])
+        next_operator = dedupe_preserve_order([*existing_operator, operator])
+        next_ownership = dedupe_preserve_order([*existing_ownership, ownership])
 
         if next_operator:
             attributes["operator"] = next_operator
@@ -381,11 +361,9 @@ class AbonentCommunicationsPlugin(PluginBase):
         interval_label = self._interval_label(start_str, end_str)
         contacts_value = max(1, int(contacts_count or 1))
         connections_value = max(0, int(calls_count or 0))
-        contacts_label = f"\u043a\u043e\u043d\u0442\u0430\u043a\u0442\u043e\u0432: {contacts_value}"
-        connections_label = f"\u0441\u043e\u0435\u0434\u0438\u043d\u0435\u043d\u0438\u0439: {connections_value}"
-        label_parts = [contacts_label]
-        if connections_value != contacts_value:
-            label_parts.append(connections_label)
+        contacts_label = f"\u0421\u043e\u0435\u0434\u0438\u043d\u0435\u043d\u0438\u0439: {connections_value}"
+        connections_label = contacts_label
+        label_parts = [connections_label]
         if interval_label:
             label_parts.append(interval_label)
         edge_label = "\n".join(label_parts)
@@ -447,11 +425,9 @@ class AbonentCommunicationsPlugin(PluginBase):
         chosen_calls_approx = bool(attributes.get("calls_count_approx") or False) or bool(calls_count_approx)
 
         interval_label = self._interval_label(chosen_start, chosen_end)
-        contacts_label = f"\u043a\u043e\u043d\u0442\u0430\u043a\u0442\u043e\u0432: {chosen_contacts}"
-        connections_label = f"\u0441\u043e\u0435\u0434\u0438\u043d\u0435\u043d\u0438\u0439: {chosen_calls}"
-        label_parts = [contacts_label]
-        if chosen_calls != chosen_contacts:
-            label_parts.append(connections_label)
+        contacts_label = f"\u0421\u043e\u0435\u0434\u0438\u043d\u0435\u043d\u0438\u0439: {chosen_calls}"
+        connections_label = contacts_label
+        label_parts = [connections_label]
         if interval_label:
             label_parts.append(interval_label)
         edge_label = "\n".join(label_parts)

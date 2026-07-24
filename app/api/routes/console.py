@@ -9,7 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -20,6 +20,7 @@ from app.models.artifact import Artifact, ArtifactVersion
 from app.models.console_registry import (
     ConsoleDataSource,
     ConsoleObjectTypeMapping,
+    ConsolePythonPluginSetting,
     ConsoleProcedureProfile,
     ConsoleProcedureParam,
     ConsoleResultColumnMapping,
@@ -31,6 +32,17 @@ from app.services.console_execution_service import (
     execute_console_procedure,
     resolve_procedure_params,
     test_console_data_source_connection,
+)
+from app.services.console_artifact_service import (
+    build_console_artifact_metadata,
+    normalize_console_artifact_data,
+)
+from app.console_plugins import delete_console_plugin_file, install_console_plugin_file
+from app.services.console_executor_registry import (
+    get_python_console_executor,
+    is_python_console_executor_enabled,
+    list_console_executor_descriptors,
+    list_python_console_executor_settings,
 )
 from app.services.console_registry_service import (
     get_console_object_type_mapping_dict,
@@ -348,6 +360,102 @@ async def _load_console_artifact(db: AsyncSession, project_id: int, artifact_id:
     return artifact
 
 
+@profiles_router.get("/executors", response_model=Dict[str, Any])
+async def list_console_executors_endpoint(
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    items = await list_console_executor_descriptors(db)
+    return {"executors": items}
+
+
+@profiles_router.get("/python-plugins", response_model=Dict[str, Any])
+async def list_python_console_plugins_endpoint(
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    return {"plugins": await list_python_console_executor_settings(db)}
+
+
+@profiles_router.post("/python-plugins/install", response_model=Dict[str, Any])
+async def install_python_console_plugin_endpoint(
+    file: UploadFile = File(...),
+    overwrite: bool = Form(True),
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    filename = file.filename or ""
+    try:
+        content = await file.read(2 * 1024 * 1024 + 1)
+    finally:
+        await file.close()
+    if len(content) > 2 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Python plugin file exceeds 2 MB")
+    try:
+        plugin_ids = install_console_plugin_file(filename, content, overwrite=overwrite)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    items = await list_python_console_executor_settings(db)
+    return {
+        "filename": filename,
+        "plugins": [item for item in items if str(item.get("id")) in plugin_ids],
+    }
+
+
+@profiles_router.delete("/python-plugins/{plugin_id}", response_model=Dict[str, Any])
+async def delete_python_console_plugin_endpoint(
+    plugin_id: str,
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    try:
+        filename, affected_ids = delete_console_plugin_file(plugin_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    settings = await db.execute(
+        select(ConsolePythonPluginSetting).where(ConsolePythonPluginSetting.plugin_id.in_(affected_ids))
+    )
+    for setting in settings.scalars().all():
+        await db.delete(setting)
+    await db.commit()
+    return {"deleted": True, "plugin_id": plugin_id, "filename": filename, "affected_plugin_ids": affected_ids}
+
+@profiles_router.put("/python-plugins/{plugin_id}", response_model=Dict[str, Any])
+async def update_python_console_plugin_endpoint(
+    plugin_id: str,
+    payload: Dict[str, Any],
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    plugin_key = str(plugin_id or "").strip()
+    executor = get_python_console_executor(plugin_key)
+    if executor is None:
+        raise HTTPException(status_code=404, detail=f"Python console plugin '{plugin_key}' not found")
+
+    result = await db.execute(
+        select(ConsolePythonPluginSetting).where(ConsolePythonPluginSetting.plugin_id == plugin_key)
+    )
+    setting = result.scalar_one_or_none()
+    if setting is None:
+        setting = ConsolePythonPluginSetting(plugin_id=plugin_key)
+
+    setting.is_active = bool(payload.get("is_active", True))
+    setting.is_visible = bool(payload.get("is_visible", True))
+    setting.menu_path = str(payload.get("menu_path") or executor.menu_path or "Console").strip()
+    try:
+        setting.menu_order = int(payload.get("menu_order") or 0)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="menu_order must be an integer")
+
+    db.add(setting)
+    await db.commit()
+    await db.refresh(setting)
+
+    items = await list_python_console_executor_settings(db)
+    updated = next((item for item in items if str(item.get("id")) == plugin_key), None)
+    if updated is None:
+        raise HTTPException(status_code=500, detail="Failed to reload Python console plugin settings")
+    return updated
+
 @profiles_router.get("/profiles", response_model=Dict[str, Any])
 async def list_console_profiles_endpoint(
     db: AsyncSession = Depends(get_db),
@@ -510,23 +618,18 @@ async def create_console_procedure(
     source_key = str(payload.get("source_key") or "").strip()
     if not source_key:
         raise HTTPException(status_code=400, detail="source_key is required")
-
     source = await get_console_data_source_by_key(db, source_key)
     if not source:
         raise HTTPException(status_code=404, detail=f"Data source '{source_key}' not found")
-
-    existing = await get_console_profile_by_key(db, str(payload.get("key") or "").strip())
-    if existing:
-        raise HTTPException(status_code=400, detail=f"Procedure profile with key '{payload.get('key')}' already exists")
 
     profile = ConsoleProcedureProfile()
     _apply_procedure_payload(profile, payload, source.id)
     db.add(profile)
     await db.commit()
-    profile = await get_console_profile_by_key(db, profile.key)
-    if not profile:
+    reloaded = await get_console_profile_by_key(db, profile.key)
+    if not reloaded:
         raise HTTPException(status_code=500, detail="Failed to reload created procedure profile")
-    return serialize_console_profile(profile)
+    return serialize_console_profile(reloaded)
 
 
 @profiles_router.put("/procedures/{profile_key}", response_model=Dict[str, Any])
@@ -547,20 +650,20 @@ async def update_console_procedure(
     if not profile:
         raise HTTPException(status_code=404, detail=f"Procedure profile '{profile_key}' not found")
 
-    source_key = str(payload.get("source_key") or "").strip() or None
-    source_id = profile.source_id
-    if source_key:
-        source = await get_console_data_source_by_key(db, source_key)
-        if not source:
-            raise HTTPException(status_code=404, detail=f"Data source '{source_key}' not found")
-        source_id = source.id
+    source_key = str(payload.get("source_key") or "").strip() or (profile.data_source.key if profile.data_source else "")
+    if not source_key:
+        raise HTTPException(status_code=400, detail="source_key is required")
+    source = await get_console_data_source_by_key(db, source_key)
+    if not source:
+        raise HTTPException(status_code=404, detail=f"Data source '{source_key}' not found")
 
-    _apply_procedure_payload(profile, payload, source_id)
+    _apply_procedure_payload(profile, payload, source.id)
+    db.add(profile)
     await db.commit()
-    profile = await get_console_profile_by_key(db, profile.key)
-    if not profile:
+    reloaded = await get_console_profile_by_key(db, profile.key)
+    if not reloaded:
         raise HTTPException(status_code=500, detail="Failed to reload updated procedure profile")
-    return serialize_console_profile(profile)
+    return serialize_console_profile(reloaded)
 
 
 @profiles_router.delete("/procedures/{profile_key}", response_model=Dict[str, Any])
@@ -575,13 +678,12 @@ async def delete_console_procedure(
     if not profile:
         raise HTTPException(status_code=404, detail=f"Procedure profile '{profile_key}' not found")
 
-    profile_name = profile.display_name
     await db.delete(profile)
     await db.commit()
     return {
         "ok": True,
         "profile_key": profile_key,
-        "message": f"Procedure profile '{profile_name}' deleted",
+        "message": f"Procedure profile '{profile_key}' deleted",
     }
 
 
@@ -610,6 +712,11 @@ async def refresh_console_artifact(
     context_artifact_id = int(payload.get("context_artifact_id") or 0) or None
 
     profile = await get_console_profile_by_key(db, profile_key)
+    python_executor = None if profile else get_python_console_executor(profile_key)
+    if python_executor and not await is_python_console_executor_enabled(db, profile_key):
+        raise HTTPException(status_code=400, detail=f"Python console plugin '{profile_key}' is inactive")
+    current_version = await _get_current_artifact_version(db, artifact.id)
+
     if profile:
         if not profile.is_active:
             raise HTTPException(status_code=400, detail=f"Procedure profile '{profile_key}' is inactive")
@@ -637,45 +744,112 @@ async def refresh_console_artifact(
         if active_tab_id and not any(str(item.get("id") or "") == active_tab_id for item in tabs):
             active_tab_id = str(tabs[0].get("id") or "").strip() if tabs else ""
 
-        next_data = {
-            **execution_result,
-            "active_tab_id": active_tab_id or execution_result.get("active_tab_id"),
-            "input_snapshot": {
-                "params": resolved_params,
-                "context": execution_context,
+        next_data = normalize_console_artifact_data(
+            {
+                **execution_result,
+                "active_tab_id": active_tab_id or execution_result.get("active_tab_id"),
+                "input_snapshot": {
+                    "params": resolved_params,
+                    "context": execution_context,
+                },
+                "profile_kind": "stored_procedure",
+                "updated_at": datetime.utcnow().isoformat(),
             },
-            "profile_kind": "stored_procedure",
-            "updated_at": datetime.utcnow().isoformat(),
-        }
-
-        current_version = await _get_current_artifact_version(db, artifact.id)
-        artifact.data = next_data
-        artifact.artifact_metadata = {
-            **artifact_metadata,
-            "console_profile_id": profile.key,
-            "console_profile_name": profile.display_name,
-            "console_profile_kind": "stored_procedure",
-            "console_source_key": profile.data_source.key if profile.data_source else None,
-            "console_source_name": profile.data_source.name if profile.data_source else None,
-            "console_context_artifact_id": context_artifact_id,
-            "console_last_params": params,
-            "console_last_resolved_params": resolved_params,
-            "console_tabs_count": len(tabs),
-            "console_rows_count": sum(int(item.get("row_count") or 0) for item in tabs),
-            "console_refreshed_at": datetime.utcnow().isoformat(),
-        }
-        artifact.updated_at = datetime.utcnow()
-
-        db.add(
-            ArtifactVersion(
-                artifact_id=artifact.id,
-                version=current_version + 1,
-                data=next_data,
-                changed_by="console_refresh",
-            )
+            executor_type="sql_function",
+            executor_id=profile.key,
+            executor_name=profile.display_name,
         )
-        await db.commit()
-        await db.refresh(artifact)
+        tabs = next_data.get("tabs") if isinstance(next_data.get("tabs"), list) else []
+
+        artifact.data = next_data
+        artifact.artifact_metadata = build_console_artifact_metadata(
+            base_metadata=artifact_metadata,
+            profile_kind="stored_procedure",
+            profile_id=profile.key,
+            profile_name=profile.display_name,
+            source_key=profile.data_source.key if profile.data_source else None,
+            source_name=profile.data_source.name if profile.data_source else None,
+            context_artifact_id=context_artifact_id,
+            raw_params=params,
+            resolved_params=resolved_params,
+            tabs=tabs,
+        )
+    elif python_executor:
+        execution_context = build_console_execution_context(
+            project_id=project_id,
+            artifact_id=artifact.id,
+            context_artifact_id=context_artifact_id,
+            payload_context=payload_context,
+            type_mapping=await get_console_object_type_mapping_dict(db),
+        )
+
+        context_artifact_payload = None
+        if context_artifact_id:
+            context_result = await db.execute(
+                select(Artifact).where(Artifact.id == context_artifact_id, Artifact.project_id == project_id)
+            )
+            context_artifact = context_result.scalar_one_or_none()
+            if context_artifact is not None:
+                context_artifact_payload = {
+                    "id": context_artifact.id,
+                    "project_id": context_artifact.project_id,
+                    "type": context_artifact.type,
+                    "name": context_artifact.name,
+                    "description": context_artifact.description,
+                    "data": context_artifact.data,
+                    "metadata": context_artifact.artifact_metadata,
+                }
+
+        try:
+            execution_result = await python_executor.execute(
+                project_id=project_id,
+                artifact=context_artifact_payload,
+                params=params,
+                context=execution_context,
+            )
+        except Exception as exc:
+            logger.error("Python console executor refresh failed: %s", exc, exc_info=True)
+            raise HTTPException(status_code=500, detail=f"Console refresh failed: {exc}") from exc
+
+        if not isinstance(execution_result, dict):
+            raise HTTPException(status_code=500, detail="Python console executor returned invalid result")
+
+        tabs = execution_result.get("tabs") if isinstance(execution_result.get("tabs"), list) else []
+        if not active_tab_id and tabs:
+            active_tab_id = str(tabs[0].get("id") or "").strip()
+        if active_tab_id and not any(str(item.get("id") or "") == active_tab_id for item in tabs):
+            active_tab_id = str(tabs[0].get("id") or "").strip() if tabs else ""
+
+        next_data = normalize_console_artifact_data(
+            {
+                **execution_result,
+                "active_tab_id": active_tab_id or execution_result.get("active_tab_id"),
+                "input_snapshot": {
+                    "params": params,
+                    "context": execution_context,
+                },
+                "profile_kind": "python_plugin",
+                "updated_at": datetime.utcnow().isoformat(),
+            },
+            executor_type="python",
+            executor_id=python_executor.id,
+            executor_name=python_executor.name,
+            source_plugin_id=python_executor.id,
+        )
+        tabs = next_data.get("tabs") if isinstance(next_data.get("tabs"), list) else []
+
+        artifact.data = next_data
+        artifact.artifact_metadata = build_console_artifact_metadata(
+            base_metadata=artifact_metadata,
+            profile_kind="python_plugin",
+            profile_id=python_executor.id,
+            profile_name=python_executor.name,
+            context_artifact_id=context_artifact_id,
+            raw_params=params,
+            resolved_params=params,
+            tabs=tabs,
+            source_plugin_id=python_executor.id,
+        )
     else:
         legacy_profile = _get_legacy_profile(profile_key)
         if not legacy_profile:
@@ -692,42 +866,43 @@ async def refresh_console_artifact(
         if active_tab_id and not any(str(item.get("id") or "") == active_tab_id for item in tabs):
             active_tab_id = str(tabs[0].get("id") or "").strip() if tabs else ""
 
-        primary_tab = tabs[0] if tabs else {"columns": [], "rows": []}
-        next_data = {
-            "profile_id": profile_key,
-            "profile_name": str(legacy_profile.get("name") or profile_key),
-            "tabs": tabs,
-            "active_tab_id": active_tab_id or None,
-            "columns": list(primary_tab.get("columns") or []),
-            "rows": list(primary_tab.get("rows") or []),
-            "profile_kind": "legacy_query",
-            "updated_at": datetime.utcnow().isoformat(),
-        }
-
-        current_version = await _get_current_artifact_version(db, artifact.id)
-        artifact.data = next_data
-        artifact.artifact_metadata = {
-            **artifact_metadata,
-            "console_profile_id": profile_key,
-            "console_profile_name": str(legacy_profile.get("name") or profile_key),
-            "console_profile_kind": "legacy_query",
-            "console_context_artifact_id": context_artifact_id,
-            "console_last_params": params,
-            "console_tabs_count": len(tabs),
-            "console_rows_count": sum(int(item.get("row_count") or 0) for item in tabs),
-            "console_refreshed_at": datetime.utcnow().isoformat(),
-        }
-        artifact.updated_at = datetime.utcnow()
-        db.add(
-            ArtifactVersion(
-                artifact_id=artifact.id,
-                version=current_version + 1,
-                data=next_data,
-                changed_by="console_refresh",
-            )
+        next_data = normalize_console_artifact_data(
+            {
+                "profile_id": profile_key,
+                "profile_name": str(legacy_profile.get("name") or profile_key),
+                "tabs": tabs,
+                "active_tab_id": active_tab_id or None,
+                "profile_kind": "legacy_query",
+                "updated_at": datetime.utcnow().isoformat(),
+            },
+            executor_type="sql_function",
+            executor_id=profile_key,
+            executor_name=str(legacy_profile.get("name") or profile_key),
         )
-        await db.commit()
-        await db.refresh(artifact)
+        tabs = next_data.get("tabs") if isinstance(next_data.get("tabs"), list) else []
+
+        artifact.data = next_data
+        artifact.artifact_metadata = build_console_artifact_metadata(
+            base_metadata=artifact_metadata,
+            profile_kind="legacy_query",
+            profile_id=profile_key,
+            profile_name=str(legacy_profile.get("name") or profile_key),
+            context_artifact_id=context_artifact_id,
+            raw_params=params,
+            tabs=tabs,
+        )
+
+    artifact.updated_at = datetime.utcnow()
+    db.add(
+        ArtifactVersion(
+            artifact_id=artifact.id,
+            version=current_version + 1,
+            data=artifact.data,
+            changed_by="console_refresh",
+        )
+    )
+    await db.commit()
+    await db.refresh(artifact)
 
     final_version = await _get_current_artifact_version(db, artifact.id)
     return {
@@ -742,3 +917,4 @@ async def refresh_console_artifact(
         "updated_at": artifact.updated_at.isoformat() if artifact.updated_at else None,
         "version": final_version,
     }
+

@@ -1,4 +1,4 @@
-﻿// frontend/src/components/views/ArtifactView.tsx
+// frontend/src/components/views/ArtifactView.tsx
 import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useAppDispatch } from '../../store';
 import { fetchArtifacts, setCurrentArtifact } from '../../store/slices/artifactsSlice';
@@ -258,7 +258,6 @@ const ArtifactView: React.FC<ArtifactViewProps> = memo(({
             handleDeleteNode(nodeId);
           });
         }}
-        onNodesMove={() => {}}
         onUndo={undo}
         onRedo={redo}
         canUndo={canUndo}

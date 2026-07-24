@@ -1,7 +1,6 @@
-﻿import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { fetchArtifacts, setCurrentArtifact } from '../store/slices/artifactsSlice';
 import { pluginApi } from '../services/api';
-import { layoutConfig } from '../config/layout';
 import { collectPluginParamsWithPrompts } from '../utils/pluginParams';
 import type { AppDispatch } from '../store';
 import type { ApiPlugin, PluginArtifactDataOverride, PluginExecutionContext } from '../types/api';
@@ -128,9 +127,6 @@ export const usePluginRunner = ({
 
       await dispatch(fetchArtifacts(projectId));
       await onHistoryChanged?.();
-      window.setTimeout(() => {
-        void onHistoryChanged?.();
-      }, 500);
 
       const created = response?.created || [];
       if (created.length > 0) {
@@ -170,9 +166,7 @@ export const usePluginRunner = ({
       }
 
       if (newNodeIds.length > 0) {
-        const maxAutoLayout = Number(layoutConfig.pluginAutoLayout?.maxNewNodes || 80);
-        const autoLayout = newNodeIds.length <= maxAutoLayout;
-        window.dispatchEvent(new CustomEvent('graph:run-physics-layout', { detail: { newNodeIds, autoLayout } }));
+        window.dispatchEvent(new CustomEvent('graph:run-physics-layout', { detail: { newNodeIds, autoLayout: true } }));
       }
 
       if (noVisibleResult) {

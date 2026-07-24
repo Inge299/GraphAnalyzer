@@ -354,6 +354,12 @@ export const InspectorActionsTab: React.FC<InspectorActionsTabProps> = ({
     [profiles, selectedProfileId],
   );
 
+  const visibleProfiles = useMemo(
+    () => profiles.filter((item) => item.hidden_from_menu !== true).sort((left, right) =>
+      (Number(left.menu_order || 0) - Number(right.menu_order || 0)) || left.name.localeCompare(right.name, 'ru')),
+    [profiles],
+  );
+
   const selectedPlugin = useMemo(
     () => plugins.find((item) => item.id === selectedPluginId) || null,
     [plugins, selectedPluginId],
@@ -380,7 +386,7 @@ export const InspectorActionsTab: React.FC<InspectorActionsTabProps> = ({
       setProfilesLoading(true);
       setProfilesError(null);
       try {
-        const response = (await consoleApi.profiles()) as ConsoleProfilesResponse;
+        const response = (await consoleApi.executors()) as ConsoleProfilesResponse;
         if (cancelled) return;
         setProfiles(Array.isArray(response?.profiles) ? response.profiles : []);
       } catch (err: any) {
@@ -718,7 +724,7 @@ export const InspectorActionsTab: React.FC<InspectorActionsTabProps> = ({
                   onChange={(event) => setSelectedProfileId(event.target.value)}
                 >
                   <option value="">Выберите процедуру</option>
-                  {profiles.map((profile) => (
+                  {visibleProfiles.map((profile) => (
                     <option key={String(profile.key || profile.id)} value={String(profile.key || profile.id)}>
                       {profile.name}
                     </option>

@@ -40,25 +40,17 @@ class ImportInsertResult:
     inserted_msisdn_text_facts: int
 
 
-def _canon_pair(a: str, b: str) -> tuple[str, str]:
-    left = str(a or "").strip()
-    right = str(b or "").strip()
-    return (left, right) if left <= right else (right, left)
 
 
 def _merge_comm(project_id: int, base: dict[str, Any], incoming: dict[str, Any]) -> dict[str, Any]:
+    """Keep the most complete representation of one connection; do not add duplicate metrics."""
     base_start = base.get("time_start")
     base_end = base.get("time_end")
     inc_start = incoming.get("time_start")
     inc_end = incoming.get("time_end")
 
-    base_calls = int(base.get("calls_count") or 0)
-    inc_calls = int(incoming.get("calls_count") or 0)
-
-    union_start_candidates = [value for value in (base_start, inc_start) if value is not None]
-    union_end_candidates = [value for value in (base_end, inc_end) if value is not None]
-    union_start = min(union_start_candidates) if union_start_candidates else None
-    union_end = max(union_end_candidates) if union_end_candidates else None
+    start_candidates = [value for value in (base_start, inc_start) if value is not None]
+    end_candidates = [value for value in (base_end, inc_end) if value is not None]
 
     return {
         "project_id": project_id,
@@ -68,11 +60,11 @@ def _merge_comm(project_id: int, base: dict[str, Any], incoming: dict[str, Any])
         "operator2": base.get("operator2") or incoming.get("operator2"),
         "address1": base.get("address1") or incoming.get("address1"),
         "address2": base.get("address2") or incoming.get("address2"),
-        "time_start": union_start,
-        "time_end": union_end,
-        "calls_count": max(0, base_calls + inc_calls),
+        "time_start": min(start_candidates) if start_candidates else None,
+        "time_end": max(end_candidates) if end_candidates else None,
+        "calls_count": max(0, int(base.get("calls_count") or 0), int(incoming.get("calls_count") or 0)),
         "contacts_count": max(1, int(base.get("contacts_count") or 1), int(incoming.get("contacts_count") or 1)),
-        "total_duration": int(max(0, int(base.get("total_duration") or 0) + int(incoming.get("total_duration") or 0))),
+        "total_duration": max(0, int(base.get("total_duration") or 0), int(incoming.get("total_duration") or 0)),
         "calls_count_approx": bool(base.get("calls_count_approx") or incoming.get("calls_count_approx")),
     }
 
@@ -83,20 +75,15 @@ def _normalize_comm(project_id: int, row: dict[str, Any]) -> dict[str, Any] | No
     if not abon1 or not abon2:
         return None
 
-    canon_abon1, canon_abon2 = _canon_pair(abon1, abon2)
-    operator1 = row.get("operator1") if canon_abon1 == abon1 else row.get("operator2")
-    operator2 = row.get("operator2") if canon_abon2 == abon2 else row.get("operator1")
-    address1 = row.get("address1") if canon_abon1 == abon1 else row.get("address2")
-    address2 = row.get("address2") if canon_abon2 == abon2 else row.get("address1")
-
+    # Keep source order: abon1 is the originating side and abon2 is the receiving side.
     return {
         "project_id": project_id,
-        "abon1": canon_abon1,
-        "abon2": canon_abon2,
-        "operator1": (operator1 or "").strip() or None,
-        "operator2": (operator2 or "").strip() or None,
-        "address1": (address1 or "").strip() or None,
-        "address2": (address2 or "").strip() or None,
+        "abon1": abon1,
+        "abon2": abon2,
+        "operator1": (row.get("operator1") or "").strip() or None,
+        "operator2": (row.get("operator2") or "").strip() or None,
+        "address1": (row.get("address1") or "").strip() or None,
+        "address2": (row.get("address2") or "").strip() or None,
         "time_start": row.get("time_start"),
         "time_end": row.get("time_end"),
         "calls_count": int(row.get("calls_count") or 0),
@@ -106,8 +93,15 @@ def _normalize_comm(project_id: int, row: dict[str, Any]) -> dict[str, Any] | No
     }
 
 
-def _comm_key(row: dict[str, Any]) -> tuple[str, str]:
-    return (row["abon1"], row["abon2"])
+def _comm_key(row: dict[str, Any]) -> tuple[Any, ...]:
+    # Duplicates may arrive from several files; retain source direction in the stored fact.
+    time_start = row.get("time_start")
+    return (
+        row["abon1"],
+        row["abon2"],
+        time_start,
+        row.get("time_end") if time_start is None else None,
+    )
 
 
 def _normalize_device(project_id: int, row: dict[str, Any]) -> dict[str, Any] | None:

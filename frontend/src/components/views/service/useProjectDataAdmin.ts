@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { domainModelApi, projectDataApi } from '../../../services/api';
-import type { MetadataBundle, ProjectDataImportPlugin, ProjectDataLoadResponse } from '../../../types/api';
+import type { MetadataBundle, ProjectDataImportPlugin, ProjectDataLoadResponse, ProjectDataPreviewResponse } from '../../../types/api';
 import { createLocalId, detectProjectDataFileKind } from './formOptions';
 import type { ProjectDataSelectedFileItem } from './types';
 
@@ -29,24 +29,11 @@ const detectImportPluginForFile = async (
   file: File,
   plugins: ProjectDataImportPlugin[],
 ): Promise<{ id: string | null; name: string | null }> => {
-  const lowered = file.name.toLowerCase();
-  const archivePlugin = plugins.find((plugin) => plugin.id === 'nodex_archive_bundle') ?? null;
   const identityPlugin = plugins.find((plugin) => plugin.id === 'nodex_identity_facts') ?? null;
   const trafficPlugin = plugins.find((plugin) => plugin.id === 'nodex_traffic_geo') ?? null;
 
-  if (lowered.endsWith('.zip')) {
-    if (lowered.includes('взаимодейств') || lowered.includes('техданные')) {
-      return { id: identityPlugin?.id ?? archivePlugin?.id ?? null, name: identityPlugin?.name ?? archivePlugin?.name ?? null };
-    }
-    if (lowered.includes('communications') || lowered.includes('device_history') || lowered.includes('location_events') || lowered.includes('ip_bindings')) {
-      return { id: trafficPlugin?.id ?? archivePlugin?.id ?? null, name: trafficPlugin?.name ?? archivePlugin?.name ?? null };
-    }
-    return { id: archivePlugin?.id ?? null, name: archivePlugin?.name ?? null };
-  }
-
-  if (!lowered.endsWith('.csv')) {
-    return { id: trafficPlugin?.id ?? null, name: trafficPlugin?.name ?? null };
-  }
+  // ZIP contents are inspected on the backend; do not guess from its filename.
+  if (file.name.toLowerCase().endsWith('.zip')) return { id: null, name: null };
 
   const text = await decodeHeaderText(file);
   const firstLine = text.split(/\r?\n/, 1)[0] ?? '';
@@ -57,19 +44,22 @@ const detectImportPluginForFile = async (
       .filter(Boolean),
   );
 
-  if (headers.has('техданные, идент. пользователя')) {
-    return { id: identityPlugin?.id ?? null, name: identityPlugin?.name ?? null };
-  }
-  if (headers.has('ид. пользователя') && headers.has('текст сообщения')) {
-    return { id: identityPlugin?.id ?? null, name: identityPlugin?.name ?? null };
-  }
-  if (headers.has('abon1') || headers.has('identifier_type') || headers.has('identifier_value')) {
-    return { id: trafficPlugin?.id ?? null, name: trafficPlugin?.name ?? null };
-  }
-  if (lowered.includes('взаимодейств') || lowered.includes('техданные')) {
-    return { id: identityPlugin?.id ?? null, name: identityPlugin?.name ?? null };
-  }
-  return { id: trafficPlugin?.id ?? null, name: trafficPlugin?.name ?? null };
+  const hasIdentityHeaders =
+    headers.has('\u0442\u0435\u0445\u0434\u0430\u043d\u043d\u044b\u0435, \u0438\u0434\u0435\u043d\u0442. \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f') ||
+    (headers.has('\u0438\u0434. \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f') && headers.has('\u0442\u0435\u043a\u0441\u0442 \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u044f'));
+  if (hasIdentityHeaders) return { id: identityPlugin?.id ?? null, name: identityPlugin?.name ?? null };
+
+  const hasTrafficHeaders =
+    headers.has('abon1') ||
+    headers.has('identifier_type') ||
+    headers.has('identifier_value') ||
+    (headers.has('\u043d\u043e\u043c\u0435\u0440 \u0430\u0431\u043e\u043d\u0435\u043d\u0442\u0430') &&
+      (headers.has('\u043d\u043e\u043c\u0435\u0440 \u043a\u043e\u043d\u0442\u0430\u043a\u0442\u0430') ||
+        headers.has('\u0432\u0440\u0435\u043c\u044f \u043d\u0430\u0447\u0430\u043b\u0430 \u0441\u043e\u0435\u0434\u0438\u043d\u0435\u043d\u0438\u044f') ||
+        headers.has('\u0432\u0440\u0435\u043c\u044f \u043e\u043f\u0440\u0435\u0434\u0435\u043b\u0435\u043d\u0438\u044f \u043c\u0435\u0441\u0442\u043e\u043f\u043e\u043b\u043e\u0436\u0435\u043d\u0438\u044f')));
+  return hasTrafficHeaders
+    ? { id: trafficPlugin?.id ?? null, name: trafficPlugin?.name ?? null }
+    : { id: null, name: null };
 };
 
 export const useProjectDataAdmin = ({
@@ -83,6 +73,8 @@ export const useProjectDataAdmin = ({
   const [projectStatsError, setProjectStatsError] = useState<string | null>(null);
 
   const [projectDataLoading, setProjectDataLoading] = useState(false);
+  const [projectDataPreviewLoading, setProjectDataPreviewLoading] = useState(false);
+  const [projectDataPreview, setProjectDataPreview] = useState<ProjectDataPreviewResponse | null>(null);
   const [projectDataClearing, setProjectDataClearing] = useState(false);
   const [projectDataLoadReport, setProjectDataLoadReport] = useState<any | null>(null);
   const [projectDataLastLoadResult, setProjectDataLastLoadResult] = useState<ProjectDataLoadResponse | null>(null);
@@ -90,6 +82,7 @@ export const useProjectDataAdmin = ({
 
   const [availableImportPlugins, setAvailableImportPlugins] = useState<ProjectDataImportPlugin[]>([]);
   const [importPluginSaving, setImportPluginSaving] = useState(false);
+  const [importPluginManaging, setImportPluginManaging] = useState(false);
   const [selectedImportPluginId, setSelectedImportPluginId] = useState<string | null>(null);
   const [importPluginForm, setImportPluginForm] = useState({
     name: '',
@@ -222,6 +215,48 @@ export const useProjectDataAdmin = ({
     }
   }, [fetchImportPlugins, getRequestErrorMessage, importPluginForm, onError, onMessage, selectedImportPluginId]);
 
+  const handleInstallImportPlugin = useCallback(async (file: File) => {
+    setImportPluginManaging(true);
+    onError(null);
+    try {
+      const result = await projectDataApi.installImportPlugin(file);
+      await fetchImportPlugins();
+      const installedPlugin = result.plugins[0] ?? null;
+      if (installedPlugin) {
+        setSelectedImportPluginId(installedPlugin.id);
+      }
+      onMessage(
+        installedPlugin
+          ? `Python-плагин «${installedPlugin.name}» подключён и активирован.`
+          : `Python-модуль ${result.filename} подключён.`,
+      );
+    } catch (err: unknown) {
+      onError(getRequestErrorMessage(err, 'Не удалось подключить Python-плагин импорта'));
+    } finally {
+      setImportPluginManaging(false);
+    }
+  }, [fetchImportPlugins, getRequestErrorMessage, onError, onMessage]);
+
+  const handleDeleteImportPlugin = useCallback(async () => {
+    if (!selectedImportPluginId) return;
+    const plugin = availableImportPlugins.find((item) => item.id === selectedImportPluginId) ?? null;
+    if (!plugin?.removable) return;
+    if (!window.confirm(`Удалить внешний модуль «${plugin.name}»?`)) return;
+
+    setImportPluginManaging(true);
+    onError(null);
+    try {
+      await projectDataApi.deleteImportPlugin(plugin.id);
+      setSelectedImportPluginId(null);
+      await fetchImportPlugins();
+      onMessage(`Python-плагин «${plugin.name}» удалён.`);
+    } catch (err: unknown) {
+      onError(getRequestErrorMessage(err, 'Не удалось удалить Python-плагин импорта'));
+    } finally {
+      setImportPluginManaging(false);
+    }
+  }, [availableImportPlugins, fetchImportPlugins, getRequestErrorMessage, onError, onMessage, selectedImportPluginId]);
+
   const handleExportMetadataBundle = useCallback(async () => {
     setMetadataExporting(true);
     onError(null);
@@ -272,6 +307,7 @@ export const useProjectDataAdmin = ({
     onError(null);
     setProjectDataLoadReport(null);
     setProjectDataLastLoadResult(null);
+    setProjectDataPreview(null);
 
     const recognized = await Promise.all(
       files.map(async (file) => {
@@ -305,29 +341,74 @@ export const useProjectDataAdmin = ({
   }, [availableImportPlugins, onError, onMessage]);
 
   const handleRemoveProjectDataFile = useCallback((fileId: string) => {
+    setProjectDataPreview(null);
     setProjectDataSelectedFiles((prev) => prev.filter((item) => item.id !== fileId));
   }, []);
 
   const handleClearProjectDataSelection = useCallback(() => {
+    setProjectDataPreview(null);
     setProjectDataSelectedFiles([]);
     onMessage(null);
   }, [onMessage]);
 
   const handleChangeProjectDataFilePlugin = useCallback((fileId: string, pluginId: string) => {
+    setProjectDataPreview(null);
     const selectedPlugin = availableImportPlugins.find((plugin) => plugin.id === pluginId) ?? null;
     setProjectDataSelectedFiles((prev) =>
       prev.map((item) =>
         item.id === fileId
           ? {
               ...item,
-              recognizedPluginId: pluginId,
-              recognizedPluginName: selectedPlugin?.name ?? item.recognizedPluginName ?? null,
+              recognizedPluginId: pluginId || null,
+              recognizedPluginName: selectedPlugin?.name ?? null,
             }
           : item,
       ),
     );
   }, [availableImportPlugins]);
 
+  const handlePreviewProjectData = useCallback(async () => {
+    if (!projectId || projectDataSelectedFiles.length === 0) return;
+
+    setProjectDataPreviewLoading(true);
+    setProjectDataPreview(null);
+    onError(null);
+    onMessage(null);
+
+    try {
+      const pluginOverrides = projectDataSelectedFiles
+        .filter((item) => item.recognizedPluginId)
+        .map((item) => ({
+          path: (item.file as any).webkitRelativePath || item.file.name,
+          plugin_id: item.recognizedPluginId as string,
+        }));
+      const result = await projectDataApi.previewFiles(
+        projectId,
+        projectDataSelectedFiles.map((item) => item.file),
+        pluginOverrides,
+      );
+      setProjectDataPreview(result);
+      const totalRows = result.runs.reduce(
+        (sum, run) => sum + run.datasets.reduce((datasetSum, dataset) => datasetSum + Number(dataset.row_count || 0), 0),
+        0,
+      );
+      onMessage(
+        result.errors.length
+          ? 'Проверка завершена с ошибками: ' + result.errors.length + '. Запись в проект не выполнялась.'
+          : 'Проверка завершена: распознано строк ' + totalRows + '. Запись в проект не выполнялась.',
+      );
+    } catch (err: unknown) {
+      onError(
+        getRequestErrorMessage(
+          err,
+          'Не удалось выполнить предварительную проверку файлов',
+          'Предварительная проверка выполняется дольше обычного. Попробуйте уменьшить набор файлов.',
+        ),
+      );
+    } finally {
+      setProjectDataPreviewLoading(false);
+    }
+  }, [getRequestErrorMessage, onError, onMessage, projectDataSelectedFiles, projectId]);
   const handleUploadProjectData = useCallback(async () => {
     if (!projectId || projectDataSelectedFiles.length === 0) return;
 
@@ -372,6 +453,7 @@ export const useProjectDataAdmin = ({
       setProjectDataLastLoadResult(result);
       setProjectDataLoadReport(result.load_log ?? null);
       setProjectDataSelectedFiles([]);
+      setProjectDataPreview(null);
       await Promise.all([fetchProjectStats(), fetchCellStats()]);
     } catch (err: unknown) {
       onError(
@@ -455,6 +537,7 @@ export const useProjectDataAdmin = ({
     setProjectDataSelectedFiles([]);
     setProjectDataLoadReport(null);
     setProjectDataLastLoadResult(null);
+    setProjectDataPreview(null);
   }, [projectId]);
 
   return {
@@ -467,6 +550,8 @@ export const useProjectDataAdmin = ({
     projectStatsLoading,
     projectStatsError,
     projectDataLoading,
+    projectDataPreviewLoading,
+    projectDataPreview,
     projectDataClearing,
     projectDataLoadReport,
     projectDataLastLoadResult,
@@ -479,7 +564,11 @@ export const useProjectDataAdmin = ({
     importPluginForm,
     setImportPluginForm,
     importPluginSaving,
+    importPluginManaging,
     handleSaveImportPlugin,
+    handleInstallImportPlugin,
+    handleDeleteImportPlugin,
+    fetchImportPlugins,
     handleExportMetadataBundle,
     handleMetadataImportFile,
     cellStats,
@@ -493,6 +582,7 @@ export const useProjectDataAdmin = ({
     handleRemoveProjectDataFile,
     handleClearProjectDataSelection,
     handleChangeProjectDataFilePlugin,
+    handlePreviewProjectData,
     handleUploadProjectData,
     handleClearProjectData,
     handleEnrichCellTowersByAddress,

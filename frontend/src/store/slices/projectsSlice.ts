@@ -83,7 +83,11 @@ export const fetchProjects = createAsyncThunk(
       });
       
       // Убедимся, что возвращаем массив
-      const projects = Array.isArray(response.data) ? response.data : [];
+      const projects = Array.isArray(response.data) ? [...response.data].sort((left, right) => {
+        const leftTime = new Date(left.updated_at || left.created_at || 0).getTime();
+        const rightTime = new Date(right.updated_at || right.created_at || 0).getTime();
+        return rightTime - leftTime;
+      }) : [];
       return projects;  // Возвращаем сам массив, а не response
       
     } catch (error: any) {

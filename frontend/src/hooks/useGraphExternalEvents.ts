@@ -1,11 +1,11 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { MutableRefObject } from 'react';
 
 interface UseGraphExternalEventsArgs {
   networkRef: MutableRefObject<any>;
   nodesDataSetRef: MutableRefObject<any>;
   updateSelectionFromNetwork: () => void;
-  runBalancedLayoutForNodes: (nodeIds: string[]) => Promise<void>;
+  runAutoLayoutForNodes: (nodeIds: string[]) => Promise<void>;
   artifactId: number;
 }
 
@@ -13,7 +13,7 @@ export const useGraphExternalEvents = ({
   networkRef,
   nodesDataSetRef,
   updateSelectionFromNetwork,
-  runBalancedLayoutForNodes,
+  runAutoLayoutForNodes,
   artifactId,
 }: UseGraphExternalEventsArgs) => {
   const [pendingPluginNodeIds, setPendingPluginNodeIds] = useState<string[]>([]);
@@ -41,7 +41,7 @@ export const useGraphExternalEvents = ({
         }
 
         networkRef.current?.selectNodes(availableIds, false);
-        void runBalancedLayoutForNodes(availableIds).then(() => {
+        void runAutoLayoutForNodes(availableIds).then(() => {
           setPendingPluginNodeIds((prev) => prev.filter((id: string) => !availableIds.includes(id)));
         });
       };
@@ -51,7 +51,7 @@ export const useGraphExternalEvents = ({
 
     window.addEventListener('graph:run-physics-layout', handler as EventListener);
     return () => window.removeEventListener('graph:run-physics-layout', handler as EventListener);
-  }, [networkRef, nodesDataSetRef, runBalancedLayoutForNodes]);
+  }, [networkRef, nodesDataSetRef, runAutoLayoutForNodes]);
 
   useEffect(() => {
     const handler = (event: Event) => {

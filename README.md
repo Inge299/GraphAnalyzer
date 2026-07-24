@@ -227,3 +227,13 @@ py -m py_compile app\services\project_data_import_plugins.py app\services\projec
 - всё, что **исполняется**, лучше делать как плагин;
 - всё, что **настраивается**, лучше держать в метаданных;
 - UI должен показывать не техническую внутренность, а понятный сценарий работы пользователя.
+
+
+## Console Artifact Architecture
+
+The `console` artifact is the universal tabular execution result in GraphAnalyzer.
+
+- SQL functions and stored procedures should return `console` artifacts through a shared result contract.
+- Python plugins may also emit `console` artifacts using the same `tabs/result_sets/rows/columns` structure.
+- UI code should treat `console` as the interactive table-oriented artifact and avoid coupling the view to the executor type.
+- Executor-specific details should live in artifact metadata and the `executor` block inside `artifact.data`.

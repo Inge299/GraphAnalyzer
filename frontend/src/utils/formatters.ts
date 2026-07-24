@@ -6,15 +6,25 @@ export const formatValue = (value: any): string => {
   return String(value);
 };
 
-export const formatDate = (date: string) => {
-  return new Date(date).toLocaleString('ru-RU', {
+export const formatDateTime = (value: unknown): string => {
+  if (value === null || value === undefined || value === '') return '';
+  const date = new Date(String(value));
+  if (Number.isNaN(date.getTime())) return String(value);
+  const datePart = date.toLocaleDateString('ru-RU', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
   });
+  const timePart = date.toLocaleTimeString('ru-RU', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
+  return `${datePart} ${timePart}`;
 };
+
+export const formatDate = (date: string): string => formatDateTime(date);
 
 export const getTypeIcon = (type: string) => {
   const icons: Record<string, string> = {
@@ -40,6 +50,7 @@ export const getTypeIcon = (type: string) => {
 export const getNodeTypeColor = (type: string) => {
   const colors: Record<string, string> = {
     person: '#3B82F6',
+    msisdn: '#10B981',
     phone: '#10B981',
     location: '#EF4444',
     message: '#F59E0B',

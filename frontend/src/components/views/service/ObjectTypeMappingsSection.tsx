@@ -55,7 +55,7 @@ const ObjectTypeMappingsSection: React.FC<ObjectTypeMappingsSectionProps> = ({
               className="service-input service-mapping-input"
               value={mapping.graph_type}
               onChange={(event) => onUpdate(mapping.id, { graph_type: event.target.value })}
-              placeholder="person"
+              placeholder="msisdn"
             />
             <input
               className="service-input service-mapping-input"

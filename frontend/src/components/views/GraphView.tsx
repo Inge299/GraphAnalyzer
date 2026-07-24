@@ -1,4 +1,4 @@
-﻿// frontend/src/components/views/GraphView.tsx
+// frontend/src/components/views/GraphView.tsx
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useAppDispatch } from '../../store';
 import { fetchArtifacts } from '../../store/slices/artifactsSlice';
@@ -250,9 +250,9 @@ export const GraphView: React.FC<GraphViewProps> = ({
 
   const loadAnalysisProfiles = useCallback(async () => {
     try {
-      const response = (await consoleApi.profiles()) as ConsoleProfilesResponse;
+      const response = (await consoleApi.executors()) as ConsoleProfilesResponse;
       const nextProfiles = Array.isArray(response?.profiles)
-        ? response.profiles.filter((profile) => profile.is_active !== false)
+        ? response.profiles.filter((profile) => profile.is_active !== false && profile.hidden_from_menu !== true).sort((left, right) => (Number(left.menu_order || 0) - Number(right.menu_order || 0)) || left.name.localeCompare(right.name, 'ru'))
         : [];
       setAnalysisProfiles(nextProfiles);
       return nextProfiles;
@@ -1221,6 +1221,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
   const { handleAutoLayoutClick, handleBalancedLayoutClick } = useGraphLayoutActions({
     networkRef,
     nodesDataSetRef,
+    edgesDataSetRef,
     artifactDataRef,
     onNodeMove,
     onNodesMove,
@@ -1255,7 +1256,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
     networkRef,
     nodesDataSetRef,
     updateSelectionFromNetwork,
-    runBalancedLayoutForNodes: (nodeIds: string[]) => handleBalancedLayoutClick(false, nodeIds),
+    runAutoLayoutForNodes: (nodeIds: string[]) => handleAutoLayoutClick(nodeIds),
     artifactId: artifact.id,
   });
 

@@ -1,4 +1,4 @@
-﻿"""LLM plugin for rewriting existing document artifacts in-place."""
+"""LLM plugin for rewriting existing document artifacts in-place."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ class DocumentLLMRewritePlugin(PluginBase):
     name = "LLM: Правка документа"
     version = "0.1.1"
     description = "Редактирует текущий документ через LLM с сохранением в тот же артефакт"
-    menu_path = "AI/Document"
+    menu_path = "Старое/Документы"
     input_types = ["document"]
     output_types = ["document"]
     applicable_to = ["document"]

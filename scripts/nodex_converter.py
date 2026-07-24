@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 from __future__ import annotations
 
 import argparse
@@ -162,6 +162,7 @@ class BuildStats:
     rows_with_valid_start: int = 0
     rows_with_two_abonents: int = 0
     rows_location_only: int = 0
+    rows_with_non_phone_contact: int = 0
 
 
 def parse_args() -> argparse.Namespace:
@@ -242,18 +243,16 @@ def normalize_text(value: str) -> str:
 
 
 def normalize_phone(value: str) -> str:
+    """Normalize a subscriber number without converting service identifiers to digits."""
     text = normalize_text(value)
-    if not text:
+    if not text or not re.fullmatch(r"[0-9+().\s-]+", text):
         return ""
     digits = re.sub(r"\D+", "", text)
-    if not digits:
-        return ""
     if len(digits) == 11 and digits.startswith("8"):
-        return "7" + digits[1:]
-    if len(digits) == 10:
-        return "7" + digits
-    return digits
-
+        digits = "7" + digits[1:]
+    elif len(digits) == 10:
+        digits = "7" + digits
+    return digits if 8 <= len(digits) <= 13 else ""
 
 def normalize_imsi(value: str) -> str:
     digits = re.sub(r"\D+", "", normalize_text(value))
@@ -390,12 +389,12 @@ def iter_source_bytes(input_dir: Path) -> Iterable[tuple[str, bytes]]:
         if file_path.is_dir():
             continue
         suffix = file_path.suffix.lower()
-        if suffix == ".csv":
+        if suffix in {".csv", ".txt"}:
             yield str(file_path), file_path.read_bytes()
         elif suffix == ".zip":
             with zipfile.ZipFile(file_path) as zf:
                 for entry in zf.infolist():
-                    if entry.is_dir() or not entry.filename.lower().endswith(".csv"):
+                    if entry.is_dir() or Path(entry.filename).suffix.lower() not in {".csv", ".txt"}:
                         continue
                     with zf.open(entry) as fh:
                         yield f"{file_path}!{entry.filename}", fh.read()
@@ -496,6 +495,7 @@ def build_events_and_devices(
                 abon_num = normalize_phone(row.get("Номер абонента", ""))
                 contact_num = normalize_phone(row.get("Номер контакта", ""))
                 if not abon_num or not contact_num:
+                    stats.rows_with_non_phone_contact += 1
                     continue
                 stats.rows_with_two_abonents += 1
 
@@ -1028,6 +1028,7 @@ def write_manifest(
             "with_valid_start": stats.rows_with_valid_start,
             "with_two_abonents": stats.rows_with_two_abonents,
             "location_only_rows": stats.rows_location_only,
+            "non_phone_contact_rows": stats.rows_with_non_phone_contact,
             "events_kept": events_count,
             "events_after_dedup": clusters_count,
         },

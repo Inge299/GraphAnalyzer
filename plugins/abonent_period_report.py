@@ -1,4 +1,4 @@
-﻿
+
 """Plugin: period analysis for selected abonent nodes."""
 
 from __future__ import annotations
@@ -276,7 +276,7 @@ class AbonentPeriodReportPlugin(PluginBase):
     name = "Анализ средств связи (период)"
     version = "0.3.0"
     description = "Формирует документ анализа выбранных абонентских номеров за период"
-    menu_path = "Аналитика"
+    menu_path = "Анализ/Связи"
     input_types = ["graph"]
     output_types = ["document"]
     applicable_to = ["graph"]
@@ -310,7 +310,7 @@ class AbonentPeriodReportPlugin(PluginBase):
             if _node_id(n) not in ids:
                 continue
             t = _norm(n.get("type")).lower()
-            if t not in {"person", "abonent", "subscriber"}:
+            if t not in {"msisdn", "person", "abonent", "subscriber"}:
                 continue
             lbl = _node_label(n)
             if lbl:

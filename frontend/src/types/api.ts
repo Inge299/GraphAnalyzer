@@ -98,6 +98,37 @@ export interface ProjectDataLoadResponse {
   graph_artifact?: ApiArtifact | Record<string, any> | null;
 }
 
+export interface ProjectDataPreviewDataset {
+  id: string;
+  label: string;
+  row_count: number;
+  columns: string[];
+  sample_rows: Array<Record<string, unknown>>;
+}
+
+export interface ProjectDataPreviewResponse {
+  project_id: number;
+  dry_run: true;
+  write_performed: false;
+  files: Array<{
+    path: string;
+    size_bytes?: number;
+    plugin_id?: string | null;
+    plugin_name?: string | null;
+    score?: number | null;
+  }>;
+  runs: Array<{
+    plugin: { id: string; name: string; description?: string };
+    recognized_files: string[];
+    score: number;
+    datasets: ProjectDataPreviewDataset[];
+    manifest?: Record<string, unknown>;
+    converter_stdout?: string;
+    converter_stderr?: string;
+  }>;
+  warnings: string[];
+  errors: Array<{ path?: string; plugin_id?: string; stage: string; message: string }>;
+}
 export interface ProjectDataImportPlugin {
   id: string;
   name: string;
@@ -106,8 +137,18 @@ export interface ProjectDataImportPlugin {
   enabled: boolean;
   extensions: string[];
   recognition_hint: string;
+  version: string;
+  sdk_version: string;
+  config_schema: Record<string, unknown>;
+  capabilities: string[];
+  source: string;
+  removable: boolean;
 }
 
+export interface ProjectDataImportPluginInstallResponse {
+  filename: string;
+  plugins: ProjectDataImportPlugin[];
+}
 export interface MetadataBundle {
   version: number;
   exported_at_utc?: string;
@@ -244,6 +285,14 @@ export interface ConsoleProfile {
   name: string;
   description?: string;
   kind?: string;
+  executor_type?: string;
+  origin?: string;
+  menu_path?: string;
+  menu_order?: number;
+  hidden_from_menu?: boolean;
+  settings_updated_at?: string | null;
+  source?: string;
+  removable?: boolean;
   schema_name?: string;
   procedure_name?: string;
   source_id?: number;
@@ -259,6 +308,14 @@ export interface ConsoleProfile {
 
 export interface ConsoleProfilesResponse {
   profiles: ConsoleProfile[];
+}
+
+export interface ConsolePythonPluginsResponse {
+  plugins: ConsoleProfile[];
+}
+
+export interface ConsoleExecutorsResponse {
+  executors: ConsoleProfile[];
 }
 
 export interface ConsoleRefreshResponse {

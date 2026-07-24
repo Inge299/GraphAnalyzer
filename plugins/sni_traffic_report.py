@@ -15,7 +15,7 @@ class SNITrafficReportPlugin(PluginBase):
     name = "SNI: отчет по трафику"
     version = "0.1.0"
     description = "Анализирует CSV/ZIP трафика и создает документ + консоль"
-    menu_path = "Analysis/SNI"
+    menu_path = "Анализ/Трафик"
     plugin_scope = "global"
     input_types = ["graph", "document", "table", "console"]
     output_types = ["document", "console"]

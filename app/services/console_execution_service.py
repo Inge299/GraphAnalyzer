@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 import pymssql
 
 from app.models.console_registry import ConsoleDataSource, ConsoleProcedureProfile
+from app.services.console_artifact_service import normalize_console_artifact_data
 
 
 def _normalize_scalar(value: Any) -> Any:
@@ -388,17 +389,22 @@ async def execute_console_procedure(
     )
     tabs = _build_result_tabs(profile, result_sets)
     primary_tab = tabs[0] if tabs else {"columns": [], "rows": []}
-    return {
-        "profile_key": profile.key,
-        "profile_name": profile.display_name,
-        "source_key": source.key,
-        "source_name": source.name,
-        "executed_at": datetime.utcnow().isoformat(),
-        "tabs": tabs,
-        "active_tab_id": tabs[0]["id"] if tabs else None,
-        "columns": list(primary_tab.get("columns") or []),
-        "rows": list(primary_tab.get("rows") or []),
-    }
+    return normalize_console_artifact_data(
+        {
+            "profile_key": profile.key,
+            "profile_name": profile.display_name,
+            "source_key": source.key,
+            "source_name": source.name,
+            "executed_at": datetime.utcnow().isoformat(),
+            "tabs": tabs,
+            "active_tab_id": tabs[0]["id"] if tabs else None,
+            "columns": list(primary_tab.get("columns") or []),
+            "rows": list(primary_tab.get("rows") or []),
+        },
+        executor_type="sql_function",
+        executor_id=profile.key,
+        executor_name=profile.display_name,
+    )
 
 
 async def test_console_data_source_connection(

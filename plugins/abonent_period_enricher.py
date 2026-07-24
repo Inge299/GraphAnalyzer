@@ -126,7 +126,7 @@ class AbonentPeriodEnricherPlugin(PluginBase):
 
         target_node = self._find_person_node(nodes, phone_number)
         if target_node is None:
-            target_node = self.graph.find_or_create_node(nodes, "person", phone_number)
+            target_node = self.graph.find_or_create_node(nodes, "msisdn", phone_number)
 
         self._merge_attributes(target_node, phone_number, operator_lines, ownership_lines)
 
@@ -315,7 +315,7 @@ class AbonentPeriodEnricherPlugin(PluginBase):
         normalized = phone_number.strip().lower()
         for node in nodes:
             node_type = str(node.get("type") or "").strip().lower()
-            if node_type != "person":
+            if node_type not in {"msisdn", "person", "abonent", "subscriber"}:
                 continue
             current_label = str(node_label(node)).strip().lower()
             if current_label == normalized:

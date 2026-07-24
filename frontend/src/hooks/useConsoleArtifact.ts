@@ -53,7 +53,7 @@ export const useConsoleArtifact = ({
     if (!activeArtifact || activeArtifact.type !== 'console' || !currentProjectId) return;
 
     try {
-      const profileResponse = await consoleApi.profiles() as ConsoleProfilesResponse;
+      const profileResponse = await consoleApi.executors() as ConsoleProfilesResponse;
       const profiles = Array.isArray(profileResponse?.profiles) ? profileResponse.profiles : [];
       if (profiles.length === 0) {
         window.alert('Нет доступных профилей консоли');

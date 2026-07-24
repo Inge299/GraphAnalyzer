@@ -1,34 +1,32 @@
-﻿{
+{
   "profiles": [
     {
       "id": "communications",
-      "name": "Связи абонентов (проект)",
-      "description": "Данные из project_communications с фильтром по номеру.",
+      "name": "\u0421\u0432\u044f\u0437\u0438 \u0430\u0431\u043e\u043d\u0435\u043d\u0442\u043e\u0432 (\u043f\u0440\u043e\u0435\u043a\u0442)",
+      "description": "\u0414\u0430\u043d\u043d\u044b\u0435 \u0438\u0437 project_communications \u0441 \u0444\u0438\u043b\u044c\u0442\u0440\u043e\u043c \u043f\u043e \u043d\u043e\u043c\u0435\u0440\u0443.",
       "default_limit": 500,
       "params": [
-        { "key": "phone", "label": "Номер телефона (опц.)", "type": "string", "required": false },
-        { "key": "limit", "label": "Лимит строк", "type": "number", "required": false, "default": 500 }
+        { "key": "phone", "label": "\u041d\u043e\u043c\u0435\u0440 \u0442\u0435\u043b\u0435\u0444\u043e\u043d\u0430 (\u043e\u043f\u0446.)", "type": "string", "required": false },
+        { "key": "limit", "label": "\u041b\u0438\u043c\u0438\u0442 \u0441\u0442\u0440\u043e\u043a", "type": "number", "required": false, "default": 500 }
       ],
-      "defaults": {
-        "phone": "",
-        "limit": 500
-      },
-      "query": "SELECT id, abon1, abon2, operator1, operator2, address1, address2, time_start, time_end, calls_count, total_duration, calls_count_approx FROM project_communications WHERE project_id = :project_id AND (:phone = '' OR abon1 = :phone OR abon2 = :phone) ORDER BY time_start DESC NULLS LAST LIMIT :limit"
+      "defaults": { "phone": "", "limit": 500 },
+      "query": "SELECT id, abon1, abon2, operator1, operator2, address1, address2, time_start, time_end, calls_count, total_duration, calls_count_approx FROM project_communications WHERE project_id = :project_id AND (:phone = '' OR abon1 = :phone OR abon2 = :phone) ORDER BY time_start DESC NULLS LAST LIMIT :limit",
+      "menu_path": "\u0421\u0442\u0430\u0440\u043e\u0435/SQL-\u043a\u043e\u043d\u0441\u043e\u043b\u044c",
+      "menu_order": 90
     },
     {
       "id": "device_history",
-      "name": "Смены аппаратов (проект)",
-      "description": "Данные из project_device_history с фильтром по номеру.",
+      "name": "\u0421\u043c\u0435\u043d\u044b \u0430\u043f\u043f\u0430\u0440\u0430\u0442\u043e\u0432 (\u043f\u0440\u043e\u0435\u043a\u0442)",
+      "description": "\u0414\u0430\u043d\u043d\u044b\u0435 \u0438\u0437 project_device_history \u0441 \u0444\u0438\u043b\u044c\u0442\u0440\u043e\u043c \u043f\u043e \u043d\u043e\u043c\u0435\u0440\u0443.",
       "default_limit": 500,
       "params": [
-        { "key": "phone", "label": "Номер телефона (опц.)", "type": "string", "required": false },
-        { "key": "limit", "label": "Лимит строк", "type": "number", "required": false, "default": 500 }
+        { "key": "phone", "label": "\u041d\u043e\u043c\u0435\u0440 \u0442\u0435\u043b\u0435\u0444\u043e\u043d\u0430 (\u043e\u043f\u0446.)", "type": "string", "required": false },
+        { "key": "limit", "label": "\u041b\u0438\u043c\u0438\u0442 \u0441\u0442\u0440\u043e\u043a", "type": "number", "required": false, "default": 500 }
       ],
-      "defaults": {
-        "phone": "",
-        "limit": 500
-      },
-      "query": "SELECT id, abon, imsi, imei, period_start, period_end FROM project_device_history WHERE project_id = :project_id AND (:phone = '' OR abon = :phone) ORDER BY period_start DESC NULLS LAST LIMIT :limit"
+      "defaults": { "phone": "", "limit": 500 },
+      "query": "SELECT id, abon, imsi, imei, period_start, period_end FROM project_device_history WHERE project_id = :project_id AND (:phone = '' OR abon = :phone) ORDER BY period_start DESC NULLS LAST LIMIT :limit",
+      "menu_path": "\u0421\u0442\u0430\u0440\u043e\u0435/SQL-\u043a\u043e\u043d\u0441\u043e\u043b\u044c",
+      "menu_order": 90
     }
   ]
 }

@@ -17,10 +17,13 @@ import {
 } from './service/formOptions';
 import ObjectTypeMappingsSection from './service/ObjectTypeMappingsSection';
 import ProjectDataSection from './service/ProjectDataSection';
+import PythonConsolePluginsSection from './service/PythonConsolePluginsSection';
+import PythonGraphPluginsSection from './service/PythonGraphPluginsSection';
 import ServiceCategorySidebar from './service/ServiceCategorySidebar';
 import { useConsoleRegistryAdmin } from './service/useConsoleRegistryAdmin';
 import { useProcedureFormEditor } from './service/useProcedureFormEditor';
 import { useProjectDataAdmin } from './service/useProjectDataAdmin';
+import { formatDateTime } from '../../utils/formatters';
 import type { ProcedureParamFormItem, ProcedureResultSetFormItem, ServiceCategory } from './service/types';
 import './ServiceFunctionsView.css';
 
@@ -32,12 +35,6 @@ interface ServiceFunctionsViewProps {
   mode?: 'full' | 'project_data_only';
 }
 
-const formatDateTime = (value: unknown): string => {
-  if (!value) return '—';
-  const dt = new Date(String(value));
-  if (Number.isNaN(dt.getTime())) return String(value);
-  return dt.toLocaleString('ru-RU');
-};
 
 const isTimeoutError = (error: unknown): boolean => {
   if (error instanceof Error) {
@@ -338,6 +335,8 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({
             projectDataFilesInputRef={projectDataAdmin.projectDataFilesInputRef}
             projectDataFileInputId={projectDataAdmin.projectDataFileInputId}
             projectDataLoading={projectDataAdmin.projectDataLoading}
+            projectDataPreviewLoading={projectDataAdmin.projectDataPreviewLoading}
+            projectDataPreview={projectDataAdmin.projectDataPreview}
             projectDataClearing={projectDataAdmin.projectDataClearing}
             enrichLoading={projectDataAdmin.enrichLoading}
             projectStatsLoading={projectDataAdmin.projectStatsLoading}
@@ -356,6 +355,7 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({
             formatDateTime={formatDateTime}
             onLoadProjectDataFiles={(event) => void projectDataAdmin.handleLoadProjectDataFiles(event)}
             onRefreshStats={() => void projectDataAdmin.fetchProjectStats()}
+            onPreview={() => void projectDataAdmin.handlePreviewProjectData()}
             onUpload={() => void projectDataAdmin.handleUploadProjectData()}
             onClearSelection={projectDataAdmin.handleClearProjectDataSelection}
             onClearData={() => void projectDataAdmin.handleClearProjectData()}
@@ -371,9 +371,13 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({
             selectedPluginId={projectDataAdmin.selectedImportPluginId}
             pluginForm={projectDataAdmin.importPluginForm}
             saving={projectDataAdmin.importPluginSaving}
+            managing={projectDataAdmin.importPluginManaging}
             onSelectPlugin={projectDataAdmin.setSelectedImportPluginId}
             onPluginFormChange={(updates) => projectDataAdmin.setImportPluginForm((prev) => ({ ...prev, ...updates }))}
             onSavePlugin={() => void projectDataAdmin.handleSaveImportPlugin()}
+            onInstallPlugin={(file) => void projectDataAdmin.handleInstallImportPlugin(file)}
+            onDeletePlugin={() => void projectDataAdmin.handleDeleteImportPlugin()}
+            onRefresh={() => void projectDataAdmin.fetchImportPlugins()}
           />
         )}
 
@@ -391,6 +395,9 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({
 
         {activeCategory === 'console_registry' && (
           <div className="service-console-grid">
+            <PythonConsolePluginsSection onMessage={setMessage} onError={setError} />
+            <PythonGraphPluginsSection onMessage={setMessage} onError={setError} />
+
             <ConsoleDataSourcesSection
               consoleLoading={consoleAdmin.consoleLoading}
               consoleSaving={consoleAdmin.consoleSaving}

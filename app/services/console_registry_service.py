@@ -18,7 +18,7 @@ from app.models.console_registry import (
 DEFAULT_CONSOLE_OBJECT_TYPE_MAPPINGS: List[Dict[str, Any]] = [
     {
         "id": None,
-        "graph_type": "person",
+        "graph_type": "msisdn",
         "procedure_type": "MSISDN",
         "is_active": True,
         "position": 0,
@@ -28,7 +28,7 @@ DEFAULT_CONSOLE_OBJECT_TYPE_MAPPINGS: List[Dict[str, Any]] = [
     },
     {
         "id": None,
-        "graph_type": "device",
+        "graph_type": "imei",
         "procedure_type": "IMEI",
         "is_active": True,
         "position": 1,
@@ -38,7 +38,7 @@ DEFAULT_CONSOLE_OBJECT_TYPE_MAPPINGS: List[Dict[str, Any]] = [
     },
     {
         "id": None,
-        "graph_type": "sim",
+        "graph_type": "imsi",
         "procedure_type": "IMSI",
         "is_active": True,
         "position": 2,

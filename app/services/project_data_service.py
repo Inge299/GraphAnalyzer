@@ -1,6 +1,7 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import asyncio
+import csv
 import shutil
 import subprocess
 import sys
@@ -21,6 +22,7 @@ from app.services.project_data_import_utils import (
 from app.services.project_data_import_plugins import (
     ProjectDataImportExecutionResult,
     classify_project_data_import_files,
+    execute_project_data_import_plugin,
 )
 from app.services.project_data_import_pipeline import insert_converted_rows
 
@@ -128,11 +130,12 @@ async def _ensure_project_data_tables_impl(db: AsyncSession) -> None:
             """
         )
     )
+    await db.execute(text("DROP INDEX IF EXISTS uq_project_communications_dedup"))
     await db.execute(
         text(
             """
             CREATE UNIQUE INDEX IF NOT EXISTS uq_project_communications_dedup
-            ON project_communications (project_id, abon1, abon2, time_start, time_end, calls_count, total_duration);
+            ON project_communications (project_id, abon1, abon2, time_start);
             """
         )
     )
@@ -809,6 +812,126 @@ def _copy_input_group(source_dir: Path, target_dir: Path, files: list[dict[str, 
         shutil.copy2(source_path, target_path)
 
 
+def _preview_converted_csv(path: Path, limit: int = 10) -> dict[str, Any]:
+    if not path.exists():
+        return {"row_count": 0, "columns": [], "sample_rows": []}
+
+    row_count = 0
+    sample_rows: list[dict[str, Any]] = []
+    with path.open("r", encoding="utf-8-sig", newline="") as stream:
+        sample = stream.read(8192)
+        stream.seek(0)
+        try:
+            dialect = csv.Sniffer().sniff(sample, delimiters=",;\t")
+        except csv.Error:
+            dialect = csv.excel
+        reader = csv.DictReader(stream, dialect=dialect)
+        columns = [str(item or "") for item in (reader.fieldnames or [])]
+        for row in reader:
+            row_count += 1
+            if len(sample_rows) < limit:
+                sample_rows.append({str(key): value for key, value in row.items()})
+    return {"row_count": row_count, "columns": columns, "sample_rows": sample_rows}
+
+
+async def preview_project_data_from_upload(
+    project_id: int,
+    files: list[Any],
+    plugin_overrides: dict[str, str] | None = None,
+    sample_limit: int = 10,
+) -> dict[str, Any]:
+    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S_%f")
+    preview_root = DATA_ROOT / "previews" / f"project_{project_id}" / timestamp
+    source_dir = preview_root / "source"
+    output_dir = preview_root / "output"
+    errors: list[dict[str, Any]] = []
+    warnings: list[str] = []
+
+    try:
+        uploaded_files = await save_uploaded_files(source_dir, files)
+        matches = []
+        for input_file in uploaded_files:
+            input_path = str(input_file.get("path") or "")
+            override = {input_path: plugin_overrides[input_path]} if plugin_overrides and input_path in plugin_overrides else None
+            try:
+                matches.extend(classify_project_data_import_files(source_dir, [input_file], plugin_overrides=override))
+            except HTTPException as exc:
+                errors.append({"path": input_path, "stage": "recognition", "message": str(exc.detail)})
+
+        groups: dict[str, list[dict[str, Any]]] = {}
+        for match in matches:
+            source_file = next((item for item in uploaded_files if str(item.get("path") or "") == match.path), None)
+            if source_file is not None:
+                groups.setdefault(match.plugin_id, []).append(source_file)
+
+        runs: list[dict[str, Any]] = []
+        dataset_paths = (
+            ("communications", "Связи", "communications_path"),
+            ("device_history", "Устройства", "device_history_path"),
+            ("location_events", "Локации", "location_events_path"),
+            ("ip_bindings", "IP-привязки", "ip_bindings_path"),
+            ("user_msisdn_facts", "Пользователь <-> MSISDN", "user_msisdn_facts_path"),
+            ("ip_msisdn_facts", "IP <-> MSISDN", "ip_msisdn_facts_path"),
+            ("msisdn_device_facts", "MSISDN <-> Устройство", "msisdn_device_facts_path"),
+            ("msisdn_text_facts", "MSISDN и текст", "msisdn_text_facts_path"),
+        )
+
+        from app.services.project_data_import_plugins import IMPORT_PLUGIN_BY_ID
+
+        for plugin_id, grouped_files in groups.items():
+            match = next(item for item in matches if item.plugin_id == plugin_id)
+            plugin_source_dir = source_dir / "_plugin_groups" / plugin_id
+            plugin_output_dir = output_dir / plugin_id
+            _copy_input_group(source_dir, plugin_source_dir, grouped_files)
+            try:
+                result = execute_project_data_import_plugin(
+                    IMPORT_PLUGIN_BY_ID[plugin_id],
+                    plugin_source_dir,
+                    plugin_output_dir,
+                    dry_run=True,
+                )
+                datasets = []
+                for dataset_id, label, attr_name in dataset_paths:
+                    preview = _preview_converted_csv(getattr(result, attr_name), limit=max(1, min(sample_limit, 50)))
+                    datasets.append({"id": dataset_id, "label": label, **preview})
+                if not any(dataset["row_count"] > 0 for dataset in datasets):
+                    warnings.append(f"{result.plugin_name}: преобразование не сформировало ни одной строки")
+                runs.append(
+                    {
+                        "plugin": {"id": result.plugin_id, "name": result.plugin_name, "description": result.plugin_description},
+                        "recognized_files": [str(item.get("path") or "") for item in grouped_files],
+                        "score": match.score,
+                        "datasets": datasets,
+                        "manifest": read_manifest(result.manifest_path),
+                        "converter_stdout": result.stdout,
+                        "converter_stderr": result.stderr,
+                    }
+                )
+            except Exception as exc:
+                detail = exc.detail if isinstance(exc, HTTPException) else str(exc)
+                errors.append({"plugin_id": plugin_id, "stage": "conversion", "message": str(detail)})
+
+        return {
+            "project_id": project_id,
+            "dry_run": True,
+            "write_performed": False,
+            "files": [
+                {
+                    "path": item.get("path"),
+                    "size_bytes": item.get("size_bytes"),
+                    "plugin_id": next((match.plugin_id for match in matches if match.path == item.get("path")), None),
+                    "plugin_name": next((match.plugin_name for match in matches if match.path == item.get("path")), None),
+                    "score": next((match.score for match in matches if match.path == item.get("path")), None),
+                }
+                for item in uploaded_files
+            ],
+            "runs": runs,
+            "warnings": warnings,
+            "errors": errors,
+        }
+    finally:
+        shutil.rmtree(preview_root, ignore_errors=True)
+
 async def _load_project_data_from_collected_files(
     *,
     db: AsyncSession,
@@ -855,7 +978,11 @@ async def _load_project_data_from_collected_files(
 
         from app.services.project_data_import_plugins import IMPORT_PLUGIN_BY_ID
         import_plugin = IMPORT_PLUGIN_BY_ID[plugin_id]
-        converter_result: ProjectDataImportExecutionResult = import_plugin.run(plugin_source_dir, plugin_output_dir)
+        converter_result: ProjectDataImportExecutionResult = execute_project_data_import_plugin(
+            import_plugin,
+            plugin_source_dir,
+            plugin_output_dir,
+        )
         insert_result = await insert_converted_rows(
             db,
             project_id,

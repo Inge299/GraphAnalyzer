@@ -11,6 +11,7 @@ import type {
   ConsoleRefreshResponse,
 } from '../../types/api';
 import { normalizeConsoleTabs } from '../../utils/consoleResultTabs';
+import { formatDateTime } from '../../utils/formatters';
 
 type SortDir = 'asc' | 'desc';
 type ParamInputValues = Record<string, string | boolean>;
@@ -88,6 +89,20 @@ const normalize = (value: unknown): string => {
   if (Array.isArray(value)) return value.join(', ');
   if (typeof value === 'object') return JSON.stringify(value);
   return String(value);
+};
+
+const artifactTypeLabels: Record<string, string> = {
+  console: 'Консольный результат',
+  graph: 'Граф',
+  table: 'Таблица',
+  map: 'Карта',
+  report: 'Отчет',
+  text: 'Текстовый документ',
+};
+
+const getFriendlyArtifactType = (value: unknown): string => {
+  const key = String(value || '').trim().toLowerCase();
+  return artifactTypeLabels[key] || String(value || 'Артефакт');
 };
 
 const normalizeColumn = (value: string | ConsoleColumnData): ConsoleColumnData => {
@@ -401,6 +416,32 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
     [profiles, selectedProfileId],
   );
 
+  const visibleProfiles = useMemo(
+    () => profiles.filter((item) => item.hidden_from_menu !== true).sort((left, right) =>
+      (Number(left.menu_order || 0) - Number(right.menu_order || 0)) || left.name.localeCompare(right.name, 'ru')),
+    [profiles],
+  );
+
+  const resultTitle = useMemo(() => {
+    if (activeTab?.name) return String(activeTab.name);
+    return String(selectedProfile?.name || data.profile_name || 'Результат');
+  }, [activeTab?.name, selectedProfile?.name, data.profile_name]);
+
+  const resultDescription = useMemo(() => {
+    if (selectedProfile?.description) return String(selectedProfile.description);
+    if (selectedProfileId === 'project_artifacts_inventory') {
+      return 'Список всех артефактов текущего проекта с типом, названием, версией и временем последнего обновления.';
+    }
+    return '';
+  }, [selectedProfile?.description, selectedProfileId]);
+
+  const resultSummary = useMemo(() => {
+    if (selectedProfileId !== 'project_artifacts_inventory') return '';
+    const graphCount = rows.filter((row) => String(row.type || '').toLowerCase() === 'graph').length;
+    const consoleCount = rows.filter((row) => String(row.type || '').toLowerCase() === 'console').length;
+    const otherCount = Math.max(0, rows.length - graphCount - consoleCount);
+    return `\u0412\u0441\u0435\u0433\u043e \u0430\u0440\u0442\u0435\u0444\u0430\u043a\u0442\u043e\u0432: ${rows.length}. \u0413\u0440\u0430\u0444\u043e\u0432: ${graphCount}. \u041a\u043e\u043d\u0441\u043e\u043b\u0435\u0439: ${consoleCount}. \u041f\u0440\u043e\u0447\u0438\u0445: ${otherCount}.`;
+  }, [rows, selectedProfileId]);
   const selectedContextArtifact = useMemo(
     () => graphArtifacts.find((item) => String(item.id) === contextArtifactId) || null,
     [graphArtifacts, contextArtifactId],
@@ -415,7 +456,7 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
     setProfilesLoading(true);
     setError(null);
     try {
-      const response = await consoleApi.profiles() as ConsoleProfilesResponse;
+      const response = await consoleApi.executors() as ConsoleProfilesResponse;
       const nextProfiles = Array.isArray(response?.profiles) ? response.profiles : [];
       setProfiles(nextProfiles);
       if (!selectedProfileId && nextProfiles.length > 0) {
@@ -448,6 +489,19 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
       return baseline;
     });
   }, [artifact.metadata, data.profile_id, data.profile_key, selectedProfile]);
+
+  const canOpenArtifactFromRow = useCallback((row: Record<string, unknown>) => {
+    const rawId = row?.artifact_id;
+    const artifactId = typeof rawId === 'number' ? rawId : Number(rawId);
+    return Number.isFinite(artifactId) && Boolean(artifacts[artifactId]);
+  }, [artifacts]);
+
+  const handleOpenArtifact = useCallback((row: Record<string, unknown>) => {
+    const rawId = row?.artifact_id;
+    const artifactId = typeof rawId === 'number' ? rawId : Number(rawId);
+    if (!Number.isFinite(artifactId)) return;
+    dispatch(setCurrentArtifact(artifactId));
+  }, [dispatch]);
 
   const handleSort = (key: string) => {
     if (sortKey === key) {
@@ -521,7 +575,7 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
   );
 
   return (
-    <div className="console-view" style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+    <div className="console-view" style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0, overflowY: 'auto', overflowX: 'hidden', scrollbarGutter: 'stable' }}>
       <div
         style={{
           padding: '12px',
@@ -572,9 +626,9 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
               onChange={(event) => setSelectedProfileId(event.target.value)}
             >
               <option value="">Выбери процедуру</option>
-              {profiles.map((profile) => (
+              {visibleProfiles.map((profile) => (
                 <option key={String(profile.key || profile.id)} value={String(profile.key || profile.id)}>
-                  {profile.name} ({profile.key || profile.id})
+                  {profile.menu_path ? profile.menu_path + ' / ' : ''}{profile.name} ({profile.key || profile.id})
                 </option>
               ))}
             </select>
@@ -600,13 +654,43 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
         {selectedProfile && (
           <div style={{ fontSize: 12, color: '#475569', display: 'flex', flexDirection: 'column', gap: 4 }}>
             <div>
-              Процедура: <strong>{selectedProfile.schema_name || 'dbo'}.{selectedProfile.procedure_name || '-'}</strong>
+              {selectedProfile.executor_type === 'python' ? (
+                <>Плагин: <strong>{selectedProfile.name}</strong></>
+              ) : (
+                <>Процедура: <strong>{selectedProfile.schema_name || 'dbo'}.{selectedProfile.procedure_name || '-'}</strong></>
+              )}
               {selectedProfile.source_name && <span style={{ marginLeft: 12 }}>Источник: <strong>{selectedProfile.source_name}</strong></span>}
             </div>
             <div>
-              В выделение уйдут: <strong>{selectionContext.nodesCount}</strong> узлов и <strong>{selectionContext.edgesCount}</strong> связей
+              Выделено в контексте: <strong>{selectionContext.nodesCount}</strong> узл. и <strong>{selectionContext.edgesCount}</strong> связ.
               {selectedContextArtifact && <span style={{ marginLeft: 12 }}>Из графа: <strong>{selectedContextArtifact.name}</strong></span>}
             </div>
+          </div>
+        )}
+
+        {selectedProfile && (
+          <div
+            style={{
+              border: '1px solid #dbe3f0',
+              borderRadius: 10,
+              background: '#ffffff',
+              padding: 12,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 6,
+            }}
+          >
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{resultTitle}</div>
+            {resultDescription && (
+              <div style={{ fontSize: 12, color: '#475569' }}>{resultDescription}</div>
+            )}
+            <div style={{ fontSize: 12, color: '#334155' }}>
+              Активная вкладка: <strong>{activeTab?.name || 'Основная'}</strong>. Показано строк: <strong>{filteredRows.length}</strong>
+              {rows.length !== filteredRows.length && <span> из <strong>{rows.length}</strong></span>}.
+            </div>
+            {resultSummary && (
+              <div style={{ fontSize: 12, color: '#334155' }}>{resultSummary}</div>
+            )}
           </div>
         )}
 
@@ -631,7 +715,7 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {nodePreview.visible.map((node) => (
-                    <div key={node.id} style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: '8px 10px', fontSize: 12 }}>
+                    <div key={node.id} style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: '8px 10px', fontSize: 12, maxHeight: 180, overflow: 'auto', overflowWrap: 'anywhere' }}>
                       <div style={{ color: '#0f172a', fontWeight: 600 }}>{String(node.label || node.node_id || node.id)}</div>
                       <div style={{ color: '#475569', marginTop: 2 }}>
                         id: {node.id} · type: {node.type || '—'}
@@ -659,7 +743,7 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {edgePreview.visible.map((edge) => (
-                    <div key={edge.id} style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: '8px 10px', fontSize: 12 }}>
+                    <div key={edge.id} style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: '8px 10px', fontSize: 12, maxHeight: 180, overflow: 'auto', overflowWrap: 'anywhere' }}>
                       <div style={{ color: '#0f172a', fontWeight: 600 }}>{String(edge.label || `${edge.from} → ${edge.to}`)}</div>
                       <div style={{ color: '#475569', marginTop: 2 }}>
                         id: {edge.id} · {edge.from} → {edge.to} · type: {edge.type || '—'}
@@ -799,13 +883,13 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
             onClick={() => void handleExecute()}
             disabled={!selectedProfile || executing}
           >
-            {executing ? 'Выполнение...' : 'Выполнить процедуру'}
+            {executing ? 'Выполнение...' : 'Запустить'}
           </button>
         </div>
       </div>
 
       {tabs.length > 1 && (
-        <div style={{ display: 'flex', gap: 8, padding: '8px 12px', borderBottom: '1px solid #dbe3f0', overflowX: 'auto' }}>
+        <div style={{ display: 'flex', gap: 8, padding: '8px 12px', borderBottom: '1px solid #dbe3f0', overflowX: 'auto', flexShrink: 0 }}>
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -828,9 +912,11 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
         </div>
       )}
 
-      <div style={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
+      <div style={{ flex: '1 0 240px', overflow: 'auto', minHeight: 240 }}>
         {columns.length === 0 ? (
-          <div style={{ padding: 16, color: '#64748b' }}>Нет данных в активной вкладке. Выбери процедуру и выполни её.</div>
+          <div style={{ padding: 16, color: '#64748b' }}>
+            {'\u041d\u0435\u0442 \u0434\u0430\u043d\u043d\u044b\u0445 \u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0439 \u0432\u043a\u043b\u0430\u0434\u043a\u0435. \u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u043f\u043b\u0430\u0433\u0438\u043d \u0438\u043b\u0438 \u043f\u0440\u043e\u0446\u0435\u0434\u0443\u0440\u0443 \u0438 \u0437\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u0435 \u0435\u0435.'}
+          </div>
         ) : (
           <table className="bottom-table" style={{ minWidth: '100%', borderCollapse: 'collapse' }}>
             <thead>
@@ -842,10 +928,11 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
                   >
                     <button type="button" className="bottom-sort-btn" onClick={() => handleSort(column.key)}>
                       {column.label || column.key}
-                      {sortKey === column.key ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''}
+                      {sortKey === column.key ? (sortDir === 'asc' ? ' ^' : ' v') : ''}
                     </button>
                   </th>
                 ))}
+                <th style={{ width: '120px', minWidth: '120px' }}>{'\u0414\u0435\u0439\u0441\u0442\u0432\u0438\u044f'}</th>
               </tr>
               <tr>
                 {columns.map((column) => (
@@ -853,19 +940,38 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
                     <input
                       value={filters[column.key] || ''}
                       onChange={(event) => setFilters((prev) => ({ ...prev, [column.key]: event.target.value }))}
-                      placeholder="Фильтр"
+                      placeholder={'\u0424\u0438\u043b\u044c\u0442\u0440'}
                       style={{ width: '100%', padding: '2px 6px', border: '1px solid #cbd5e1', borderRadius: 4, fontSize: 11 }}
                     />
                   </th>
                 ))}
+                <th />
               </tr>
             </thead>
             <tbody>
               {filteredRows.map((row, index) => (
-                <tr key={`row-${index}`}>
+                <tr
+                  key={`row-${index}`}
+                  onClick={() => { if (canOpenArtifactFromRow(row)) handleOpenArtifact(row); }}
+                  style={canOpenArtifactFromRow(row) ? { cursor: 'pointer' } : undefined}
+                >
                   {columns.map((column) => (
-                    <td key={`row-${index}-${column.key}`}>{normalize(row[column.key])}</td>
+                    <td key={`row-${index}-${column.key}`}>{column.key === 'type' ? getFriendlyArtifactType(row[column.key]) : (['date', 'datetime'].includes(String(column.type || '').toLowerCase()) ? formatDateTime(row[column.key]) : normalize(row[column.key]))}</td>
                   ))}
+                  <td>
+                    {canOpenArtifactFromRow(row) ? (
+                      <button
+                        type="button"
+                        className="service-btn"
+                        onClick={() => handleOpenArtifact(row)}
+                        style={{ padding: '4px 8px', fontSize: 12 }}
+                      >
+                        {'\u041e\u0442\u043a\u0440\u044b\u0442\u044c'}
+                      </button>
+                    ) : (
+                      <span style={{ color: '#94a3b8', fontSize: 12 }}>-</span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

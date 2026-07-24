@@ -1,5 +1,5 @@
 import React from 'react';
-import type { ProjectDataImportPlugin, ProjectDataLoadResponse } from '../../../types/api';
+import type { ProjectDataImportPlugin, ProjectDataLoadResponse, ProjectDataPreviewResponse } from '../../../types/api';
 import type { ProjectDataSelectedFileItem } from './types';
 
 interface ProjectDataSectionProps {
@@ -7,6 +7,8 @@ interface ProjectDataSectionProps {
   projectDataFilesInputRef: React.Ref<HTMLInputElement>;
   projectDataFileInputId: string;
   projectDataLoading: boolean;
+  projectDataPreviewLoading: boolean;
+  projectDataPreview: ProjectDataPreviewResponse | null;
   projectDataClearing: boolean;
   enrichLoading: boolean;
   projectStatsLoading: boolean;
@@ -29,6 +31,7 @@ interface ProjectDataSectionProps {
   formatDateTime: (value: unknown) => string;
   onLoadProjectDataFiles: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onRefreshStats: () => void;
+  onPreview: () => void;
   onUpload: () => void;
   onClearSelection: () => void;
   onClearData: () => void;
@@ -42,6 +45,8 @@ const ProjectDataSection: React.FC<ProjectDataSectionProps> = ({
   projectDataFilesInputRef,
   projectDataFileInputId,
   projectDataLoading,
+  projectDataPreviewLoading,
+  projectDataPreview,
   projectDataClearing,
   enrichLoading,
   projectStatsLoading,
@@ -60,6 +65,7 @@ const ProjectDataSection: React.FC<ProjectDataSectionProps> = ({
   formatDateTime,
   onLoadProjectDataFiles,
   onRefreshStats,
+  onPreview,
   onUpload,
   onClearSelection,
   onClearData,
@@ -96,6 +102,14 @@ const ProjectDataSection: React.FC<ProjectDataSectionProps> = ({
         disabled={!projectId || projectStatsLoading || projectDataLoading || projectDataClearing}
       >
         {projectStatsLoading ? 'Обновление...' : 'Обновить статистику'}
+      </button>
+      <button
+        type="button"
+        className="service-btn"
+        onClick={onPreview}
+        disabled={!projectId || projectDataLoading || projectDataPreviewLoading || projectDataClearing || projectDataSelectedFiles.length === 0}
+      >
+        {projectDataPreviewLoading ? 'Проверка...' : 'Проверить без загрузки'}
       </button>
       <button
         type="button"
@@ -164,47 +178,160 @@ const ProjectDataSection: React.FC<ProjectDataSectionProps> = ({
             )}
           </div>
 
+          {projectDataPreview && (
+            <div className={`service-preview-summary ${projectDataPreview.errors.length > 0 ? 'error' : 'ready'}`}>
+              <div>
+                <strong>{projectDataPreview.errors.length > 0 ? 'Есть замечания перед загрузкой' : 'Файлы готовы к загрузке'}</strong>
+                <span>Проверка не изменила данные проекта.</span>
+              </div>
+              <div className="service-preview-summary-stats">
+                <span>{projectDataPreview.files.length} файл.</span>
+                <span>{projectDataPreview.errors.length} ошиб.</span>
+                <span>
+                  {projectDataPreview.runs.reduce(
+                    (total, run) => total + run.datasets.reduce((sum, dataset) => sum + dataset.row_count, 0),
+                    0,
+                  )} строк
+                </span>
+              </div>
+            </div>
+          )}
+
           {projectDataSelectedFiles.length > 0 && (
             <div className="service-upload-file-list">
-              {projectDataSelectedFiles.map((item) => (
-                <div key={item.id} className="service-upload-file-item">
-                  <div className="service-upload-file-main">
-                    <div className="service-upload-file-name">{item.name}</div>
-                    <div className="service-upload-file-meta">
-                      <span>{item.kind}</span>
-                      <span>{formatBytes(item.sizeBytes)}</span>
+              {projectDataSelectedFiles.map((item) => {
+                const itemPath = (item.file as File & { webkitRelativePath?: string }).webkitRelativePath || item.file.name;
+                const previewFile = projectDataPreview?.files.find((file) => file.path === itemPath) ?? null;
+                const previewRun = projectDataPreview?.runs.find((run) => run.recognized_files.includes(itemPath)) ?? null;
+                const fileErrors = projectDataPreview?.errors.filter(
+                  (error) => error.path === itemPath || (!error.path && previewRun && error.plugin_id === previewRun.plugin.id),
+                ) ?? [];
+                const runWarnings = projectDataPreview?.warnings.filter(
+                  (warning) => previewRun && warning.startsWith(`${previewRun.plugin.name}:`),
+                ) ?? [];
+                const isGroupOwner = Boolean(previewRun && previewRun.recognized_files[0] === itemPath);
+                const nonEmptyDatasets = previewRun?.datasets.filter((dataset) => dataset.row_count > 0) ?? [];
+                const displayedDatasets = isGroupOwner ? nonEmptyDatasets : [];
+                const status = !projectDataPreview
+                  ? { label: 'Не проверен', tone: 'idle' }
+                  : fileErrors.length > 0 || !previewFile?.plugin_id
+                    ? { label: 'Ошибка', tone: 'error' }
+                    : runWarnings.length > 0
+                      ? { label: 'С предупреждениями', tone: 'warning' }
+                      : { label: 'Готов', tone: 'ready' };
+
+                return (
+                  <div key={item.id} className={`service-upload-file-item preview-${status.tone}`}>
+                    <div className="service-upload-file-header">
+                      <div className="service-upload-file-main">
+                        <div className="service-upload-file-title-row">
+                          <div className="service-upload-file-name">{item.name}</div>
+                          <span className={`service-file-status ${status.tone}`}>{status.label}</span>
+                        </div>
+                        <div className="service-upload-file-meta">
+                          <span>{item.kind}</span>
+                          <span>{formatBytes(item.sizeBytes)}</span>
+                        </div>
+                        <label className="service-field">
+                          <span>Плагин импорта</span>
+                          <select
+                            className="service-select"
+                            value={item.recognizedPluginId ?? ''}
+                            onChange={(event) => onChangeFilePlugin(item.id, event.target.value)}
+                          >
+                            <option value="">Не выбран: формат не распознан</option>
+                            {availableImportPlugins.map((plugin) => (
+                              <option key={plugin.id} value={plugin.id}>
+                                {plugin.name}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      </div>
+                      <button
+                        type="button"
+                        className="service-upload-file-remove"
+                        onClick={() => onRemoveFile(item.id)}
+                        title="Убрать файл из списка"
+                      >
+                        Убрать
+                      </button>
                     </div>
-                    <div className="service-upload-file-meta">
-                      <label className="service-field">
-                        <span>Плагин импорта</span>
-                        <select
-                          className="service-select"
-                          value={item.recognizedPluginId ?? ''}
-                          onChange={(event) => onChangeFilePlugin(item.id, event.target.value)}
-                        >
-                          {availableImportPlugins.map((plugin) => (
-                            <option key={plugin.id} value={plugin.id}>
-                              {plugin.name}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    </div>
+
+                    {projectDataPreview && (
+                      <details className="service-file-preview-details" open={fileErrors.length > 0}>
+                        <summary>
+                          Результат проверки
+                          {previewRun && isGroupOwner && ` · ${nonEmptyDatasets.reduce((sum, dataset) => sum + dataset.row_count, 0)} строк`}
+                        </summary>
+                        <div className="service-file-preview-content">
+                          <div className="service-file-preview-plugin">
+                            <strong>{previewFile?.plugin_name || 'Формат не распознан'}</strong>
+                            {previewFile?.score != null && <span>Уверенность распознавания: {previewFile.score}</span>}
+                          </div>
+
+                          {fileErrors.length > 0 && (
+                            <div className="service-preview-messages error">
+                              {fileErrors.map((error, index) => <div key={index}>{error.message}</div>)}
+                            </div>
+                          )}
+
+                          {runWarnings.length > 0 && (
+                            <div className="service-preview-messages warning">
+                              {runWarnings.map((warning, index) => <div key={index}>{warning}</div>)}
+                            </div>
+                          )}
+
+                          {previewRun && previewRun.recognized_files.length > 1 && (
+                            <div className="service-file-preview-group">
+                              {isGroupOwner
+                                ? `\u041f\u0430\u043a\u0435\u0442\u043d\u044b\u0439 \u0437\u0430\u043f\u0443\u0441\u043a: ${previewRun.recognized_files.length} \u0444\u0430\u0439\u043b. \u0420\u0435\u0437\u0443\u043b\u044c\u0442\u0430\u0442\u044b \u0440\u0430\u0441\u0441\u0447\u0438\u0442\u0430\u043d\u044b \u0434\u043b\u044f \u0432\u0441\u0435\u0439 \u0433\u0440\u0443\u043f\u043f\u044b.`
+                                : `\u0412\u0445\u043e\u0434\u0438\u0442 \u0432 \u043f\u0430\u043a\u0435\u0442\u043d\u044b\u0439 \u0437\u0430\u043f\u0443\u0441\u043a. \u041e\u0431\u0449\u0438\u0439 \u0440\u0435\u0437\u0443\u043b\u044c\u0442\u0430\u0442 \u043f\u043e\u043a\u0430\u0437\u0430\u043d \u0432 \u043a\u0430\u0440\u0442\u043e\u0447\u043a\u0435: ${previewRun.recognized_files[0]}.`}
+                            </div>
+                          )}
+
+                          {displayedDatasets.length > 0 && (
+                            <div className="service-file-preview-datasets">
+                              {displayedDatasets.map((dataset) => (
+                                <details key={dataset.id} className="service-preview-dataset">
+                                  <summary>{dataset.label}: {dataset.row_count} строк</summary>
+                                  {isGroupOwner && dataset.sample_rows.length > 0 ? (
+                                    <div className="service-preview-table-wrap">
+                                      <table className="service-preview-table">
+                                        <thead>
+                                          <tr>{dataset.columns.slice(0, 12).map((column) => <th key={column}>{column}</th>)}</tr>
+                                        </thead>
+                                        <tbody>
+                                          {dataset.sample_rows.map((row, rowIndex) => (
+                                            <tr key={rowIndex}>
+                                              {dataset.columns.slice(0, 12).map((column) => (
+                                                <td key={column}>
+                                                  {typeof row[column] === 'object' ? JSON.stringify(row[column]) : String(row[column] ?? '')}
+                                                </td>
+                                              ))}
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  ) : previewRun && previewRun.recognized_files.length > 1 ? (
+                                    <p className="service-file-preview-note">
+                                      Образец строк показан в первой карточке пакетной группы: {previewRun.recognized_files[0]}.
+                                    </p>
+                                  ) : null}
+                                </details>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </details>
+                    )}
                   </div>
-                  <button
-                    type="button"
-                    className="service-upload-file-remove"
-                    onClick={() => onRemoveFile(item.id)}
-                    title="Убрать файл из списка"
-                  >
-                    Убрать
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
-
         {projectDataLastLoadResult && (
           <div className="service-summary-block">
             <div className="service-summary-header">

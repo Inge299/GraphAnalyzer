@@ -14,6 +14,12 @@ from app.models.artifact import Artifact, ArtifactVersion, ArtifactRelation
 from app.models.action import GraphAction
 from app.services.plugin_service import PluginService
 from app.services.plugin_contract import validate_plugin_execution
+from app.services.plugins_config_service import delete_plugin_config, update_plugin_ui_settings
+from plugins import delete_graph_plugin_file, install_graph_plugin_file
+from app.services.console_artifact_service import (
+    build_console_artifact_metadata,
+    normalize_console_artifact_data,
+)
 from app.services.history_cache import HistoryCache, get_redis_client
 
 logger = logging.getLogger(__name__)
@@ -73,6 +79,9 @@ class PluginMetadataResponse(BaseModel):
     params_schema: List[PluginParamSpecResponse] = Field(default_factory=list)
     output_strategy: Dict[str, Any] = Field(default_factory=dict)
     plugin_scope: str = "context"
+    is_active: bool = True
+    source: str = "builtin"
+    removable: bool = False
 
 
 class PluginUploadInputResponse(BaseModel):
@@ -166,6 +175,65 @@ async def list_plugins():
     return {"plugins": service.list_plugins()}
 
 
+@router.get("/python-plugins", response_model=PluginListResponse)
+async def list_python_graph_plugins():
+    service = PluginService()
+    return {"plugins": service.list_plugins()}
+
+
+@router.post("/python-plugins/install", response_model=PluginListResponse)
+async def install_python_graph_plugin(
+    file: UploadFile = File(...),
+    overwrite: bool = Form(True),
+):
+    filename = file.filename or ""
+    try:
+        content = await file.read(2 * 1024 * 1024 + 1)
+    finally:
+        await file.close()
+    if len(content) > 2 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Python plugin file exceeds 2 MB")
+    try:
+        installed_ids = install_graph_plugin_file(filename, content, overwrite=overwrite)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    service = PluginService()
+    return {"plugins": [service.metadata_for(plugin_id) for plugin_id in installed_ids]}
+
+
+@router.delete("/python-plugins/{plugin_id}")
+async def delete_python_graph_plugin(plugin_id: str):
+    try:
+        filename, affected_ids = delete_graph_plugin_file(plugin_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    for affected_id in affected_ids:
+        delete_plugin_config(affected_id)
+    return {"deleted": True, "plugin_id": plugin_id, "filename": filename, "affected_plugin_ids": affected_ids}
+
+
+@router.put("/python-plugins/{plugin_id}", response_model=PluginMetadataResponse)
+async def update_python_graph_plugin(plugin_id: str, payload: Dict[str, Any]):
+    service = PluginService()
+    try:
+        service.metadata_for(plugin_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Graph plugin '{plugin_id}' not found")
+    try:
+        menu_order = int(payload.get("menu_order") or 0)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="menu_order must be an integer")
+    update_plugin_ui_settings(
+        plugin_id,
+        is_active=bool(payload.get("is_active", True)),
+        is_visible=bool(payload.get("is_visible", True)),
+        menu_path=str(payload.get("menu_path") or "Analysis"),
+        menu_order=menu_order,
+    )
+    return service.metadata_for(plugin_id)
+
 @router.post("/applicable", response_model=ApplicablePluginsResponse)
 async def list_applicable_plugins(
     request: ApplicablePluginsRequest,
@@ -199,6 +267,8 @@ async def list_applicable_plugins(
     context = request.context or {}
 
     for metadata in all_plugins:
+        if metadata.get("is_active") is False:
+            continue
         try:
             plugin = service.get_plugin(metadata["id"])
             validate_plugin_execution(
@@ -228,6 +298,8 @@ async def get_plugin(plugin_id: str):
         plugin = service.get_plugin(plugin_id)
     except KeyError:
         raise HTTPException(status_code=404, detail="Plugin not found")
+    if not service.is_plugin_active(plugin_id):
+        raise HTTPException(status_code=400, detail="Plugin is inactive")
     return service._apply_domain_menu_overrides(plugin.to_metadata())
 
 
@@ -247,6 +319,8 @@ async def execute_plugin(
         plugin = service.get_plugin(plugin_id)
     except KeyError:
         raise HTTPException(status_code=404, detail="Plugin not found")
+    if not service.is_plugin_active(plugin_id):
+        raise HTTPException(status_code=400, detail="Plugin is inactive")
 
     result = await db.execute(
         select(Artifact).where(
@@ -334,13 +408,32 @@ async def execute_plugin(
             current_version = latest_version.version if latest_version else 1
             new_version_value = current_version + 1
 
+            normalized_spec_data = spec["data"]
+            normalized_spec_metadata = spec.get("metadata", {})
+            if spec.get("type") == "console":
+                normalized_spec_data = normalize_console_artifact_data(
+                    spec["data"] if isinstance(spec.get("data"), dict) else {},
+                    executor_type="python",
+                    executor_id=plugin_id,
+                    executor_name=getattr(plugin, "name", plugin_id),
+                    source_plugin_id=plugin_id,
+                )
+                normalized_spec_metadata = build_console_artifact_metadata(
+                    base_metadata=normalized_spec_metadata if isinstance(normalized_spec_metadata, dict) else {},
+                    profile_kind="python_plugin",
+                    profile_id=plugin_id,
+                    profile_name=getattr(plugin, "name", plugin_id),
+                    raw_params=request.params,
+                    tabs=normalized_spec_data.get("tabs") if isinstance(normalized_spec_data, dict) else [],
+                    source_plugin_id=plugin_id,
+                )
             before_state = target.data
-            target.data = spec["data"]
+            target.data = normalized_spec_data
             target.name = spec.get("name") or target.name
             target.description = spec.get("description", target.description)
             target.artifact_metadata = {
                 **(target.artifact_metadata or {}),
-                **(spec.get("metadata") or {}),
+                **(normalized_spec_metadata if isinstance(normalized_spec_metadata, dict) else {}),
                 "source_plugin": plugin_id,
             }
 
@@ -388,6 +481,26 @@ async def execute_plugin(
                 if spec.get("data") is None:
                     raise HTTPException(status_code=400, detail="Artifact data is required")
 
+                normalized_data = spec["data"]
+                normalized_metadata = spec.get("metadata", {})
+                if spec.get("type") == "console":
+                    normalized_data = normalize_console_artifact_data(
+                        spec["data"] if isinstance(spec.get("data"), dict) else {},
+                        executor_type="python",
+                        executor_id=plugin_id,
+                        executor_name=getattr(plugin, "name", plugin_id),
+                        source_plugin_id=plugin_id,
+                    )
+                    normalized_metadata = build_console_artifact_metadata(
+                        base_metadata=normalized_metadata if isinstance(normalized_metadata, dict) else {},
+                        profile_kind="python_plugin",
+                        profile_id=plugin_id,
+                        profile_name=getattr(plugin, "name", plugin_id),
+                        raw_params=request.params,
+                        tabs=normalized_data.get("tabs") if isinstance(normalized_data, dict) else [],
+                        source_plugin_id=plugin_id,
+                    )
+
                 normalized_name = str(spec["name"] or "").strip()
                 if not normalized_name:
                     raise HTTPException(status_code=400, detail="Artifact name is required")
@@ -407,8 +520,8 @@ async def execute_plugin(
                     type=spec["type"],
                     name=normalized_name,
                     description=spec.get("description"),
-                    data=spec["data"],
-                    artifact_metadata=spec.get("metadata", {})
+                    data=normalized_data,
+                    artifact_metadata=normalized_metadata if isinstance(normalized_metadata, dict) else {}
                 )
                 db.add(artifact)
                 await db.flush()

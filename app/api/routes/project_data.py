@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import json
 
@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import AsyncSessionLocal, get_db
 from app.models.project import Project
+from app.import_plugin_sdk import ImportPluginContractError
 from app.services.cell_tower_reference_service import (
     enrich_cell_tower_reference_from_project_addresses,
     get_cell_tower_reference_stats,
@@ -22,8 +23,11 @@ from app.services.project_data_service import (
     get_project_data_stats,
     load_project_data,
     load_project_data_from_upload,
+    preview_project_data_from_upload,
 )
 from app.services.project_data_import_plugins import (
+    delete_project_data_import_plugin,
+    install_project_data_import_plugin_file,
     list_project_data_import_plugins,
     update_project_data_import_plugin,
 )
@@ -130,7 +134,17 @@ class ProjectDataImportPluginResponse(BaseModel):
     enabled: bool
     extensions: list[str]
     recognition_hint: str
+    version: str
+    sdk_version: str
+    config_schema: dict
+    capabilities: list[str]
+    source: str
+    removable: bool
 
+
+class ProjectDataImportPluginInstallResponse(BaseModel):
+    filename: str
+    plugins: list[ProjectDataImportPluginResponse]
 
 class ProjectDataImportPluginUpdateRequest(BaseModel):
     name: str | None = None
@@ -196,6 +210,42 @@ async def load_data_for_project(
     )
 
 
+@router.post("/{project_id}/data/preview-upload", response_model=dict)
+async def preview_data_for_project_upload(
+    project_id: int,
+    files: list[UploadFile] = File(...),
+    plugin_overrides_json: str | None = Form(None),
+    sample_limit: int = Form(10),
+    db: AsyncSession = Depends(get_db),
+):
+    project = (await db.execute(select(Project).where(Project.id == project_id))).scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
+
+    plugin_overrides: dict[str, str] | None = None
+    if plugin_overrides_json:
+        try:
+            raw_payload = json.loads(plugin_overrides_json)
+        except json.JSONDecodeError as exc:
+            raise HTTPException(status_code=400, detail=f"Invalid plugin_overrides_json: {exc.msg}") from exc
+        if not isinstance(raw_payload, list):
+            raise HTTPException(status_code=400, detail="plugin_overrides_json must be a JSON array")
+        plugin_overrides = {}
+        for item in raw_payload:
+            if not isinstance(item, dict):
+                continue
+            path = str(item.get("path") or "").strip()
+            plugin_id = str(item.get("plugin_id") or "").strip()
+            if path and plugin_id:
+                plugin_overrides[path] = plugin_id
+
+    return await preview_project_data_from_upload(
+        project_id=project_id,
+        files=files,
+        plugin_overrides=plugin_overrides,
+        sample_limit=sample_limit,
+    )
+
 @router.post("/{project_id}/data/load-upload", response_model=ProjectDataLoadResponse)
 async def load_data_for_project_upload(
     project_id: int,
@@ -259,6 +309,33 @@ async def get_data_stats_for_project(
 async def list_data_import_plugins():
     return [ProjectDataImportPluginResponse(**plugin.__dict__) for plugin in list_project_data_import_plugins()]
 
+
+@router.post("/data/import-plugins/install", response_model=ProjectDataImportPluginInstallResponse)
+async def install_data_import_plugin(
+    file: UploadFile = File(...),
+    overwrite: bool = Form(True),
+):
+    filename = file.filename or ""
+    try:
+        content = await file.read(2 * 1024 * 1024 + 1)
+    finally:
+        await file.close()
+    if len(content) > 2 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Import plugin file exceeds 2 MB")
+    try:
+        installed = install_project_data_import_plugin_file(filename, content, overwrite=overwrite)
+    except ImportPluginContractError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return ProjectDataImportPluginInstallResponse(
+        filename=filename,
+        plugins=[ProjectDataImportPluginResponse(**plugin.__dict__) for plugin in installed],
+    )
+
+
+@router.delete("/data/import-plugins/{plugin_id}", response_model=dict)
+async def delete_data_import_plugin(plugin_id: str):
+    filename = delete_project_data_import_plugin(plugin_id)
+    return {"deleted": True, "plugin_id": plugin_id, "filename": filename}
 
 @router.put("/data/import-plugins/{plugin_id}", response_model=ProjectDataImportPluginResponse)
 async def update_data_import_plugin(

@@ -1,7 +1,8 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import math
-import random
+import random
+import re
 from datetime import datetime
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
@@ -38,6 +39,11 @@ def normalize_phone(value: Any) -> str:
     return digits or str(value or "").strip()
 
 
+def is_phone_value(value: Any) -> bool:
+    """Distinguish subscriber numbers from SIP/IMS service identifiers."""
+    raw = str(value or "").strip()
+    digits = "".join(ch for ch in raw if ch.isdigit())
+    return bool(re.fullmatch(r"[0-9+().\s-]+", raw)) and 8 <= len(digits) <= 13
 def parse_datetime(value: Any) -> Optional[datetime]:
     if isinstance(value, datetime):
         return value
@@ -132,7 +138,7 @@ class GraphPluginToolkit:
 
     @staticmethod
     def canonical_label(node_type: str, label: str) -> str:
-        if node_type == "person":
+        if node_type in {"msisdn", "person"}:
             return normalize_phone(label)
         return normalize_text(label)
 

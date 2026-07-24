@@ -183,7 +183,7 @@ def _normalize_domain_model(model: Dict[str, Any]) -> Dict[str, Any]:
 def _normalize_node_type(node_type: Dict[str, Any]) -> Dict[str, Any]:
     node_type_id = str(node_type.get("id") or "").strip()
     label = str(node_type.get("label") or node_type_id).strip()
-    icon = str(node_type.get("icon") or "circle").strip() or "circle"
+    icon = str(node_type.get("icon") or node_type_id or "circle").strip() or node_type_id or "circle"
 
     raw_visual = node_type.get("default_visual")
     visual = raw_visual if isinstance(raw_visual, dict) else {}

@@ -63,8 +63,8 @@ const edgeDirectionOptions = [
 const defaultNodeIconOptions = [
   'person_phone',
   'smartphone',
-  'sim',
-  'ip',
+  'imsi',
+  'ip_address',
   'mail',
   'social',
   'passport',
@@ -95,7 +95,7 @@ const createDefaultAttribute = (): DomainAttributeFormItem => ({
 const createDefaultNodeTypeForm = (): DomainNodeTypeForm => ({
   id: '',
   label: '',
-  icon: 'circle',
+  icon: '',
   color: '#475569',
   iconScale: '1.9',
   ringEnabled: false,
@@ -133,7 +133,7 @@ const mapAttributeToForm = (attribute: DomainAttributeDefinition): DomainAttribu
 const mapNodeTypeToForm = (nodeType: DomainNodeType): DomainNodeTypeForm => ({
   id: String(nodeType.id || '').trim(),
   label: String(nodeType.label || nodeType.id || '').trim(),
-  icon: String(nodeType.icon || 'circle').trim() || 'circle',
+  icon: String(nodeType.icon || nodeType.id || '').trim(),
   color: String(nodeType.default_visual?.color || '#475569'),
   iconScale: String(nodeType.default_visual?.iconScale ?? 1.9),
   ringEnabled: Boolean(nodeType.default_visual?.ringEnabled),
@@ -177,7 +177,7 @@ const buildAttributePayload = (items: DomainAttributeFormItem[]): DomainAttribut
 const buildNodeTypePayload = (form: DomainNodeTypeForm): DomainNodeType => ({
   id: form.id.trim(),
   label: form.label.trim() || form.id.trim(),
-  icon: form.icon.trim() || 'circle',
+  icon: form.icon.trim() || form.id.trim() || 'circle',
   default_visual: {
     color: form.color.trim() || '#475569',
     iconScale: Number.parseFloat(form.iconScale) || 1.9,
@@ -514,7 +514,7 @@ const GraphDomainEditor: React.FC<GraphDomainEditorProps> = () => {
                       <div className="service-column-grid">
                         <label className="service-field">
                           <span>Ключ</span>
-                          <input className="service-input" value={attribute.key} onChange={(event) => updateNodeAttribute(attribute.id, { key: event.target.value })} placeholder="phone" />
+                          <input className="service-input" value={attribute.key} onChange={(event) => updateNodeAttribute(attribute.id, { key: event.target.value })} placeholder="msisdn" />
                         </label>
                         <label className="service-field">
                           <span>Название</span>

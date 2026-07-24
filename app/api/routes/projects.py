@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy import desc
 from typing import Optional, List
 import logging
 
@@ -21,7 +22,10 @@ async def list_projects(
     """List all projects."""
     logger.info("GET /api/v1/projects called")
     result = await db.execute(
-        select(Project).offset(skip).limit(limit)
+        select(Project)
+        .order_by(desc(Project.updated_at), desc(Project.created_at), desc(Project.id))
+        .offset(skip)
+        .limit(limit)
     )
     projects = result.scalars().all()
     return projects

@@ -1,4 +1,4 @@
-﻿"""LLM plugin for composing document artifacts from project artifacts."""
+"""LLM plugin for composing document artifacts from project artifacts."""
 
 from __future__ import annotations
 
@@ -91,7 +91,7 @@ class DocumentLLMComposePlugin(PluginBase):
     name = "LLM: Сформировать документ"
     version = "0.1.2"
     description = "Создает артефакт документа по входным данным с помощью LLM"
-    menu_path = "AI/Document"
+    menu_path = "Старое/Документы"
     input_types = ["graph", "table", "document", "map", "chart"]
     output_types = ["document"]
     applicable_to = ["graph", "table", "document", "map", "chart"]

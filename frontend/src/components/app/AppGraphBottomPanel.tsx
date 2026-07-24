@@ -7,6 +7,7 @@ import AppGraphBottomSearch from './AppGraphBottomSearch';
 import AppGraphBottomToolbar from './AppGraphBottomToolbar';
 import type { AppGraphBottomPanelProps, GraphWorkbenchResultTab } from './graphBottomPanelTypes';
 import { formatGraphTableCellValue, graphBottomPanelLabels } from './graphBottomPanelUtils';
+import { formatDateTime } from '../../utils/formatters';
 import type { ColumnDefinition } from './AppGraphBottomTables';
 
 type ResultRunGroup = {
@@ -23,9 +24,7 @@ type ResultRunGroup = {
 
 const formatResultTimestamp = (value: string | null): string => {
   if (!value) return 'Время запуска не указано';
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleString('ru-RU');
+  return formatDateTime(value);
 };
 
 const formatResultTimeShort = (value: string | null): string => {

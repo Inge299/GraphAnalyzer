@@ -1,4 +1,4 @@
-﻿// frontend/src/services/api.ts
+// frontend/src/services/api.ts
 import axios from 'axios';
 import type {
   ApiPluginExecuteResponse,
@@ -15,6 +15,8 @@ import type {
   DomainNodeType,
   ConsoleObjectTypeMappingsResponse,
   ConsoleProfilesResponse,
+  ConsoleExecutorsResponse,
+  ConsolePythonPluginsResponse,
   ConsoleProfile,
   ConsoleRefreshResponse,
   PluginApplicableResponse,
@@ -22,8 +24,9 @@ import type {
   PluginListResponse,
   PluginUploadInputResponse,
   ProjectDataClearResponse,
-  ProjectDataImportPlugin,
+  ProjectDataImportPlugin, ProjectDataImportPluginInstallResponse,
   ProjectDataLoadResponse,
+  ProjectDataPreviewResponse,
   ProjectDataStats,
 } from '../types/api';
 import { layoutConfig } from '../config/layout';
@@ -129,7 +132,23 @@ export const pluginApi = {
       context,
       artifact_data_override: artifactDataOverride ?? undefined,
     }, { timeout: 300000 }).then(res => res.data),
-  uploadInput: (projectId: number, file: File) => {
+  graphPythonPlugins: () => api.get<PluginListResponse>('/api/v1/plugins/python-plugins').then(res => res.data),
+  installPythonGraphPlugin: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file, file.name);
+    formData.append('overwrite', 'true');
+    return api.post<PluginListResponse>('/api/v1/plugins/python-plugins/install', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 120000,
+    }).then(res => res.data);
+  },
+  deletePythonGraphPlugin: (pluginId: string) =>
+    api.delete<{ deleted: boolean; plugin_id: string; filename: string; affected_plugin_ids: string[] }>(
+      '/api/v1/plugins/python-plugins/' + encodeURIComponent(pluginId),
+      { timeout: 120000 },
+    ).then(res => res.data),
+  updatePythonGraphPlugin: (pluginId: string, payload: Record<string, any>) =>
+    api.put('/api/v1/plugins/python-plugins/' + encodeURIComponent(pluginId), payload).then(res => res.data),  uploadInput: (projectId: number, file: File) => {
     const formData = new FormData();
     formData.append('project_id', String(projectId));
     formData.append('file', file, file.name);
@@ -143,6 +162,20 @@ export const pluginApi = {
 export const projectDataApi = {
   listImportPlugins: () =>
     api.get<ProjectDataImportPlugin[]>('/api/v1/projects/data/import-plugins').then(res => res.data),
+  installImportPlugin: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file, file.name);
+    formData.append('overwrite', 'true');
+    return api.post<ProjectDataImportPluginInstallResponse>('/api/v1/projects/data/import-plugins/install', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 120000,
+    }).then(res => res.data);
+  },
+  deleteImportPlugin: (pluginId: string) =>
+    api.delete<{ deleted: boolean; plugin_id: string; filename: string }>(
+      `/api/v1/projects/data/import-plugins/${encodeURIComponent(pluginId)}`,
+      { timeout: 120000 },
+    ).then(res => res.data),
   updateImportPlugin: (pluginId: string, payload: Partial<ProjectDataImportPlugin>) =>
     api.put<ProjectDataImportPlugin>(`/api/v1/projects/data/import-plugins/${encodeURIComponent(pluginId)}`, payload, { timeout: 120000 }).then(res => res.data),
   load: (projectId: number, sourcePath: string) =>
@@ -151,7 +184,25 @@ export const projectDataApi = {
       { source_path: sourcePath },
       { timeout: layoutConfig.network.projectDataLoadTimeoutMs },
     ).then(res => res.data),
-  loadFromFiles: (
+  previewFiles: (
+    projectId: number,
+    files: File[],
+    pluginOverrides: Array<{ path: string; plugin_id: string }> = [],
+  ) => {
+    const formData = new FormData();
+    files.forEach((file) => {
+      const relativeName = (file as any).webkitRelativePath || file.name;
+      formData.append('files', file, relativeName);
+    });
+    formData.append('sample_limit', '10');
+    if (pluginOverrides.length > 0) {
+      formData.append('plugin_overrides_json', JSON.stringify(pluginOverrides));
+    }
+    return api.post<ProjectDataPreviewResponse>('/api/v1/projects/' + projectId + '/data/preview-upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: layoutConfig.network.projectDataLoadTimeoutMs,
+    }).then(res => res.data);
+  },  loadFromFiles: (
     projectId: number,
     files: File[],
     pluginOverrides: Array<{ path: string; plugin_id: string }> = [],
@@ -201,6 +252,24 @@ export const projectDataApi = {
 
 export const consoleApi = {
   profiles: () => api.get<ConsoleProfilesResponse>('/api/v1/console/profiles').then(res => res.data),
+  pythonPlugins: () => api.get<ConsolePythonPluginsResponse>('/api/v1/console/python-plugins').then(res => res.data),
+  installPythonPlugin: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file, file.name);
+    formData.append('overwrite', 'true');
+    return api.post<{ filename: string; plugins: ConsoleProfile[] }>('/api/v1/console/python-plugins/install', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 120000,
+    }).then(res => res.data);
+  },
+  deletePythonPlugin: (pluginId: string) =>
+    api.delete<{ deleted: boolean; plugin_id: string; filename: string; affected_plugin_ids: string[] }>(
+      '/api/v1/console/python-plugins/' + encodeURIComponent(pluginId),
+      { timeout: 120000 },
+    ).then(res => res.data),
+  updatePythonPlugin: (pluginId: string, payload: Record<string, any>) =>
+    api.put<ConsoleProfile>('/api/v1/console/python-plugins/' + encodeURIComponent(pluginId), payload).then(res => res.data),
+  executors: () => api.get<ConsoleExecutorsResponse>('/api/v1/console/executors').then(res => ({ profiles: res.data.executors })),
   dataSources: () => api.get<ConsoleDataSourcesResponse>('/api/v1/console/datasources').then(res => res.data),
   createDataSource: (payload: Record<string, any>) =>
     api.post<ConsoleDataSource>('/api/v1/console/datasources', payload, { timeout: 120000 }).then(res => res.data),

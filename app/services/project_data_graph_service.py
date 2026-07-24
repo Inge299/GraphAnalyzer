@@ -77,7 +77,7 @@ async def sync_project_data_graph_artifact(db: AsyncSession, project_id: int) ->
         nodes.append(
             {
                 "id": node_id,
-                "type": "person",
+                "type": "msisdn",
                 "label": phone,
                 "position_x": round(radius * math.cos(angle), 1),
                 "position_y": round(radius * math.sin(angle), 1),

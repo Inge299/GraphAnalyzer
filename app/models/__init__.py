@@ -8,6 +8,7 @@ from app.models.artifact import Artifact, ArtifactRelation, ArtifactVersion
 from app.models.console_registry import (
     ConsoleDataSource,
     ConsoleObjectTypeMapping,
+    ConsolePythonPluginSetting,
     ConsoleProcedureProfile,
     ConsoleProcedureParam,
     ConsoleResultSetMapping,
@@ -29,6 +30,7 @@ __all__ = [
     "ArtifactVersion",
     "ConsoleDataSource",
     "ConsoleObjectTypeMapping",
+    "ConsolePythonPluginSetting",
     "ConsoleProcedureProfile",
     "ConsoleProcedureParam",
     "ConsoleResultSetMapping",

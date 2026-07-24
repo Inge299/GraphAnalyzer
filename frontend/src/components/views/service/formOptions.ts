@@ -137,9 +137,9 @@ export const createDefaultResultSet = (): ProcedureResultSetFormItem => ({
 });
 
 export const defaultObjectTypeMappings: ObjectTypeMappingFormItem[] = [
-  { id: createLocalId('type-map'), graph_type: 'person', procedure_type: 'MSISDN', is_active: true },
+  { id: createLocalId('type-map'), graph_type: 'msisdn', procedure_type: 'MSISDN', is_active: true },
   { id: createLocalId('type-map'), graph_type: 'device', procedure_type: 'IMEI', is_active: true },
-  { id: createLocalId('type-map'), graph_type: 'sim', procedure_type: 'IMSI', is_active: true },
+  { id: createLocalId('type-map'), graph_type: 'imsi', procedure_type: 'IMSI', is_active: true },
 ];
 
 export const defaultDataSourceForm: DataSourceFormState = {

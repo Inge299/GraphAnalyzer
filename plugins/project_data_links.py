@@ -122,7 +122,7 @@ class UserMsisdnLinksPlugin(_ProjectDataLinkPluginBase):
                 None,
             )
             user_node = self.graph.find_or_create_node(nodes, "user_id", user_id_value, anchor_node=anchor)
-            msisdn_node = self.graph.find_or_create_node(nodes, "person", msisdn, anchor_node=user_node)
+            msisdn_node = self.graph.find_or_create_node(nodes, "msisdn", msisdn, anchor_node=user_node)
             event_time = format_datetime(row.get("event_time"))
             edge = self.graph.find_existing_edge(edges, node_id(user_node), node_id(msisdn_node), "user_msisdn_link")
             if edge is None:
@@ -173,7 +173,7 @@ class IpMsisdnLinksPlugin(_ProjectDataLinkPluginBase):
         graph = input_artifacts[0] if isinstance(input_artifacts[0], dict) else {}
         data = graph.get("data") if isinstance(graph.get("data"), dict) else {}
         selected_nodes = self.graph.selected_nodes(list(data.get("nodes") or []), context)
-        return any(str(node.get("type") or "").strip().lower() in PERSON_TYPES.union({"ip"}) for node in selected_nodes)
+        return any(str(node.get("type") or "").strip().lower() in PERSON_TYPES.union({"ip_address"}) for node in selected_nodes)
 
     async def execute(self, input_artifacts: List[Dict[str, Any]], params: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         graph = input_artifacts[0]
@@ -187,7 +187,7 @@ class IpMsisdnLinksPlugin(_ProjectDataLinkPluginBase):
         selected_ips = dedupe_preserve_order(
             normalize_text(node_label(node))
             for node in selected_nodes
-            if str(node.get("type") or "").strip().lower() == "ip"
+            if str(node.get("type") or "").strip().lower() == "ip_address"
         )
 
         rows = await self._load_rows(self._project_id(graph, params_dict), selected_msisdns, selected_ips)
@@ -207,8 +207,8 @@ class IpMsisdnLinksPlugin(_ProjectDataLinkPluginBase):
                 ),
                 None,
             )
-            ip_node = self.graph.find_or_create_node(nodes, "ip", ip_address, anchor_node=anchor)
-            msisdn_node = self.graph.find_or_create_node(nodes, "person", msisdn, anchor_node=ip_node)
+            ip_node = self.graph.find_or_create_node(nodes, "ip_address", ip_address, anchor_node=anchor)
+            msisdn_node = self.graph.find_or_create_node(nodes, "msisdn", msisdn, anchor_node=ip_node)
             event_time = format_datetime(row.get("event_time"))
             edge = self.graph.find_existing_edge(edges, node_id(ip_node), node_id(msisdn_node), "ip_msisdn_link")
             if edge is None:
@@ -259,7 +259,7 @@ class MsisdnDeviceLinksPlugin(_ProjectDataLinkPluginBase):
         graph = input_artifacts[0] if isinstance(input_artifacts[0], dict) else {}
         data = graph.get("data") if isinstance(graph.get("data"), dict) else {}
         selected_nodes = self.graph.selected_nodes(list(data.get("nodes") or []), context)
-        return any(str(node.get("type") or "").strip().lower() in PERSON_TYPES.union({"device_profile"}) for node in selected_nodes)
+        return any(str(node.get("type") or "").strip().lower() in PERSON_TYPES.union({"device"}) for node in selected_nodes)
 
     async def execute(self, input_artifacts: List[Dict[str, Any]], params: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         graph = input_artifacts[0]
@@ -273,7 +273,7 @@ class MsisdnDeviceLinksPlugin(_ProjectDataLinkPluginBase):
         selected_devices = dedupe_preserve_order(
             normalize_text(node_label(node))
             for node in selected_nodes
-            if str(node.get("type") or "").strip().lower() == "device_profile"
+            if str(node.get("type") or "").strip().lower() == "device"
         )
 
         rows = await self._load_rows(self._project_id(graph, params_dict), selected_msisdns, selected_devices)
@@ -293,8 +293,8 @@ class MsisdnDeviceLinksPlugin(_ProjectDataLinkPluginBase):
                 ),
                 None,
             )
-            msisdn_node = self.graph.find_or_create_node(nodes, "person", msisdn, anchor_node=anchor)
-            device_node = self.graph.find_or_create_node(nodes, "device_profile", device_info, anchor_node=msisdn_node)
+            msisdn_node = self.graph.find_or_create_node(nodes, "msisdn", msisdn, anchor_node=anchor)
+            device_node = self.graph.find_or_create_node(nodes, "device", device_info, anchor_node=msisdn_node)
             event_time = format_datetime(row.get("event_time"))
             edge = self.graph.find_existing_edge(edges, node_id(msisdn_node), node_id(device_node), "msisdn_device_link")
             if edge is None:
@@ -373,7 +373,7 @@ class MsisdnRecordedAsLinksPlugin(_ProjectDataLinkPluginBase):
                 grouped.setdefault(file_msisdn, []).append(row)
 
         for file_msisdn, group_rows in grouped.items():
-            owner_node = self.graph.find_or_create_node(nodes, "person", file_msisdn)
+            owner_node = self.graph.find_or_create_node(nodes, "msisdn", file_msisdn)
             lines = dedupe_preserve_order(
                 f"{normalize_phone(row.get('user_msisdn'))} {normalize_text(row.get('message_text'))}".strip()
                 for row in group_rows
@@ -467,8 +467,8 @@ class AddressBookLinksPlugin(_ProjectDataLinkPluginBase):
             contact_msisdn = normalize_phone(row.get("user_msisdn"))
             if not owner_msisdn or not contact_msisdn:
                 continue
-            owner_node = self.graph.find_or_create_node(nodes, "person", owner_msisdn)
-            contact_node = self.graph.find_or_create_node(nodes, "person", contact_msisdn, anchor_node=owner_node)
+            owner_node = self.graph.find_or_create_node(nodes, "msisdn", owner_msisdn)
+            contact_node = self.graph.find_or_create_node(nodes, "msisdn", contact_msisdn, anchor_node=owner_node)
             event_time = format_datetime(row.get("event_time"))
             edge = self.graph.find_existing_edge(edges, node_id(contact_node), node_id(owner_node), "address_book_link")
             if edge is None:

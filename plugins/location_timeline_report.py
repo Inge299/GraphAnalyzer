@@ -1,4 +1,4 @@
-﻿"""Plugin: sequential location timeline report for selected communication identifiers."""
+"""Plugin: sequential location timeline report for selected communication identifiers."""
 
 from __future__ import annotations
 
@@ -108,7 +108,7 @@ def _classify_identifier(value: str) -> str:
         return "imsi"
     if len(digits) == 14:
         return "imei"
-    return "phone"
+    return "msisdn"
 
 
 def _normalize_address(value: Any) -> str:
@@ -147,7 +147,7 @@ class LocationTimelineReportPlugin(PluginBase):
     name = "Местоположение: последовательность локаций"
     version = "0.1.0"
     description = "Формирует отчёт по последовательности локаций выбранных средств связи за период"
-    menu_path = "Аналитика"
+    menu_path = "Анализ/Гео"
     input_types = ["graph"]
     output_types = ["document"]
     applicable_to = ["graph"]

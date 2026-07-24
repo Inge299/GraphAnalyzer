@@ -1,4 +1,4 @@
-﻿"""
+"""
 Plugin that applies visual attributes to graph nodes and edges.
 """
 from typing import List, Dict, Any
@@ -10,7 +10,7 @@ class GraphStylerPlugin(PluginBase):
     name = "Graph Styler"
     version = "1.0.0"
     description = "Applies colors, icons, and labels based on node and edge types"
-    menu_path = "Transform/Graph"
+    menu_path = "Старое/Оформление"
     input_types = ["graph"]
     output_types = ["graph"]
     applicable_to = ["graph"]
@@ -31,7 +31,7 @@ class GraphStylerPlugin(PluginBase):
         type_styles = {
             "person": {"color": "#64b5f6", "icon": "@", "label_prefix": "Person"},
             "company": {"color": "#81c784", "icon": "#", "label_prefix": "Company"},
-            "phone": {"color": "#ffb74d", "icon": "P", "label_prefix": "Phone"},
+            "msisdn": {"color": "#ffb74d", "icon": "P", "label_prefix": "MSISDN"},
             "location": {"color": "#ba68c8", "icon": "L", "label_prefix": "Location"},
             "document": {"color": "#90a4ae", "icon": "D", "label_prefix": "Doc"}
         }

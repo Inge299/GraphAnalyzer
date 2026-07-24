@@ -1,37 +1,36 @@
 from __future__ import annotations
 
 import csv
+import importlib
 import json
+import logging
+import os
+import pkgutil
+import re
 import subprocess
 import sys
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Type
 
 from fastapi import HTTPException
 
+from app.import_plugin_sdk import (
+    ImportExecutionContext,
+    ImportPluginContractError,
+    ProjectDataImportExecutionResult,
+    ProjectDataImportPlugin,
+    validate_execution_result,
+    validate_plugin_manifest,
+)
 SCRIPT_PATH = Path("/app/scripts/nodex_converter.py")
 CONFIG_PATH = Path(__file__).resolve().parents[1] / "configuration" / "project_data_import_plugins.json"
-SUPPORTED_IMPORT_EXTENSIONS = {".csv", ".zip"}
+SUPPORTED_IMPORT_EXTENSIONS = {".csv", ".txt", ".zip"}
+IMPORT_PLUGIN_PACKAGE = "app.import_plugins"
+EXTERNAL_IMPORT_PLUGIN_DIR = Path(os.getenv("IMPORT_PLUGIN_DIR", "/app/data/import_plugins"))
 
-
-@dataclass
-class ProjectDataImportExecutionResult:
-    plugin_id: str
-    plugin_name: str
-    plugin_description: str
-    communications_path: Path
-    device_history_path: Path
-    location_events_path: Path
-    ip_bindings_path: Path
-    user_msisdn_facts_path: Path
-    ip_msisdn_facts_path: Path
-    msisdn_device_facts_path: Path
-    msisdn_text_facts_path: Path
-    manifest_path: Path
-    stdout: str
-    stderr: str
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -43,7 +42,12 @@ class ProjectDataImportPluginInfo:
     enabled: bool
     extensions: list[str]
     recognition_hint: str
-
+    version: str
+    sdk_version: str
+    config_schema: dict[str, Any]
+    capabilities: list[str]
+    source: str
+    removable: bool
 
 @dataclass
 class ProjectDataImportFileMatch:
@@ -52,34 +56,6 @@ class ProjectDataImportFileMatch:
     plugin_name: str
     plugin_description: str
     score: int
-
-
-class ProjectDataImportPlugin:
-    id = "base_import_plugin"
-    name = "Импорт данных проекта"
-    description = "Базовый импорт исходных данных проекта."
-    priority = 0
-    enabled = True
-    extensions: list[str] = [".csv"]
-    recognition_hint = ""
-
-    def info(self) -> ProjectDataImportPluginInfo:
-        merged = get_project_data_import_plugin_info(self.id)
-        return ProjectDataImportPluginInfo(
-            id=self.id,
-            name=merged["name"],
-            description=merged["description"],
-            priority=int(merged["priority"]),
-            enabled=bool(merged["enabled"]),
-            extensions=list(self.extensions),
-            recognition_hint=self.recognition_hint,
-        )
-
-    def recognize_file(self, source_dir: Path, input_file: dict[str, Any]) -> int:
-        raise NotImplementedError
-
-    def run(self, source_dir: Path, output_dir: Path) -> ProjectDataImportExecutionResult:
-        raise NotImplementedError
 
 
 def _decode_text(raw: bytes) -> str:
@@ -98,6 +74,19 @@ def _normalize_header_values(values: list[str]) -> set[str]:
         if str(value or "").strip()
     }
 
+
+def _is_identity_headers(headers: set[str]) -> bool:
+    return "\u0442\u0435\u0445\u0434\u0430\u043d\u043d\u044b\u0435, \u0438\u0434\u0435\u043d\u0442. \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f" in headers or {"\u0438\u0434. \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f", "\u0442\u0435\u043a\u0441\u0442 \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u044f"}.issubset(headers)
+
+
+def _is_traffic_headers(headers: set[str]) -> bool:
+    if headers & {"abon1", "identifier_type", "identifier_value"}:
+        return True
+    return "\u043d\u043e\u043c\u0435\u0440 \u0430\u0431\u043e\u043d\u0435\u043d\u0442\u0430" in headers and (
+        "\u043d\u043e\u043c\u0435\u0440 \u043a\u043e\u043d\u0442\u0430\u043a\u0442\u0430" in headers
+        or "\u0432\u0440\u0435\u043c\u044f \u043d\u0430\u0447\u0430\u043b\u0430 \u0441\u043e\u0435\u0434\u0438\u043d\u0435\u043d\u0438\u044f" in headers
+        or "\u0432\u0440\u0435\u043c\u044f \u043e\u043f\u0440\u0435\u0434\u0435\u043b\u0435\u043d\u0438\u044f \u043c\u0435\u0441\u0442\u043e\u043f\u043e\u043b\u043e\u0436\u0435\u043d\u0438\u044f" in headers
+    )
 
 def _read_csv_headers(path: Path) -> list[str]:
     try:
@@ -242,8 +231,161 @@ def get_project_data_import_plugin_info(plugin_id: str) -> dict[str, Any]:
     return merged
 
 
+def _plugin_info(plugin: ProjectDataImportPlugin) -> ProjectDataImportPluginInfo:
+    manifest = plugin.manifest()
+    merged = get_project_data_import_plugin_info(manifest.id)
+    return ProjectDataImportPluginInfo(
+        id=manifest.id,
+        name=str(merged["name"]),
+        description=str(merged["description"]),
+        priority=int(merged["priority"]),
+        enabled=bool(merged["enabled"]),
+        extensions=list(manifest.extensions),
+        recognition_hint=manifest.recognition_hint,
+        version=manifest.version,
+        sdk_version=manifest.sdk_version,
+        config_schema=dict(manifest.config_schema),
+        capabilities=list(manifest.capabilities),
+        source=str(getattr(plugin, "_installed_file", "builtin")),
+        removable=bool(getattr(plugin, "_installed_file", None)),
+    )
+
+def _load_import_plugin_file(path: Path) -> list[Type[ProjectDataImportPlugin]]:
+    module_name = f"_nodex_import_plugin_{path.stem}_{path.stat().st_mtime_ns}"
+    spec = importlib.util.spec_from_file_location(module_name, path)
+    if spec is None or spec.loader is None:
+        raise ImportPluginContractError(f"Cannot create module loader for {path.name}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    try:
+        spec.loader.exec_module(module)
+    except Exception:
+        sys.modules.pop(module_name, None)
+        raise
+
+    classes: list[Type[ProjectDataImportPlugin]] = []
+    for attr_name in dir(module):
+        attr = getattr(module, attr_name)
+        if (
+            isinstance(attr, type)
+            and issubclass(attr, ProjectDataImportPlugin)
+            and attr is not ProjectDataImportPlugin
+            and attr.__module__ == module.__name__
+            and not attr_name.startswith("_")
+        ):
+            setattr(attr, "_installed_file", str(path.resolve()))
+            classes.append(attr)
+    return classes
+
+def _discover_external_import_plugin_classes() -> list[Type[ProjectDataImportPlugin]]:
+    classes: list[Type[ProjectDataImportPlugin]] = []
+
+    try:
+        package = importlib.import_module(IMPORT_PLUGIN_PACKAGE)
+    except ModuleNotFoundError:
+        return classes
+    except Exception as exc:
+        logger.error("Failed to load import plugin package %s: %s", IMPORT_PLUGIN_PACKAGE, exc)
+        return classes
+
+    package_path = getattr(package, "__path__", None)
+    if package_path is None:
+        return classes
+
+    for _, module_name, _ in pkgutil.walk_packages(package_path, f"{IMPORT_PLUGIN_PACKAGE}."):
+        short_name = module_name.split(".")[-1]
+        if short_name.startswith("_"):
+            continue
+        try:
+            module = importlib.import_module(module_name)
+        except Exception as exc:
+            logger.error("Failed to load import plugin module %s: %s", module_name, exc)
+            continue
+
+        for attr_name in dir(module):
+            attr = getattr(module, attr_name)
+            if (
+                isinstance(attr, type)
+                and issubclass(attr, ProjectDataImportPlugin)
+                and attr is not ProjectDataImportPlugin
+                and not attr_name.startswith("_")
+            ):
+                classes.append(attr)
+
+    EXTERNAL_IMPORT_PLUGIN_DIR.mkdir(parents=True, exist_ok=True)
+    for plugin_path in sorted(EXTERNAL_IMPORT_PLUGIN_DIR.glob("*.py")):
+        if plugin_path.name.startswith("_"):
+            continue
+        try:
+            classes.extend(_load_import_plugin_file(plugin_path))
+        except Exception as exc:
+            logger.error("Failed to load installed import plugin %s: %s", plugin_path, exc)
+
+    return classes
+
+
+def _build_import_plugin_registry() -> tuple[list[ProjectDataImportPlugin], dict[str, ProjectDataImportPlugin]]:
+    builtin_classes: list[Type[ProjectDataImportPlugin]] = [
+        NodexArchiveBundleImportPlugin,
+        NodexIdentityFactsImportPlugin,
+        NodexTrafficGeoImportPlugin,
+    ]
+    plugin_classes = builtin_classes + _discover_external_import_plugin_classes()
+
+    plugins: list[ProjectDataImportPlugin] = []
+    plugin_by_id: dict[str, ProjectDataImportPlugin] = {}
+
+    for cls in plugin_classes:
+        try:
+            instance = cls()
+        except Exception as exc:
+            logger.error("Failed to initialize import plugin %s: %s", cls, exc)
+            continue
+
+        try:
+            manifest = instance.manifest()
+            validate_plugin_manifest(manifest)
+        except (ImportPluginContractError, TypeError, ValueError) as exc:
+            logger.error("Skipping invalid import plugin %s: %s", cls, exc)
+            continue
+
+        plugin_id = manifest.id
+        if not plugin_id:
+            logger.error("Skipping import plugin without id: %s", cls)
+            continue
+        if plugin_id in plugin_by_id:
+            logger.error("Skipping duplicate import plugin id: %s", plugin_id)
+            continue
+
+        plugin_by_id[plugin_id] = instance
+        plugins.append(instance)
+
+    return plugins, plugin_by_id
+
+
+def execute_project_data_import_plugin(
+    plugin: ProjectDataImportPlugin,
+    source_dir: Path,
+    output_dir: Path,
+    *,
+    options: dict[str, Any] | None = None,
+    dry_run: bool = False,
+) -> ProjectDataImportExecutionResult:
+    context = ImportExecutionContext(
+        source_dir=source_dir,
+        output_dir=output_dir,
+        options=options or {},
+        dry_run=dry_run,
+    )
+    try:
+        result = plugin.execute(context)
+        validate_execution_result(plugin, context, result)
+        return result
+    except ImportPluginContractError as exc:
+        raise HTTPException(status_code=400, detail=f"Import plugin contract error: {exc}") from exc
+
 class NodexBaseImportPlugin(ProjectDataImportPlugin):
-    extensions = [".csv", ".zip"]
+    extensions = [".csv", ".txt", ".zip"]
 
     def _run_nodex(self, source_dir: Path, output_dir: Path) -> ProjectDataImportExecutionResult:
         if not SCRIPT_PATH.exists():
@@ -304,7 +446,7 @@ class NodexBaseImportPlugin(ProjectDataImportPlugin):
         if any(not path.exists() for path in expected_outputs):
             raise HTTPException(status_code=500, detail="Nodex converter completed without expected output files")
 
-        info = self.info()
+        info = _plugin_info(self)
         return ProjectDataImportExecutionResult(
             plugin_id=info.id,
             plugin_name=info.name,
@@ -364,35 +506,13 @@ class NodexIdentityFactsImportPlugin(NodexBaseImportPlugin):
     recognition_hint = "CSV или ZIP с полем «Техданные, идент. пользователя»"
 
     def recognize_file(self, source_dir: Path, input_file: dict[str, Any]) -> int:
-        rel_path = str(input_file.get("path") or "")
-        lowered = rel_path.lower()
-        if any(token in lowered for token in ("взаимодейств", "техданные", "address_book", "identity")):
-            return 95
-
-        path = source_dir / rel_path
+        path = source_dir / str(input_file.get("path") or "")
         if path.suffix.lower() == ".zip":
-            best_score = -1
-            for internal_name, headers_list in _read_zip_csv_headers(path):
-                headers = _normalize_header_values(headers_list)
-                if "техданные, идент. пользователя" in headers:
+            for _, headers_list in _read_zip_csv_headers(path):
+                if _is_identity_headers(_normalize_header_values(headers_list)):
                     return 100
-                if "ид. пользователя" in headers and "текст сообщения" in headers:
-                    best_score = max(best_score, 90)
-                lowered_internal = internal_name.lower()
-                if any(token in lowered_internal for token in ("взаимодейств", "техданные", "address_book", "identity")):
-                    best_score = max(best_score, 88)
-            return best_score
-
-        if path.suffix.lower() != ".csv":
             return -1
-
-        headers = _normalize_header_values(_read_csv_headers(path))
-        if "техданные, идент. пользователя" in headers:
-            return 100
-        if "ид. пользователя" in headers and "текст сообщения" in headers:
-            return 85
-        return -1
-
+        return 100 if _is_identity_headers(_normalize_header_values(_read_csv_headers(path))) else -1
 
 class NodexTrafficGeoImportPlugin(NodexBaseImportPlugin):
     id = "nodex_traffic_geo"
@@ -402,43 +522,122 @@ class NodexTrafficGeoImportPlugin(NodexBaseImportPlugin):
     recognition_hint = "CSV или ZIP по traffic/geo-выгрузкам"
 
     def recognize_file(self, source_dir: Path, input_file: dict[str, Any]) -> int:
-        rel_path = str(input_file.get("path") or "")
-        lowered = rel_path.lower()
-        if any(token in lowered for token in ("communications", "device_history", "location_events", "ip_bindings", "traffic", "geo")):
-            return 90
-
-        path = source_dir / rel_path
+        path = source_dir / str(input_file.get("path") or "")
         if path.suffix.lower() == ".zip":
-            best_score = -1
-            for internal_name, headers_list in _read_zip_csv_headers(path):
-                headers = _normalize_header_values(headers_list)
-                if headers & {"abon1", "identifier_type", "identifier_value"}:
+            for _, headers_list in _read_zip_csv_headers(path):
+                if _is_traffic_headers(_normalize_header_values(headers_list)):
                     return 100
-                lowered_internal = internal_name.lower()
-                if any(token in lowered_internal for token in ("communications", "device_history", "location_events", "ip_bindings", "traffic", "geo")):
-                    best_score = max(best_score, 88)
-            return best_score
-
-        if path.suffix.lower() != ".csv":
             return -1
+        return 100 if _is_traffic_headers(_normalize_header_values(_read_csv_headers(path))) else -1
 
-        headers = _normalize_header_values(_read_csv_headers(path))
-        if headers & {"abon1", "identifier_type", "identifier_value"}:
-            return 100
-        return -1
+IMPORT_PLUGINS, IMPORT_PLUGIN_BY_ID = _build_import_plugin_registry()
 
 
-IMPORT_PLUGINS: list[ProjectDataImportPlugin] = [
-    NodexArchiveBundleImportPlugin(),
-    NodexIdentityFactsImportPlugin(),
-    NodexTrafficGeoImportPlugin(),
-]
-IMPORT_PLUGIN_BY_ID = {plugin.id: plugin for plugin in IMPORT_PLUGINS}
+def reload_project_data_import_plugins() -> list[ProjectDataImportPluginInfo]:
+    plugins, plugin_by_id = _build_import_plugin_registry()
+    IMPORT_PLUGINS[:] = plugins
+    IMPORT_PLUGIN_BY_ID.clear()
+    IMPORT_PLUGIN_BY_ID.update(plugin_by_id)
+    return list_project_data_import_plugins()
 
+
+def install_project_data_import_plugin_file(
+    filename: str,
+    content: bytes,
+    *,
+    overwrite: bool = True,
+) -> list[ProjectDataImportPluginInfo]:
+    safe_name = Path(filename or "").name
+    if safe_name != filename or not safe_name.endswith(".py"):
+        raise ImportPluginContractError("Plugin filename must be a plain .py filename")
+    if safe_name.startswith("_") or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{1,63}.py", safe_name):
+        raise ImportPluginContractError("Plugin filename contains unsupported characters")
+    if not content:
+        raise ImportPluginContractError("Plugin file is empty")
+
+    try:
+        source = content.decode("utf-8-sig")
+    except UnicodeDecodeError as exc:
+        raise ImportPluginContractError("Plugin file must use UTF-8 encoding") from exc
+    try:
+        compile(source, safe_name, "exec")
+    except SyntaxError as exc:
+        raise ImportPluginContractError(f"Python syntax error at line {exc.lineno}: {exc.msg}") from exc
+
+    EXTERNAL_IMPORT_PLUGIN_DIR.mkdir(parents=True, exist_ok=True)
+    target = (EXTERNAL_IMPORT_PLUGIN_DIR / safe_name).resolve()
+    root = EXTERNAL_IMPORT_PLUGIN_DIR.resolve()
+    if root not in target.parents:
+        raise ImportPluginContractError("Invalid plugin path")
+    if target.exists() and not overwrite:
+        raise ImportPluginContractError(f"Plugin file {safe_name} already exists")
+
+    check_path = root / f"_upload_check_{safe_name}"
+    try:
+        check_path.write_bytes(content)
+        classes = _load_import_plugin_file(check_path)
+        if not classes:
+            raise ImportPluginContractError("No ProjectDataImportPlugin class found in file")
+
+        manifests = []
+        seen_ids: set[str] = set()
+        for plugin_class in classes:
+            plugin = plugin_class()
+            manifest = plugin.manifest()
+            validate_plugin_manifest(manifest)
+            if manifest.id in seen_ids:
+                raise ImportPluginContractError(f"Duplicate plugin id {manifest.id!r} in uploaded file")
+            seen_ids.add(manifest.id)
+            existing = IMPORT_PLUGIN_BY_ID.get(manifest.id)
+            existing_file = getattr(existing, "_installed_file", None) if existing else None
+            if existing and (not existing_file or Path(existing_file).resolve() != target):
+                raise ImportPluginContractError(f"Plugin id {manifest.id!r} is already registered")
+            manifests.append(manifest)
+    finally:
+        check_path.unlink(missing_ok=True)
+
+    staging_path = root / f"_{safe_name}.part"
+    try:
+        staging_path.write_bytes(content)
+        staging_path.replace(target)
+    finally:
+        staging_path.unlink(missing_ok=True)
+
+    reload_project_data_import_plugins()
+    installed = []
+    for manifest in manifests:
+        plugin = IMPORT_PLUGIN_BY_ID.get(manifest.id)
+        if plugin is None:
+            raise ImportPluginContractError(f"Plugin {manifest.id!r} was not registered after installation")
+        installed.append(_plugin_info(plugin))
+    return installed
+
+
+def delete_project_data_import_plugin(plugin_id: str) -> str:
+    plugin = IMPORT_PLUGIN_BY_ID.get(plugin_id)
+    if plugin is None:
+        raise HTTPException(status_code=404, detail=f"Import plugin {plugin_id} not found")
+
+    installed_file = getattr(plugin, "_installed_file", None)
+    if not installed_file:
+        raise HTTPException(status_code=400, detail="Built-in import plugins cannot be deleted")
+
+    path = Path(installed_file).resolve()
+    root = EXTERNAL_IMPORT_PLUGIN_DIR.resolve()
+    if root not in path.parents:
+        raise HTTPException(status_code=400, detail="Plugin file is outside the managed directory")
+
+    path.unlink(missing_ok=True)
+    overrides = _load_overrides()
+    if plugin_id in overrides:
+        overrides.pop(plugin_id, None)
+        _save_overrides(overrides)
+    reload_project_data_import_plugins()
+    return path.name
 
 def list_project_data_import_plugins() -> list[ProjectDataImportPluginInfo]:
     return [
-        plugin.info()
+        _plugin_info(plugin)
         for plugin in sorted(
             IMPORT_PLUGINS,
             key=lambda item: (-int(get_project_data_import_plugin_info(item.id)["priority"]), item.name),
@@ -471,7 +670,7 @@ def update_project_data_import_plugin(
 
     overrides[plugin_id] = item
     _save_overrides(overrides)
-    return IMPORT_PLUGIN_BY_ID[plugin_id].info()
+    return _plugin_info(IMPORT_PLUGIN_BY_ID[plugin_id])
 
 
 def classify_project_data_import_files(
@@ -480,7 +679,7 @@ def classify_project_data_import_files(
     plugin_overrides: dict[str, str] | None = None,
 ) -> list[ProjectDataImportFileMatch]:
     matches: list[ProjectDataImportFileMatch] = []
-    enabled_plugins = [plugin for plugin in IMPORT_PLUGINS if plugin.info().enabled]
+    enabled_plugins = [plugin for plugin in IMPORT_PLUGINS if _plugin_info(plugin).enabled]
     enabled_plugin_ids = {plugin.id for plugin in enabled_plugins}
     overrides = plugin_overrides or {}
 
@@ -499,7 +698,7 @@ def classify_project_data_import_files(
                     status_code=400,
                     detail=f"Import plugin override is disabled: {override_plugin_id}",
                 )
-            info = override_plugin.info()
+            info = _plugin_info(override_plugin)
             matches.append(
                 ProjectDataImportFileMatch(
                     path=input_path,
@@ -523,7 +722,7 @@ def classify_project_data_import_files(
                 status_code=400,
                 detail=f"Не удалось распознать формат файла для импорта проекта: {input_path or '<unknown>'}",
             )
-        info = best_plugin.info()
+        info = _plugin_info(best_plugin)
         matches.append(
             ProjectDataImportFileMatch(
                 path=input_path,

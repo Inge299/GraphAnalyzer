@@ -158,3 +158,15 @@ class ConsoleObjectTypeMapping(Base):
     position = Column(Integer, nullable=False, default=0)
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
+
+class ConsolePythonPluginSetting(Base):
+    __tablename__ = "console_python_plugin_settings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    plugin_id = Column(String(100), nullable=False, unique=True, index=True)
+    is_active = Column(Boolean, nullable=False, default=True)
+    is_visible = Column(Boolean, nullable=False, default=True)
+    menu_path = Column(String(255), nullable=True)
+    menu_order = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime, server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)

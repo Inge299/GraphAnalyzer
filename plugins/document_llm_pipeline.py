@@ -1,4 +1,4 @@
-﻿"""LLM pipeline plugin for multi-step document generation."""
+"""LLM pipeline plugin for multi-step document generation."""
 
 from __future__ import annotations
 
@@ -163,7 +163,7 @@ class DocumentLLMPipelinePlugin(PluginBase):
     name = "LLM: Документ (многошаговый)"
     version = "0.1.1"
     description = "Формирует документ серией LLM-шагов (план, блоки, полировка)"
-    menu_path = "AI/Document"
+    menu_path = "Старое/Документы"
     input_types = ["graph", "table", "document", "map", "chart"]
     output_types = ["document"]
     applicable_to = ["graph", "table", "document", "map", "chart"]

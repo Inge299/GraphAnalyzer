@@ -37,7 +37,7 @@ export const useDomainModelVisuals = () => {
           if (!id) return;
           const visual = node?.default_visual || {};
           nodeMap[id] = {
-            icon: String(node?.icon || ''),
+            icon: String(node?.icon || id || ''),
             color: String(visual.color || '#3b82f6'),
             iconScale: Number(visual.iconScale ?? 2),
             ringEnabled: Boolean(visual.ringEnabled ?? true),

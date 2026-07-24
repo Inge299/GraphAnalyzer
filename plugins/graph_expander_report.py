@@ -12,7 +12,7 @@ class GraphExpanderReportPlugin(PluginBase):
     name = "Graph Expander + Report"
     version = "1.3.0"
     description = "Adds annotated nodes/edges with visuals and generates a connections report"
-    menu_path = "Transform/Graph"
+    menu_path = "Старое/Эксперименты"
     input_types = ["graph"]
     output_types = ["graph", "document"]
     applicable_to = ["graph"]
@@ -35,16 +35,16 @@ class GraphExpanderReportPlugin(PluginBase):
         rules = get_graph_rules()
 
         anchor_id = None
-        anchor_type = "person"
+        anchor_type = "msisdn"
         anchor_node: Optional[Dict[str, Any]] = None
         if nodes:
             anchor_node = nodes[0]
             anchor_id = node_id(anchor_node) or anchor_node.get("id")
-            anchor_type = str(anchor_node.get("type") or "person")
+            anchor_type = str(anchor_node.get("type") or "msisdn")
 
         run_index = len(edges) + 1
         templates = (
-            {"type": "phone", "color": "#60a5fa", "icon": "smartphone", "label": f"New entity A {run_index}"},
+            {"type": "msisdn", "color": "#60a5fa", "icon": "smartphone", "label": f"New entity A {run_index}"},
             {"type": "person", "color": "#34d399", "icon": "person_phone", "label": f"New entity B {run_index}"},
         )
 

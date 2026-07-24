@@ -1,3 +1,4 @@
+import { formatDateTime } from '../../utils/formatters';
 import { getGraphEdgeId, getGraphNodeId } from '../../hooks/graphTableTypes';
 
 export const graphBottomPanelLabels = {
@@ -15,7 +16,8 @@ export const graphBottomPanelLabels = {
 export const formatGraphTableCellValue = (value: unknown): string => {
   if (Array.isArray(value)) return value.join(', ');
   if (value === null || value === undefined) return '';
-  return String(value);
+  const text = String(value);
+  return /^\d{4}-\d{2}-\d{2}(?:T|\s)\d{2}:\d{2}/.test(text) ? formatDateTime(text) : text;
 };
 
 export const buildSearchText = (parts: unknown[]): string =>
