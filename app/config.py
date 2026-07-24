@@ -1,4 +1,4 @@
-﻿# app/config.py
+# app/config.py
 from typing import List
 from pydantic_settings import BaseSettings
 from pydantic import validator
@@ -73,6 +73,14 @@ class Settings(BaseSettings):
     LLM_TEMPERATURE_ANALYZE: float = 0.1
     LLM_TEMPERATURE_DRAFT: float = 0.3
     LLM_TEMPERATURE_EDIT: float = 0.2
+
+    # Geocoding. The public endpoint is suitable only for explicit, low-volume
+    # lookups; point this setting to the internal Nominatim instance in production.
+    GEOCODER_ENABLED: bool = False
+    GEOCODER_BASE_URL: str = "https://nominatim.openstreetmap.org"
+    GEOCODER_USER_AGENT: str = "Nodex/0.1"
+    GEOCODER_TIMEOUT_SECONDS: int = 10
+    GEOCODER_MIN_INTERVAL_SECONDS: float = 1.0
 
     class Config:
         env_file = ".env"

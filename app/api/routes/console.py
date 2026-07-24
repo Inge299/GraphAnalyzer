@@ -284,7 +284,7 @@ def _replace_result_sets(profile: ConsoleProcedureProfile, items: List[Dict[str,
         result_set = ConsoleResultSetMapping(
             result_index=result_index,
             result_key=str(item.get("result_key") or item.get("key") or f"result_{result_index}").strip() or f"result_{result_index}",
-            display_name=str(item.get("name") or item.get("display_name") or f"Результат {result_index}").strip() or f"Результат {result_index}",
+            display_name=str(item.get("name") or item.get("display_name") or f"Р В Р’В Р В Р’ВµР В Р’В·Р РЋРЎвЂњР В Р’В»Р РЋР Р‰Р РЋРІР‚С™Р В Р’В°Р РЋРІР‚С™ {result_index}").strip() or f"Р В Р’В Р В Р’ВµР В Р’В·Р РЋРЎвЂњР В Р’В»Р РЋР Р‰Р РЋРІР‚С™Р В Р’В°Р РЋРІР‚С™ {result_index}",
             is_visible=bool(item.get("visible", True)),
             position=int(item.get("position") or index),
         )
@@ -358,6 +358,68 @@ async def _load_console_artifact(db: AsyncSession, project_id: int, artifact_id:
     if str(artifact.type or "") != "console":
         raise HTTPException(status_code=400, detail="Artifact type must be 'console'")
     return artifact
+
+
+async def _upsert_derived_artifacts(
+    db: AsyncSession,
+    *,
+    project_id: int,
+    source_artifact: Artifact,
+    descriptors: Any,
+) -> list[Dict[str, Any]]:
+    """Persist derived artifacts returned by a console executor.
+
+    The source console is the stable key, so rerunning the plugin updates its
+    previous map instead of filling the project with duplicate maps.
+    """
+    if not isinstance(descriptors, list):
+        return []
+    created: list[Dict[str, Any]] = []
+    for descriptor in descriptors:
+        if not isinstance(descriptor, dict) or descriptor.get("type") != "map":
+            continue
+        name = str(descriptor.get("name") or "").strip()
+        data = descriptor.get("data") if isinstance(descriptor.get("data"), dict) else {}
+        if not name:
+            continue
+        result = await db.execute(
+            select(Artifact).where(Artifact.project_id == project_id, Artifact.type == "map")
+        )
+        target = next(
+            (
+                item
+                for item in result.scalars().all()
+                if isinstance(item.artifact_metadata, dict)
+                and item.artifact_metadata.get("source_console_artifact_id") == source_artifact.id
+            ),
+            None,
+        )
+        metadata = {
+            "source_console_artifact_id": source_artifact.id,
+            "source_plugin_id": descriptor.get("source_plugin_id"),
+            "map_provider": data.get("provider"),
+        }
+        if target is None:
+            target = Artifact(
+                project_id=project_id,
+                type="map",
+                name=name,
+                description=descriptor.get("description"),
+                data=data,
+                artifact_metadata=metadata,
+            )
+            db.add(target)
+            await db.flush()
+        else:
+            target.name = name
+            target.description = descriptor.get("description")
+            target.data = data
+            target.artifact_metadata = {**(target.artifact_metadata or {}), **metadata}
+            target.updated_at = datetime.utcnow()
+            version = await _get_current_artifact_version(db, target.id)
+            db.add(ArtifactVersion(artifact_id=target.id, version=version + 1, data=target.data, changed_by="console_derived_artifact"))
+        created.append({"id": target.id, "type": target.type, "name": target.name})
+    return created
 
 
 @profiles_router.get("/executors", response_model=Dict[str, Any])
@@ -837,6 +899,12 @@ async def refresh_console_artifact(
             source_plugin_id=python_executor.id,
         )
         tabs = next_data.get("tabs") if isinstance(next_data.get("tabs"), list) else []
+        derived_artifacts = await _upsert_derived_artifacts(
+            db,
+            project_id=project_id,
+            source_artifact=artifact,
+            descriptors=execution_result.get("derived_artifacts"),
+        )
 
         artifact.data = next_data
         artifact.artifact_metadata = build_console_artifact_metadata(
@@ -850,6 +918,8 @@ async def refresh_console_artifact(
             tabs=tabs,
             source_plugin_id=python_executor.id,
         )
+        if derived_artifacts:
+            artifact.artifact_metadata["derived_artifacts"] = derived_artifacts
     else:
         legacy_profile = _get_legacy_profile(profile_key)
         if not legacy_profile:
