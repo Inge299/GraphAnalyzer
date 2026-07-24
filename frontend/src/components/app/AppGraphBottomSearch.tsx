@@ -131,7 +131,7 @@ export const AppGraphBottomSearch = ({
             aria-label="\u0421\u0431\u0440\u043e\u0441\u0438\u0442\u044c \u0444\u0438\u043b\u044c\u0442\u0440\u044b"
             title="\u0421\u0431\u0440\u043e\u0441\u0438\u0442\u044c \u0444\u0438\u043b\u044c\u0442\u0440\u044b"
           >
-            \u0421\u0431\u0440\u043e\u0441\u0438\u0442\u044c
+            {'\u0421\u0431\u0440\u043e\u0441\u0438\u0442\u044c'}
           </button>
         ) : null}
       </div>

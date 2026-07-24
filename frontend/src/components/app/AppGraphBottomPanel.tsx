@@ -22,6 +22,13 @@ type ResultRunGroup = {
   tabs: GraphWorkbenchResultTab[];
 };
 
+type ResultDateFilterMode = 'before' | 'after' | 'between';
+
+type ResultDateFilter = {
+  mode: ResultDateFilterMode;
+  from: string;
+  to: string;
+};
 const formatResultTimestamp = (value: string | null): string => {
   if (!value) return 'Время запуска не указано';
   return formatDateTime(value);
@@ -41,6 +48,18 @@ const compareResultCellValues = (left: unknown, right: unknown): number =>
     { sensitivity: 'base', numeric: true },
   );
 
+const parseResultDateTime = (value: unknown): number | null => {
+  const source = formatGraphTableCellValue(value).trim();
+  if (!source) return null;
+  const ruMatch = source.match(/^(\d{2})\.(\d{2})\.(\d{4})(?:,?\s+(\d{2}):(\d{2})(?::(\d{2}))?)?$/);
+  if (ruMatch) {
+    const [, day, month, year, hours = '0', minutes = '0', seconds = '0'] = ruMatch;
+    const result = new Date(Number(year), Number(month) - 1, Number(day), Number(hours), Number(minutes), Number(seconds));
+    return Number.isNaN(result.getTime()) ? null : result.getTime();
+  }
+  const result = new Date(source);
+  return Number.isNaN(result.getTime()) ? null : result.getTime();
+};
 const escapeCsvCell = (value: unknown): string => {
   const text = formatGraphTableCellValue(value);
   return `"${text.replace(/"/g, '""')}"`;
@@ -154,6 +173,8 @@ export const AppGraphBottomPanel = ({
   const [resultsSearchQuery, setResultsSearchQuery] = useState('');
   const [isResultColumnsOpen, setIsResultColumnsOpen] = useState(false);
   const [hiddenResultColumnKeys, setHiddenResultColumnKeys] = useState<string[]>([]);
+  const [resultFilters, setResultFilters] = useState<Record<string, string>>({});
+  const [resultDateFilters, setResultDateFilters] = useState<Record<string, ResultDateFilter>>({});
 
   const clearFilters = () => {
     setSearchQuery('');
@@ -263,6 +284,8 @@ export const AppGraphBottomPanel = ({
   useEffect(() => {
     setResultSortKey('');
     setResultSortDir('asc');
+    setResultFilters({});
+    setResultDateFilters({});
   }, [activeResultId]);
 
   const activeResultTab = useMemo<GraphWorkbenchResultTab | null>(
@@ -280,16 +303,19 @@ export const AppGraphBottomPanel = ({
   };
 
   const resultColumns = useMemo<ColumnDefinition[]>(
-    () => (activeResultTab?.columns || []).map((column) => ({
-      key: column.key,
-      label: column.label || column.key,
-      sortKey: column.key,
-      isActive: resultSortKey === column.key,
-      sortDir: resultSortDir,
-      onSort: handleResultSort,
-      minWidth: 120,
-      defaultWidth: column.width ?? 180,
-    })),
+    () => (activeResultTab?.columns || []).map((column) => {
+      const isDateTime = ['date', 'datetime'].includes(String(column.type || '').toLowerCase());
+      return {
+        key: column.key,
+        label: column.label || column.key,
+        sortKey: column.key,
+        isActive: resultSortKey === column.key,
+        sortDir: resultSortDir,
+        onSort: handleResultSort,
+        minWidth: isDateTime ? 388 : 120,
+        defaultWidth: isDateTime ? Math.max(Number(column.width || 0), 388) : (column.width ?? 180),
+      };
+    }),
     [activeResultTab?.columns, resultSortDir, resultSortKey],
   );
 
@@ -328,14 +354,50 @@ export const AppGraphBottomPanel = ({
     handleResizeReset: handleResultResizeReset,
   } = useResizableColumns(resultWidthsStorageKey, resultColumns);
 
-  const sortedResultRows = useMemo(() => {
+  const resultDateColumnKeys = useMemo(
+    () => new Set((activeResultTab?.columns || [])
+      .filter((column) => ['date', 'datetime'].includes(String(column.type || '').toLowerCase()))
+      .map((column) => column.key)),
+    [activeResultTab?.columns],
+  );
+
+  const filteredResultRows = useMemo(() => {
     if (!activeResultTab) return [];
-    if (!resultSortKey) return activeResultTab.rows;
-    return [...activeResultTab.rows].sort((left, right) => {
+    const textFilters = Object.entries(resultFilters)
+      .filter(([key, value]) => !resultDateColumnKeys.has(key) && value.trim() !== '')
+      .map(([key, value]) => [key, value.trim().toLowerCase()] as const);
+    const dateFilters = Object.entries(resultDateFilters).filter(([, filter]) =>
+      filter.mode === 'between' ? Boolean(filter.from || filter.to) : Boolean(filter.from),
+    );
+    if (!textFilters.length && !dateFilters.length) return activeResultTab.rows;
+    return activeResultTab.rows.filter((row) =>
+      textFilters.every(([key, value]) => formatGraphTableCellValue(row[key]).toLowerCase().includes(value)) &&
+      dateFilters.every(([key, filter]) => {
+        const rowTime = parseResultDateTime(row[key]);
+        if (rowTime === null) return false;
+        const from = parseResultDateTime(filter.from);
+        const to = parseResultDateTime(filter.to);
+        if (filter.mode === 'before') return from === null || rowTime <= from;
+        if (filter.mode === 'after') return from === null || rowTime >= from;
+        return (from === null || rowTime >= from) && (to === null || rowTime <= to);
+      }),
+    );
+  }, [activeResultTab, resultDateColumnKeys, resultDateFilters, resultFilters]);
+
+  const clearResultFilters = () => {
+    setResultFilters({});
+    setResultDateFilters({});
+  };
+
+  const hasResultRowFilters = Object.values(resultFilters).some((value) => value.trim() !== '') ||
+    Object.values(resultDateFilters).some((filter) => filter.mode === 'between' ? Boolean(filter.from || filter.to) : Boolean(filter.from));
+  const sortedResultRows = useMemo(() => {
+    if (!resultSortKey) return filteredResultRows;
+    return [...filteredResultRows].sort((left, right) => {
       const result = compareResultCellValues(left[resultSortKey], right[resultSortKey]);
       return resultSortDir === 'asc' ? result : -result;
     });
-  }, [activeResultTab, resultSortDir, resultSortKey]);
+  }, [filteredResultRows, resultSortDir, resultSortKey]);
 
   const toggleResultColumnVisibility = (columnKey: string) => {
     setHiddenResultColumnKeys((prev) => (
@@ -665,6 +727,10 @@ export const AppGraphBottomPanel = ({
                           </div>
                         </div>
 
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, fontSize: 12, color: '#475569' }}>
+                          <span>{'\u041f\u043e\u043a\u0430\u0437\u0430\u043d\u043e'}: {filteredResultRows.length} {'\u0438\u0437'} {activeResultTab.rows.length}</span>
+                          {hasResultRowFilters && <button type="button" className="bottom-panel-search-clear" onClick={clearResultFilters}>{'\u0421\u0431\u0440\u043e\u0441\u0438\u0442\u044c'}</button>}
+                        </div>
                         {visibleResultColumns.length === 0 ? (
                           <div className="bottom-panel-results-placeholder-copy">Все колонки скрыты. Покажите нужные через меню «Колонки».</div>
                         ) : activeResultTab.columns.length === 0 ? (
@@ -689,6 +755,42 @@ export const AppGraphBottomPanel = ({
                                       renderSortIndicator={renderSortIndicator}
                                     />
                                   ))}
+                                </tr>
+                                <tr>
+                                  {visibleResultColumns.map((column) => {
+                                    if (resultDateColumnKeys.has(column.key)) {
+                                      const filter = resultDateFilters[column.key] || { mode: 'between' as ResultDateFilterMode, from: '', to: '' };
+                                      const isPeriod = filter.mode === 'between';
+                                      const setFilter = (updates: Partial<ResultDateFilter>) => setResultDateFilters((prev) => ({
+                                        ...prev,
+                                        [column.key]: { ...filter, ...updates },
+                                      }));
+                                      const inputStyle: React.CSSProperties = { width: 148, minWidth: 148, padding: '2px 4px', border: '1px solid #cbd5e1', borderRadius: 4, fontSize: 11, boxSizing: 'border-box' };
+                                      return (
+                                        <th key={`filter-${column.key}`} style={{ width: resultColumnWidths[column.key], minWidth: resultColumnWidths[column.key] }}>
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: 4, width: 'max-content' }}>
+                                            <select value={filter.mode} onChange={(event) => setFilter({ mode: event.target.value as ResultDateFilterMode })} style={{ width: 86, minWidth: 86, padding: '2px 4px', border: '1px solid #cbd5e1', borderRadius: 4, fontSize: 11 }}>
+                                              <option value="before">{'\u0414\u043e'}</option>
+                                              <option value="after">{'\u041f\u043e\u0441\u043b\u0435'}</option>
+                                              <option value="between">{'\u0412 \u043f\u0435\u0440\u0438\u043e\u0434'}</option>
+                                            </select>
+                                            <input type="datetime-local" value={filter.from} onChange={(event) => setFilter({ from: event.target.value })} style={inputStyle} />
+                                            {isPeriod && <><span style={{ color: '#64748b' }}>{'\u2014'}</span><input type="datetime-local" value={filter.to} onChange={(event) => setFilter({ to: event.target.value })} style={inputStyle} /></>}
+                                          </div>
+                                        </th>
+                                      );
+                                    }
+                                    return (
+                                      <th key={`filter-${column.key}`} style={{ width: resultColumnWidths[column.key], minWidth: resultColumnWidths[column.key] }}>
+                                        <input
+                                          value={resultFilters[column.key] || ''}
+                                          onChange={(event) => setResultFilters((prev) => ({ ...prev, [column.key]: event.target.value }))}
+                                          placeholder={'\u0424\u0438\u043b\u044c\u0442\u0440'}
+                                          style={{ width: '100%', minWidth: 90, padding: '2px 6px', border: '1px solid #cbd5e1', borderRadius: 4, fontSize: 11, boxSizing: 'border-box' }}
+                                        />
+                                      </th>
+                                    );
+                                  })}
                                 </tr>
                               </thead>
                               <tbody>
