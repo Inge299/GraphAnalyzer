@@ -364,6 +364,7 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [dateFilters, setDateFilters] = useState<Record<string, DateFilterValue>>({});
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
+  const [locationTopTab, setLocationTopTab] = useState<'params' | 'map'>('map');
 
   const [profiles, setProfiles] = useState<ConsoleProfile[]>([]);
   const [profilesLoading, setProfilesLoading] = useState(false);
@@ -657,7 +658,14 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
           </button>
         </div>
 
-        {(message || error) && (
+                {isLocationTimeline && (
+          <div style={{ display: 'flex', gap: 8, borderBottom: '1px solid #dbe3f0', paddingBottom: 8 }}>
+            {([['map', 'Map'], ['params', 'Params']] as const).map(([id, label]) => (
+              <button key={id} type="button" className="service-btn" onClick={() => setLocationTopTab(id)} style={locationTopTab === id ? { borderColor: '#2563eb', background: '#eff6ff', color: '#1d4ed8' } : undefined}>{label}</button>
+            ))}
+          </div>
+        )}
+        {(!isLocationTimeline || locationTopTab === 'params') && (<>{(message || error) && (
           <div
             style={{
               borderRadius: 8,
@@ -941,7 +949,10 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
             {executing ? 'Выполнение...' : 'Запустить'}
           </button>
         </div>
-      </div>
+        </> )}`n      </div>
+        {isLocationTimeline && locationTopTab === 'map' && locationMapTab?.map_data && (
+          <MapView artifact={artifact} _onUpdate={() => {}} dataOverride={locationMapTab.map_data} titleOverride={`${artifact.name}: Map`} descriptionOverride="Location route." selectedPointId={selectedLocationIds[0] || null} onSelectPointIds={setSelectedLocationIds} />
+        )}
 
       {tabs.length > 1 && (
         <div style={{ display: 'flex', gap: 8, padding: '8px 12px', borderBottom: '1px solid #dbe3f0', overflowX: 'auto', flexShrink: 0 }}>
@@ -968,7 +979,7 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
       )}
 
       <div style={{ flex: '1 1 420px', overflow: 'auto', minHeight: 320 }}>
-        {isLocationTimeline && locationMapTab?.map_data && (
+        {!isLocationTimeline && locationMapTab?.map_data && (
           <MapView artifact={artifact} _onUpdate={() => {}} dataOverride={locationMapTab.map_data} titleOverride={`${artifact.name}: Карта`} descriptionOverride="Маршрут по событиям локаций и координатам из справочника базовых станций." selectedPointId={selectedLocationIds[0] || null} onSelectPointIds={setSelectedLocationIds} />
         )}
         {activeTab?.view === 'map' && activeTab.map_data ? (
