@@ -15,6 +15,13 @@ import { formatDateTime } from '../../utils/formatters';
 
 type SortDir = 'asc' | 'desc';
 type ParamInputValues = Record<string, string | boolean>;
+type DateFilterMode = 'before' | 'after' | 'between';
+
+interface DateFilterValue {
+  mode: DateFilterMode;
+  from: string;
+  to: string;
+}
 
 interface ConsoleViewProps {
   artifact: ApiArtifact;
@@ -91,6 +98,21 @@ const normalize = (value: unknown): string => {
   return String(value);
 };
 
+const isDateTimeColumn = (column: ConsoleColumnData): boolean =>
+  ['date', 'datetime'].includes(String(column.type || '').trim().toLowerCase());
+
+const parseDateTime = (value: unknown): number | null => {
+  const source = normalize(value).trim();
+  if (!source) return null;
+  const ruMatch = source.match(/^(\d{2})\.(\d{2})\.(\d{4})(?:,?\s+(\d{2}):(\d{2})(?::(\d{2}))?)?$/);
+  if (ruMatch) {
+    const [, day, month, year, hours = '0', minutes = '0', seconds = '0'] = ruMatch;
+    const result = new Date(Number(year), Number(month) - 1, Number(day), Number(hours), Number(minutes), Number(seconds));
+    return Number.isNaN(result.getTime()) ? null : result.getTime();
+  }
+  const result = new Date(source);
+  return Number.isNaN(result.getTime()) ? null : result.getTime();
+};
 const artifactTypeLabels: Record<string, string> = {
   console: 'Консольный результат',
   graph: 'Граф',
@@ -337,6 +359,7 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
   const [sortKey, setSortKey] = useState<string>('');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [filters, setFilters] = useState<Record<string, string>>({});
+  const [dateFilters, setDateFilters] = useState<Record<string, DateFilterValue>>({});
 
   const [profiles, setProfiles] = useState<ConsoleProfile[]>([]);
   const [profilesLoading, setProfilesLoading] = useState(false);
@@ -360,6 +383,7 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
     setSortKey('');
     setSortDir('asc');
     setFilters({});
+    setDateFilters({});
   }, [activeTabId]);
 
   const activeTab = useMemo(
@@ -382,14 +406,29 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
   const rows = useMemo(() => activeTab?.rows || [], [activeTab]);
 
   const filteredRows = useMemo(() => {
+    const dateColumnKeys = new Set(columns.filter(isDateTimeColumn).map((column) => column.key));
     const activeFilters = Object.entries(filters)
-      .filter(([, value]) => String(value || '').trim() !== '')
+      .filter(([key, value]) => !dateColumnKeys.has(key) && String(value || '').trim() !== '')
       .map(([key, value]) => [key, String(value).trim().toLowerCase()] as const);
+    const activeDateFilters = Object.entries(dateFilters).filter(([, filter]) =>
+      filter.mode === 'between'
+        ? Boolean(filter.from || filter.to)
+        : Boolean(filter.from),
+    );
 
     let nextRows = rows;
-    if (activeFilters.length > 0) {
+    if (activeFilters.length > 0 || activeDateFilters.length > 0) {
       nextRows = nextRows.filter((row) =>
-        activeFilters.every(([key, value]) => normalize(row[key]).toLowerCase().includes(value)),
+        activeFilters.every(([key, value]) => normalize(row[key]).toLowerCase().includes(value)) &&
+        activeDateFilters.every(([key, filter]) => {
+          const rowTime = parseDateTime(row[key]);
+          if (rowTime === null) return false;
+          const from = parseDateTime(filter.from);
+          const to = parseDateTime(filter.to);
+          if (filter.mode === 'before') return from === null || rowTime <= from;
+          if (filter.mode === 'after') return from === null || rowTime >= from;
+          return (from === null || rowTime >= from) && (to === null || rowTime <= to);
+        }),
       );
     }
 
@@ -401,7 +440,7 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
       const result = leftValue.localeCompare(rightValue, 'ru', { sensitivity: 'base', numeric: true });
       return sortDir === 'asc' ? result : -result;
     });
-  }, [rows, filters, sortKey, sortDir]);
+  }, [rows, columns, filters, dateFilters, sortKey, sortDir]);
 
   const graphArtifacts = useMemo(
     () =>
@@ -935,16 +974,59 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
                 <th style={{ width: '120px', minWidth: '120px' }}>{'\u0414\u0435\u0439\u0441\u0442\u0432\u0438\u044f'}</th>
               </tr>
               <tr>
-                {columns.map((column) => (
-                  <th key={`flt-${column.key}`}>
-                    <input
-                      value={filters[column.key] || ''}
-                      onChange={(event) => setFilters((prev) => ({ ...prev, [column.key]: event.target.value }))}
-                      placeholder={'\u0424\u0438\u043b\u044c\u0442\u0440'}
-                      style={{ width: '100%', padding: '2px 6px', border: '1px solid #cbd5e1', borderRadius: 4, fontSize: 11 }}
-                    />
-                  </th>
-                ))}
+                {columns.map((column) => {
+                  if (isDateTimeColumn(column)) {
+                    const dateFilter = dateFilters[column.key] || { mode: 'between' as DateFilterMode, from: '', to: '' };
+                    const setDateFilter = (updates: Partial<DateFilterValue>) => setDateFilters((prev) => ({
+                      ...prev,
+                      [column.key]: { ...dateFilter, ...updates },
+                    }));
+                    return (
+                      <th key={`flt-${column.key}`}>
+                        <div style={{ display: 'grid', gap: 3, minWidth: 190 }}>
+                          <select
+                            value={dateFilter.mode}
+                            onChange={(event) => setDateFilter({ mode: event.target.value as DateFilterMode })}
+                            aria-label={`${column.label || column.key}: \u0440\u0435\u0436\u0438\u043c \u0444\u0438\u043b\u044c\u0442\u0440\u0430`}
+                            style={{ width: '100%', padding: '2px 4px', border: '1px solid #cbd5e1', borderRadius: 4, fontSize: 11 }}
+                          >
+                            <option value="before">{'\u0414\u043e'}</option>
+                            <option value="after">{'\u041f\u043e\u0441\u043b\u0435'}</option>
+                            <option value="between">{'\u0412 \u043f\u0435\u0440\u0438\u043e\u0434'}</option>
+                          </select>
+                          <input
+                            type="datetime-local"
+                            value={dateFilter.from}
+                            onChange={(event) => setDateFilter({ from: event.target.value })}
+                            title={dateFilter.mode === 'before' ? '\u0414\u043e' : dateFilter.mode === 'after' ? '\u041f\u043e\u0441\u043b\u0435' : '\u041d\u0430\u0447\u0430\u043b\u043e \u043f\u0435\u0440\u0438\u043e\u0434\u0430'}
+                            aria-label={`${column.label || column.key}: \u043f\u0435\u0440\u0432\u0430\u044f \u0433\u0440\u0430\u043d\u0438\u0446\u0430`}
+                            style={{ width: '100%', padding: '2px 4px', border: '1px solid #cbd5e1', borderRadius: 4, fontSize: 11, boxSizing: 'border-box' }}
+                          />
+                          {dateFilter.mode === 'between' && (
+                            <input
+                              type="datetime-local"
+                              value={dateFilter.to}
+                              onChange={(event) => setDateFilter({ to: event.target.value })}
+                              title={'\u041e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u0435 \u043f\u0435\u0440\u0438\u043e\u0434\u0430'}
+                              aria-label={`${column.label || column.key}: \u0432\u0442\u043e\u0440\u0430\u044f \u0433\u0440\u0430\u043d\u0438\u0446\u0430`}
+                              style={{ width: '100%', padding: '2px 4px', border: '1px solid #cbd5e1', borderRadius: 4, fontSize: 11, boxSizing: 'border-box' }}
+                            />
+                          )}
+                        </div>
+                      </th>
+                    );
+                  }
+                  return (
+                    <th key={`flt-${column.key}`}>
+                      <input
+                        value={filters[column.key] || ''}
+                        onChange={(event) => setFilters((prev) => ({ ...prev, [column.key]: event.target.value }))}
+                        placeholder={'\u0424\u0438\u043b\u044c\u0442\u0440'}
+                        style={{ width: '100%', padding: '2px 6px', border: '1px solid #cbd5e1', borderRadius: 4, fontSize: 11 }}
+                      />
+                    </th>
+                  );
+                })}
                 <th />
               </tr>
             </thead>
