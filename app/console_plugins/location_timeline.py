@@ -9,7 +9,7 @@ from sqlalchemy import text
 from app.console_plugins import ConsoleExecutorPlugin
 from app.console_plugins._graph_analysis_utils import column, graph_payload, node_id, node_label, selected_node_ids, tab
 from app.database import AsyncSessionLocal
-from app.services.project_domain_store import ensure_project_domain_store
+from app.services.project_domain_store import ensure_project_domain_fact_participants
 from app.services.cell_tower_reference_provider import get_cell_tower_reference_provider_status, resolve_cell_towers
 
 
@@ -93,16 +93,12 @@ class LocationTimelineExecutor(ConsoleExecutorPlugin):
         except ValueError:
             return self._empty("Проверьте даты и лимит: лимит должен быть неотрицательным числом.")
 
-        bind: dict[str, Any] = {"project_id": project_id}
-        placeholders: list[str] = []
-        for index, msisdn in enumerate(msisdns):
-            key = f"msisdn_{index}"
-            bind[key] = msisdn
-            placeholders.append(f":{key}")
+        bind: dict[str, Any] = {"project_id": project_id, "msisdns": msisdns}
         filters = [
-            "location.project_id = :project_id",
-            "location.fact_type = 'location_event'",
-            "regexp_replace(COALESCE(location.payload ->> 'identifier_value', ''), '\\D', '', 'g') IN (" + ", ".join(placeholders) + ")",
+            "participant.project_id = :project_id",
+            "participant.entity_type = 'msisdn'",
+            "participant.entity_key = ANY(:msisdns)",
+            "participant.fact_type = 'location_event'",
             "NULLIF(BTRIM(location.payload ->> 'lac'), '') IS NOT NULL",
             "NULLIF(BTRIM(location.payload ->> 'bs'), '') IS NOT NULL",
             "lower(BTRIM(location.payload ->> 'bs')) NOT IN ('0', 'null', 'none', 'n/a', 'na', '-')",
@@ -117,32 +113,34 @@ class LocationTimelineExecutor(ConsoleExecutorPlugin):
             bind["limit"] = limit
         sql = """
             SELECT DISTINCT ON (
-                regexp_replace(COALESCE(location.payload ->> 'identifier_value', ''), '\\D', '', 'g'),
+                participant.entity_key,
                 location.occurred_at,
                 COALESCE(location.payload ->> 'address', ''),
                 COALESCE(location.payload ->> 'lac', ''),
                 COALESCE(location.payload ->> 'bs', '')
             )
-                regexp_replace(COALESCE(location.payload ->> 'identifier_value', ''), '\\D', '', 'g') AS msisdn,
+                participant.entity_key AS msisdn,
                 location.occurred_at AS event_time,
                 location.payload ->> 'address' AS address,
                 location.payload ->> 'mcc' AS mcc,
                 location.payload ->> 'mnc' AS mnc,
                 location.payload ->> 'lac' AS lac,
                 location.payload ->> 'bs' AS bs
-            FROM project_domain_facts location
+            FROM project_domain_fact_participants AS participant
+            JOIN project_domain_facts AS location ON location.id = participant.fact_id
             WHERE """ + " AND ".join(filters) + """
             ORDER BY
-                regexp_replace(COALESCE(location.payload ->> 'identifier_value', ''), '\\D', '', 'g'),
+                participant.entity_key,
                 location.occurred_at,
                 COALESCE(location.payload ->> 'address', ''),
                 COALESCE(location.payload ->> 'lac', ''),
                 COALESCE(location.payload ->> 'bs', '')
         """
         async with AsyncSessionLocal() as db:
-            await ensure_project_domain_store(db)
+            await ensure_project_domain_fact_participants(db, project_id)
             result = await db.execute(text(sql), bind)
             source_rows = [dict(row._mapping) for row in result.fetchall()]
+            await db.commit()
         provider_status = get_cell_tower_reference_provider_status()
         tower_by_cell = await resolve_cell_towers(source_rows) if provider_status.enabled else {}
         for item in source_rows:

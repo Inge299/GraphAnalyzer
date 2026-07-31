@@ -7,9 +7,11 @@ an analyst adds a type or an attribute.
 
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime
 import hashlib
 import json
+import re
 from typing import Any, Iterable
 
 from sqlalchemy import text
@@ -17,6 +19,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.domain_model_service import get_domain_model
 
+
+_domain_store_ready = False
+_domain_store_lock = asyncio.Lock()
+
+
+def invalidate_project_domain_store_schema() -> None:
+    """Request a registry refresh after domain metadata was edited."""
+
+    global _domain_store_ready
+    _domain_store_ready = False
 
 def _as_datetime(value: Any) -> datetime | None:
     if isinstance(value, datetime):
@@ -33,13 +45,28 @@ def _clean(value: Any) -> str:
     return str(value or "").strip()
 
 
+def _canonical_entity_key(type_id: str, value: Any) -> str:
+    """Return a stable natural key for identifiers used in indexed lookups."""
+
+    key = _clean(value)
+    if _clean(type_id).casefold() in {"msisdn", "imei", "imsi"}:
+        digits = re.sub(r"\D", "", key)
+        return digits or key
+    return key
+
+
+def _batches(items: list[Any], size: int = 1_000) -> Iterable[list[Any]]:
+    for offset in range(0, len(items), size):
+        yield items[offset:offset + size]
+
+
 def _fact_key(kind: str, payload: dict[str, Any]) -> str:
     encoded = json.dumps(payload, ensure_ascii=True, default=str, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256((kind + "|" + encoded).encode("utf-8")).hexdigest()
 
 
 def _entity(type_id: str, key: Any, label: Any | None = None, attributes: dict[str, Any] | None = None) -> dict[str, Any] | None:
-    external_key = _clean(key)
+    external_key = _canonical_entity_key(type_id, key)
     if not external_key:
         return None
     return {
@@ -60,7 +87,8 @@ def _relation(
     attributes: dict[str, Any],
     directed: bool,
 ) -> dict[str, Any] | None:
-    source_key, target_key = _clean(from_key), _clean(to_key)
+    source_key = _canonical_entity_key(from_type, from_key)
+    target_key = _canonical_entity_key(to_type, to_key)
     if not source_key or not target_key:
         return None
     payload = {
@@ -85,97 +113,195 @@ def _relation(
 
 
 async def ensure_project_domain_store(db: AsyncSession) -> None:
-    await db.execute(text("""
-        CREATE TABLE IF NOT EXISTS domain_type_registry (
-            kind TEXT NOT NULL,
-            type_id TEXT NOT NULL,
-            label TEXT NOT NULL,
-            definition JSONB NOT NULL DEFAULT '{}'::jsonb,
-            updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-            PRIMARY KEY (kind, type_id)
-        );
-    """))
-    await db.execute(text("""
-        CREATE TABLE IF NOT EXISTS project_domain_entities (
-            id BIGSERIAL PRIMARY KEY,
-            project_id INTEGER NOT NULL,
-            type_id TEXT NOT NULL,
-            external_key TEXT NOT NULL,
-            label TEXT NOT NULL,
-            attributes JSONB NOT NULL DEFAULT '{}'::jsonb,
-            first_seen_at TIMESTAMP,
-            last_seen_at TIMESTAMP,
-            created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-            updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-            UNIQUE (project_id, type_id, external_key)
-        );
-    """))
-    await db.execute(text("""
-        CREATE TABLE IF NOT EXISTS project_domain_relations (
-            id BIGSERIAL PRIMARY KEY,
-            project_id INTEGER NOT NULL,
-            load_batch_id TEXT NOT NULL,
-            relation_type TEXT NOT NULL,
-            from_type TEXT NOT NULL,
-            from_key TEXT NOT NULL,
-            to_type TEXT NOT NULL,
-            to_key TEXT NOT NULL,
-            occurred_at TIMESTAMP,
-            directed BOOLEAN NOT NULL DEFAULT FALSE,
-            attributes JSONB NOT NULL DEFAULT '{}'::jsonb,
-            fact_key TEXT NOT NULL,
-            created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-            UNIQUE (project_id, relation_type, fact_key)
-        );
-    """))
-    await db.execute(text("""
-        CREATE TABLE IF NOT EXISTS project_domain_facts (
-            id BIGSERIAL PRIMARY KEY,
-            project_id INTEGER NOT NULL,
-            load_batch_id TEXT NOT NULL,
-            fact_type TEXT NOT NULL,
-            occurred_at TIMESTAMP,
-            payload JSONB NOT NULL,
-            fact_key TEXT NOT NULL,
-            created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-            UNIQUE (project_id, fact_type, fact_key)
-        );
-    """))
-    await db.execute(text("CREATE INDEX IF NOT EXISTS ix_project_domain_entities_lookup ON project_domain_entities (project_id, type_id, external_key)"))
-    await db.execute(text("CREATE INDEX IF NOT EXISTS ix_project_domain_relations_lookup ON project_domain_relations (project_id, relation_type, from_type, from_key)"))
-    await db.execute(text("CREATE INDEX IF NOT EXISTS ix_project_domain_relations_target ON project_domain_relations (project_id, relation_type, to_type, to_key)"))
-    await db.execute(text("CREATE INDEX IF NOT EXISTS ix_project_domain_facts_lookup ON project_domain_facts (project_id, fact_type, occurred_at)"))
+    """Create generic schema once per process and refresh it after metadata changes."""
 
-    model = get_domain_model()
-    registry_rows: list[dict[str, Any]] = []
-    for kind, key in (("node", "node_types"), ("edge", "edge_types"), ("fact", "fact_types")):
-        for definition in model.get(key, []):
-            if not isinstance(definition, dict) or not _clean(definition.get("id")):
-                continue
-            registry_rows.append({
-                "kind": kind,
-                "type_id": _clean(definition["id"]),
-                "label": _clean(definition.get("label")) or _clean(definition["id"]),
-                "definition": json.dumps(definition, ensure_ascii=False, default=str),
-            })
-    if registry_rows:
+    global _domain_store_ready
+    if _domain_store_ready:
+        return
+    async with _domain_store_lock:
+        if _domain_store_ready:
+            return
         await db.execute(text("""
-            INSERT INTO domain_type_registry (kind, type_id, label, definition, updated_at)
-            VALUES (:kind, :type_id, :label, CAST(:definition AS jsonb), NOW())
-            ON CONFLICT (kind, type_id) DO UPDATE
-            SET label = EXCLUDED.label, definition = EXCLUDED.definition, updated_at = NOW()
-        """), registry_rows)
+            CREATE TABLE IF NOT EXISTS domain_type_registry (
+                kind TEXT NOT NULL,
+                type_id TEXT NOT NULL,
+                label TEXT NOT NULL,
+                definition JSONB NOT NULL DEFAULT '{}'::jsonb,
+                updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                PRIMARY KEY (kind, type_id)
+            );
+        """))
+        await db.execute(text("""
+            CREATE TABLE IF NOT EXISTS project_domain_entities (
+                id BIGSERIAL PRIMARY KEY,
+                project_id INTEGER NOT NULL,
+                type_id TEXT NOT NULL,
+                external_key TEXT NOT NULL,
+                label TEXT NOT NULL,
+                attributes JSONB NOT NULL DEFAULT '{}'::jsonb,
+                first_seen_at TIMESTAMP,
+                last_seen_at TIMESTAMP,
+                created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                UNIQUE (project_id, type_id, external_key)
+            );
+        """))
+        await db.execute(text("""
+            CREATE TABLE IF NOT EXISTS project_domain_relations (
+                id BIGSERIAL PRIMARY KEY,
+                project_id INTEGER NOT NULL,
+                load_batch_id TEXT NOT NULL,
+                relation_type TEXT NOT NULL,
+                from_type TEXT NOT NULL,
+                from_key TEXT NOT NULL,
+                to_type TEXT NOT NULL,
+                to_key TEXT NOT NULL,
+                occurred_at TIMESTAMP,
+                directed BOOLEAN NOT NULL DEFAULT FALSE,
+                attributes JSONB NOT NULL DEFAULT '{}'::jsonb,
+                fact_key TEXT NOT NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                UNIQUE (project_id, relation_type, fact_key)
+            );
+        """))
+        await db.execute(text("""
+            CREATE TABLE IF NOT EXISTS project_domain_facts (
+                id BIGSERIAL PRIMARY KEY,
+                project_id INTEGER NOT NULL,
+                load_batch_id TEXT NOT NULL,
+                fact_type TEXT NOT NULL,
+                occurred_at TIMESTAMP,
+                payload JSONB NOT NULL,
+                fact_key TEXT NOT NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                UNIQUE (project_id, fact_type, fact_key)
+            );
+        """))
+        await db.execute(text("""
+            CREATE TABLE IF NOT EXISTS project_domain_fact_participants (
+                fact_id BIGINT NOT NULL REFERENCES project_domain_facts(id) ON DELETE CASCADE,
+                project_id INTEGER NOT NULL,
+                fact_type TEXT NOT NULL,
+                entity_type TEXT NOT NULL,
+                entity_key TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT '',
+                occurred_at TIMESTAMP,
+                created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                PRIMARY KEY (fact_id, entity_type, entity_key, role)
+            );
+        """))
+        await db.execute(text("CREATE INDEX IF NOT EXISTS ix_project_domain_entities_lookup ON project_domain_entities (project_id, type_id, external_key)"))
+        await db.execute(text("CREATE INDEX IF NOT EXISTS ix_project_domain_relations_lookup ON project_domain_relations (project_id, relation_type, from_type, from_key)"))
+        await db.execute(text("CREATE INDEX IF NOT EXISTS ix_project_domain_relations_target ON project_domain_relations (project_id, relation_type, to_type, to_key)"))
+        await db.execute(text("CREATE INDEX IF NOT EXISTS ix_project_domain_facts_lookup ON project_domain_facts (project_id, fact_type, occurred_at)"))
+        await db.execute(text("CREATE INDEX IF NOT EXISTS ix_project_domain_relations_source_time ON project_domain_relations (project_id, relation_type, from_type, from_key, occurred_at)"))
+        await db.execute(text("CREATE INDEX IF NOT EXISTS ix_project_domain_relations_target_time ON project_domain_relations (project_id, relation_type, to_type, to_key, occurred_at)"))
+        await db.execute(text("CREATE INDEX IF NOT EXISTS ix_project_domain_fact_participants_lookup ON project_domain_fact_participants (project_id, entity_type, entity_key, fact_type, occurred_at, fact_id)"))
+        await db.execute(text("""
+            CREATE TABLE IF NOT EXISTS project_domain_store_state (
+                project_id INTEGER NOT NULL,
+                state_key TEXT NOT NULL,
+                applied_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                PRIMARY KEY (project_id, state_key)
+            );
+        """))
 
+        model = get_domain_model()
+        registry_rows: list[dict[str, Any]] = []
+        for kind, key in (("node", "node_types"), ("edge", "edge_types"), ("fact", "fact_types")):
+            for definition in model.get(key, []):
+                if not isinstance(definition, dict) or not _clean(definition.get("id")):
+                    continue
+                registry_rows.append({
+                    "kind": kind,
+                    "type_id": _clean(definition["id"]),
+                    "label": _clean(definition.get("label")) or _clean(definition["id"]),
+                    "definition": json.dumps(definition, ensure_ascii=False, default=str),
+                })
+        if registry_rows:
+            await db.execute(text("""
+                INSERT INTO domain_type_registry (kind, type_id, label, definition, updated_at)
+                VALUES (:kind, :type_id, :label, CAST(:definition AS jsonb), NOW())
+                ON CONFLICT (kind, type_id) DO UPDATE
+                SET label = EXCLUDED.label, definition = EXCLUDED.definition, updated_at = NOW()
+            """), registry_rows)
+        _domain_store_ready = True
 
 async def clear_project_domain_store(db: AsyncSession, project_id: int) -> dict[str, int]:
     result_relations = await db.execute(text("DELETE FROM project_domain_relations WHERE project_id = :project_id"), {"project_id": project_id})
+    result_participants = await db.execute(text("DELETE FROM project_domain_fact_participants WHERE project_id = :project_id"), {"project_id": project_id})
     result_facts = await db.execute(text("DELETE FROM project_domain_facts WHERE project_id = :project_id"), {"project_id": project_id})
     result_entities = await db.execute(text("DELETE FROM project_domain_entities WHERE project_id = :project_id"), {"project_id": project_id})
     return {
         "domain_relations_deleted": result_relations.rowcount or 0,
+        "domain_fact_participants_deleted": result_participants.rowcount or 0,
         "domain_facts_deleted": result_facts.rowcount or 0,
         "domain_entities_deleted": result_entities.rowcount or 0,
     }
+
+
+async def ensure_project_domain_fact_participants(db: AsyncSession, project_id: int) -> None:
+    """Backfill participants for legacy facts once per project.
+
+    New imports write participants directly. The migration exists only so existing
+    projects become fast without requiring users to reimport their data.
+    """
+
+    await ensure_project_domain_store(db)
+    state_key = "fact_participants_v1"
+    marker = await db.execute(text("""
+        SELECT 1
+        FROM project_domain_store_state
+        WHERE project_id = :project_id AND state_key = :state_key
+    """), {"project_id": project_id, "state_key": state_key})
+    if marker.scalar_one_or_none() is not None:
+        return
+
+    await db.execute(text(r"""
+        WITH legacy_participants AS (
+            SELECT
+                fact.id AS fact_id,
+                fact.project_id,
+                fact.fact_type,
+                LOWER(BTRIM(fact.payload ->> 'identifier_type')) AS entity_type,
+                CASE
+                    WHEN LOWER(BTRIM(fact.payload ->> 'identifier_type')) IN ('msisdn', 'imei', 'imsi')
+                        THEN regexp_replace(COALESCE(fact.payload ->> 'identifier_value', ''), '\D', '', 'g')
+                    ELSE BTRIM(COALESCE(fact.payload ->> 'identifier_value', ''))
+                END AS entity_key,
+                'entity_0' AS role,
+                fact.occurred_at
+            FROM project_domain_facts AS fact
+            WHERE fact.project_id = :project_id
+              AND fact.fact_type = 'location_event'
+
+            UNION ALL
+
+            SELECT
+                fact.id AS fact_id,
+                fact.project_id,
+                fact.fact_type,
+                'msisdn' AS entity_type,
+                regexp_replace(COALESCE(fact.payload ->> 'msisdn', ''), '\D', '', 'g') AS entity_key,
+                'entity_0' AS role,
+                fact.occurred_at
+            FROM project_domain_facts AS fact
+            WHERE fact.project_id = :project_id
+              AND fact.fact_type = 'telecom_base_station_observation'
+        )
+        INSERT INTO project_domain_fact_participants (
+            fact_id, project_id, fact_type, entity_type, entity_key, role, occurred_at
+        )
+        SELECT fact_id, project_id, fact_type, entity_type, entity_key, role, occurred_at
+        FROM legacy_participants
+        WHERE entity_type <> '' AND entity_key <> ''
+        ON CONFLICT DO NOTHING
+    """), {"project_id": project_id})
+    await db.execute(text("""
+        INSERT INTO project_domain_store_state (project_id, state_key)
+        VALUES (:project_id, :state_key)
+        ON CONFLICT DO NOTHING
+    """), {"project_id": project_id, "state_key": state_key})
 
 
 async def upsert_manual_domain_entities(
@@ -365,27 +491,37 @@ async def mirror_source_rows(
     load_batch_id: str,
     source_rows: Mapping[str, Iterable[dict[str, Any]]],
 ) -> dict[str, Any]:
-    """Persist arbitrary normalized source rows using metadata-driven mappings."""
+    """Persist normalized source rows and their typed, indexed fact participants."""
 
     await ensure_project_domain_store(db)
     entities: dict[tuple[str, str], dict[str, Any]] = {}
-    facts: list[dict[str, Any]] = []
+    facts: dict[tuple[str, str], dict[str, Any]] = {}
     relations: list[dict[str, Any]] = []
 
     def add_entity(item: dict[str, Any] | None) -> None:
         if item:
             entities[(item["type_id"], item["external_key"])] = item
 
-    def add_fact(fact_type: str, row: dict[str, Any], occurred_at: Any) -> None:
+    def add_fact(
+        fact_type: str,
+        row: dict[str, Any],
+        occurred_at: Any,
+        participants: list[dict[str, str]],
+    ) -> None:
         payload = {key: value for key, value in row.items() if key not in {"project_id", "load_batch_id", "created_at"}}
-        facts.append({
+        fact_key = _fact_key(fact_type, payload)
+        fact = facts.setdefault((fact_type, fact_key), {
             "project_id": project_id,
             "load_batch_id": load_batch_id,
             "fact_type": fact_type,
             "occurred_at": _as_datetime(occurred_at),
             "payload": json.dumps(payload, ensure_ascii=False, default=str),
-            "fact_key": _fact_key(fact_type, payload),
+            "fact_key": fact_key,
+            "participants": {},
         })
+        for participant in participants:
+            key = (participant["entity_type"], participant["entity_key"], participant["role"])
+            fact["participants"][key] = participant
 
     def add_relation(item: dict[str, Any] | None) -> None:
         if item:
@@ -405,18 +541,32 @@ async def mirror_source_rows(
         for row in rows:
             if not isinstance(row, dict):
                 continue
-            fact_type = _clean(fact_definition.get("type"))
-            if fact_type:
-                add_fact(fact_type, row, _mapping_value(row, fact_definition.get("occurred_at")))
-            for definition in entities_definition:
+            fact_participants: list[dict[str, str]] = []
+            for entity_index, definition in enumerate(entities_definition):
                 if not isinstance(definition, dict):
                     continue
-                add_entity(_entity(
-                    _clean(definition.get("type")),
+                type_id = _clean(_mapping_value(row, definition.get("type")))
+                entity = _entity(
+                    type_id,
                     _mapping_value(row, definition.get("key")),
                     _mapping_value(row, definition.get("label")),
                     _mapping_attributes(row, definition.get("attributes")),
-                ))
+                )
+                add_entity(entity)
+                if entity:
+                    fact_participants.append({
+                        "entity_type": entity["type_id"],
+                        "entity_key": entity["external_key"],
+                        "role": _clean(definition.get("role")) or f"entity_{entity_index}",
+                    })
+            fact_type = _clean(fact_definition.get("type"))
+            if fact_type:
+                add_fact(
+                    fact_type,
+                    row,
+                    _mapping_value(row, fact_definition.get("occurred_at")),
+                    fact_participants,
+                )
             for definition in relations_definition:
                 if not isinstance(definition, dict):
                     continue
@@ -442,36 +592,86 @@ async def mirror_source_rows(
 
     now = datetime.utcnow()
     entity_rows = [{**item, "project_id": project_id, "first_seen_at": now, "last_seen_at": now} for item in entities.values()]
-    if entity_rows:
-        await db.execute(text("""
-            INSERT INTO project_domain_entities (
-                project_id, type_id, external_key, label, attributes, first_seen_at, last_seen_at
-            ) VALUES (
-                :project_id, :type_id, :external_key, :label, CAST(:attributes AS jsonb), :first_seen_at, :last_seen_at
-            )
-            ON CONFLICT (project_id, type_id, external_key) DO UPDATE
-            SET label = EXCLUDED.label,
-                attributes = project_domain_entities.attributes || EXCLUDED.attributes,
-                last_seen_at = EXCLUDED.last_seen_at,
-                updated_at = NOW()
-        """), entity_rows)
-    if facts:
-        await db.execute(text("""
-            INSERT INTO project_domain_facts (project_id, load_batch_id, fact_type, occurred_at, payload, fact_key)
-            VALUES (:project_id, :load_batch_id, :fact_type, :occurred_at, CAST(:payload AS jsonb), :fact_key)
-            ON CONFLICT (project_id, fact_type, fact_key) DO NOTHING
-        """), facts)
-    if relations:
-        await db.execute(text("""
-            INSERT INTO project_domain_relations (
-                project_id, load_batch_id, relation_type, from_type, from_key, to_type, to_key,
-                occurred_at, directed, attributes, fact_key
-            ) VALUES (
-                :project_id, :load_batch_id, :relation_type, :from_type, :from_key, :to_type, :to_key,
-                :occurred_at, :directed, CAST(:attributes AS jsonb), :fact_key
-            )
-            ON CONFLICT (project_id, relation_type, fact_key) DO NOTHING
-        """), relations)
+    entity_insert = text("""
+        INSERT INTO project_domain_entities (
+            project_id, type_id, external_key, label, attributes, first_seen_at, last_seen_at
+        ) VALUES (
+            :project_id, :type_id, :external_key, :label, CAST(:attributes AS jsonb), :first_seen_at, :last_seen_at
+        )
+        ON CONFLICT (project_id, type_id, external_key) DO UPDATE
+        SET label = EXCLUDED.label,
+            attributes = project_domain_entities.attributes || EXCLUDED.attributes,
+            last_seen_at = EXCLUDED.last_seen_at,
+            updated_at = NOW()
+    """)
+    for batch in _batches(entity_rows):
+        await db.execute(entity_insert, batch)
+
+    fact_rows = list(facts.values())
+    fact_insert = text("""
+        INSERT INTO project_domain_facts (project_id, load_batch_id, fact_type, occurred_at, payload, fact_key)
+        VALUES (:project_id, :load_batch_id, :fact_type, :occurred_at, CAST(:payload AS jsonb), :fact_key)
+        ON CONFLICT (project_id, fact_type, fact_key) DO NOTHING
+    """)
+    for batch in _batches(fact_rows):
+        await db.execute(fact_insert, batch)
+
+    fact_ids: dict[tuple[str, str], int] = {}
+    facts_by_type: dict[str, list[dict[str, Any]]] = {}
+    for fact in fact_rows:
+        facts_by_type.setdefault(fact["fact_type"], []).append(fact)
+    fact_lookup = text("""
+        SELECT id, fact_key
+        FROM project_domain_facts
+        WHERE project_id = :project_id
+          AND fact_type = :fact_type
+          AND fact_key = ANY(:fact_keys)
+    """)
+    for fact_type, type_facts in facts_by_type.items():
+        for batch in _batches(type_facts):
+            result = await db.execute(fact_lookup, {
+                "project_id": project_id,
+                "fact_type": fact_type,
+                "fact_keys": [fact["fact_key"] for fact in batch],
+            })
+            fact_ids.update({(fact_type, str(row.fact_key)): int(row.id) for row in result})
+
+    participant_rows: list[dict[str, Any]] = []
+    for fact in fact_rows:
+        fact_id = fact_ids.get((fact["fact_type"], fact["fact_key"]))
+        if fact_id is None:
+            continue
+        for participant in fact["participants"].values():
+            participant_rows.append({
+                "fact_id": fact_id,
+                "project_id": project_id,
+                "fact_type": fact["fact_type"],
+                "entity_type": participant["entity_type"],
+                "entity_key": participant["entity_key"],
+                "role": participant["role"],
+                "occurred_at": fact["occurred_at"],
+            })
+    participant_insert = text("""
+        INSERT INTO project_domain_fact_participants (
+            fact_id, project_id, fact_type, entity_type, entity_key, role, occurred_at
+        ) VALUES (
+            :fact_id, :project_id, :fact_type, :entity_type, :entity_key, :role, :occurred_at
+        ) ON CONFLICT DO NOTHING
+    """)
+    for batch in _batches(participant_rows):
+        await db.execute(participant_insert, batch)
+
+    relation_insert = text("""
+        INSERT INTO project_domain_relations (
+            project_id, load_batch_id, relation_type, from_type, from_key, to_type, to_key,
+            occurred_at, directed, attributes, fact_key
+        ) VALUES (
+            :project_id, :load_batch_id, :relation_type, :from_type, :from_key, :to_type, :to_key,
+            :occurred_at, :directed, CAST(:attributes AS jsonb), :fact_key
+        ) ON CONFLICT (project_id, relation_type, fact_key) DO NOTHING
+    """)
+    for batch in _batches(relations):
+        await db.execute(relation_insert, batch)
 
     fact_count_rows = await db.execute(text("""
         SELECT fact_type, COUNT(*)::integer AS count
@@ -482,12 +682,10 @@ async def mirror_source_rows(
     fact_counts = {str(row[0]): int(row[1]) for row in fact_count_rows}
     return {
         "entities": len(entity_rows),
-        "facts": len(facts),
+        "facts": len(fact_rows),
         "relations": len(relations),
         "fact_counts": fact_counts,
     }
-
-
 
 def _resolve_relation_type(model: dict[str, Any], from_type: str, to_type: str) -> str:
     """Resolve a declarative relation by its concrete endpoint pair."""

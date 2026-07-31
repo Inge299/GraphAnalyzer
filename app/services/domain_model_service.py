@@ -65,6 +65,9 @@ def save_domain_model(model: Dict[str, Any]) -> Dict[str, Any]:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(normalized, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     get_domain_model.cache_clear()
+    # The database registry is a cache of this file, not a separate source of truth.
+    from app.services.project_domain_store import invalidate_project_domain_store_schema
+    invalidate_project_domain_store_schema()
     return get_domain_model()
 
 
@@ -167,6 +170,9 @@ def delete_edge_type(edge_type_id: str) -> Dict[str, Any]:
 def reload_domain_model() -> Dict[str, Any]:
     _config_path.cache_clear()
     get_domain_model.cache_clear()
+    # The database registry is a cache of this file, not a separate source of truth.
+    from app.services.project_domain_store import invalidate_project_domain_store_schema
+    invalidate_project_domain_store_schema()
     return get_domain_model()
 
 
