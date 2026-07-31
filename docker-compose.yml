@@ -1,4 +1,4 @@
-﻿services:
+services:
   postgres:
     image: postgres:15-alpine
     container_name: osint-postgres
@@ -59,11 +59,6 @@
       - LLM_TEMPERATURE_DRAFT=0.3
       - LLM_TEMPERATURE_EDIT=0.2
       - LLM_RUNTIME_LABEL=GPU (RTX 4060 via LM Studio)
-      - SNI_SERVICE_URL=http://sni:8012
-      - SNI_TIMEOUT_SECONDS=900
-      - SNI1_SERVICE_URL=http://sni1:8013
-      - SNI1_TIMEOUT_SECONDS=900
-      - SNI1_REFS_DIR=/app/data/sni/current
     depends_on:
       postgres:
         condition: service_healthy
@@ -76,68 +71,6 @@
       - ./data:/app/data
     extra_hosts:
       - "host.docker.internal:host-gateway"
-
-  sni:
-    build:
-      context: .
-      dockerfile: sni_service/Dockerfile
-    container_name: osint-sni
-    ports:
-      - "8012:8012"
-    environment:
-      - SNI_MAX_CHRONOLOGY_ROWS=20000
-      - SNI_DEFAULT_TOP_N=25
-      - SNI_MAX_INPUT_ROWS=2500000
-      - SNI_REFS_DIR=/app/data/sni/current
-    volumes:
-      - ./data:/app/data
-    networks:
-      - osint-network
-
-  sni1:
-    build:
-      context: .
-      dockerfile: sni1_service/Dockerfile
-    container_name: osint-sni1
-    ports:
-      - "8013:8013"
-    environment:
-      - SNI_REFS_DIR=/app/data/sni/current
-      - SNI_DEFAULT_TOP_N=25
-      - SNI_DEFAULT_GAP_MINUTES=180
-      - SNI_MAX_CHRONOLOGY_ROWS=20000
-    volumes:
-      - ./data:/app/data
-    networks:
-      - osint-network
-
-  inference:
-    build:
-      context: .
-      dockerfile: inference_service/Dockerfile
-    container_name: osint-inference
-    ports:
-      - "8001:8001"
-    environment:
-      - EMBEDDING_MODEL=BAAI/bge-m3
-      - RERANK_MODEL=BAAI/bge-reranker-v2-m3
-      - DEVICE=cuda
-      - PRELOAD_MODELS=true
-      - BATCH_SIZE=16
-      - TOP_K_DEFAULT=10
-      - HF_HOME=/models/hf-cache
-      - TRANSFORMERS_CACHE=/models/hf-cache
-    volumes:
-      - ./data/models:/models
-    networks:
-      - osint-network
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
 
   pgadmin:
     image: dpage/pgadmin4

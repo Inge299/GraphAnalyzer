@@ -13,6 +13,9 @@ class ExampleImportPlugin(ProjectDataImportPlugin):
     description = "Template for external project-data import plugins."
     extensions = [".csv"]
     recognition_hint = "Rename this file without leading underscore to enable discovery."
+    # The plugin advertises only the datasets it actually produces. The current
+    # compatibility adapter still expects canonical CSV paths in the result.
+    output_dataset_ids = ("communications",)
     config_schema = {
         "type": "object",
         "properties": {

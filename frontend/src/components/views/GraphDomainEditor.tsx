@@ -1,9 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { domainModelApi } from '../../services/api';
+import { DomainModelDiagram } from './DomainModelDiagram';
+import { NodeTypePreview } from './NodeTypePreview';
+import './ServiceFunctionsView.css';
 import type { DomainAttributeDefinition, DomainEdgeType, DomainNodeType } from '../../types/api';
 
 interface GraphDomainEditorProps {
-  compact?: boolean;
+  mode?: 'edges' | 'nodes';
 }
 
 interface DomainAttributeFormItem {
@@ -23,6 +26,7 @@ interface DomainNodeTypeForm {
   iconScale: string;
   ringEnabled: boolean;
   ringWidth: string;
+  identityAttribute: string;
   attributes: DomainAttributeFormItem[];
 }
 
@@ -30,8 +34,9 @@ interface DomainEdgeTypeForm {
   id: string;
   label: string;
   directed: boolean;
-  allowed_from: string[];
-  allowed_to: string[];
+  from_type: string;
+  to_type: string;
+  supports_reverse: boolean;
   color: string;
   width: string;
   direction: string;
@@ -55,7 +60,6 @@ const attributeTypeOptions = [
 ];
 
 const edgeDirectionOptions = [
-  { value: 'from', label: 'От источника' },
   { value: 'to', label: 'К цели' },
   { value: 'both', label: 'Двунаправленная' },
 ];
@@ -100,6 +104,7 @@ const createDefaultNodeTypeForm = (): DomainNodeTypeForm => ({
   iconScale: '1.9',
   ringEnabled: false,
   ringWidth: '1.5',
+  identityAttribute: '',
   attributes: [],
 });
 
@@ -107,8 +112,9 @@ const createDefaultEdgeTypeForm = (): DomainEdgeTypeForm => ({
   id: '',
   label: '',
   directed: false,
-  allowed_from: [],
-  allowed_to: [],
+  from_type: '',
+  to_type: '',
+  supports_reverse: false,
   color: '#475569',
   width: '2',
   direction: 'both',
@@ -138,6 +144,7 @@ const mapNodeTypeToForm = (nodeType: DomainNodeType): DomainNodeTypeForm => ({
   iconScale: String(nodeType.default_visual?.iconScale ?? 1.9),
   ringEnabled: Boolean(nodeType.default_visual?.ringEnabled),
   ringWidth: String(nodeType.default_visual?.ringWidth ?? 1.5),
+  identityAttribute: String(nodeType.identity_attribute || ''),
   attributes: Array.isArray(nodeType.attributes) ? nodeType.attributes.map(mapAttributeToForm) : [],
 });
 
@@ -145,11 +152,12 @@ const mapEdgeTypeToForm = (edgeType: DomainEdgeType): DomainEdgeTypeForm => ({
   id: String(edgeType.id || '').trim(),
   label: String(edgeType.label || edgeType.id || '').trim(),
   directed: Boolean(edgeType.directed),
-  allowed_from: Array.isArray(edgeType.allowed_from) ? edgeType.allowed_from.map((item) => String(item).trim()).filter(Boolean) : [],
-  allowed_to: Array.isArray(edgeType.allowed_to) ? edgeType.allowed_to.map((item) => String(item).trim()).filter(Boolean) : [],
+  from_type: String(edgeType.from_type || edgeType.allowed_from?.[0] || '').trim(),
+  to_type: String(edgeType.to_type || edgeType.allowed_to?.[0] || '').trim(),
+  supports_reverse: Boolean(edgeType.supports_reverse),
   color: String(edgeType.default_visual?.color || '#475569'),
   width: String(edgeType.default_visual?.width ?? 2),
-  direction: String(edgeType.default_visual?.direction || (edgeType.directed ? 'to' : 'both')),
+  direction: edgeType.default_visual?.direction === 'from' ? 'to' : String(edgeType.default_visual?.direction || (edgeType.directed ? 'to' : 'both')),
   dashed: Boolean(edgeType.default_visual?.dashed),
   plugin_id: String(edgeType.plugin_id || ''),
   show_in_context_menu: Boolean(edgeType.show_in_context_menu),
@@ -178,6 +186,7 @@ const buildNodeTypePayload = (form: DomainNodeTypeForm): DomainNodeType => ({
   id: form.id.trim(),
   label: form.label.trim() || form.id.trim(),
   icon: form.icon.trim() || form.id.trim() || 'circle',
+  identity_attribute: form.identityAttribute.trim(),
   default_visual: {
     color: form.color.trim() || '#475569',
     iconScale: Number.parseFloat(form.iconScale) || 1.9,
@@ -190,9 +199,12 @@ const buildNodeTypePayload = (form: DomainNodeTypeForm): DomainNodeType => ({
 const buildEdgeTypePayload = (form: DomainEdgeTypeForm): DomainEdgeType => ({
   id: form.id.trim(),
   label: form.label.trim() || form.id.trim(),
-  directed: form.directed,
-  allowed_from: form.allowed_from.map((item) => item.trim()).filter(Boolean),
-  allowed_to: form.allowed_to.map((item) => item.trim()).filter(Boolean),
+  directed: form.direction !== 'both',
+  from_type: form.from_type.trim(),
+  to_type: form.to_type.trim(),
+  supports_reverse: form.supports_reverse,
+  allowed_from: form.from_type.trim() ? [form.from_type.trim()] : [],
+  allowed_to: form.to_type.trim() ? [form.to_type.trim()] : [],
   default_visual: {
     color: form.color.trim() || '#475569',
     width: Number.parseFloat(form.width) || 2,
@@ -207,11 +219,13 @@ const buildEdgeTypePayload = (form: DomainEdgeTypeForm): DomainEdgeType => ({
   attributes: buildAttributePayload(form.attributes),
 });
 
-const GraphDomainEditor: React.FC<GraphDomainEditorProps> = () => {
+const GraphDomainEditor: React.FC<GraphDomainEditorProps> = ({ mode = 'edges' }) => {
   const [nodeTypes, setNodeTypes] = useState<DomainNodeType[]>([]);
   const [edgeTypes, setEdgeTypes] = useState<DomainEdgeType[]>([]);
   const [selectedNodeTypeId, setSelectedNodeTypeId] = useState('');
   const [selectedEdgeTypeId, setSelectedEdgeTypeId] = useState('');
+  const [edgeFilter, setEdgeFilter] = useState('');
+  const editorMode = mode;
   const [nodeTypeForm, setNodeTypeForm] = useState<DomainNodeTypeForm>(createDefaultNodeTypeForm);
   const [edgeTypeForm, setEdgeTypeForm] = useState<DomainEdgeTypeForm>(createDefaultEdgeTypeForm);
   const [loading, setLoading] = useState(false);
@@ -256,6 +270,11 @@ const GraphDomainEditor: React.FC<GraphDomainEditorProps> = () => {
     () => edgeTypes.find((item) => item.id === selectedEdgeTypeId) || null,
     [edgeTypes, selectedEdgeTypeId],
   );
+  const visibleEdgeTypes = useMemo(() => {
+    const query = edgeFilter.trim().toLowerCase();
+    return edgeTypes.filter((item) => !item.system && (!query || [item.id, item.label, item.from_type, item.to_type].join(' ').toLowerCase().includes(query)));
+  }, [edgeTypes, edgeFilter]);
+  const previewEdge = useMemo(() => buildEdgeTypePayload(edgeTypeForm), [edgeTypeForm]);
 
   useEffect(() => {
     setNodeTypeForm(selectedNodeType ? mapNodeTypeToForm(selectedNodeType) : createDefaultNodeTypeForm());
@@ -265,7 +284,6 @@ const GraphDomainEditor: React.FC<GraphDomainEditorProps> = () => {
     setEdgeTypeForm(selectedEdgeType ? mapEdgeTypeToForm(selectedEdgeType) : createDefaultEdgeTypeForm());
   }, [selectedEdgeType]);
 
-  const nodeTypeIds = useMemo(() => nodeTypes.map((item) => item.id).filter(Boolean), [nodeTypes]);
 
   const menuPreview = useMemo(() => {
     if (!edgeTypeForm.show_in_context_menu) return 'Не показывается в контекстном меню';
@@ -310,6 +328,10 @@ const GraphDomainEditor: React.FC<GraphDomainEditorProps> = () => {
     const payload = buildEdgeTypePayload(edgeTypeForm);
     if (!payload.id) {
       setError('У типа связи должен быть задан ключ');
+      return;
+    }
+    if (!payload.from_type || !payload.to_type) {
+      setError('Выберите тип А и тип Б для связи');
       return;
     }
     setEdgeSaving(true);
@@ -398,24 +420,29 @@ const GraphDomainEditor: React.FC<GraphDomainEditorProps> = () => {
     setEdgeTypeForm((prev) => ({ ...prev, attributes: prev.attributes.filter((item) => item.id !== attributeId) }));
   }, []);
 
-  const toggleAllowedType = useCallback((kind: 'from' | 'to', nodeTypeId: string) => {
-    setEdgeTypeForm((prev) => {
-      const key = kind === 'from' ? 'allowed_from' : 'allowed_to';
-      const current = prev[key];
-      const next = current.includes(nodeTypeId)
-        ? current.filter((item) => item !== nodeTypeId)
-        : [...current, nodeTypeId];
-      return { ...prev, [key]: next };
-    });
-  }, []);
+
 
   return (
     <div className="service-summary-block">
       {message && <div className="service-screen-banner success">{message}</div>}
-      {error && <div className="service-screen-banner error">{error}</div>}
-
-      <div className="service-console-grid">
-        <div className="service-card">
+      {error && <div className="service-screen-banner error">{error}</div>}      {editorMode === 'edges' && <div className="service-card">
+        <DomainModelDiagram
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          selectedNodeTypeId={selectedNodeTypeId}
+          selectedEdgeTypeId={selectedEdgeTypeId}
+          onSelectNodeType={setSelectedNodeTypeId}
+          onSelectEdgeType={setSelectedEdgeTypeId}
+          previewEdge={editorMode === 'edges' ? previewEdge : null}
+        />
+      </div>}
+            {editorMode === 'edges' && <div className="domain-pair-bar">
+        <label className="service-field"><span>Тип А</span><select className="service-input" value={edgeTypeForm.from_type} onChange={(event) => setEdgeTypeForm((prev) => ({ ...prev, from_type: event.target.value }))}><option value="">Выберите тип</option>{nodeTypes.map((nodeType) => <option key={nodeType.id} value={nodeType.id}>{nodeType.label}</option>)}</select></label>
+        <div className="domain-pair-connector"><strong>{edgeTypeForm.label || 'Новая связь'}</strong><span>{edgeTypeForm.direction === 'both' ? 'Двунаправленная' : 'Тип А → Тип Б'}</span><label className="service-checkbox"><input type="checkbox" checked={edgeTypeForm.supports_reverse} onChange={(event) => setEdgeTypeForm((prev) => ({ ...prev, supports_reverse: event.target.checked }))} /><span>Запуск с обеих сторон</span></label></div>
+        <label className="service-field"><span>Тип Б</span><select className="service-input" value={edgeTypeForm.to_type} onChange={(event) => setEdgeTypeForm((prev) => ({ ...prev, to_type: event.target.value }))}><option value="">Выберите тип</option>{nodeTypes.map((nodeType) => <option key={nodeType.id} value={nodeType.id}>{nodeType.label}</option>)}</select></label>
+      </div>}      {editorMode === 'nodes' && <NodeTypePreview nodeType={buildNodeTypePayload(nodeTypeForm)} />}
+      <div className={`service-console-grid domain-editor-${editorMode}`}>
+        <div className="service-card domain-node-editor">
           <div className="service-card-header">
             <div>
               <h3>Типы вершин</h3>
@@ -489,6 +516,15 @@ const GraphDomainEditor: React.FC<GraphDomainEditorProps> = () => {
                   <span>Толщина кольца</span>
                   <input className="service-input" value={nodeTypeForm.ringWidth} onChange={(event) => setNodeTypeForm((prev) => ({ ...prev, ringWidth: event.target.value }))} />
                 </label>
+                <label className="service-field">
+                  <span>Поле идентификатора</span>
+                  <select className="service-input" value={nodeTypeForm.identityAttribute} onChange={(event) => setNodeTypeForm((prev) => ({ ...prev, identityAttribute: event.target.value }))}>
+                    <option value="">Использовать введённое значение</option>
+                    {nodeTypeForm.attributes.filter((attribute) => attribute.key.trim()).map((attribute) => (
+                      <option key={attribute.id} value={attribute.key.trim()}>{attribute.label || attribute.key}</option>
+                    ))}
+                  </select>
+                </label>
                 <label className="service-checkbox">
                   <input type="checkbox" checked={nodeTypeForm.ringEnabled} onChange={(event) => setNodeTypeForm((prev) => ({ ...prev, ringEnabled: event.target.checked }))} />
                   <span>Показывать кольцо вокруг иконки</span>
@@ -553,7 +589,7 @@ const GraphDomainEditor: React.FC<GraphDomainEditorProps> = () => {
           </div>
         </div>
 
-        <div className="service-card">
+        <div className="service-card domain-edge-editor">
           <div className="service-card-header">
             <div>
               <h3>Типы связей</h3>
@@ -568,7 +604,8 @@ const GraphDomainEditor: React.FC<GraphDomainEditorProps> = () => {
 
           <div className="service-type-split">
             <div className="service-list">
-              {edgeTypes.map((edgeType) => (
+              <label className="service-field domain-edge-filter"><span>Поиск по типу А, типу Б или названию</span><input className="service-input" value={edgeFilter} onChange={(event) => setEdgeFilter(event.target.value)} placeholder="MSISDN, IP, устройство..." /></label>
+              {visibleEdgeTypes.map((edgeType) => (
                 <button
                   key={edgeType.id}
                   type="button"
@@ -577,10 +614,10 @@ const GraphDomainEditor: React.FC<GraphDomainEditorProps> = () => {
                 >
                   <strong>{edgeType.label}</strong>
                   <span>{edgeType.id}</span>
-                  <span>{`${edgeType.allowed_from.length} -> ${edgeType.allowed_to.length}`}</span>
+                  <span>{`${edgeType.from_type || "?"} → ${edgeType.to_type || "?"}`}</span>
                 </button>
               ))}
-              {!edgeTypes.length && <div className="service-empty">Типы связей пока не заданы.</div>}
+              {!visibleEdgeTypes.length && <div className="service-empty">Типы связей пока не заданы.</div>}
             </div>
 
             <div className="service-editor-block">
@@ -618,52 +655,16 @@ const GraphDomainEditor: React.FC<GraphDomainEditorProps> = () => {
                 </label>
                 <label className="service-field">
                   <span>Направление</span>
-                  <select className="service-input" value={edgeTypeForm.direction} onChange={(event) => setEdgeTypeForm((prev) => ({ ...prev, direction: event.target.value }))}>
+                  <select className="service-input" value={edgeTypeForm.direction} onChange={(event) => setEdgeTypeForm((prev) => ({ ...prev, direction: event.target.value, directed: event.target.value !== 'both' }))}>
                     {edgeDirectionOptions.map((option) => (
                       <option key={option.value} value={option.value}>{option.label}</option>
                     ))}
                   </select>
                 </label>
                 <label className="service-checkbox">
-                  <input type="checkbox" checked={edgeTypeForm.directed} onChange={(event) => setEdgeTypeForm((prev) => ({ ...prev, directed: event.target.checked }))} />
-                  <span>Считать связь направленной</span>
-                </label>
-                <label className="service-checkbox">
                   <input type="checkbox" checked={edgeTypeForm.dashed} onChange={(event) => setEdgeTypeForm((prev) => ({ ...prev, dashed: event.target.checked }))} />
                   <span>Пунктирная линия</span>
                 </label>
-              </div>
-
-              <div className="service-editor-header">
-                <div>
-                  <h4>Допустимые типы вершин</h4>
-                  <p>Укажи, между какими типами узлов можно создавать эту связь.</p>
-                </div>
-              </div>
-
-              <div className="service-console-grid">
-                <div className="service-card">
-                  <h4>От каких типов</h4>
-                  <div className="service-type-chip-grid">
-                    {nodeTypeIds.map((nodeTypeId) => (
-                      <label key={`from-${nodeTypeId}`} className={`service-type-chip ${edgeTypeForm.allowed_from.includes(nodeTypeId) ? 'active' : ''}`}>
-                        <input type="checkbox" checked={edgeTypeForm.allowed_from.includes(nodeTypeId)} onChange={() => toggleAllowedType('from', nodeTypeId)} />
-                        <span>{nodeTypeId}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-                <div className="service-card">
-                  <h4>К каким типам</h4>
-                  <div className="service-type-chip-grid">
-                    {nodeTypeIds.map((nodeTypeId) => (
-                      <label key={`to-${nodeTypeId}`} className={`service-type-chip ${edgeTypeForm.allowed_to.includes(nodeTypeId) ? 'active' : ''}`}>
-                        <input type="checkbox" checked={edgeTypeForm.allowed_to.includes(nodeTypeId)} onChange={() => toggleAllowedType('to', nodeTypeId)} />
-                        <span>{nodeTypeId}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
               </div>
 
               <div className="service-editor-header">
@@ -676,7 +677,7 @@ const GraphDomainEditor: React.FC<GraphDomainEditorProps> = () => {
               <div className="service-form-grid">
                 <label className="service-field">
                   <span>ID плагина</span>
-                  <input className="service-input" value={edgeTypeForm.plugin_id} onChange={(event) => setEdgeTypeForm((prev) => ({ ...prev, plugin_id: event.target.value }))} placeholder="project_ip_msisdn_links" />
+                  <input className="service-input" value={edgeTypeForm.plugin_id} onChange={(event) => setEdgeTypeForm((prev) => ({ ...prev, plugin_id: event.target.value }))} placeholder="expand_typed_relations" />
                 </label>
                 <label className="service-field">
                   <span>Раздел меню</span>

@@ -57,11 +57,15 @@ def resolve_edge_type(from_type: str, to_type: str) -> str:
     for edge_type in edge_types:
         if not isinstance(edge_type, dict):
             continue
-        allowed_from = edge_type.get("allowed_from") or []
-        allowed_to = edge_type.get("allowed_to") or []
-        if _matches(allowed_from, from_type) and _matches(allowed_to, to_type):
+        source_type = str(edge_type.get("from_type") or "").strip()
+        target_type = str(edge_type.get("to_type") or "").strip()
+        if not source_type or not target_type:
+            source_type = str((edge_type.get("allowed_from") or [""])[0] or "").strip()
+            target_type = str((edge_type.get("allowed_to") or [""])[0] or "").strip()
+        direct_match = _matches([source_type], from_type) and _matches([target_type], to_type)
+        reverse_match = bool(edge_type.get("supports_reverse")) and _matches([source_type], to_type) and _matches([target_type], from_type)
+        if direct_match or reverse_match:
             return str(edge_type.get("id") or "connected_to")
-
     return "connected_to"
 
 

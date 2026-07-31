@@ -266,6 +266,45 @@ class GraphPluginToolkit:
             },
         }
 
+    @staticmethod
+    def build_edge_summary_label(events_count: int, first_event_at: str, last_event_at: str) -> str:
+        if events_count <= 0:
+            return ""
+        if first_event_at and last_event_at and first_event_at != last_event_at:
+            return f"Событий: {events_count}\n{first_event_at} - {last_event_at}"
+        if last_event_at:
+            return f"Событий: {events_count}\n{last_event_at}"
+        return f"Событий: {events_count}"
+
+    def apply_edge_summary(
+        self,
+        edge: Dict[str, Any],
+        facts_count: int,
+        first_event_at: Optional[str],
+        last_event_at: Optional[str],
+    ) -> None:
+        """Replace transient event arrays with the compact aggregate returned by storage."""
+        attributes = edge.get("attributes")
+        if not isinstance(attributes, dict):
+            attributes = {}
+            edge["attributes"] = attributes
+        visual = attributes.get("visual")
+        if not isinstance(visual, dict):
+            visual = {}
+            attributes["visual"] = visual
+
+        first = normalize_text(first_event_at)
+        last = normalize_text(last_event_at) or first
+        count = max(0, int(facts_count or 0))
+        attributes.pop("event_times", None)
+        attributes["events_count"] = count
+        attributes["first_event_at"] = first
+        attributes["last_event_at"] = last
+        attributes["event_time"] = last
+        edge_label = self.build_edge_summary_label(count, first, last)
+        edge["label"] = edge_label
+        visual["label"] = edge_label
+        visual.setdefault("direction", "both")
     def merge_edge_event(self, edge: Dict[str, Any], event_time: Optional[str]) -> None:
         attributes = edge.get("attributes")
         if not isinstance(attributes, dict):

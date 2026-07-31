@@ -11,9 +11,12 @@ import type {
 
 export const categoryLabels: Record<ServiceCategory, string> = {
   cell_towers: 'Справочник БС',
+  reference_providers: 'Провайдеры данных',
   project_data: 'Данные проекта',
   console_registry: 'Консоль / процедуры',
-  graph_model: 'Типы графа',
+  graph_edges: 'Типы связей',
+  graph_nodes: 'Типы объектов',
+  analysis_profiles: '\u041f\u0440\u043e\u0444\u0438\u043b\u0438 \u0430\u043d\u0430\u043b\u0438\u0437\u0430',
   import_plugins: 'Плагины импорта',
   metadata_bundle: 'Метаданные',
 };
@@ -27,7 +30,7 @@ export const detectProjectDataFileKind = (fileName: string): string => {
   if (normalized.includes('location_events')) return 'События локаций';
   if (normalized.includes('ip_bindings')) return 'IP-привязки';
   if (normalized.includes('manifest')) return 'Манифест';
-  if (normalized.includes('взаимодейств') || normalized.includes('техданные')) return 'Адресная книга и идентификаторы';
+  if (normalized.includes('взаимодейств') || normalized.includes('техданные')) return 'Действия пользователей и адресная книга';
   if (normalized.endsWith('.zip')) return 'Архив';
   return 'Прочее';
 };

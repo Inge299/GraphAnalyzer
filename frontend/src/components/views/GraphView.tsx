@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useAppDispatch } from '../../store';
 import { fetchArtifacts, setCurrentArtifact, updateArtifactSync } from '../../store/slices/artifactsSlice';
-import { setSelectedElements } from '../../store/slices/uiSlice';
+import { setSelectedDomainEntities, setSelectedElements } from '../../store/slices/uiSlice';
 import type { SelectedElement } from '../../store/slices/uiSlice';
 import { Network } from 'vis-network/standalone';
 import { DataSet } from 'vis-data/standalone';
@@ -19,6 +19,7 @@ import { useGraphKeyboardShortcuts } from '../../hooks/useGraphKeyboardShortcuts
 import { useGraphExternalEvents } from '../../hooks/useGraphExternalEvents';
 import { useGraphLayoutActions } from '../../hooks/useGraphLayoutActions';
 import { buildPluginContext, resolvePluginMenuTargets } from './graphPluginMenu';
+import { selectedEntityFromGraphNode, uniqueSelectedDomainEntities } from '../../utils/domainSelection';
 import { applyRegularSelectionClick, handleConnectClick, handleNodeCreateClick } from './graphClickHandlers';
 import { PluginContextMenu } from './PluginContextMenu';
 import { GraphStatusOverlays } from './GraphStatusOverlays';
@@ -556,8 +557,15 @@ export const GraphView: React.FC<GraphViewProps> = ({
     }));
 
 
+    const graphNodes = Array.isArray(artifact.data?.nodes) ? artifact.data.nodes : [];
+    const selectedNodeSet = new Set(selectedNodeIds);
     dispatch(setSelectedElements([...nodes, ...edges]));
-  }, [dispatch]);
+    dispatch(setSelectedDomainEntities(uniqueSelectedDomainEntities(
+      graphNodes
+        .filter((node: any) => selectedNodeSet.has(String(node?.id ?? node?.node_id ?? '')))
+        .map(selectedEntityFromGraphNode),
+    )));
+  }, [artifact.data?.nodes, dispatch]);
   const {
     pluginMenu,
     pluginMenuRef,

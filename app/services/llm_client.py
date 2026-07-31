@@ -36,6 +36,8 @@ class LLMClient:
     """Thin client over OpenAI-compatible chat completions API."""
 
     def __init__(self) -> None:
+        if not settings.LLM_ENABLED:
+            raise LLMConfigurationError("LLM is disabled for the current deployment")
         base_url = str(settings.LLM_BASE_URL or "").strip()
         if not base_url:
             raise LLMConfigurationError("LLM_BASE_URL is not configured")

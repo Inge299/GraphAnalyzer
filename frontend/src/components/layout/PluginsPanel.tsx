@@ -2,31 +2,31 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { fetchArtifacts, setCurrentArtifact } from '../../store/slices/artifactsSlice';
 import { pluginApi } from '../../services/api';
-import type { ApiPlugin, PluginApplicableResponse, PluginExecutionContext } from '../../types/api';
+import type { ApiPlugin, PluginApplicableResponse, PluginExecutionContext, SelectedDomainEntity } from '../../types/api';
 import { collectPluginParamsWithPrompts, groupPluginsByMenuPath } from '../../utils/pluginParams';
 import { getPluginDisplayDescription, getPluginDisplayName } from '../../utils/pluginMenu';
 import './PluginsPanel.css';
 
 const labels = {
-  title: 'Плагины',
-  loading: 'Загрузка...',
-  empty: 'Для текущего артефакта пока нет доступных глобальных плагинов.',
-  noArtifact: 'Выберите артефакт, чтобы посмотреть доступные плагины.',
-  run: 'Запустить',
-  running: 'Запуск...',
-  loadError: 'Не удалось загрузить список плагинов.',
-  runError: 'Ошибка запуска плагина.',
-  success: 'Готово',
+  title: 'РџР»Р°РіРёРЅС‹',
+  loading: 'Р—Р°РіСЂСѓР·РєР°...',
+  empty: 'Р”Р»СЏ С‚РµРєСѓС‰РµРіРѕ Р°СЂС‚РµС„Р°РєС‚Р° РїРѕРєР° РЅРµС‚ РґРѕСЃС‚СѓРїРЅС‹С… РіР»РѕР±Р°Р»СЊРЅС‹С… РїР»Р°РіРёРЅРѕРІ.',
+  noArtifact: 'Р’С‹Р±РµСЂРёС‚Рµ Р°СЂС‚РµС„Р°РєС‚, С‡С‚РѕР±С‹ РїРѕСЃРјРѕС‚СЂРµС‚СЊ РґРѕСЃС‚СѓРїРЅС‹Рµ РїР»Р°РіРёРЅС‹.',
+  run: 'Р—Р°РїСѓСЃС‚РёС‚СЊ',
+  running: 'Р—Р°РїСѓСЃРє...',
+  loadError: 'РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ СЃРїРёСЃРѕРє РїР»Р°РіРёРЅРѕРІ.',
+  runError: 'РћС€РёР±РєР° Р·Р°РїСѓСЃРєР° РїР»Р°РіРёРЅР°.',
+  success: 'Р“РѕС‚РѕРІРѕ',
 };
 
-const buildContext = (selectedElements: Array<{ type: string; id: string }>): PluginExecutionContext => {
-  const selected_nodes = selectedElements
+const buildContext = (selectedElements: Array<{ type: string; id: string }>, selected_entities: SelectedDomainEntity[], isGraph: boolean): PluginExecutionContext => {
+  const selected_nodes = (isGraph ? selectedElements : [])
     .filter((item) => item.type === 'node')
     .map((item) => String(item.id));
-  const selected_edges = selectedElements
+  const selected_edges = (isGraph ? selectedElements : [])
     .filter((item) => item.type === 'edge')
     .map((item) => String(item.id));
-  return { selected_nodes, selected_edges };
+  return { selected_nodes, selected_edges, selected_entities };
 };
 
 const PluginsPanel: React.FC = () => {
@@ -35,11 +35,16 @@ const PluginsPanel: React.FC = () => {
   const currentArtifactId = useAppSelector((state) => state.artifacts.currentArtifactId);
   const artifacts = useAppSelector((state) => state.artifacts.items);
   const selectedElements = useAppSelector((state) => state.ui.selectedElements);
+  const selectedDomainEntities = useAppSelector((state) => state.ui.selectedDomainEntities);
 
   const selectedArtifact = currentArtifactId ? artifacts[currentArtifactId] : null;
   const pluginContext = useMemo(
-    () => buildContext(selectedElements as Array<{ type: string; id: string }>),
-    [selectedElements],
+    () => buildContext(
+      selectedElements as Array<{ type: string; id: string }>,
+      selectedDomainEntities,
+      selectedArtifact?.type === 'graph',
+    ),
+    [selectedElements, selectedDomainEntities, selectedArtifact?.type],
   );
   const pluginContextKey = useMemo(() => JSON.stringify(pluginContext), [pluginContext]);
 

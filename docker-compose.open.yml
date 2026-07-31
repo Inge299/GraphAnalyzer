@@ -1,0 +1,37 @@
+services:
+  app:
+    environment:
+      ENVIRONMENT: open-contour
+      GEOCODER_ENABLED: ${GEOCODER_ENABLED:-true}
+      GEOCODER_BASE_URL: ${GEOCODER_BASE_URL:-https://nominatim.openstreetmap.org}
+      GEOCODER_USER_AGENT: ${GEOCODER_USER_AGENT:-Nodex/1.0}
+      GEOCODER_TIMEOUT_SECONDS: ${GEOCODER_TIMEOUT_SECONDS:-10}
+      GEOCODER_MIN_INTERVAL_SECONDS: ${GEOCODER_MIN_INTERVAL_SECONDS:-1}
+      LLM_ENABLED: ${LLM_ENABLED:-false}
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-120}
+      LLM_MODEL_ANALYZE: ${LLM_MODEL_ANALYZE:-}
+      LLM_MODEL_DRAFT: ${LLM_MODEL_DRAFT:-}
+      LLM_MODEL_EDIT: ${LLM_MODEL_EDIT:-}
+      LLM_RUNTIME_LABEL: ${LLM_RUNTIME_LABEL:-}
+      CELL_TOWER_REFERENCE_DSN: ${CELL_TOWER_REFERENCE_DSN:-}
+      CELL_TOWER_REFERENCE_TABLE: ${CELL_TOWER_REFERENCE_TABLE:-cell_tower_reference}
+      CELL_TOWER_REFERENCE_TIMEOUT_SECONDS: ${CELL_TOWER_REFERENCE_TIMEOUT_SECONDS:-20}
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "${NODEX_PORT:-8080}:80"
+    environment:
+      MAP_MODE: ${MAP_MODE:-online}
+      MAP_PMTILES_URL: ${MAP_PMTILES_URL:-}
+      MAP_STYLE_URL: ${MAP_STYLE_URL:-}
+      MAP_GLYPHS_URL: ${MAP_GLYPHS_URL:-}
+    depends_on:
+      app:
+        condition: service_started
+    networks:
+      - osint-network

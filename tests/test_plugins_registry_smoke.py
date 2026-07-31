@@ -1,13 +1,11 @@
-﻿from plugins import AVAILABLE_PLUGINS
+from plugins import AVAILABLE_PLUGINS
 
 
 def test_required_plugins_are_discovered():
     required = {
-        "abonent_period_enricher",
-        "abonent_communications",
-        "rag_health_check",
-        "rag_search_documents",
-        "rag_extract_objects",
+        "create_typed_objects",
+        "edge_weights",
+        "expand_typed_relations",
     }
     discovered = set(AVAILABLE_PLUGINS.keys())
     missing = required - discovered

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { MutableRefObject } from 'react';
 import { pluginApi } from '../services/api';
-import type { ApiPlugin, PluginApplicableResponse } from '../types/api';
+import type { PluginApplicableResponse } from '../types/api';
 import {
   buildPluginMenuTree,
   getPluginMenuEntries as buildPluginMenuEntries,
@@ -83,7 +83,7 @@ export const useGraphPluginContextMenu = ({
     try {
       const liveArtifactData = getArtifactSnapshot();
       const response: PluginApplicableResponse = await pluginApi.applicable(projectId, artifactId, context, liveArtifactData);
-      const contextual = (response.plugins || []).filter((plugin: ApiPlugin) => String(plugin?.plugin_scope || 'context') !== 'global');
+      const contextual = response.plugins || [];
       setPluginMenu((prev) => {
         if (!prev) return prev;
         return { ...prev, loading: false, plugins: contextual };

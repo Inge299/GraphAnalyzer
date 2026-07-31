@@ -8,7 +8,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.artifact import Artifact, ArtifactVersion
-from app.services.project_data_service import ensure_project_data_tables
+from app.services.project_domain_store import ensure_project_domain_store
 
 PROJECT_DATA_GRAPH_NAME = "Project data graph"
 PROJECT_DATA_GRAPH_EDGE_LIMIT = 1000
@@ -29,25 +29,44 @@ def _format_graph_datetime(value: Any) -> str:
 
 async def sync_project_data_graph_artifact(db: AsyncSession, project_id: int) -> dict[str, Any] | None:
     """Create or update a graph artifact from loaded project communications."""
-    await ensure_project_data_tables(db)
+    await ensure_project_domain_store(db)
 
     result = await db.execute(
         text(
             """
             SELECT
-                abon1,
-                abon2,
-                SUM(calls_count)::INTEGER AS calls_count,
-                MAX(contacts_count)::INTEGER AS contacts_count,
-                MIN(time_start) AS period_start,
-                MAX(time_end) AS period_end,
-                BOOL_OR(calls_count_approx) AS calls_count_approx
-            FROM project_communications
+                from_key AS abon1,
+                to_key AS abon2,
+                SUM(
+                    CASE
+                        WHEN COALESCE(attributes ->> 'calls_count', '') ~ '^\\d+$'
+                            THEN (attributes ->> 'calls_count')::INTEGER
+                        ELSE 1
+                    END
+                )::INTEGER AS calls_count,
+                MAX(
+                    CASE
+                        WHEN COALESCE(attributes ->> 'contacts_count', '') ~ '^\\d+$'
+                            THEN (attributes ->> 'contacts_count')::INTEGER
+                        ELSE 1
+                    END
+                )::INTEGER AS contacts_count,
+                MIN(occurred_at) AS period_start,
+                MAX(occurred_at) AS period_end,
+                BOOL_OR(LOWER(COALESCE(attributes ->> 'calls_count_approx', 'false')) IN ('true', '1')) AS calls_count_approx
+            FROM project_domain_relations
             WHERE project_id = :project_id
-              AND NULLIF(BTRIM(abon1), '') IS NOT NULL
-              AND NULLIF(BTRIM(abon2), '') IS NOT NULL
-            GROUP BY abon1, abon2
-            ORDER BY SUM(calls_count) DESC, abon1, abon2
+              AND relation_type = 'msisdn_communication'
+              AND NULLIF(BTRIM(from_key), '') IS NOT NULL
+              AND NULLIF(BTRIM(to_key), '') IS NOT NULL
+            GROUP BY from_key, to_key
+            ORDER BY SUM(
+                CASE
+                    WHEN COALESCE(attributes ->> 'calls_count', '') ~ '^\\d+$'
+                        THEN (attributes ->> 'calls_count')::INTEGER
+                    ELSE 1
+                END
+            ) DESC, from_key, to_key
             LIMIT :limit
             """
         ),

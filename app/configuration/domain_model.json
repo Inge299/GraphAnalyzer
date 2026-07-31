@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "node_types": [
     {
       "id": "address",
@@ -7,7 +7,7 @@
       "icon": "address",
       "default_visual": {
         "color": "#8b5cf6",
-        "iconScale": 2.0,
+        "iconScale": 2,
         "ringEnabled": true,
         "ringWidth": 1.5
       },
@@ -25,7 +25,7 @@
       "icon": "passport",
       "default_visual": {
         "color": "#ef4444",
-        "iconScale": 2.0,
+        "iconScale": 2,
         "ringEnabled": true,
         "ringWidth": 1.5
       },
@@ -77,7 +77,7 @@
       "icon": "messenger_account",
       "default_visual": {
         "color": "#ec4899",
-        "iconScale": 2.0,
+        "iconScale": 2,
         "ringEnabled": true,
         "ringWidth": 1.5
       },
@@ -100,7 +100,7 @@
       "icon": "document",
       "default_visual": {
         "color": "#22c55e",
-        "iconScale": 2.0,
+        "iconScale": 2,
         "ringEnabled": true,
         "ringWidth": 1.5
       },
@@ -148,7 +148,7 @@
       "icon": "vehicle",
       "default_visual": {
         "color": "#14b8a6",
-        "iconScale": 2.0,
+        "iconScale": 2,
         "ringEnabled": true,
         "ringWidth": 1.5
       },
@@ -194,7 +194,7 @@
       "icon": "bank_card",
       "default_visual": {
         "color": "#64748b",
-        "iconScale": 2.0,
+        "iconScale": 2,
         "ringEnabled": true,
         "ringWidth": 1.5
       },
@@ -230,7 +230,7 @@
       "icon": "location",
       "default_visual": {
         "color": "#f97316",
-        "iconScale": 2.0,
+        "iconScale": 2,
         "ringEnabled": true,
         "ringWidth": 1.5
       },
@@ -244,6 +244,11 @@
           "key": "longitude",
           "type": "number",
           "label": "Долгота"
+        },
+        {
+          "key": "address",
+          "type": "string",
+          "label": "Адрес"
         }
       ]
     },
@@ -253,7 +258,7 @@
       "icon": "email",
       "default_visual": {
         "color": "#f59e0b",
-        "iconScale": 2.0,
+        "iconScale": 2,
         "ringEnabled": true,
         "ringWidth": 1.5
       },
@@ -271,7 +276,7 @@
       "icon": "imei",
       "default_visual": {
         "color": "#0ea5e9",
-        "iconScale": 2.0,
+        "iconScale": 2,
         "ringEnabled": true,
         "ringWidth": 1.5
       },
@@ -289,7 +294,7 @@
       "icon": "imsi",
       "default_visual": {
         "color": "#22c55e",
-        "iconScale": 2.0,
+        "iconScale": 2,
         "ringEnabled": true,
         "ringWidth": 1.5
       },
@@ -312,7 +317,7 @@
       "icon": "ip_address",
       "default_visual": {
         "color": "#6366f1",
-        "iconScale": 2.0,
+        "iconScale": 2,
         "ringEnabled": true,
         "ringWidth": 1.5
       },
@@ -330,7 +335,7 @@
       "icon": "msisdn",
       "default_visual": {
         "color": "#2563eb",
-        "iconScale": 2.0,
+        "iconScale": 2,
         "ringEnabled": true,
         "ringWidth": 1.5
       },
@@ -341,265 +346,175 @@
           "label": "MSISDN"
         }
       ]
+    },
+    {
+      "id": "base_station",
+      "label": "Базовая станция",
+      "icon": "tower",
+      "default_visual": {
+        "color": "#7c3aed",
+        "iconScale": 2,
+        "ringEnabled": true,
+        "ringWidth": 1.5
+      },
+      "attributes": [
+        {
+          "key": "mcc",
+          "type": "string",
+          "label": "MCC"
+        },
+        {
+          "key": "mnc",
+          "type": "string",
+          "label": "MNC"
+        },
+        {
+          "key": "lac",
+          "type": "string",
+          "label": "LAC"
+        },
+        {
+          "key": "cid",
+          "type": "string",
+          "label": "CID"
+        },
+        {
+          "key": "azimuth_deg",
+          "type": "number",
+          "label": "Азимут антенны"
+        }
+      ]
     }
   ],
   "edge_types": [
     {
+      "id": "msisdn_communication",
+      "label": "Соединение",
+      "from_type": "msisdn",
+      "to_type": "msisdn",
+      "supports_reverse": true,
+      "system": false,
+      "default_visual": {
+        "color": "#2563eb",
+        "width": 2,
+        "direction": "both",
+        "dashed": false
+      },
+      "attributes": [
+        {
+          "key": "event_time",
+          "type": "datetime",
+          "label": "Время"
+        },
+        {
+          "key": "duration_sec",
+          "type": "number",
+          "label": "Длительность, сек"
+        },
+        {
+          "key": "connection_type",
+          "type": "string",
+          "label": "Тип соединения"
+        }
+      ],
+      "directed": false,
+      "plugin_id": null,
+      "show_in_context_menu": false,
+      "context_menu_section": null,
+      "context_menu_label": null,
+      "menu_order": 0
+    },
+    {
+      "id": "msisdn_imei_usage",
+      "label": "Использование аппарата",
+      "from_type": "msisdn",
+      "to_type": "imei",
+      "supports_reverse": true,
+      "system": false,
+      "default_visual": {
+        "color": "#0ea5e9",
+        "width": 2,
+        "direction": "both",
+        "dashed": false
+      },
+      "attributes": [
+        {
+          "key": "event_time",
+          "type": "datetime",
+          "label": "Время"
+        }
+      ],
+      "directed": false,
+      "plugin_id": null,
+      "show_in_context_menu": false,
+      "context_menu_section": null,
+      "context_menu_label": null,
+      "menu_order": 0
+    },
+    {
+      "id": "msisdn_imsi_usage",
+      "label": "Использование IMSI",
+      "from_type": "msisdn",
+      "to_type": "imsi",
+      "supports_reverse": true,
+      "system": false,
+      "default_visual": {
+        "color": "#2563eb",
+        "width": 2,
+        "direction": "both",
+        "dashed": false
+      },
+      "attributes": [
+        {
+          "key": "event_time",
+          "type": "datetime",
+          "label": "Время"
+        }
+      ],
+      "directed": false,
+      "plugin_id": null,
+      "show_in_context_menu": false,
+      "context_menu_section": null,
+      "context_menu_label": null,
+      "menu_order": 0
+    },
+    {
       "id": "ip_msisdn_link",
       "label": "IP <-> MSISDN",
-      "allowed_from": [
-        "ip_address",
-        "msisdn"
-      ],
-      "allowed_to": [
-        "msisdn",
-        "ip_address"
-      ],
+      "from_type": "ip_address",
+      "to_type": "msisdn",
+      "supports_reverse": true,
+      "system": false,
       "default_visual": {
         "color": "#0f766e",
-        "width": 2.0,
+        "width": 2,
         "direction": "both",
         "dashed": false
       },
       "attributes": [],
       "directed": false,
-      "plugin_id": null,
-      "show_in_context_menu": false,
-      "context_menu_section": null,
-      "context_menu_label": null,
-      "menu_order": 0
-    },
-    {
-      "id": "msisdn_device_link",
-      "label": "MSISDN <-> Устройство",
-      "allowed_from": [
-        "msisdn",
-        "device"
-      ],
-      "allowed_to": [
-        "device",
-        "msisdn"
-      ],
-      "default_visual": {
-        "color": "#ea580c",
-        "width": 2.0,
-        "direction": "both",
-        "dashed": false
-      },
-      "attributes": [],
-      "directed": false,
-      "plugin_id": null,
-      "show_in_context_menu": false,
-      "context_menu_section": null,
-      "context_menu_label": null,
-      "menu_order": 0
-    },
-    {
-      "id": "address_book_link",
-      "label": "Адресная книга",
-      "allowed_from": [
-        "msisdn"
-      ],
-      "allowed_to": [
-        "msisdn"
-      ],
-      "default_visual": {
-        "color": "#2563eb",
-        "width": 2.0,
-        "direction": "to",
-        "dashed": false
-      },
-      "attributes": [],
-      "directed": true,
-      "plugin_id": "project_address_book_links",
-      "show_in_context_menu": true,
-      "context_menu_section": "Связи",
-      "context_menu_label": "Адресная книга",
-      "menu_order": 50
-    },
-    {
-      "id": "owns",
-      "label": "Владеет",
-      "allowed_from": [
-        "person"
-      ],
-      "allowed_to": [
-        "msisdn",
-        "imsi",
-        "imei",
-        "bank_card",
-        "vehicle",
-        "passport",
-        "email",
-        "messenger_account"
-      ],
-      "default_visual": {
-        "color": "#334155",
-        "width": 2.0,
-        "direction": "to",
-        "dashed": false
-      },
-      "attributes": [],
-      "directed": false,
-      "plugin_id": "project_user_msisdn_links",
-      "show_in_context_menu": true,
-      "context_menu_section": "Связи",
-      "context_menu_label": "Пользователь <-> MSISDN",
-      "menu_order": 10
-    },
-    {
-      "id": "msisdn_text_link",
-      "label": "Записан как...",
-      "allowed_from": [
-        "msisdn",
-        "text_bundle"
-      ],
-      "allowed_to": [
-        "text_bundle",
-        "msisdn"
-      ],
-      "default_visual": {
-        "color": "#334155",
-        "width": 2.0,
-        "direction": "to",
-        "dashed": true
-      },
-      "attributes": [],
-      "directed": true,
-      "plugin_id": "project_msisdn_text_links",
-      "show_in_context_menu": true,
-      "context_menu_section": "Связи",
-      "context_menu_label": "Записан как...",
-      "menu_order": 40
-    },
-    {
-      "id": "uses",
-      "label": "Использует",
-      "allowed_from": [
-        "msisdn",
-        "imei",
-        "device",
-        "person"
-      ],
-      "allowed_to": [
-        "imsi",
-        "ip_address",
-        "email",
-        "messenger_account"
-      ],
-      "default_visual": {
-        "color": "#2563eb",
-        "width": 2.0,
-        "direction": "to",
-        "dashed": false
-      },
-      "attributes": [],
-      "directed": false,
-      "plugin_id": "project_ip_msisdn_links",
+      "plugin_id": "expand_typed_relations",
       "show_in_context_menu": true,
       "context_menu_section": "Связи",
       "context_menu_label": "IP <-> MSISDN",
       "menu_order": 20
     },
     {
-      "id": "msisdn_communication",
-      "label": "\u0421\u043e\u0435\u0434\u0438\u043d\u0435\u043d\u0438\u0435",
-      "allowed_from": [
-        "msisdn"
-      ],
-      "allowed_to": [
-        "msisdn"
-      ],
+      "id": "msisdn_device_link",
+      "label": "MSISDN <-> Устройство",
+      "from_type": "msisdn",
+      "to_type": "device",
+      "supports_reverse": true,
+      "system": false,
       "default_visual": {
-        "color": "#2563eb",
-        "width": 2.0,
+        "color": "#ea580c",
+        "width": 2,
         "direction": "both",
         "dashed": false
-      },
-      "attributes": [
-        {
-          "key": "period_start",
-          "type": "datetime",
-          "label": "\u041d\u0430\u0447\u0430\u043b\u043e \u043f\u0435\u0440\u0438\u043e\u0434\u0430"
-        },
-        {
-          "key": "period_end",
-          "type": "datetime",
-          "label": "\u041e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u0435 \u043f\u0435\u0440\u0438\u043e\u0434\u0430"
-        },
-        {
-          "key": "calls_count",
-          "type": "number",
-          "label": "\u041a\u043e\u043b\u0438\u0447\u0435\u0441\u0442\u0432\u043e \u0441\u043e\u0435\u0434\u0438\u043d\u0435\u043d\u0438\u0439"
-        }
-      ],
-      "directed": false,
-      "plugin_id": null,
-      "show_in_context_menu": false,
-      "context_menu_section": null,
-      "context_menu_label": null,
-      "menu_order": 0
-    },    {
-      "id": "msisdn_imei_usage",
-      "label": "\u0418\u0441\u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u043d\u0438\u0435 \u0430\u043f\u043f\u0430\u0440\u0430\u0442\u0430",
-      "allowed_from": [
-        "msisdn"
-      ],
-      "allowed_to": [
-        "imei"
-      ],
-      "default_visual": {
-        "color": "#0ea5e9",
-        "width": 2.0,
-        "direction": "both",
-        "dashed": false
-      },
-      "attributes": [
-        {
-          "key": "period_start",
-          "type": "datetime",
-          "label": "\u041d\u0430\u0447\u0430\u043b\u043e \u043f\u0435\u0440\u0438\u043e\u0434\u0430"
-        },
-        {
-          "key": "period_end",
-          "type": "datetime",
-          "label": "\u041e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u0435 \u043f\u0435\u0440\u0438\u043e\u0434\u0430"
-        },
-        {
-          "key": "facts_count",
-          "type": "number",
-          "label": "\u041a\u043e\u043b\u0438\u0447\u0435\u0441\u0442\u0432\u043e \u0444\u0430\u043a\u0442\u043e\u0432"
-        }
-      ],
-      "directed": false,
-      "plugin_id": null,
-      "show_in_context_menu": false,
-      "context_menu_section": null,
-      "context_menu_label": null,
-      "menu_order": 0
-    },    {
-      "id": "located_at",
-      "label": "Находится",
-      "allowed_from": [
-        "person",
-        "msisdn",
-        "imei",
-        "device",
-        "vehicle"
-      ],
-      "allowed_to": [
-        "address",
-        "location"
-      ],
-      "default_visual": {
-        "color": "#0f766e",
-        "width": 2.0,
-        "direction": "to",
-        "dashed": true
       },
       "attributes": [],
       "directed": false,
-      "plugin_id": "project_msisdn_device_links",
+      "plugin_id": "expand_typed_relations",
       "show_in_context_menu": true,
       "context_menu_section": "Связи",
       "context_menu_label": "MSISDN <-> Устройство",
@@ -608,40 +523,93 @@
     {
       "id": "user_msisdn_link",
       "label": "Пользователь <-> MSISDN",
-      "allowed_from": [
-        "user_id",
-        "msisdn"
-      ],
-      "allowed_to": [
-        "msisdn",
-        "user_id"
-      ],
+      "from_type": "user_id",
+      "to_type": "msisdn",
+      "supports_reverse": true,
+      "system": false,
       "default_visual": {
         "color": "#475569",
-        "width": 2.0,
+        "width": 2,
         "direction": "both",
         "dashed": false
       },
       "attributes": [],
       "directed": false,
-      "plugin_id": null,
-      "show_in_context_menu": false,
-      "context_menu_section": null,
-      "context_menu_label": null,
-      "menu_order": 0
+      "plugin_id": "expand_typed_relations",
+      "show_in_context_menu": true,
+      "context_menu_section": "Связи",
+      "context_menu_label": "Пользователь <-> MSISDN",
+      "menu_order": 10
+    },
+    {
+      "id": "address_book_link",
+      "label": "Адресная книга",
+      "from_type": "msisdn",
+      "to_type": "msisdn",
+      "supports_reverse": true,
+      "system": false,
+      "default_visual": {
+        "color": "#2563eb",
+        "width": 2,
+        "direction": "to",
+        "dashed": false
+      },
+      "attributes": [
+        {
+          "key": "event_time",
+          "type": "datetime",
+          "label": "Дата"
+        }
+      ],
+      "directed": true,
+      "plugin_id": "expand_typed_relations",
+      "show_in_context_menu": true,
+      "context_menu_section": "Связи",
+      "context_menu_label": "Адресная книга",
+      "menu_order": 50
+    },
+    {
+      "id": "msisdn_text_link",
+      "label": "Записан как...",
+      "from_type": "msisdn",
+      "to_type": "text_bundle",
+      "supports_reverse": false,
+      "system": false,
+      "default_visual": {
+        "color": "#334155",
+        "width": 2,
+        "direction": "to",
+        "dashed": true
+      },
+      "attributes": [
+        {
+          "key": "event_time",
+          "type": "datetime",
+          "label": "Дата"
+        },
+        {
+          "key": "source_msisdn",
+          "type": "string",
+          "label": "Источник"
+        }
+      ],
+      "directed": true,
+      "plugin_id": "expand_typed_relations",
+      "show_in_context_menu": true,
+      "context_menu_section": "Связи",
+      "context_menu_label": "Записан как...",
+      "menu_order": 40
     },
     {
       "id": "connected_to",
       "label": "Связан",
-      "allowed_from": [
-        "*"
-      ],
-      "allowed_to": [
-        "*"
-      ],
+      "from_type": "*",
+      "to_type": "*",
+      "supports_reverse": true,
+      "system": true,
       "default_visual": {
         "color": "#475569",
-        "width": 2.0,
+        "width": 2,
         "direction": "both",
         "dashed": false
       },
@@ -656,20 +624,66 @@
     {
       "id": "object_document",
       "label": "Объект и документ",
-      "allowed_from": [
-        "*"
-      ],
-      "allowed_to": [
-        "document"
-      ],
+      "from_type": "*",
+      "to_type": "document",
+      "supports_reverse": true,
+      "system": true,
       "default_visual": {
         "color": "#22c55e",
-        "width": 2.0,
+        "width": 2,
         "direction": "both",
         "dashed": false
       },
       "attributes": [],
       "directed": false,
+      "plugin_id": null,
+      "show_in_context_menu": false,
+      "context_menu_section": null,
+      "context_menu_label": null,
+      "menu_order": 0
+    },
+    {
+      "id": "msisdn_base_station",
+      "label": "Использование БС",
+      "from_type": "msisdn",
+      "to_type": "base_station",
+      "supports_reverse": true,
+      "system": false,
+      "default_visual": {
+        "color": "#7c3aed",
+        "width": 2,
+        "direction": "target",
+        "dashed": false
+      },
+      "attributes": [
+        {
+          "key": "event_time",
+          "type": "datetime",
+          "label": "Время"
+        }
+      ],
+      "directed": true,
+      "plugin_id": null,
+      "show_in_context_menu": false,
+      "context_menu_section": null,
+      "context_menu_label": null,
+      "menu_order": 0
+    },
+    {
+      "id": "base_station_location",
+      "label": "Расположение БС",
+      "from_type": "base_station",
+      "to_type": "location",
+      "supports_reverse": true,
+      "system": false,
+      "default_visual": {
+        "color": "#f97316",
+        "width": 2,
+        "direction": "target",
+        "dashed": false
+      },
+      "attributes": [],
+      "directed": true,
       "plugin_id": null,
       "show_in_context_menu": false,
       "context_menu_section": null,
@@ -689,5 +703,548 @@
       "solid",
       "dashed"
     ]
-  }
+  },
+  "fact_types": [
+    {
+      "id": "communication",
+      "label": "Связь"
+    },
+    {
+      "id": "device_history",
+      "label": "Использование устройства"
+    },
+    {
+      "id": "location_event",
+      "label": "Локационное событие"
+    },
+    {
+      "id": "ip_binding",
+      "label": "IP-привязка"
+    },
+    {
+      "id": "address_book_entry",
+      "label": "Запись адресной книги"
+    },
+    {
+      "id": "recorded_as_entry",
+      "label": "Запись «Записан как»"
+    },
+    {
+      "id": "user_device_observation",
+      "label": "Наблюдение устройства пользователя"
+    }
+  ],
+  "ingestion_mappings": [
+    {
+      "id": "communications",
+      "label": "Связи абонентов",
+      "source": "communications",
+      "relations": [
+        {
+          "attributes": "$row",
+          "occurred_at": "$time_start",
+          "to": {
+            "key": "$abon2",
+            "type": "msisdn"
+          },
+          "from": {
+            "key": "$abon1",
+            "type": "msisdn"
+          },
+          "type": "msisdn_communication",
+          "directed": false
+        }
+      ],
+      "entities": [
+        {
+          "key": "$abon1",
+          "attributes": {
+            "msisdn": "$abon1"
+          },
+          "type": "msisdn"
+        },
+        {
+          "key": "$abon2",
+          "attributes": {
+            "msisdn": "$abon2"
+          },
+          "type": "msisdn"
+        }
+      ],
+      "fact": {
+        "type": "communication",
+        "occurred_at": "$time_start"
+      }
+    },
+    {
+      "id": "device_history",
+      "label": "Использование устройств",
+      "source": "device_history",
+      "relations": [
+        {
+          "attributes": "$row",
+          "occurred_at": "$period_start",
+          "to": {
+            "key": "$imei",
+            "type": "imei"
+          },
+          "from": {
+            "key": "$abon",
+            "type": "msisdn"
+          },
+          "type": "msisdn_imei_usage",
+          "directed": false
+        },
+        {
+          "attributes": "$row",
+          "occurred_at": "$period_start",
+          "to": {
+            "key": "$imsi",
+            "type": "imsi"
+          },
+          "from": {
+            "key": "$abon",
+            "type": "msisdn"
+          },
+          "type": "msisdn_imsi_usage",
+          "directed": false
+        }
+      ],
+      "entities": [
+        {
+          "key": "$abon",
+          "attributes": {
+            "msisdn": "$abon"
+          },
+          "type": "msisdn"
+        },
+        {
+          "key": "$imei",
+          "attributes": {
+            "imei": "$imei"
+          },
+          "type": "imei"
+        },
+        {
+          "key": "$imsi",
+          "attributes": {
+            "imsi": "$imsi"
+          },
+          "type": "imsi"
+        }
+      ],
+      "fact": {
+        "type": "device_history",
+        "occurred_at": "$period_start"
+      }
+    },
+    {
+      "id": "location_events",
+      "label": "Локационные события",
+      "source": "location_events",
+      "relations": [],
+      "entities": [
+        {
+          "key": "$identifier_value",
+          "attributes": {
+            "identifier": "$identifier_value"
+          },
+          "type": "$identifier_type"
+        }
+      ],
+      "fact": {
+        "type": "location_event",
+        "occurred_at": "$event_time"
+      }
+    },
+    {
+      "id": "ip_bindings",
+      "label": "IP-привязки",
+      "source": "ip_bindings",
+      "relations": [
+        {
+          "attributes": "$row",
+          "occurred_at": "$event_time",
+          "to": {
+            "key": "$ip_address",
+            "type": "ip_address"
+          },
+          "from": {
+            "key": "$identifier_value",
+            "type": "$identifier_type"
+          },
+          "type": "@pair",
+          "directed": false
+        }
+      ],
+      "entities": [
+        {
+          "key": "$identifier_value",
+          "attributes": {
+            "identifier": "$identifier_value"
+          },
+          "type": "$identifier_type"
+        },
+        {
+          "key": "$ip_address",
+          "attributes": {
+            "ip_address": "$ip_address"
+          },
+          "type": "ip_address"
+        }
+      ],
+      "fact": {
+        "type": "ip_binding",
+        "occurred_at": "$event_time"
+      }
+    },
+    {
+      "id": "telecom_msisdn_imsi",
+      "label": "MSISDN и IMSI",
+      "source": "telecom_msisdn_imsi",
+      "fact": {
+        "type": "telecom_identity_observation",
+        "occurred_at": "$event_time"
+      },
+      "entities": [
+        {
+          "type": "msisdn",
+          "key": "$msisdn",
+          "attributes": {
+            "msisdn": "$msisdn"
+          }
+        },
+        {
+          "type": "imsi",
+          "key": "$imsi",
+          "attributes": {
+            "imsi": "$imsi"
+          }
+        }
+      ],
+      "relations": [
+        {
+          "type": "msisdn_imsi_usage",
+          "from": {
+            "type": "msisdn",
+            "key": "$msisdn"
+          },
+          "to": {
+            "type": "imsi",
+            "key": "$imsi"
+          },
+          "occurred_at": "$event_time",
+          "attributes": "$row",
+          "directed": true
+        }
+      ]
+    },
+    {
+      "id": "telecom_msisdn_imei",
+      "label": "MSISDN и IMEI",
+      "source": "telecom_msisdn_imei",
+      "fact": {
+        "type": "telecom_identity_observation",
+        "occurred_at": "$event_time"
+      },
+      "entities": [
+        {
+          "type": "msisdn",
+          "key": "$msisdn",
+          "attributes": {
+            "msisdn": "$msisdn"
+          }
+        },
+        {
+          "type": "imei",
+          "key": "$imei",
+          "attributes": {
+            "imei": "$imei"
+          }
+        }
+      ],
+      "relations": [
+        {
+          "type": "msisdn_imei_usage",
+          "from": {
+            "type": "msisdn",
+            "key": "$msisdn"
+          },
+          "to": {
+            "type": "imei",
+            "key": "$imei"
+          },
+          "occurred_at": "$event_time",
+          "attributes": "$row",
+          "directed": true
+        }
+      ]
+    },
+    {
+      "id": "telecom_connections",
+      "label": "Соединения абонентов",
+      "source": "telecom_connections",
+      "fact": {
+        "type": "telecom_connection",
+        "occurred_at": "$event_time"
+      },
+      "entities": [
+        {
+          "type": "msisdn",
+          "key": "$from_msisdn",
+          "attributes": {
+            "msisdn": "$from_msisdn"
+          }
+        },
+        {
+          "type": "msisdn",
+          "key": "$to_msisdn",
+          "attributes": {
+            "msisdn": "$to_msisdn"
+          }
+        }
+      ],
+      "relations": [
+        {
+          "type": "msisdn_communication",
+          "from": {
+            "type": "msisdn",
+            "key": "$from_msisdn"
+          },
+          "to": {
+            "type": "msisdn",
+            "key": "$to_msisdn"
+          },
+          "occurred_at": "$event_time",
+          "attributes": "$row",
+          "directed": true
+        }
+      ]
+    },
+    {
+      "id": "telecom_base_stations",
+      "label": "Базовые станции",
+      "source": "telecom_base_stations",
+      "fact": {
+        "type": "telecom_base_station",
+        "occurred_at": null
+      },
+      "entities": [
+        {
+          "type": "base_station",
+          "key": "$base_station",
+          "attributes": {
+            "mcc": "$mcc",
+            "mnc": "$mnc",
+            "lac": "$lac",
+            "cid": "$cid",
+            "azimuth_deg": "$azimuth_deg"
+          }
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "telecom_msisdn_base_stations",
+      "label": "MSISDN и базовые станции",
+      "source": "telecom_msisdn_base_stations",
+      "fact": {
+        "type": "telecom_base_station_observation",
+        "occurred_at": "$event_time"
+      },
+      "entities": [
+        {
+          "type": "msisdn",
+          "key": "$msisdn",
+          "attributes": {
+            "msisdn": "$msisdn"
+          }
+        },
+        {
+          "type": "base_station",
+          "key": "$base_station",
+          "attributes": {}
+        }
+      ],
+      "relations": [
+        {
+          "type": "msisdn_base_station",
+          "from": {
+            "type": "msisdn",
+            "key": "$msisdn"
+          },
+          "to": {
+            "type": "base_station",
+            "key": "$base_station"
+          },
+          "occurred_at": "$event_time",
+          "attributes": "$row",
+          "directed": true
+        }
+      ]
+    },
+    {
+      "id": "telecom_base_station_locations",
+      "label": "БС и адреса",
+      "source": "telecom_base_station_locations",
+      "fact": {
+        "type": "telecom_base_station_location",
+        "occurred_at": null
+      },
+      "entities": [
+        {
+          "type": "base_station",
+          "key": "$base_station",
+          "attributes": {}
+        },
+        {
+          "type": "location",
+          "key": "$location",
+          "attributes": {
+            "address": "$location"
+          }
+        }
+      ],
+      "relations": [
+        {
+          "type": "base_station_location",
+          "from": {
+            "type": "base_station",
+            "key": "$base_station"
+          },
+          "to": {
+            "type": "location",
+            "key": "$location"
+          },
+          "attributes": "$row",
+          "directed": true
+        }
+      ]
+    },
+    {
+      "id": "address_book_entries",
+      "label": "Адресная книга",
+      "source": "address_book_entries",
+      "fact": {
+        "type": "address_book_entry",
+        "occurred_at": "$event_time"
+      },
+      "entities": [
+        {
+          "type": "msisdn",
+          "key": "$owner_msisdn",
+          "attributes": {
+            "msisdn": "$owner_msisdn"
+          }
+        },
+        {
+          "type": "msisdn",
+          "key": "$contact_msisdn",
+          "attributes": {
+            "msisdn": "$contact_msisdn"
+          }
+        }
+      ],
+      "relations": [
+        {
+          "type": "address_book_link",
+          "from": {
+            "type": "msisdn",
+            "key": "$contact_msisdn"
+          },
+          "to": {
+            "type": "msisdn",
+            "key": "$owner_msisdn"
+          },
+          "occurred_at": "$event_time",
+          "attributes": "$row",
+          "directed": true
+        }
+      ]
+    },
+    {
+      "id": "recorded_as_entries",
+      "label": "Записан как",
+      "source": "recorded_as_entries",
+      "fact": {
+        "type": "recorded_as_entry",
+        "occurred_at": "$event_time"
+      },
+      "entities": [
+        {
+          "type": "msisdn",
+          "key": "$contact_msisdn",
+          "attributes": {
+            "msisdn": "$contact_msisdn"
+          }
+        },
+        {
+          "type": "text_bundle",
+          "key": "$text_key",
+          "label": "$text_label",
+          "attributes": {
+            "text": "$text",
+            "contact_msisdn": "$contact_msisdn"
+          }
+        }
+      ],
+      "relations": [
+        {
+          "type": "msisdn_text_link",
+          "from": {
+            "type": "msisdn",
+            "key": "$contact_msisdn"
+          },
+          "to": {
+            "type": "text_bundle",
+            "key": "$text_key"
+          },
+          "occurred_at": "$event_time",
+          "attributes": "$row",
+          "directed": true
+        }
+      ]
+    },
+    {
+      "id": "user_device_observations",
+      "label": "Используемые устройства",
+      "source": "user_device_observations",
+      "fact": {
+        "type": "user_device_observation",
+        "occurred_at": "$event_time"
+      },
+      "entities": [
+        {
+          "type": "msisdn",
+          "key": "$owner_msisdn",
+          "attributes": {
+            "msisdn": "$owner_msisdn"
+          }
+        },
+        {
+          "type": "device",
+          "key": "$device",
+          "attributes": {
+            "device": "$device"
+          }
+        }
+      ],
+      "relations": [
+        {
+          "type": "msisdn_device_link",
+          "from": {
+            "type": "msisdn",
+            "key": "$owner_msisdn"
+          },
+          "to": {
+            "type": "device",
+            "key": "$device"
+          },
+          "occurred_at": null,
+          "attributes": "$row",
+          "directed": false
+        }
+      ]
+    }
+  ]
 }

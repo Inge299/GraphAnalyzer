@@ -7,15 +7,16 @@ import logging
 import os
 import pkgutil
 import re
-import subprocess
-import sys
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Type
+from typing import Any, Mapping, Type
 
 from fastapi import HTTPException
 
+from app.import_plugins.user_actions_address_book_normalizer import normalize_user_actions_address_book
+from app.import_plugins.traffic_geo_normalizer import normalize_traffic_geo
+from app.import_plugins.telecom_connections_normalizer import normalize_telecom_connections
 from app.import_plugin_sdk import (
     ImportExecutionContext,
     ImportPluginContractError,
@@ -24,7 +25,6 @@ from app.import_plugin_sdk import (
     validate_execution_result,
     validate_plugin_manifest,
 )
-SCRIPT_PATH = Path("/app/scripts/nodex_converter.py")
 CONFIG_PATH = Path(__file__).resolve().parents[1] / "configuration" / "project_data_import_plugins.json"
 SUPPORTED_IMPORT_EXTENSIONS = {".csv", ".txt", ".zip"}
 IMPORT_PLUGIN_PACKAGE = "app.import_plugins"
@@ -45,13 +45,17 @@ class ProjectDataImportPluginInfo:
     version: str
     sdk_version: str
     config_schema: dict[str, Any]
+    input_contract: dict[str, Any]
+    domain_contract: dict[str, Any]
     capabilities: list[str]
+    output_datasets: list[dict[str, Any]]
     source: str
     removable: bool
 
 @dataclass
 class ProjectDataImportFileMatch:
     path: str
+    display_path: str
     plugin_id: str
     plugin_name: str
     plugin_description: str
@@ -75,9 +79,12 @@ def _normalize_header_values(values: list[str]) -> set[str]:
     }
 
 
-def _is_identity_headers(headers: set[str]) -> bool:
-    return "\u0442\u0435\u0445\u0434\u0430\u043d\u043d\u044b\u0435, \u0438\u0434\u0435\u043d\u0442. \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f" in headers or {"\u0438\u0434. \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f", "\u0442\u0435\u043a\u0441\u0442 \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u044f"}.issubset(headers)
-
+def _is_user_actions_headers(headers: set[str]) -> bool:
+    return {
+        "дата и время",
+        "техданные, идент. пользователя",
+        "текст сообщения",
+    }.issubset(headers)
 
 def _is_traffic_headers(headers: set[str]) -> bool:
     if headers & {"abon1", "identifier_type", "identifier_value"}:
@@ -245,7 +252,18 @@ def _plugin_info(plugin: ProjectDataImportPlugin) -> ProjectDataImportPluginInfo
         version=manifest.version,
         sdk_version=manifest.sdk_version,
         config_schema=dict(manifest.config_schema),
+        input_contract=dict(manifest.input_contract),
+        domain_contract=dict(manifest.domain_contract),
         capabilities=list(manifest.capabilities),
+        output_datasets=[
+            {
+                "id": dataset.id,
+                "label": dataset.label,
+                "filename": "",
+                "required_columns": [],
+            }
+            for dataset in plugin.dataset_contracts()
+        ],
         source=str(getattr(plugin, "_installed_file", "builtin")),
         removable=bool(getattr(plugin, "_installed_file", None)),
     )
@@ -326,9 +344,9 @@ def _discover_external_import_plugin_classes() -> list[Type[ProjectDataImportPlu
 
 def _build_import_plugin_registry() -> tuple[list[ProjectDataImportPlugin], dict[str, ProjectDataImportPlugin]]:
     builtin_classes: list[Type[ProjectDataImportPlugin]] = [
-        NodexArchiveBundleImportPlugin,
-        NodexIdentityFactsImportPlugin,
+        NodexUserActionsAddressBookImportPlugin,
         NodexTrafficGeoImportPlugin,
+        NodexTelecomConnectionsImportPlugin,
     ]
     plugin_classes = builtin_classes + _discover_external_import_plugin_classes()
 
@@ -384,142 +402,95 @@ def execute_project_data_import_plugin(
     except ImportPluginContractError as exc:
         raise HTTPException(status_code=400, detail=f"Import plugin contract error: {exc}") from exc
 
-class NodexBaseImportPlugin(ProjectDataImportPlugin):
-    extensions = [".csv", ".txt", ".zip"]
+class NodexUserActionsAddressBookImportPlugin(ProjectDataImportPlugin):
+    id = "nodex_user_actions_address_book"
+    name = "Nodex: действия пользователей и адресная книга"
+    description = "Распознаёт выгрузки действий пользователей: владельца номера, контакты адресной книги и используемое устройство."
+    priority = 160
+    output_dataset_ids = ("address_book_entries", "recorded_as_entries", "user_device_observations")
+    output_dataset_labels = {
+        "address_book_entries": "Адресная книга",
+        "recorded_as_entries": "Записан как",
+        "user_device_observations": "Используемые устройства",
+    }
+    input_contract = {
+        "container": {"zip_members": True},
+        "file": {"extensions": [".csv", ".txt"], "encodings": ["utf-8-sig", "utf-8", "cp1251", "cp866"], "delimiters": [";"]},
+        "headers": {
+            "required": ["Дата и время", "Техданные, идент. пользователя", "Текст сообщения"],
+            "optional": ["Ид. пользователя", "Тип события"],
+        },
+        "content": {"contact": "phone, firstName, lastName in field Текст сообщения", "technical_data": "Номер and Программа"},
+    }
+    recognition_hint = "CSV или ZIP с полями «Дата и время», «Техданные, идент. пользователя» и «Текст сообщения»"
+    capabilities = ("recognize", "preview", "import", "normalize")
 
-    def _run_nodex(self, source_dir: Path, output_dir: Path) -> ProjectDataImportExecutionResult:
-        if not SCRIPT_PATH.exists():
-            raise HTTPException(status_code=500, detail=f"Nodex converter not found: {SCRIPT_PATH}")
-
-        output_dir.mkdir(parents=True, exist_ok=True)
-        communications_path = output_dir / "communications.csv"
-        device_history_path = output_dir / "device_history.csv"
-        location_events_path = output_dir / "location_events.csv"
-        ip_bindings_path = output_dir / "ip_bindings.csv"
-        user_msisdn_facts_path = output_dir / "user_msisdn_facts.csv"
-        ip_msisdn_facts_path = output_dir / "ip_msisdn_facts.csv"
-        msisdn_device_facts_path = output_dir / "msisdn_device_facts.csv"
-        msisdn_text_facts_path = output_dir / "msisdn_text_facts.csv"
-        manifest_path = output_dir / "nodex_manifest.json"
-
-        command = [
-            sys.executable,
-            str(SCRIPT_PATH),
-            "--input-dir",
-            str(source_dir),
-            "--out-communications",
-            str(communications_path),
-            "--out-device-history",
-            str(device_history_path),
-            "--out-location-events",
-            str(location_events_path),
-            "--out-ip-bindings",
-            str(ip_bindings_path),
-            "--out-user-msisdn-facts",
-            str(user_msisdn_facts_path),
-            "--out-ip-msisdn-facts",
-            str(ip_msisdn_facts_path),
-            "--out-msisdn-device-facts",
-            str(msisdn_device_facts_path),
-            "--out-msisdn-text-facts",
-            str(msisdn_text_facts_path),
-            "--out-manifest",
-            str(manifest_path),
-            "--postgres-friendly",
-        ]
-        completed = subprocess.run(command, capture_output=True, text=True, timeout=300)
-        if completed.returncode != 0:
-            stderr = (completed.stderr or completed.stdout or "").strip()
-            raise HTTPException(status_code=400, detail=f"Nodex conversion failed: {stderr[:1200]}")
-
-        expected_outputs = [
-            communications_path,
-            device_history_path,
-            location_events_path,
-            ip_bindings_path,
-            user_msisdn_facts_path,
-            ip_msisdn_facts_path,
-            msisdn_device_facts_path,
-            msisdn_text_facts_path,
-            manifest_path,
-        ]
-        if any(not path.exists() for path in expected_outputs):
-            raise HTTPException(status_code=500, detail="Nodex converter completed without expected output files")
-
-        info = _plugin_info(self)
-        return ProjectDataImportExecutionResult(
-            plugin_id=info.id,
-            plugin_name=info.name,
-            plugin_description=info.description,
-            communications_path=communications_path,
-            device_history_path=device_history_path,
-            location_events_path=location_events_path,
-            ip_bindings_path=ip_bindings_path,
-            user_msisdn_facts_path=user_msisdn_facts_path,
-            ip_msisdn_facts_path=ip_msisdn_facts_path,
-            msisdn_device_facts_path=msisdn_device_facts_path,
-            msisdn_text_facts_path=msisdn_text_facts_path,
-            manifest_path=manifest_path,
-            stdout=(completed.stdout or "").strip(),
-            stderr=(completed.stderr or "").strip(),
-        )
-
-    def run(self, source_dir: Path, output_dir: Path) -> ProjectDataImportExecutionResult:
-        return self._run_nodex(source_dir, output_dir)
-
-
-class NodexArchiveBundleImportPlugin(NodexBaseImportPlugin):
-    id = "nodex_archive_bundle"
-    name = "Nodex: архивы и пакетные выгрузки"
-    description = "Распознаёт ZIP-архивы и пакетные выгрузки, которые конвертируются штатным конвертером Nodex."
-    priority = 120
-    recognition_hint = "Любой ZIP-файл проекта"
-
-    def recognize_file(self, source_dir: Path, input_file: dict[str, Any]) -> int:
-        rel_path = str(input_file.get("path") or "")
-        path = source_dir / rel_path
-        lowered = rel_path.lower()
-        if lowered.endswith(".zip"):
-            zip_entries = [entry.lower() for entry in _list_zip_entries(path)]
-            if zip_entries:
-                if any(
-                    token in entry
-                    for entry in zip_entries
-                    for token in ("communications", "device_history", "location_events", "ip_bindings", "traffic", "geo")
-                ):
-                    return 25
-                if any(
-                    token in entry
-                    for entry in zip_entries
-                    for token in ("взаимодейств", "техданные", "address_book", "identity")
-                ):
-                    return 25
-            return 15
-        return -1
-
-
-class NodexIdentityFactsImportPlugin(NodexBaseImportPlugin):
-    id = "nodex_identity_facts"
-    name = "Nodex: адресная книга и идентификаторы"
-    description = "Распознаёт файлы адресной книги и факты, где есть техданные пользователя, MSISDN, IP и устройство."
-    priority = 110
-    recognition_hint = "CSV или ZIP с полем «Техданные, идент. пользователя»"
+    def normalize_sources(self, source_dir: Path) -> Mapping[str, list[dict[str, Any]]]:
+        return normalize_user_actions_address_book(source_dir)
 
     def recognize_file(self, source_dir: Path, input_file: dict[str, Any]) -> int:
         path = source_dir / str(input_file.get("path") or "")
         if path.suffix.lower() == ".zip":
-            for _, headers_list in _read_zip_csv_headers(path):
-                if _is_identity_headers(_normalize_header_values(headers_list)):
-                    return 100
-            return -1
-        return 100 if _is_identity_headers(_normalize_header_values(_read_csv_headers(path))) else -1
+            return 100 if any(_is_user_actions_headers(_normalize_header_values(headers)) for _, headers in _read_zip_csv_headers(path)) else -1
+        return 100 if _is_user_actions_headers(_normalize_header_values(_read_csv_headers(path))) else -1
+class NodexTelecomConnectionsImportPlugin(ProjectDataImportPlugin):
+    id = "nodex_telecom_connections"
+    name = "Nodex: \u0442\u0435\u043b\u0435\u0444\u043e\u043d\u043d\u044b\u0435 \u0441\u043e\u0435\u0434\u0438\u043d\u0435\u043d\u0438\u044f \u0438 \u0431\u0430\u0437\u043e\u0432\u044b\u0435 \u0441\u0442\u0430\u043d\u0446\u0438\u0438"
+    description = "\u0420\u0430\u0437\u0431\u0438\u0440\u0430\u0435\u0442 \u0434\u0435\u0442\u0430\u043b\u0438\u0437\u0430\u0446\u0438\u044e \u0441\u043e\u0435\u0434\u0438\u043d\u0435\u043d\u0438\u0439: MSISDN, IMSI, IMEI, \u0431\u0430\u0437\u043e\u0432\u044b\u0435 \u0441\u0442\u0430\u043d\u0446\u0438\u0438 \u0438 \u0430\u0434\u0440\u0435\u0441\u0430 \u0411\u0421."
+    priority = 140
+    output_dataset_ids = (
+        "telecom_msisdn_imsi", "telecom_msisdn_imei", "telecom_connections",
+        "telecom_msisdn_base_stations", "telecom_base_stations", "telecom_base_station_locations",
+    )
+    output_dataset_labels = {
+        "telecom_msisdn_imsi": "MSISDN \u0438 IMSI",
+        "telecom_msisdn_imei": "MSISDN \u0438 IMEI",
+        "telecom_connections": "\u0421\u043e\u0435\u0434\u0438\u043d\u0435\u043d\u0438\u044f \u0430\u0431\u043e\u043d\u0435\u043d\u0442\u043e\u0432",
+        "telecom_msisdn_base_stations": "MSISDN \u0438 \u0431\u0430\u0437\u043e\u0432\u044b\u0435 \u0441\u0442\u0430\u043d\u0446\u0438\u0438",
+        "telecom_base_stations": "\u0411\u0430\u0437\u043e\u0432\u044b\u0435 \u0441\u0442\u0430\u043d\u0446\u0438\u0438",
+        "telecom_base_station_locations": "\u0411\u0421 \u0438 \u0430\u0434\u0440\u0435\u0441\u0430",
+    }
+    input_contract = {
+        "container": {"zip_members": True},
+        "file": {"extensions": [".csv", ".txt"], "encodings": ["utf-8-sig", "utf-8", "cp1251", "cp866"], "delimiters": [";"]},
+        "headers": {"required": ["\u0412\u0440\u0435\u043c\u044f \u043d\u0430\u0447\u0430\u043b\u0430 \u0441\u043e\u0435\u0434\u0438\u043d\u0435\u043d\u0438\u044f", "\u041d\u043e\u043c\u0435\u0440 \u0430\u0431\u043e\u043d\u0435\u043d\u0442\u0430", "\u041c/\u041f \u0430\u0431\u043e\u043d\u0435\u043d\u0442\u0430 \u043d\u0430 \u043d\u0430\u0447\u0430\u043b\u043e"], "optional": ["IMSI \u0430\u0431\u043e\u043d\u0435\u043d\u0442\u0430", "IMEI \u0430\u0431\u043e\u043d\u0435\u043d\u0442\u0430"]},
+        "base_station_key": "MCC/MNC/LAC/CID; MCC/MNC \u0431\u0435\u0440\u0443\u0442\u0441\u044f \u0438\u0437 IMSI (250/02 \u0434\u043b\u044f \u0442\u0435\u043a\u0443\u0449\u0435\u0433\u043e \u0444\u043e\u0440\u043c\u0430\u0442\u0430)",
+    }
+    recognition_hint = "CSV \u0438\u043b\u0438 ZIP \u0441 \u0434\u0435\u0442\u0430\u043b\u0438\u0437\u0430\u0446\u0438\u0435\u0439 \u0441\u043e\u0435\u0434\u0438\u043d\u0435\u043d\u0438\u0439, IMSI/IMEI \u0438 \u043f\u043e\u043b\u044f\u043c\u0438 \u041c/\u041f \u043d\u0430 \u043d\u0430\u0447\u0430\u043b\u043e/\u043a\u043e\u043d\u0435\u0446."
+    capabilities = ("recognize", "preview", "import", "normalize")
 
-class NodexTrafficGeoImportPlugin(NodexBaseImportPlugin):
+    def normalize_sources(self, source_dir: Path) -> Mapping[str, list[dict[str, Any]]]:
+        return normalize_telecom_connections(source_dir)
+
+    def recognize_file(self, source_dir: Path, input_file: dict[str, Any]) -> int:
+        required = {
+            "\u0432\u0440\u0435\u043c\u044f \u043d\u0430\u0447\u0430\u043b\u0430 \u0441\u043e\u0435\u0434\u0438\u043d\u0435\u043d\u0438\u044f",
+            "\u043d\u043e\u043c\u0435\u0440 \u0430\u0431\u043e\u043d\u0435\u043d\u0442\u0430",
+            "\u043c/\u043f \u0430\u0431\u043e\u043d\u0435\u043d\u0442\u0430 \u043d\u0430 \u043d\u0430\u0447\u0430\u043b\u043e",
+        }
+        path = source_dir / str(input_file.get("path") or "")
+        headers_sets = (_normalize_header_values(headers) for _, headers in _read_zip_csv_headers(path)) if path.suffix.lower() == ".zip" else (_normalize_header_values(_read_csv_headers(path)),)
+        return 100 if any(required.issubset(headers) for headers in headers_sets) else -1
+
+class NodexTrafficGeoImportPlugin(ProjectDataImportPlugin):
     id = "nodex_traffic_geo"
-    name = "Nodex: связи, устройства и локации"
-    description = "Распознаёт файлы со связями, историей устройств, локациями и IP-привязками."
+    name = "Nodex: \u0441\u0432\u044f\u0437\u0438, \u0443\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432\u0430 \u0438 \u043b\u043e\u043a\u0430\u0446\u0438\u0438"
+    description = "\u0420\u0430\u0441\u043f\u043e\u0437\u043d\u0430\u0451\u0442 CSV \u0438 \u0430\u0440\u0445\u0438\u0432\u044b \u0441\u043e \u0441\u0432\u044f\u0437\u044f\u043c\u0438, \u0438\u0441\u0442\u043e\u0440\u0438\u0435\u0439 \u0443\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432, \u043b\u043e\u043a\u0430\u0446\u0438\u044f\u043c\u0438 \u0438 IP-\u043f\u0440\u0438\u0432\u044f\u0437\u043a\u0430\u043c\u0438."
     priority = 100
-    recognition_hint = "CSV или ZIP по traffic/geo-выгрузкам"
+    output_dataset_ids = ("communications", "device_history", "location_events", "ip_bindings")
+    output_dataset_labels = {"communications": "Соединения", "device_history": "Использование устройств", "location_events": "Локационные события", "ip_bindings": "IP-привязки"}
+    input_contract = {
+        "container": {"zip_members": True},
+        "file": {"extensions": [".csv", ".txt"], "encodings": ["utf-8-sig", "utf-8", "cp1251"], "delimiters": [";", ",", "\t"]},
+        "headers": {
+            "signatures": [
+                ["abon1", "identifier_type", "identifier_value"],
+                ["\u041d\u043e\u043c\u0435\u0440 \u0430\u0431\u043e\u043d\u0435\u043d\u0442\u0430", "\u0412\u0440\u0435\u043c\u044f \u043d\u0430\u0447\u0430\u043b\u0430 \u0441\u043e\u0435\u0434\u0438\u043d\u0435\u043d\u0438\u044f"],
+                ["\u041d\u043e\u043c\u0435\u0440 \u0430\u0431\u043e\u043d\u0435\u043d\u0442\u0430", "\u0412\u0440\u0435\u043c\u044f \u043e\u043f\u0440\u0435\u0434\u0435\u043b\u0435\u043d\u0438\u044f \u043c\u0435\u0441\u0442\u043e\u043f\u043e\u043b\u043e\u0436\u0435\u043d\u0438\u044f"],
+            ],
+        },
+    }
+    recognition_hint = "CSV \u0438\u043b\u0438 ZIP \u0441\u043e \u0441\u0432\u044f\u0437\u044f\u043c\u0438, \u043b\u043e\u043a\u0430\u0446\u0438\u044f\u043c\u0438 \u0438 \u0443\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432\u0430\u043c\u0438"
 
     def recognize_file(self, source_dir: Path, input_file: dict[str, Any]) -> int:
         path = source_dir / str(input_file.get("path") or "")
@@ -529,6 +500,8 @@ class NodexTrafficGeoImportPlugin(NodexBaseImportPlugin):
                     return 100
             return -1
         return 100 if _is_traffic_headers(_normalize_header_values(_read_csv_headers(path))) else -1
+    def normalize_sources(self, source_dir: Path) -> Mapping[str, list[dict[str, Any]]]:
+        return normalize_traffic_geo(source_dir)
 
 IMPORT_PLUGINS, IMPORT_PLUGIN_BY_ID = _build_import_plugin_registry()
 
@@ -685,7 +658,7 @@ def classify_project_data_import_files(
 
     for input_file in input_files:
         input_path = str(input_file.get("path") or "")
-        override_plugin_id = overrides.get(input_path)
+        override_plugin_id = overrides.get(input_path) or overrides.get(str(input_file.get("container_path") or ""))
         if override_plugin_id:
             override_plugin = IMPORT_PLUGIN_BY_ID.get(override_plugin_id)
             if override_plugin is None:
@@ -702,6 +675,7 @@ def classify_project_data_import_files(
             matches.append(
                 ProjectDataImportFileMatch(
                     path=input_path,
+                    display_path=str(input_file.get("display_path") or input_path),
                     plugin_id=info.id,
                     plugin_name=info.name,
                     plugin_description=info.description,
@@ -713,19 +687,24 @@ def classify_project_data_import_files(
         best_score = -1
         best_plugin: ProjectDataImportPlugin | None = None
         for plugin in enabled_plugins:
-            score = plugin.recognize_file(source_dir, input_file)
-            if score > best_score:
+            try:
+                score = plugin.recognize_file(source_dir, input_file)
+            except Exception:
+                logger.exception("Import plugin recognition failed: plugin=%s file=%s", plugin.id, input_path)
+                continue
+            if score > best_score or (score == best_score and best_plugin is not None and plugin.priority > best_plugin.priority):
                 best_score = score
                 best_plugin = plugin
         if best_plugin is None or best_score < 0:
             raise HTTPException(
                 status_code=400,
-                detail=f"Не удалось распознать формат файла для импорта проекта: {input_path or '<unknown>'}",
+                detail=f"РќРµ СѓРґР°Р»РѕСЃСЊ СЂР°СЃРїРѕР·РЅР°С‚СЊ С„РѕСЂРјР°С‚ С„Р°Р№Р»Р° РґР»СЏ РёРјРїРѕСЂС‚Р° РїСЂРѕРµРєС‚Р°: {input_path or '<unknown>'}",
             )
         info = _plugin_info(best_plugin)
         matches.append(
             ProjectDataImportFileMatch(
                 path=input_path,
+                display_path=str(input_file.get("display_path") or input_path),
                 plugin_id=info.id,
                 plugin_name=info.name,
                 plugin_description=info.description,

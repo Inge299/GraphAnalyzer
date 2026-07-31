@@ -1,6 +1,7 @@
 import React from 'react';
 import type { ProjectDataImportPlugin } from '../../../types/api';
 import ProjectDataImportPluginsEditor from './ProjectDataImportPluginsEditor';
+import { DomainDataMappingsEditor } from '../DomainDataMappingsEditor';
 
 interface ImportPluginsAdminSectionProps {
   plugins: ProjectDataImportPlugin[];
@@ -34,7 +35,7 @@ const ImportPluginsAdminSection: React.FC<ImportPluginsAdminSectionProps> = ({
   onDeletePlugin,
   onRefresh,
 }) => (
-  <div className="service-card">
+  <div className="service-import-admin">
     <h3>Плагины импорта</h3>
     <p className="service-card-hint">
       Подключайте готовые Python-модули и настраивайте их без редактирования кода: название, описание,
@@ -74,6 +75,7 @@ const ImportPluginsAdminSection: React.FC<ImportPluginsAdminSectionProps> = ({
       onSavePlugin={onSavePlugin}
       onDeletePlugin={onDeletePlugin}
     />
+    <div className="service-card"><DomainDataMappingsEditor /></div>
   </div>
 );
 

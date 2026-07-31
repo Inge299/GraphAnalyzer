@@ -12,3 +12,12 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv
 }
+
+interface Window {
+  __NODEX_RUNTIME_CONFIG__?: {
+    mapMode?: 'local' | 'online'
+    pmtilesUrl?: string
+    mapStyleUrl?: string
+    mapGlyphsUrl?: string
+  }
+}

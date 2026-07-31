@@ -1,6 +1,5 @@
-﻿// frontend/src/utils/pluginParams.ts
+// frontend/src/utils/pluginParams.ts
 import type { ApiPlugin, PluginParamSpec } from '../types/api';
-import { pluginApi } from '../services/api';
 import { comparePluginMenuPaths, filterVisiblePlugins, normalizePluginMenuPath, sortPluginsByName } from './pluginMenu';
 
 const STORAGE_PREFIX = 'ga:project-plugin-defaults:';
@@ -10,15 +9,7 @@ const END_KEYS = ['period_end', 'end_date', 'date_to', 'to_date', 'endtime', 'en
 
 type ParamInput = {
   spec: PluginParamSpec;
-  input: HTMLInputElement | HTMLSelectElement;
-};
-
-type UploadInputControl = {
-  spec: PluginParamSpec;
-  input: HTMLInputElement;
-  fileInput: HTMLInputElement;
-  uploadButton: HTMLButtonElement;
-  status: HTMLDivElement;
+  input: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
 };
 
 export type ProjectPluginDefaults = {
@@ -86,6 +77,28 @@ const parseValueByType = (type: PluginParamSpec['type'], raw: string): any => {
 };
 
 const createInputForSpec = (spec: PluginParamSpec, defaultValue: string) => {
+  if (Array.isArray(spec.options) && spec.options.length > 0) {
+    const select = document.createElement('select');
+    select.style.padding = '6px 8px';
+    select.style.border = '1px solid #cbd5e1';
+    select.style.borderRadius = '8px';
+    select.style.fontSize = '13px';
+    select.style.background = '#ffffff';
+
+    const empty = document.createElement('option');
+    empty.value = '';
+    empty.textContent = spec.required ? '\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0437\u043d\u0430\u0447\u0435\u043d\u0438\u0435' : '\u041d\u0435 \u0437\u0430\u0434\u0430\u043d\u043e';
+    select.appendChild(empty);
+
+    spec.options.forEach((option) => {
+      const item = document.createElement('option');
+      item.value = String(option.value || '');
+      item.textContent = String(option.label || option.value || '');
+      select.appendChild(item);
+    });
+    select.value = defaultValue;
+    return select;
+  }
   if (spec.type === 'boolean') {
     const select = document.createElement('select');
     select.style.padding = '6px 8px';
@@ -119,13 +132,20 @@ const createInputForSpec = (spec: PluginParamSpec, defaultValue: string) => {
     return select;
   }
 
-  const input = document.createElement('input');
+  const input = spec.multiline ? document.createElement('textarea') : document.createElement('input');
   input.style.padding = '6px 8px';
   input.style.border = '1px solid #cbd5e1';
   input.style.borderRadius = '8px';
   input.style.fontSize = '13px';
   input.style.background = '#ffffff';
   input.value = defaultValue;
+
+  if (input instanceof HTMLTextAreaElement) {
+    input.rows = 6;
+    input.style.resize = 'vertical';
+    input.placeholder = String((spec as any).placeholder || '\u041f\u043e \u043e\u0434\u043d\u043e\u043c\u0443 \u0437\u043d\u0430\u0447\u0435\u043d\u0438\u044e \u0432 \u0441\u0442\u0440\u043e\u043a\u0435');
+    return input;
+  }
 
   if (spec.type === 'date') {
     input.type = 'date';
@@ -141,20 +161,12 @@ const createInputForSpec = (spec: PluginParamSpec, defaultValue: string) => {
 
 const formatDateISO = (date: Date) => date.toISOString().slice(0, 10);
 
-const SNI_UPLOAD_PLUGIN_IDS = new Set(['sni_traffic_report', 'sni_traffic_report_v2']);
-
-const isSniUploadParam = (plugin: ApiPlugin, spec: PluginParamSpec) => {
-  const key = getParamKey(spec).toLowerCase();
-  return SNI_UPLOAD_PLUGIN_IDS.has(plugin.id) && key === 'input_path';
-};
-
 export const loadProjectPeriodDefaults = (projectId: number): ProjectPluginDefaults => parseStored(projectId);
 
 const openPluginParamsDialog = (
   plugin: ApiPlugin,
   schema: PluginParamSpec[],
   defaults: ProjectPluginDefaults,
-  projectId: number,
 ): Promise<Record<string, any> | null> => {
   return new Promise((resolve) => {
     const overlay = document.createElement('div');
@@ -203,8 +215,6 @@ const openPluginParamsDialog = (
     error.style.background = '#fee2e2';
     error.style.color = '#991b1b';
     error.style.fontSize = '12px';
-
-    const uploadControls: UploadInputControl[] = [];
     const controls: ParamInput[] = schema.map((spec) => {
       const row = document.createElement('div');
       row.style.display = 'grid';
@@ -220,86 +230,8 @@ const openPluginParamsDialog = (
       const defaultValue = toStringSafe(getDefaultForParam(spec, defaults));
       const input = createInputForSpec(spec, defaultValue);
 
-      if (input instanceof HTMLInputElement && isSniUploadParam(plugin, spec)) {
-        input.readOnly = true;
-        input.placeholder = 'Заполнится автоматически после загрузки файла';
-        input.style.background = '#f1f5f9';
-        input.style.color = '#475569';
-
-        const block = document.createElement('div');
-        block.style.display = 'flex';
-        block.style.flexDirection = 'column';
-        block.style.gap = '6px';
-
-        const fileRow = document.createElement('div');
-        fileRow.style.display = 'flex';
-        fileRow.style.gap = '6px';
-        fileRow.style.alignItems = 'center';
-
-        const fileInput = document.createElement('input');
-        fileInput.type = 'file';
-        fileInput.accept = '.csv,.zip';
-        fileInput.style.fontSize = '12px';
-
-        const uploadButton = document.createElement('button');
-        uploadButton.type = 'button';
-        uploadButton.textContent = 'Загрузить';
-        uploadButton.style.padding = '5px 8px';
-        uploadButton.style.borderRadius = '7px';
-        uploadButton.style.border = '1px solid #2563eb';
-        uploadButton.style.background = '#ffffff';
-        uploadButton.style.color = '#1d4ed8';
-        uploadButton.style.fontSize = '12px';
-        uploadButton.style.cursor = 'pointer';
-
-        const status = document.createElement('div');
-        status.style.fontSize = '11px';
-        status.style.color = '#64748b';
-        status.textContent = 'Выберите CSV/ZIP и нажмите «Загрузить».';
-
-        uploadButton.addEventListener('click', async () => {
-          const selected = fileInput.files?.[0];
-          if (!selected) {
-            showError('Выберите CSV/ZIP файл перед загрузкой.');
-            return;
-          }
-          error.style.display = 'none';
-          uploadButton.disabled = true;
-          uploadButton.textContent = 'Загрузка...';
-          try {
-            const response = await pluginApi.uploadInput(projectId, selected);
-            const path = String(response?.container_path || '').trim();
-            if (!path) {
-              throw new Error('Сервис не вернул путь загруженного файла');
-            }
-            input.value = path;
-            status.style.color = '#047857';
-            status.textContent = `Загружено: ${String(response?.original_name || selected.name)} (${Number(response?.size_bytes || selected.size)} байт)`;
-          } catch (uploadError: any) {
-            const detail = String(uploadError?.response?.data?.detail || uploadError?.message || 'Ошибка загрузки файла');
-            status.style.color = '#b91c1c';
-            status.textContent = detail;
-            showError(detail);
-          } finally {
-            uploadButton.disabled = false;
-            uploadButton.textContent = 'Загрузить';
-          }
-        });
-
-        fileRow.appendChild(fileInput);
-        fileRow.appendChild(uploadButton);
-        block.appendChild(input);
-        block.appendChild(fileRow);
-        block.appendChild(status);
-
-        row.appendChild(label);
-        row.appendChild(block);
-        form.appendChild(row);
-        uploadControls.push({ spec, input, fileInput, uploadButton, status });
-        return { spec, input };
-      }
-
       row.appendChild(label);
+
       row.appendChild(input);
       form.appendChild(row);
 
@@ -447,21 +379,6 @@ const openPluginParamsDialog = (
         result[key] = parsed;
       }
 
-      for (const uploadControl of uploadControls) {
-        const key = getParamKey(uploadControl.spec);
-        const hasPath = Boolean(String(result[key] || '').trim());
-        if (!hasPath && uploadControl.spec.required) {
-          const selected = uploadControl.fileInput.files?.[0];
-          if (!selected) {
-            showError('Выберите файл и загрузите его перед запуском.');
-            uploadControl.fileInput.focus();
-            return;
-          }
-          uploadControl.uploadButton.click();
-          return;
-        }
-      }
-
       close(result);
     });
 
@@ -478,7 +395,7 @@ export const collectPluginParamsWithPrompts = async (
   if (schema.length === 0) return {};
 
   const defaults = parseStored(projectId);
-  const result = await openPluginParamsDialog(plugin, schema, defaults, projectId);
+  const result = await openPluginParamsDialog(plugin, schema, defaults);
   if (result === null) return null;
 
   rememberProjectPeriodDefaults(projectId, result);

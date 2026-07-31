@@ -1,5 +1,6 @@
 // frontend/src/store/slices/uiSlice.ts
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import type { SelectedDomainEntity } from '../../types/api';
 
 interface Tab {
   id: string;
@@ -22,6 +23,7 @@ interface UIState {
   activeTabId: string | null;
   selectedElement: SelectedElement | null;
   selectedElements: SelectedElement[];
+  selectedDomainEntities: SelectedDomainEntity[];
   notifications: Array<{
     id: string;
     type: 'info' | 'success' | 'warning' | 'error';
@@ -38,6 +40,7 @@ const initialState: UIState = {
   activeTabId: null,
   selectedElement: null,
   selectedElements: [],
+  selectedDomainEntities: [],
   notifications: [],
 };
 
@@ -74,6 +77,9 @@ const uiSlice = createSlice({
       state.selectedElements = action.payload;
       state.selectedElement = action.payload.length === 1 ? action.payload[0] : null;
     },
+    setSelectedDomainEntities: (state, action: PayloadAction<SelectedDomainEntity[]>) => {
+      state.selectedDomainEntities = action.payload;
+    },
     addNotification: (state, action: PayloadAction<Omit<UIState['notifications'][0], 'id'>>) => {
       const id = `notification-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       state.notifications.push({ id, ...action.payload });
@@ -96,6 +102,7 @@ export const {
   setActiveTab,
   setSelectedElement,
   setSelectedElements,
+  setSelectedDomainEntities,
   addNotification,
   removeNotification,
   clearNotifications,

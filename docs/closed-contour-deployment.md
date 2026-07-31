@@ -3,7 +3,7 @@
 ## Состав поставки
 
 `docker-compose.closed.yml` запускает Nodex frontend, backend, PostgreSQL,
-Redis и сервисы SNI/SNI1. LLM и inference-сервис намеренно не включены: для
+Redis. Локальная LLM подключается через OpenAI-совместимый endpoint и по умолчанию выключена: для
 пилота без подходящего GPU они не требуются.
 
 PostgreSQL является служебной БД Nodex. Внутренний Microsoft SQL Server
@@ -37,7 +37,7 @@ Server, а Nodex хранит только их регистрацию и рез
 
 ```powershell
 docker compose --env-file .env.closed -f docker-compose.closed.yml build
-docker save -o nodex-images.tar nodex/app:pilot nodex/frontend:pilot nodex/sni:pilot nodex/sni1:pilot postgres:15-alpine redis:7-alpine
+docker save -o nodex-images.tar nodex/app:pilot nodex/frontend:pilot postgres:15-alpine redis:7-alpine
 ```
 
 Передайте исходный каталог проекта, `data/`, требуемые Python-плагины и архив

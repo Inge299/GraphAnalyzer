@@ -42,12 +42,15 @@ const getErrorMessage = (error: unknown): string => {
   const explainByText = (text: string): string | null => {
     const normalized = text.toLowerCase();
 
+    const isLlmError = normalized.includes('llm') || normalized.includes('language model');
     if (
       normalized.includes('timeout') ||
       normalized.includes('timed out') ||
       normalized.includes('econnaborted')
     ) {
-      return 'Превышено время ожидания ответа от LLM. Попробуйте уменьшить объём задачи (например, max_sections=3-4) или выбрать более быструю модель.';
+      return isLlmError
+        ? 'Превышено время ожидания ответа от LLM. Попробуйте уменьшить объём задачи или выбрать более быструю модель.'
+        : 'Превышено время ожидания выполнения плагина. Попробуйте повторить запуск или уменьшить объём результата.';
     }
 
     if (
@@ -144,26 +147,6 @@ export const usePluginRunner = ({
       const noVisibleResult = created.length === 0
         && newNodeIds.length === 0
         && !artifactChanged;
-
-      const updatedMeta = updatedCurrent?.metadata || {};
-      const liveSelectedNodeCount = Array.isArray(liveContext?.selected_nodes) ? liveContext.selected_nodes.length : 0;
-      const limitRaw = typeof updatedMeta.communications_selection_limit === 'number'
-        ? updatedMeta.communications_selection_limit
-        : Number(updatedMeta.communications_selection_limit || 150);
-      const limit = Number.isFinite(limitRaw) ? limitRaw : 150;
-      const isCommunicationsPlugin = plugin.id === 'abonent_communications';
-      const shouldWarnExceeded = isCommunicationsPlugin
-        && Boolean(updatedMeta.communications_selection_exceeded)
-        && liveSelectedNodeCount > limit;
-      const shouldWarnLimited = isCommunicationsPlugin
-        && Boolean(updatedMeta.communications_selection_limited)
-        && liveSelectedNodeCount > limit;
-
-      if (shouldWarnExceeded) {
-        window.alert(`Выделено ${liveSelectedNodeCount} абонентов. Лимит для запуска плагина: ${limit}. Пожалуйста, запускайте расширение частями.`);
-      } else if (shouldWarnLimited) {
-        window.alert(`Обработано только первые ${limit} абонентов из выделения. Для остальных запустите плагин повторно.`);
-      }
 
       if (newNodeIds.length > 0) {
         window.dispatchEvent(new CustomEvent('graph:run-physics-layout', { detail: { newNodeIds, autoLayout: true } }));

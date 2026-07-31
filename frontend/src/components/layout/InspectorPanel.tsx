@@ -1,4 +1,4 @@
-﻿// frontend/src/components/layout/InspectorPanel.tsx
+// frontend/src/components/layout/InspectorPanel.tsx
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { fetchArtifacts, deleteArtifact, updateArtifactSync, setCurrentArtifact } from '../../store/slices/artifactsSlice';
@@ -15,6 +15,7 @@ import { InspectorElementsTab } from './InspectorElementsTab';
 import { InspectorMetadataTab } from './InspectorMetadataTab';
 import { InspectorGraphDisplaySettings } from './InspectorGraphDisplaySettings';
 import { useInspectorGraphSelection } from './useInspectorGraphSelection';
+import { selectedEntityFromGraphNode, uniqueSelectedDomainEntities } from '../../utils/domainSelection';
 import {
   buildEdgeLabelFromAttributes as buildEdgeLabelFromAttributesUtil,
   defaultEdgeDirectionOptions,
@@ -92,9 +93,9 @@ const labels = {
   save: '\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c',
   selectResult: '\\u0412\\u044b\\u0431\\u0435\\u0440\\u0438\\u0442\\u0435 \\u0440\\u0435\\u0437\\u0443\\u043b\\u044c\\u0442\\u0430\\u0442',
   llmSection: 'LLM',
-  llmModel: 'Модель',
-  llmRuntime: 'Режим',
-  llmLatency: 'Задержка',
+  llmModel: '\u041c\u043e\u0434\u0435\u043b\u044c',
+  llmRuntime: '\u0420\u0435\u0436\u0438\u043c',
+  llmLatency: '\u0417\u0430\u0434\u0435\u0440\u0436\u043a\u0430',
   elementProps: '\u0421\u0432\u043e\u0439\u0441\u0442\u0432\u0430',
   selectedCount: '\u041a\u043e\u043b-\u0432\u043e',
   mixedSelection: '\u0412\u044b\u0434\u0435\u043b\u0435\u043d\u044b \u0438 \u0432\u0435\u0440\u0448\u0438\u043d\u044b, \u0438 \u0441\u0432\u044f\u0437\u0438. \u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u043e\u0434\u0438\u043d \u0442\u0438\u043f \u044d\u043b\u0435\u043c\u0435\u043d\u0442\u043e\u0432.',
@@ -137,7 +138,7 @@ const labels = {
   resetDefaults: '\u0421\u0431\u0440\u043e\u0441\u0438\u0442\u044c \u043f\u043e \u0443\u043c\u043e\u043b\u0447\u0430\u043d\u0438\u044e'
 };
 
-const isLikelyMojibake = (value: string) => /[\u00D0\u00D1][\u0080-\u00BF]|[\uFFFD]|(?:Р В Р’В Р вЂ™Р’В .|Р В Р’В Р В Р вЂ№.){2,}/.test(value);
+const isLikelyMojibake = (value: string) => /[\u00D0\u00D1][\u0080-\u00BF]|[\uFFFD]|(?:Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В .|Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћвЂ“.){2,}/.test(value);
 
 void isLikelyMojibake;
 const NODE_SYSTEM_ATTRIBUTE_KEYS = new Set(['visual', 'label', 'color', 'icon', 'iconScale', 'ringEnabled', 'ringWidth']);
@@ -199,7 +200,7 @@ const EdgeTypeSelect: React.FC<EdgeTypeSelectProps> = ({ value, onChange, option
         ) : (
           <span className="edge-type-select-label edge-type-select-placeholder">{placeholder}</span>
         )}
-        <span className="edge-type-select-caret">в–ѕ</span>
+        <span className="edge-type-select-caret">v</span>
       </button>
 
       {open && (
@@ -228,11 +229,11 @@ const EdgeTypeSelect: React.FC<EdgeTypeSelectProps> = ({ value, onChange, option
 void EdgeTypeSelect;
 
 const tabDescriptions: Record<'properties' | 'actions' | 'builder' | 'elements' | 'metadata', string> = {
-  properties: 'Настройки отображения и базовые действия для текущего артефакта.',
-  actions: 'Запуск анализа и преобразований по текущему графу или выделению с пошаговой подготовкой входа.',
-  builder: 'Создание и связывание объектов графа в явном структурном режиме.',
-  elements: 'Поля и атрибуты выделенных узлов или связей.',
-  metadata: 'Служебные сведения, происхождение артефакта и технические метаданные.',
+  properties: '\u041f\u0430\u0440\u0430\u043c\u0435\u0442\u0440\u044b \u043e\u0442\u043e\u0431\u0440\u0430\u0436\u0435\u043d\u0438\u044f \u0438 \u0431\u0430\u0437\u043e\u0432\u044b\u0435 \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u044f \u0434\u043b\u044f \u0442\u0435\u043a\u0443\u0449\u0435\u0433\u043e \u0430\u0440\u0442\u0435\u0444\u0430\u043a\u0442\u0430.',
+  actions: '\u0417\u0430\u043f\u0443\u0441\u043a \u0430\u043d\u0430\u043b\u0438\u0437\u0430 \u0438 \u043f\u0440\u0435\u043e\u0431\u0440\u0430\u0437\u043e\u0432\u0430\u043d\u0438\u0439 \u0434\u043b\u044f \u0442\u0435\u043a\u0443\u0449\u0435\u0433\u043e \u0433\u0440\u0430\u0444\u0430 \u0438\u043b\u0438 \u0432\u044b\u0434\u0435\u043b\u0435\u043d\u0438\u044f \u0441 \u043f\u043e\u0448\u0430\u0433\u043e\u0432\u043e\u0439 \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043a\u043e\u0439 \u0432\u0445\u043e\u0434\u0430.',
+  builder: '\u0421\u043e\u0437\u0434\u0430\u043d\u0438\u0435 \u0438 \u0441\u0432\u044f\u0437\u044b\u0432\u0430\u043d\u0438\u0435 \u043e\u0431\u044a\u0435\u043a\u0442\u043e\u0432 \u0433\u0440\u0430\u0444\u0430 \u0432 \u044f\u0432\u043d\u043e\u043c \u0441\u0442\u0440\u0443\u043a\u0442\u0443\u0440\u043d\u043e\u043c \u0440\u0435\u0436\u0438\u043c\u0435.',
+  elements: '\u041f\u043e\u043b\u044f \u0438 \u0430\u0442\u0440\u0438\u0431\u0443\u0442\u044b \u0432\u044b\u0434\u0435\u043b\u0435\u043d\u043d\u044b\u0445 \u0443\u0437\u043b\u043e\u0432 \u0438\u043b\u0438 \u0441\u0432\u044f\u0437\u0435\u0439.',
+  metadata: '\u0421\u043b\u0443\u0436\u0435\u0431\u043d\u044b\u0435 \u0441\u0432\u0435\u0434\u0435\u043d\u0438\u044f, \u043f\u0440\u043e\u0438\u0441\u0445\u043e\u0436\u0434\u0435\u043d\u0438\u0435 \u0430\u0440\u0442\u0435\u0444\u0430\u043a\u0442\u0430 \u0438 \u0442\u0435\u0445\u043d\u0438\u0447\u0435\u0441\u043a\u0438\u0435 \u043c\u0435\u0442\u0430\u0434\u0430\u043d\u043d\u044b\u0435.',
 };
 
 const InspectorPanel: React.FC<InspectorPanelProps> = ({
@@ -289,6 +290,7 @@ const InspectorPanel: React.FC<InspectorPanelProps> = ({
   });
 
   const selectedElements = useAppSelector(state => state.ui.selectedElements);
+  const selectedDomainEntities = useAppSelector(state => state.ui.selectedDomainEntities);
   const currentProject = useAppSelector(state => state.projects.currentProject);
 
   const graphNodeIdSet = useMemo(() => {
@@ -317,11 +319,18 @@ const InspectorPanel: React.FC<InspectorPanelProps> = ({
         .map(item => String(item.id))
         .filter((id) => graphEdgeIdSet.has(id)).slice(0, 200);
 
-      return { selected_nodes, selected_edges };
+      const nodeById = new Map(
+        (Array.isArray(selectedArtifact.data?.nodes) ? selectedArtifact.data.nodes : [])
+          .map((node: any) => [String(node?.id ?? node?.node_id ?? ''), node]),
+      );
+      const selected_entities = uniqueSelectedDomainEntities(
+        selected_nodes.map((nodeId) => selectedEntityFromGraphNode(nodeById.get(nodeId))),
+      );
+      return { selected_nodes, selected_edges, selected_entities };
     }
 
-    return {};
-  }, [selectedArtifact, selectedElements, graphNodeIdSet, graphEdgeIdSet]);
+    return { selected_entities: selectedDomainEntities };
+  }, [selectedArtifact, selectedElements, selectedDomainEntities, graphNodeIdSet, graphEdgeIdSet]);
   const getNodeTypeDefaultVisual = useCallback((nodeData: any) => {
     const typeId = String(nodeData?.type || '');
     const found = nodeTypeDefinitions.find((item) => item.id === typeId);
@@ -893,7 +902,7 @@ const handleCreateNode = useCallback(() => {
   const llmRuntime = String(artifactMetadata.llm_runtime || '').trim();
   const llmLatencyRaw = Number(artifactMetadata.llm_latency_ms);
   const llmLatency = Number.isFinite(llmLatencyRaw) && llmLatencyRaw > 0
-    ? (llmLatencyRaw < 1000 ? `${Math.round(llmLatencyRaw)} мс` : `${(llmLatencyRaw / 1000).toFixed(2)} с`)
+    ? (llmLatencyRaw < 1000 ? `${Math.round(llmLatencyRaw)} ms` : `${(llmLatencyRaw / 1000).toFixed(2)} s`)
     : '';
   const hasLlmMeta = Boolean(llmModel || llmRuntime || llmLatency);
 
@@ -984,14 +993,14 @@ const handleCreateNode = useCallback(() => {
         >
           {labels.properties}
         </button>
+        <button
+          className={'tab-btn ' + (activeTab === 'actions' ? 'active' : '')}
+          onClick={() => handleTabChange('actions')}
+        >
+          {labels.actions}
+        </button>
         {selectedArtifact.type === 'graph' && (
           <>
-            <button
-              className={'tab-btn ' + (activeTab === 'actions' ? 'active' : '')}
-              onClick={() => handleTabChange('actions')}
-            >
-              {labels.actions}
-            </button>
             <button
               className={'tab-btn ' + (activeTab === 'builder' ? 'active' : '')}
               onClick={() => handleTabChange('builder')}
@@ -1079,7 +1088,7 @@ const handleCreateNode = useCallback(() => {
             </details>
           </div>
         )}
-        {activeTab === 'actions' && selectedArtifact.type === 'graph' && (
+        {activeTab === 'actions' && (
           <InspectorActionsTab
             artifact={selectedArtifact}
             selectedElements={selectedElements as Array<{ type: string; id: string; data?: unknown }>}

@@ -1,16 +1,34 @@
 from __future__ import annotations
 
+import csv
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 from fastapi import HTTPException
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.services.project_data_import_utils import normalize_address, open_csv_reader
+from app.services.project_data_import_utils import KNOWN_ENCODINGS, normalize_address
 
 DATA_ROOT = Path("/app/data")
+
+
+@contextmanager
+def _open_streaming_csv_reader(path: Path, delimiter: str = ",") -> Iterator[csv.DictReader]:
+    for encoding in KNOWN_ENCODINGS:
+        try:
+            with path.open("r", encoding=encoding, newline="") as fh:
+                reader = csv.DictReader(fh, delimiter=delimiter)
+                if reader.fieldnames:
+                    yield reader
+                    return
+        except UnicodeDecodeError:
+            continue
+
+    with path.open("r", encoding="latin-1", errors="replace", newline="") as fh:
+        yield csv.DictReader(fh, delimiter=delimiter)
 
 
 def _parse_float(value: str) -> float | None:
@@ -48,65 +66,78 @@ async def load_cell_tower_reference(db: AsyncSession, source_path: str) -> dict[
     if not csv_path.exists() or not csv_path.is_file():
         raise HTTPException(status_code=400, detail=f"File not found: {csv_path}")
 
-    reader = open_csv_reader(csv_path, ",")
-    rows: list[dict[str, Any]] = []
     loaded_at = datetime.utcnow()
 
-    for row in reader:
+    def _build_row_payload(row: dict[str, Any]) -> dict[str, Any] | None:
         raw_id = (row.get("id") or "").strip()
         if not raw_id:
-            continue
+            return None
         try:
             row_id = int(raw_id)
         except ValueError:
-            continue
-        rows.append(
-            {
-                "id": row_id,
-                "mcc": (row.get("MCC") or "").strip() or None,
-                "mnc": (row.get("MNC") or "").strip() or None,
-                "lac": (row.get("LAC") or "").strip() or None,
-                "cid": (row.get("CID") or "").strip() or None,
-                "g": (row.get("G") or "").strip() or None,
-                "latitude": _parse_float(row.get("Lat") or ""),
-                "longitude": _parse_float(row.get("Lon") or ""),
-                "azimuth": _parse_float(row.get("Azimuth") or ""),
-                "height": _parse_float(row.get("Height") or ""),
-                "address": (row.get("Address") or "").strip() or None,
-                "address_norm": normalize_address((row.get("Address") or "").strip()),
-                "beg_date": _parse_date(row.get("BegDate") or ""),
-                "end_date": _parse_date(row.get("EndDate") or ""),
-                "region_id": (row.get("RegionID") or "").strip() or None,
-                "ref_source": (row.get("ref_source") or "").strip() or None,
-                "loaded_at": loaded_at,
-            }
-        )
+            return None
 
+        address = (row.get("Address") or "").strip()
+        return {
+            "id": row_id,
+            "mcc": (row.get("MCC") or "").strip() or None,
+            "mnc": (row.get("MNC") or "").strip() or None,
+            "lac": (row.get("LAC") or "").strip() or None,
+            "cid": (row.get("CID") or "").strip() or None,
+            "g": (row.get("G") or "").strip() or None,
+            "latitude": _parse_float(row.get("Lat") or ""),
+            "longitude": _parse_float(row.get("Lon") or ""),
+            "azimuth": _parse_float(row.get("Azimuth") or ""),
+            "height": _parse_float(row.get("Height") or ""),
+            "address": address or None,
+            "address_norm": normalize_address(address),
+            "beg_date": _parse_date(row.get("BegDate") or ""),
+            "end_date": _parse_date(row.get("EndDate") or ""),
+            "region_id": (row.get("RegionID") or "").strip() or None,
+            "ref_source": (row.get("ref_source") or "").strip() or None,
+            "loaded_at": loaded_at,
+        }
+
+    insert_sql = text(
+        """
+        INSERT INTO cell_tower_reference (
+            id, mcc, mnc, lac, cid, g, latitude, longitude, azimuth, height,
+            address, address_norm, beg_date, end_date, region_id, ref_source, loaded_at
+        ) VALUES (
+            :id, :mcc, :mnc, :lac, :cid, :g, :latitude, :longitude, :azimuth, :height,
+            :address, :address_norm, :beg_date, :end_date, :region_id, :ref_source, :loaded_at
+        )
+        """
+    )
+
+    await db.execute(text("SET LOCAL synchronous_commit = OFF"))
     await db.execute(text("TRUNCATE TABLE cell_tower_reference"))
 
-    batch_size = 5000
-    for i in range(0, len(rows), batch_size):
-        chunk = rows[i:i + batch_size]
-        if not chunk:
-            continue
-        await db.execute(
-            text(
-                """
-                INSERT INTO cell_tower_reference (
-                    id, mcc, mnc, lac, cid, g, latitude, longitude, azimuth, height,
-                    address, address_norm, beg_date, end_date, region_id, ref_source, loaded_at
-                ) VALUES (
-                    :id, :mcc, :mnc, :lac, :cid, :g, :latitude, :longitude, :azimuth, :height,
-                    :address, :address_norm, :beg_date, :end_date, :region_id, :ref_source, :loaded_at
-                )
-                """
-            ),
-            chunk,
-        )
+    inserted_rows = 0
+    batch_size = 20000
+    chunk: list[dict[str, Any]] = []
+
+    with _open_streaming_csv_reader(csv_path, ",") as reader:
+        for row in reader:
+            payload = _build_row_payload(row)
+            if payload is None:
+                continue
+            chunk.append(payload)
+            if len(chunk) < batch_size:
+                continue
+            await db.execute(insert_sql, chunk)
+            inserted_rows += len(chunk)
+            chunk.clear()
+
+    if chunk:
+        await db.execute(insert_sql, chunk)
+        inserted_rows += len(chunk)
+
+    await db.execute(text("ANALYZE cell_tower_reference"))
 
     return {
         "source_path": str(csv_path),
-        "inserted_rows": len(rows),
+        "inserted_rows": inserted_rows,
         "loaded_at": loaded_at.isoformat(),
     }
 
@@ -136,33 +167,34 @@ async def enrich_cell_tower_reference_from_project_addresses(db: AsyncSession, p
             """
             CREATE TEMP TABLE tmp_project_address_keys ON COMMIT DROP AS
             SELECT DISTINCT ON (
-              coalesce(NULLIF(BTRIM(e.mcc), ''), ''),
-              coalesce(NULLIF(BTRIM(e.mnc), ''), ''),
-              NULLIF(BTRIM(e.lac), ''),
-              NULLIF(BTRIM(e.bs), ''),
-              coalesce(NULLIF(BTRIM(e.address_norm), ''), regexp_replace(lower(coalesce(NULLIF(BTRIM(e.address), ''), '')), '[^[:alnum:]]', '', 'g'))
+              coalesce(NULLIF(BTRIM(e.payload ->> 'mcc'), ''), ''),
+              coalesce(NULLIF(BTRIM(e.payload ->> 'mnc'), ''), ''),
+              NULLIF(BTRIM(e.payload ->> 'lac'), ''),
+              NULLIF(BTRIM(e.payload ->> 'bs'), ''),
+              coalesce(NULLIF(BTRIM(e.payload ->> 'address_norm'), ''), regexp_replace(lower(coalesce(NULLIF(BTRIM(e.payload ->> 'address'), ''), '')), '[^[:alnum:]]', '', 'g'))
             )
-              NULLIF(BTRIM(e.mcc), '') AS mcc,
-              NULLIF(BTRIM(e.mnc), '') AS mnc,
-              NULLIF(BTRIM(e.lac), '') AS lac,
-              NULLIF(BTRIM(e.bs), '') AS cid,
-              NULLIF(BTRIM(e.address), '') AS address,
-              coalesce(NULLIF(BTRIM(e.address_norm), ''), regexp_replace(lower(coalesce(NULLIF(BTRIM(e.address), ''), '')), '[^[:alnum:]]', '', 'g')) AS address_norm,
-              e.event_time
-            FROM project_location_events_raw e
+              NULLIF(BTRIM(e.payload ->> 'mcc'), '') AS mcc,
+              NULLIF(BTRIM(e.payload ->> 'mnc'), '') AS mnc,
+              NULLIF(BTRIM(e.payload ->> 'lac'), '') AS lac,
+              NULLIF(BTRIM(e.payload ->> 'bs'), '') AS cid,
+              NULLIF(BTRIM(e.payload ->> 'address'), '') AS address,
+              coalesce(NULLIF(BTRIM(e.payload ->> 'address_norm'), ''), regexp_replace(lower(coalesce(NULLIF(BTRIM(e.payload ->> 'address'), ''), '')), '[^[:alnum:]]', '', 'g')) AS address_norm,
+              e.occurred_at AS event_time
+            FROM project_domain_facts e
             WHERE e.project_id = :project_id
-              AND NULLIF(BTRIM(e.address), '') IS NOT NULL
-              AND lower(BTRIM(e.address)) NOT IN ('null', 'none', 'n/a', 'na', '-')
-              AND NULLIF(BTRIM(e.lac), '') IS NOT NULL
-              AND NULLIF(BTRIM(e.bs), '') IS NOT NULL
-              AND lower(BTRIM(e.bs)) NOT IN ('0', 'null', 'none', 'n/a', 'na', '-')
+              AND e.fact_type = 'location_event'
+              AND NULLIF(BTRIM(e.payload ->> 'address'), '') IS NOT NULL
+              AND lower(BTRIM(e.payload ->> 'address')) NOT IN ('null', 'none', 'n/a', 'na', '-')
+              AND NULLIF(BTRIM(e.payload ->> 'lac'), '') IS NOT NULL
+              AND NULLIF(BTRIM(e.payload ->> 'bs'), '') IS NOT NULL
+              AND lower(BTRIM(e.payload ->> 'bs')) NOT IN ('0', 'null', 'none', 'n/a', 'na', '-')
             ORDER BY
-              coalesce(NULLIF(BTRIM(e.mcc), ''), ''),
-              coalesce(NULLIF(BTRIM(e.mnc), ''), ''),
-              NULLIF(BTRIM(e.lac), ''),
-              NULLIF(BTRIM(e.bs), ''),
-              coalesce(NULLIF(BTRIM(e.address_norm), ''), regexp_replace(lower(coalesce(NULLIF(BTRIM(e.address), ''), '')), '[^[:alnum:]]', '', 'g')),
-              e.event_time DESC
+              coalesce(NULLIF(BTRIM(e.payload ->> 'mcc'), ''), ''),
+              coalesce(NULLIF(BTRIM(e.payload ->> 'mnc'), ''), ''),
+              NULLIF(BTRIM(e.payload ->> 'lac'), ''),
+              NULLIF(BTRIM(e.payload ->> 'bs'), ''),
+              coalesce(NULLIF(BTRIM(e.payload ->> 'address_norm'), ''), regexp_replace(lower(coalesce(NULLIF(BTRIM(e.payload ->> 'address'), ''), '')), '[^[:alnum:]]', '', 'g')),
+              e.occurred_at DESC
             """
         ),
         {"project_id": project_id},

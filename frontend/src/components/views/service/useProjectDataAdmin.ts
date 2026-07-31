@@ -29,7 +29,7 @@ const detectImportPluginForFile = async (
   file: File,
   plugins: ProjectDataImportPlugin[],
 ): Promise<{ id: string | null; name: string | null }> => {
-  const identityPlugin = plugins.find((plugin) => plugin.id === 'nodex_identity_facts') ?? null;
+  const userActionsPlugin = plugins.find((plugin) => plugin.id === 'nodex_user_actions_address_book') ?? null;
   const trafficPlugin = plugins.find((plugin) => plugin.id === 'nodex_traffic_geo') ?? null;
 
   // ZIP contents are inspected on the backend; do not guess from its filename.
@@ -44,10 +44,11 @@ const detectImportPluginForFile = async (
       .filter(Boolean),
   );
 
-  const hasIdentityHeaders =
-    headers.has('\u0442\u0435\u0445\u0434\u0430\u043d\u043d\u044b\u0435, \u0438\u0434\u0435\u043d\u0442. \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f') ||
-    (headers.has('\u0438\u0434. \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f') && headers.has('\u0442\u0435\u043a\u0441\u0442 \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u044f'));
-  if (hasIdentityHeaders) return { id: identityPlugin?.id ?? null, name: identityPlugin?.name ?? null };
+  const hasUserActionsHeaders =
+    headers.has('\u0434\u0430\u0442\u0430 \u0438 \u0432\u0440\u0435\u043c\u044f') &&
+    headers.has('\u0442\u0435\u0445\u0434\u0430\u043d\u043d\u044b\u0435, \u0438\u0434\u0435\u043d\u0442. \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f') &&
+    headers.has('\u0442\u0435\u043a\u0441\u0442 \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u044f');
+  if (hasUserActionsHeaders) return { id: userActionsPlugin?.id ?? null, name: userActionsPlugin?.name ?? null };
 
   const hasTrafficHeaders =
     headers.has('abon1') ||
@@ -76,7 +77,6 @@ export const useProjectDataAdmin = ({
   const [projectDataPreviewLoading, setProjectDataPreviewLoading] = useState(false);
   const [projectDataPreview, setProjectDataPreview] = useState<ProjectDataPreviewResponse | null>(null);
   const [projectDataClearing, setProjectDataClearing] = useState(false);
-  const [projectDataLoadReport, setProjectDataLoadReport] = useState<any | null>(null);
   const [projectDataLastLoadResult, setProjectDataLastLoadResult] = useState<ProjectDataLoadResponse | null>(null);
   const [projectDataSelectedFiles, setProjectDataSelectedFiles] = useState<ProjectDataSelectedFileItem[]>([]);
 
@@ -117,17 +117,6 @@ export const useProjectDataAdmin = ({
     };
   }, [projectDataSelectedFiles]);
 
-  const selectedImportPluginPreview = useMemo(() => {
-    if (projectDataSelectedFiles.length === 0) return null;
-    const counts = projectDataSelectedFiles.reduce<Record<string, number>>((acc, item) => {
-      if (item.recognizedPluginId) {
-        acc[item.recognizedPluginId] = (acc[item.recognizedPluginId] || 0) + 1;
-      }
-      return acc;
-    }, {});
-    const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
-    return availableImportPlugins.find((plugin) => plugin.id === top) ?? null;
-  }, [availableImportPlugins, projectDataSelectedFiles]);
 
   const fetchCellStats = useCallback(async () => {
     setCellStatsLoading(true);
@@ -305,7 +294,6 @@ export const useProjectDataAdmin = ({
     if (files.length === 0) return;
 
     onError(null);
-    setProjectDataLoadReport(null);
     setProjectDataLastLoadResult(null);
     setProjectDataPreview(null);
 
@@ -320,6 +308,7 @@ export const useProjectDataAdmin = ({
           sizeBytes: file.size,
           recognizedPluginId: detected.id,
           recognizedPluginName: detected.name,
+          pluginSelectionMode: 'auto',
         } satisfies ProjectDataSelectedFileItem;
       }),
     );
@@ -361,6 +350,7 @@ export const useProjectDataAdmin = ({
               ...item,
               recognizedPluginId: pluginId || null,
               recognizedPluginName: selectedPlugin?.name ?? null,
+              pluginSelectionMode: 'manual',
             }
           : item,
       ),
@@ -388,34 +378,37 @@ export const useProjectDataAdmin = ({
         pluginOverrides,
       );
       setProjectDataPreview(result);
+      const detectedPluginsByPath = new Map(
+        result.files
+          .filter((file) => file.plugin_id)
+          .map((file) => [file.path, { id: file.plugin_id ?? null, name: file.plugin_name ?? null }]),
+      );
+      setProjectDataSelectedFiles((previous) => previous.map((item) => {
+        if (item.pluginSelectionMode === 'manual') return item;
+        const path = (item.file as File & { webkitRelativePath?: string }).webkitRelativePath || item.file.name;
+        const detected = detectedPluginsByPath.get(path);
+        return detected
+          ? { ...item, recognizedPluginId: detected.id, recognizedPluginName: detected.name, pluginSelectionMode: 'auto' }
+          : item;
+      }));
       const totalRows = result.runs.reduce(
         (sum, run) => sum + run.datasets.reduce((datasetSum, dataset) => datasetSum + Number(dataset.row_count || 0), 0),
         0,
       );
-      onMessage(
-        result.errors.length
-          ? 'Проверка завершена с ошибками: ' + result.errors.length + '. Запись в проект не выполнялась.'
-          : 'Проверка завершена: распознано строк ' + totalRows + '. Запись в проект не выполнялась.',
-      );
+      onMessage(`\u041f\u0440\u043e\u0432\u0435\u0440\u043a\u0430 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u0430: \u0440\u0430\u0441\u043f\u043e\u0437\u043d\u0430\u043d\u043e ${result.files.length} \u0444\u0430\u0439\u043b\u043e\u0432, \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043e ${totalRows} \u0441\u0442\u0440\u043e\u043a.`);
     } catch (err: unknown) {
-      onError(
-        getRequestErrorMessage(
-          err,
-          'Не удалось выполнить предварительную проверку файлов',
-          'Предварительная проверка выполняется дольше обычного. Попробуйте уменьшить набор файлов.',
-        ),
-      );
+      onError(getRequestErrorMessage(err, '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u0444\u0430\u0439\u043b\u044b \u043f\u0440\u043e\u0435\u043a\u0442\u0430'));
     } finally {
       setProjectDataPreviewLoading(false);
     }
   }, [getRequestErrorMessage, onError, onMessage, projectDataSelectedFiles, projectId]);
+
   const handleUploadProjectData = useCallback(async () => {
     if (!projectId || projectDataSelectedFiles.length === 0) return;
 
     setProjectDataLoading(true);
     onError(null);
     onMessage(null);
-    setProjectDataLoadReport(null);
     setProjectDataLastLoadResult(null);
 
     try {
@@ -430,39 +423,17 @@ export const useProjectDataAdmin = ({
         projectDataSelectedFiles.map((item) => item.file),
         pluginOverrides,
       );
-      const totalRead =
-        Number(result.communications_rows || 0) +
-        Number(result.device_history_rows || 0) +
-        Number(result.location_events_rows || 0) +
-        Number(result.ip_bindings_rows || 0) +
-        Number(result.user_msisdn_facts_rows || 0) +
-        Number(result.ip_msisdn_facts_rows || 0) +
-        Number(result.msisdn_device_facts_rows || 0) +
-        Number(result.msisdn_text_facts_rows || 0);
-      const totalInserted =
-        Number(result.inserted_communications || 0) +
-        Number(result.inserted_device_history || 0) +
-        Number(result.inserted_location_events || 0) +
-        Number(result.inserted_ip_bindings || 0) +
-        Number(result.inserted_user_msisdn_facts || 0) +
-        Number(result.inserted_ip_msisdn_facts || 0) +
-        Number(result.inserted_msisdn_device_facts || 0) +
-        Number(result.inserted_msisdn_text_facts || 0);
-
-      onMessage(`Данные проекта загружены: прочитано ${totalRead} строк, добавлено ${totalInserted}.`);
+      const totalRead = Object.values(result.source_counts || {}).reduce(
+        (sum, count) => sum + Number(count || 0),
+        0,
+      );
+      onMessage(`\u0418\u043c\u043f\u043e\u0440\u0442 \u0437\u0430\u0432\u0435\u0440\u0448\u0451\u043d: \u043e\u0431\u0440\u0430\u0431\u043e\u0442\u0430\u043d\u043e ${totalRead} \u0441\u0442\u0440\u043e\u043a, \u0441\u043e\u0437\u0434\u0430\u043d\u043e ${result.entities} \u0441\u0443\u0449\u043d\u043e\u0441\u0442\u0435\u0439, ${result.facts} \u0444\u0430\u043a\u0442\u043e\u0432, ${result.relations} \u0441\u0432\u044f\u0437\u0435\u0439.`);
       setProjectDataLastLoadResult(result);
-      setProjectDataLoadReport(result.load_log ?? null);
       setProjectDataSelectedFiles([]);
       setProjectDataPreview(null);
       await Promise.all([fetchProjectStats(), fetchCellStats()]);
     } catch (err: unknown) {
-      onError(
-        getRequestErrorMessage(
-          err,
-          'Не удалось загрузить данные проекта',
-          'Загрузка данных проекта выполняется слишком долго. Попробуй повторить запуск и дай операции больше времени.',
-        ),
-      );
+      onError(getRequestErrorMessage(err, '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c \u0434\u0430\u043d\u043d\u044b\u0435 \u043f\u0440\u043e\u0435\u043a\u0442\u0430'));
     } finally {
       setProjectDataLoading(false);
     }
@@ -470,33 +441,23 @@ export const useProjectDataAdmin = ({
 
   const handleClearProjectData = useCallback(async () => {
     if (!projectId) return;
-    if (!window.confirm(`Очистить данные проекта?\n\nProject ID: ${projectId}`)) return;
+    if (!window.confirm(`\u041e\u0447\u0438\u0441\u0442\u0438\u0442\u044c \u0434\u0430\u043d\u043d\u044b\u0435 \u043f\u0440\u043e\u0435\u043a\u0442\u0430?\n\nProject ID: ${projectId}`)) return;
 
     setProjectDataClearing(true);
     onError(null);
     onMessage(null);
-    setProjectDataLoadReport(null);
     setProjectDataLastLoadResult(null);
 
     try {
-      const result = await projectDataApi.clear(projectId);
-      onMessage(
-        `Данные проекта очищены: удалено связей ${result.communications_deleted || 0}, устройств ${result.device_history_deleted || 0}, локаций ${result.location_events_deleted || 0}, IP ${result.ip_bindings_deleted || 0}.`,
-      );
-      await fetchProjectStats();
+      await projectDataApi.clear(projectId);
+      onMessage('\u0414\u0430\u043d\u043d\u044b\u0435 \u043f\u0440\u043e\u0435\u043a\u0442\u0430 \u043e\u0447\u0438\u0449\u0435\u043d\u044b.');
+      await Promise.all([fetchProjectStats(), fetchCellStats()]);
     } catch (err: unknown) {
-      onError(
-        getRequestErrorMessage(
-          err,
-          'Не удалось очистить данные проекта',
-          'Очистка данных проекта выполняется дольше обычного. Попробуй повторить через минуту.',
-        ),
-      );
+      onError(getRequestErrorMessage(err, '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043e\u0447\u0438\u0441\u0442\u0438\u0442\u044c \u0434\u0430\u043d\u043d\u044b\u0435 \u043f\u0440\u043e\u0435\u043a\u0442\u0430'));
     } finally {
       setProjectDataClearing(false);
     }
-  }, [fetchProjectStats, getRequestErrorMessage, onError, onMessage, projectId]);
-
+  }, [fetchCellStats, fetchProjectStats, getRequestErrorMessage, onError, onMessage, projectId]);
   const handleEnrichCellTowersByAddress = useCallback(async () => {
     if (!projectId) {
       onError('Сначала выбери проект');
@@ -535,7 +496,6 @@ export const useProjectDataAdmin = ({
 
   useEffect(() => {
     setProjectDataSelectedFiles([]);
-    setProjectDataLoadReport(null);
     setProjectDataLastLoadResult(null);
     setProjectDataPreview(null);
   }, [projectId]);
@@ -553,12 +513,10 @@ export const useProjectDataAdmin = ({
     projectDataPreviewLoading,
     projectDataPreview,
     projectDataClearing,
-    projectDataLoadReport,
     projectDataLastLoadResult,
     projectDataSelectedFiles,
     projectDataSelectedSummary,
     availableImportPlugins,
-    selectedImportPluginPreview,
     selectedImportPluginId,
     setSelectedImportPluginId,
     importPluginForm,

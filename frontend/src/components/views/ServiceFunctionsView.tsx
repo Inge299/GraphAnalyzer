@@ -1,16 +1,17 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { consoleApi, projectDataApi } from '../../services/api';
+import { consoleApi } from '../../services/api';
 import GraphDomainEditor from './GraphDomainEditor';
 import CellTowerReferenceSection from './service/CellTowerReferenceSection';
 import ConsoleDataSourcesSection from './service/ConsoleDataSourcesSection';
 import ConsoleProcedureRegistrySection from './service/ConsoleProcedureRegistrySection';
+import AnalysisProfilesSection from './service/AnalysisProfilesSection';
 import ImportPluginsAdminSection from './service/ImportPluginsAdminSection';
 import MetadataBundleAdminSection from './service/MetadataBundleAdminSection';
+import ReferenceProvidersSection from './service/ReferenceProvidersSection';
 import {
   bindingModeOptions,
   categoryLabels,
   columnTypeOptions,
-  defaultReferencePath,
   formatBytes,
   paramTypeOptions,
   projectContextSourceOptions,
@@ -56,7 +57,7 @@ const parseJsonInput = <T,>(raw: string, fallbackLabel: string): T => {
   try {
     return JSON.parse(raw) as T;
   } catch {
-    throw new Error(`${fallbackLabel}: некорректный JSON`);
+    throw new Error(`${fallbackLabel}: РЅРµРєРѕСЂСЂРµРєС‚РЅС‹Р№ JSON`);
   }
 };
 
@@ -121,14 +122,8 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({
   mode = 'full',
 }) => {
   const [activeCategory, setActiveCategory] = useState<ServiceCategory>(initialCategory);
-  const [referencePath, setReferencePath] = useState(defaultReferencePath);
-  const [cellStats, setCellStats] = useState<any | null>(null);
-  const [cellStatsLoading, setCellStatsLoading] = useState(false);
-  const [cellLoadLoading, setCellLoadLoading] = useState(false);
-  const [cellLoadReport, setCellLoadReport] = useState<any | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [cellStatsError, setCellStatsError] = useState<string | null>(null);
 
   const consoleAdmin = useConsoleRegistryAdmin({
     onMessage: setMessage,
@@ -151,24 +146,6 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({
     getRequestErrorMessage,
   });
 
-  const fetchCellStats = useCallback(async () => {
-    setCellStatsLoading(true);
-    setCellStatsError(null);
-    try {
-      setCellStats(await projectDataApi.cellTowerStats());
-    } catch (err: unknown) {
-      setCellStatsError(
-        getRequestErrorMessage(
-          err,
-          'Не удалось получить статистику справочника БС',
-          'Статистика справочника БС обновляется дольше обычного. Попробуй повторить через минуту.',
-        ),
-      );
-    } finally {
-      setCellStatsLoading(false);
-    }
-  }, []);
-
   const filteredProcedures = useMemo(() => {
     const query = procedureEditor.procedureSearch.trim().toLowerCase();
     if (!query) return consoleAdmin.consoleProcedures;
@@ -189,10 +166,6 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({
   }, [consoleAdmin.consoleProcedures, procedureEditor.procedureSearch]);
 
   useEffect(() => {
-    void fetchCellStats();
-  }, [fetchCellStats]);
-
-  useEffect(() => {
     if (activeCategory !== 'console_registry') return;
     void (async () => {
       const { procedures } = await consoleAdmin.fetchConsoleRegistry();
@@ -207,27 +180,6 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({
     setMessage(null);
     setError(null);
   }, [initialCategory]);
-
-  const handleLoadReference = useCallback(async () => {
-    const path = referencePath.trim();
-    if (!path) {
-      setError('Укажи путь к CSV справочника БС');
-      return;
-    }
-    setCellLoadLoading(true);
-    setMessage(null);
-    setError(null);
-    try {
-      const report = await projectDataApi.loadCellTowers(path);
-      setCellLoadReport(report);
-      setMessage('Справочник БС успешно загружен');
-      await fetchCellStats();
-    } catch (err: any) {
-      setError(String(err?.response?.data?.detail || err?.message || 'Не удалось загрузить справочник БС'));
-    } finally {
-      setCellLoadLoading(false);
-    }
-  }, [fetchCellStats, referencePath]);
 
   const handleSaveProcedure = useCallback(async () => {
     setError(null);
@@ -250,26 +202,26 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({
 
       if (procedureEditor.selectedProcedureKey) {
         await consoleApi.updateProcedure(procedureEditor.selectedProcedureKey, payload);
-        setMessage(`Процедура ${payload.key} обновлена`);
+        setMessage(`РџСЂРѕС†РµРґСѓСЂР° ${payload.key} РѕР±РЅРѕРІР»РµРЅР°`);
       } else {
         await consoleApi.createProcedure(payload);
-        setMessage(`Процедура ${payload.key} зарегистрирована`);
+        setMessage(`РџСЂРѕС†РµРґСѓСЂР° ${payload.key} Р·Р°СЂРµРіРёСЃС‚СЂРёСЂРѕРІР°РЅР°`);
       }
 
       await consoleAdmin.fetchConsoleRegistry();
       procedureEditor.setSelectedProcedureKey(payload.key);
     } catch (err: any) {
-      setError(String(err?.response?.data?.detail || err?.message || 'Не удалось сохранить процедуру'));
+      setError(String(err?.response?.data?.detail || err?.message || 'РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕС…СЂР°РЅРёС‚СЊ РїСЂРѕС†РµРґСѓСЂСѓ'));
     }
   }, [consoleAdmin, procedureEditor]);
 
   const handleDeleteProcedure = useCallback(async () => {
     if (!procedureEditor.selectedProcedureKey || !procedureEditor.selectedProcedure) {
-      setError('Сначала выбери процедуру для удаления');
+      setError('РЎРЅР°С‡Р°Р»Р° РІС‹Р±РµСЂРё РїСЂРѕС†РµРґСѓСЂСѓ РґР»СЏ СѓРґР°Р»РµРЅРёСЏ');
       return;
     }
     const confirmed = window.confirm(
-      `Удалить зарегистрированную процедуру "${procedureEditor.selectedProcedure.name}" (${procedureEditor.selectedProcedure.key || procedureEditor.selectedProcedure.id})?`,
+      `РЈРґР°Р»РёС‚СЊ Р·Р°СЂРµРіРёСЃС‚СЂРёСЂРѕРІР°РЅРЅСѓСЋ РїСЂРѕС†РµРґСѓСЂСѓ "${procedureEditor.selectedProcedure.name}" (${procedureEditor.selectedProcedure.key || procedureEditor.selectedProcedure.id})?`,
     );
     if (!confirmed) return;
 
@@ -281,7 +233,7 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({
       await consoleAdmin.fetchConsoleRegistry();
       procedureEditor.resetProcedureForm();
     } catch (err: any) {
-      setError(String(err?.response?.data?.detail || err?.message || 'Не удалось удалить процедуру'));
+      setError(String(err?.response?.data?.detail || err?.message || 'РќРµ СѓРґР°Р»РѕСЃСЊ СѓРґР°Р»РёС‚СЊ РїСЂРѕС†РµРґСѓСЂСѓ'));
     }
   }, [consoleAdmin, procedureEditor]);
 
@@ -314,19 +266,16 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({
         {message && <div className="service-screen-banner success">{message}</div>}
         {error && <div className="service-screen-banner error">{error}</div>}
 
+        {activeCategory === 'reference_providers' && (
+          <ReferenceProvidersSection onMessage={setMessage} onError={setError} />
+        )}
         {activeCategory === 'cell_towers' && (
           <CellTowerReferenceSection
-            referencePath={referencePath}
-            onReferencePathChange={setReferencePath}
-            onLoadReference={() => void handleLoadReference()}
-            onRefreshStats={() => void fetchCellStats()}
-            cellLoadLoading={cellLoadLoading}
-            cellStatsLoading={cellStatsLoading}
-            cellLoadReport={cellLoadReport}
-            cellStats={cellStats}
-            cellStatsError={cellStatsError}
-            formatDateTime={formatDateTime}
-          />
+              cellStats={projectDataAdmin.cellStats}
+              cellStatsLoading={projectDataAdmin.cellStatsLoading}
+              cellStatsError={projectDataAdmin.cellStatsError}
+              onRefreshStats={() => void projectDataAdmin.fetchCellStats()}
+            />
         )}
 
         {activeCategory === 'project_data' && (
@@ -338,19 +287,12 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({
             projectDataPreviewLoading={projectDataAdmin.projectDataPreviewLoading}
             projectDataPreview={projectDataAdmin.projectDataPreview}
             projectDataClearing={projectDataAdmin.projectDataClearing}
-            enrichLoading={projectDataAdmin.enrichLoading}
             projectStatsLoading={projectDataAdmin.projectStatsLoading}
             projectDataSelectedFiles={projectDataAdmin.projectDataSelectedFiles}
             projectDataSelectedSummary={projectDataAdmin.projectDataSelectedSummary}
             availableImportPlugins={projectDataAdmin.availableImportPlugins}
-            selectedImportPluginPreview={projectDataAdmin.selectedImportPluginPreview}
             projectDataLastLoadResult={projectDataAdmin.projectDataLastLoadResult}
-            projectDataLoadReport={projectDataAdmin.projectDataLoadReport}
             projectStats={projectDataAdmin.projectStats}
-            projectStatsError={projectDataAdmin.projectStatsError}
-            cellStats={projectDataAdmin.cellStats}
-            cellStatsError={projectDataAdmin.cellStatsError}
-            enrichReport={projectDataAdmin.enrichReport}
             formatBytes={formatBytes}
             formatDateTime={formatDateTime}
             onLoadProjectDataFiles={(event) => void projectDataAdmin.handleLoadProjectDataFiles(event)}
@@ -359,12 +301,14 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({
             onUpload={() => void projectDataAdmin.handleUploadProjectData()}
             onClearSelection={projectDataAdmin.handleClearProjectDataSelection}
             onClearData={() => void projectDataAdmin.handleClearProjectData()}
-            onEnrich={() => void projectDataAdmin.handleEnrichCellTowersByAddress()}
             onRemoveFile={projectDataAdmin.handleRemoveProjectDataFile}
             onChangeFilePlugin={projectDataAdmin.handleChangeProjectDataFilePlugin}
           />
         )}
 
+        {activeCategory === 'analysis_profiles' && (
+          <AnalysisProfilesSection onMessage={setMessage} onError={setError} />
+        )}
         {activeCategory === 'import_plugins' && (
           <ImportPluginsAdminSection
             plugins={projectDataAdmin.availableImportPlugins}
@@ -391,7 +335,8 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({
           />
         )}
 
-        {activeCategory === 'graph_model' && <GraphDomainEditor />}
+        {activeCategory === 'graph_edges' && <GraphDomainEditor mode="edges" />}
+        {activeCategory === 'graph_nodes' && <GraphDomainEditor mode="nodes" />}
 
         {activeCategory === 'console_registry' && (
           <div className="service-console-grid">

@@ -10,11 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import AsyncSessionLocal, get_db
 from app.models.project import Project
 from app.import_plugin_sdk import ImportPluginContractError
-from app.services.cell_tower_reference_service import (
-    enrich_cell_tower_reference_from_project_addresses,
-    get_cell_tower_reference_stats,
-    load_cell_tower_reference,
-)
+from app.services.cell_tower_reference_provider import get_cell_tower_reference_provider_status
 from app.services.project_data_graph_service import sync_project_data_graph_artifact
 from app.services.import_quality_service import get_import_quality_report
 from app.services.project_data_service import (
@@ -56,15 +52,12 @@ class CellTowerReferenceLoadRequest(BaseModel):
 
 class ProjectDataStatsResponse(BaseModel):
     project_id: int
-    communications_count: int
-    device_history_count: int
-    location_events_count: int
-    ip_bindings_count: int
-    user_msisdn_facts_count: int
-    ip_msisdn_facts_count: int
-    msisdn_device_facts_count: int
-    msisdn_text_facts_count: int
-
+    entities_count: int
+    facts_count: int
+    relations_count: int
+    entity_counts: dict[str, int]
+    fact_counts: dict[str, int]
+    relation_counts: dict[str, int]
 
 class ProjectDataLoadResponse(BaseModel):
     message: str
@@ -73,39 +66,21 @@ class ProjectDataLoadResponse(BaseModel):
     output_dir: str
     import_plugin_id: str
     import_plugin_name: str
-    communications_rows: int
-    device_history_rows: int
-    location_events_rows: int
-    ip_bindings_rows: int
-    user_msisdn_facts_rows: int
-    ip_msisdn_facts_rows: int
-    msisdn_device_facts_rows: int
-    msisdn_text_facts_rows: int
-    inserted_communications: int
-    inserted_device_history: int
-    inserted_location_events: int
-    inserted_ip_bindings: int
-    inserted_user_msisdn_facts: int
-    inserted_ip_msisdn_facts: int
-    inserted_msisdn_device_facts: int
-    inserted_msisdn_text_facts: int
+    entities: int
+    facts: int
+    relations: int
+    source_counts: dict[str, int]
+    fact_counts: dict[str, int]
     load_batch_id: str
     load_log: dict
     graph_artifact: dict | None = None
 
-
 class ProjectDataClearResponse(BaseModel):
     message: str
     project_id: int
-    communications_deleted: int
-    device_history_deleted: int
-    location_events_deleted: int
-    ip_bindings_deleted: int
-    user_msisdn_facts_deleted: int
-    ip_msisdn_facts_deleted: int
-    msisdn_device_facts_deleted: int
-    msisdn_text_facts_deleted: int
-
+    entities_deleted: int
+    facts_deleted: int
+    relations_deleted: int
 
 class CellTowerReferenceLoadResponse(BaseModel):
     message: str
@@ -123,8 +98,12 @@ class CellTowerReferenceEnrichResponse(BaseModel):
 
 
 class CellTowerReferenceStatsResponse(BaseModel):
-    cell_tower_reference_count: int
+    cell_tower_reference_count: int = 0
     last_loaded_at: str | None = None
+    provider_enabled: bool
+    provider_id: str
+    provider_label: str
+    provider_detail: str
 
 
 class ProjectDataImportPluginResponse(BaseModel):
@@ -138,7 +117,10 @@ class ProjectDataImportPluginResponse(BaseModel):
     version: str
     sdk_version: str
     config_schema: dict
+    input_contract: dict
+    domain_contract: dict
     capabilities: list[str]
+    output_datasets: list[dict]
     source: str
     removable: bool
 
@@ -166,27 +148,15 @@ def _build_project_data_load_response(
         output_dir=result.output_dir,
         import_plugin_id=result.import_plugin_id,
         import_plugin_name=result.import_plugin_name,
-        communications_rows=result.communications_rows,
-        device_history_rows=result.device_history_rows,
-        location_events_rows=result.location_events_rows,
-        ip_bindings_rows=result.ip_bindings_rows,
-        user_msisdn_facts_rows=result.user_msisdn_facts_rows,
-        ip_msisdn_facts_rows=result.ip_msisdn_facts_rows,
-        msisdn_device_facts_rows=result.msisdn_device_facts_rows,
-        msisdn_text_facts_rows=result.msisdn_text_facts_rows,
-        inserted_communications=result.inserted_communications,
-        inserted_device_history=result.inserted_device_history,
-        inserted_location_events=result.inserted_location_events,
-        inserted_ip_bindings=result.inserted_ip_bindings,
-        inserted_user_msisdn_facts=result.inserted_user_msisdn_facts,
-        inserted_ip_msisdn_facts=result.inserted_ip_msisdn_facts,
-        inserted_msisdn_device_facts=result.inserted_msisdn_device_facts,
-        inserted_msisdn_text_facts=result.inserted_msisdn_text_facts,
+        entities=result.entities,
+        facts=result.facts,
+        relations=result.relations,
+        source_counts=result.source_counts,
+        fact_counts=result.fact_counts,
         load_batch_id=result.load_batch_id,
         load_log=result.load_log,
         graph_artifact=graph_artifact,
     )
-
 
 @router.post("/{project_id}/data/load", response_model=ProjectDataLoadResponse)
 async def load_data_for_project(
@@ -388,14 +358,7 @@ async def load_cell_tower_reference_data(
     payload: CellTowerReferenceLoadRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    await ensure_project_data_tables(db)
-    await db.execute(text("SELECT pg_advisory_xact_lock(910009999)"))
-    result = await load_cell_tower_reference(db=db, source_path=payload.source_path)
-    await db.commit()
-    return CellTowerReferenceLoadResponse(
-        message="Cell tower reference loaded",
-        **result,
-    )
+    raise HTTPException(status_code=410, detail="Cell tower CSV loading is retired. Configure the external cell-tower reference provider instead.")
 
 
 @router.post("/{project_id}/data/cell-towers/enrich-by-address", response_model=CellTowerReferenceEnrichResponse)
@@ -403,29 +366,15 @@ async def enrich_cell_tower_reference_by_project_addresses(
     project_id: int,
     db: AsyncSession = Depends(get_db),
 ):
-    await ensure_project_data_tables(db)
-    project = (await db.execute(select(Project).where(Project.id == project_id))).scalar_one_or_none()
-    if not project:
-        raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
-
-    await db.execute(text("SELECT pg_advisory_xact_lock(910009999)"))
-    result = await enrich_cell_tower_reference_from_project_addresses(db=db, project_id=project_id)
-    await db.commit()
-    return CellTowerReferenceEnrichResponse(
-        message="Cell tower reference enriched from project addresses",
-        **result,
-    )
+    raise HTTPException(status_code=410, detail="Cell tower enrichment is managed by the external reference provider.")
 
 
 @router.get("/data/cell-towers/stats", response_model=CellTowerReferenceStatsResponse)
-async def get_cell_tower_reference_data_stats(
-    db: AsyncSession = Depends(get_db),
-):
-    await ensure_project_data_tables(db)
-    stats = await get_cell_tower_reference_stats(db=db)
-    return CellTowerReferenceStatsResponse(**stats)
-
-
-
-
-
+async def get_cell_tower_reference_data_stats() -> CellTowerReferenceStatsResponse:
+    status = get_cell_tower_reference_provider_status()
+    return CellTowerReferenceStatsResponse(
+        provider_enabled=status.enabled,
+        provider_id=status.provider_id,
+        provider_label=status.label,
+        provider_detail=status.detail,
+    )

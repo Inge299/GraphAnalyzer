@@ -1,8 +1,11 @@
 export type ServiceCategory =
   | 'cell_towers'
+  | 'reference_providers'
   | 'project_data'
   | 'console_registry'
-  | 'graph_model'
+  | 'graph_edges'
+  | 'graph_nodes'
+  | 'analysis_profiles'
   | 'import_plugins'
   | 'metadata_bundle';
 
@@ -57,6 +60,7 @@ export interface ProjectDataSelectedFileItem {
   sizeBytes: number;
   recognizedPluginId?: string | null;
   recognizedPluginName?: string | null;
+  pluginSelectionMode?: 'auto' | 'manual';
 }
 
 export interface DataSourceFormState {

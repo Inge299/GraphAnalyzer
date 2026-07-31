@@ -5,6 +5,11 @@ from typing import List, Dict, Any, Optional
 from plugins import AVAILABLE_PLUGINS, PluginBase
 from app.services.domain_model_service import list_edge_types
 from app.services.plugins_config_service import get_plugin_config
+from app.services.analysis_plugin_presets import (
+    PresetPlugin,
+    get_analysis_plugin_preset,
+    list_analysis_plugin_presets,
+)
 
 
 class PluginService:
@@ -27,6 +32,11 @@ class PluginService:
     def _apply_domain_menu_overrides(self, metadata: Dict[str, Any]) -> Dict[str, Any]:
         plugin_id = str(metadata.get("id") or "").strip()
         if not plugin_id:
+            return metadata
+
+        config = get_plugin_config(plugin_id)
+        ui = config.get("ui") if isinstance(config, dict) else {}
+        if isinstance(ui, dict) and ui.get("is_visible") is False:
             return metadata
 
         matching = [
@@ -53,21 +63,28 @@ class PluginService:
         return updated
 
     def metadata_for(self, plugin_id: str) -> Dict[str, Any]:
-        if plugin_id not in AVAILABLE_PLUGINS:
-            raise KeyError(plugin_id)
-        instance = AVAILABLE_PLUGINS[plugin_id]()
+        instance = self.get_plugin(plugin_id)
         return self._apply_domain_menu_overrides(self._apply_ui_settings(instance.to_metadata()))
 
     def list_plugins(self) -> List[Dict[str, Any]]:
-        return [self.metadata_for(plugin_id) for plugin_id in AVAILABLE_PLUGINS]
+        identifiers = list(AVAILABLE_PLUGINS)
+        identifiers.extend(item.id for item in list_analysis_plugin_presets() if item.id not in AVAILABLE_PLUGINS)
+        return [self.metadata_for(plugin_id) for plugin_id in identifiers]
 
     def is_plugin_active(self, plugin_id: str) -> bool:
         return bool(self.metadata_for(plugin_id).get("is_active", True))
 
     def get_plugin(self, plugin_id: str) -> PluginBase:
-        if plugin_id not in AVAILABLE_PLUGINS:
+        plugin_class = AVAILABLE_PLUGINS.get(plugin_id)
+        if plugin_class is not None:
+            return plugin_class()
+        preset = get_analysis_plugin_preset(plugin_id)
+        if preset is None:
             raise KeyError(plugin_id)
-        return AVAILABLE_PLUGINS[plugin_id]()
+        base_class = AVAILABLE_PLUGINS.get(preset.base_plugin_id)
+        if base_class is None:
+            raise KeyError(f"Base plugin '{preset.base_plugin_id}' for preset '{plugin_id}' not found")
+        return PresetPlugin(preset, base_class())
 
     async def execute(
         self,

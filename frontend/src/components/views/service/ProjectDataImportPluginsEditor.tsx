@@ -30,6 +30,12 @@ const ProjectDataImportPluginsEditor: React.FC<ProjectDataImportPluginsEditorPro
   managing,
 }) => {
   const selectedPlugin = plugins.find((plugin) => plugin.id === selectedPluginId) ?? null;
+  const inputContract = selectedPlugin?.input_contract ?? {};
+  const inputFile = (inputContract.file ?? {}) as Record<string, unknown>;
+  const inputHeaders = (inputContract.headers ?? {}) as Record<string, unknown>;
+  const inputContainer = (inputContract.container ?? {}) as Record<string, unknown>;
+  const inputFilename = (inputContract.filename ?? {}) as Record<string, unknown>;
+  const contractList = (value: unknown): string[] => Array.isArray(value) ? value.map(String) : [];
 
   return (
     <div className="service-summary-block">
@@ -125,6 +131,41 @@ const ProjectDataImportPluginsEditor: React.FC<ProjectDataImportPluginsEditorPro
                 </label>
               </div>
 
+              {Object.keys(inputContract).length > 0 && (
+                <details className="service-technical-details" open>
+                  <summary>{'\u0412\u0445\u043e\u0434\u043d\u043e\u0439 \u0444\u043e\u0440\u043c\u0430\u0442'}</summary>
+                  <div className="service-plugin-datasets">
+                    <div className="service-plugin-dataset">
+                      <strong>{'\u0424\u0430\u0439\u043b\u044b \u0438 \u043a\u043e\u0434\u0438\u0440\u043e\u0432\u043a\u0438'}</strong>
+                      <span>{contractList(inputFile.extensions).join(', ') || '\u043b\u044e\u0431\u043e\u0439 \u0444\u0430\u0439\u043b'}; {contractList(inputFile.encodings).join(', ') || '\u043a\u043e\u0434\u0438\u0440\u043e\u0432\u043a\u0430 \u043d\u0435 \u0437\u0430\u0434\u0430\u043d\u0430'}</span>
+                      {contractList(inputFile.delimiters).length > 0 && <span>{'\u0420\u0430\u0437\u0434\u0435\u043b\u0438\u0442\u0435\u043b\u044c: '}{contractList(inputFile.delimiters).join(', ')}</span>}
+                    </div>
+                    <div className="service-plugin-dataset">
+                      <strong>{'\u041f\u0440\u0438\u0437\u043d\u0430\u043a\u0438 \u0444\u043e\u0440\u043c\u0430\u0442\u0430'}</strong>
+                      <span>{'\u041e\u0431\u044f\u0437\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u043f\u043e\u043b\u044f: '}{contractList(inputHeaders.required).join(', ') || '\u043d\u0435 \u0437\u0430\u0434\u0430\u043d\u044b'}</span>
+                      {contractList(inputHeaders.optional).length > 0 && <span>{'\u0414\u043e\u043f\u043e\u043b\u043d\u0438\u0442\u0435\u043b\u044c\u043d\u043e: '}{contractList(inputHeaders.optional).join(', ')}</span>}
+                      {Array.isArray(inputHeaders.signatures) && <span>{'\u041e\u0434\u043d\u0430 \u0438\u0437 \u0441\u0445\u0435\u043c \u0437\u0430\u0433\u043e\u043b\u043e\u0432\u043a\u043e\u0432: '}{(inputHeaders.signatures as unknown[]).map((item) => Array.isArray(item) ? item.map(String).join(' + ') : String(item)).join(' / ')}</span>}
+                    </div>
+                    {Boolean(inputContainer.zip_members) && <div className="service-plugin-dataset"><strong>ZIP</strong><span>{'\u0420\u0430\u0441\u043f\u043e\u0437\u043d\u0430\u0432\u0430\u043d\u0438\u0435 \u0432\u044b\u043f\u043e\u043b\u043d\u044f\u0435\u0442\u0441\u044f \u043f\u043e \u0444\u0430\u0439\u043b\u0430\u043c \u0432\u043d\u0443\u0442\u0440\u0438 \u0430\u0440\u0445\u0438\u0432\u0430'}</span></div>}
+                    {typeof inputFilename.source_msisdn === 'string' && <div className="service-plugin-dataset"><strong>MSISDN</strong><span>{String(inputFilename.source_msisdn)}</span></div>}
+                  </div>
+                </details>
+              )}
+
+              {(selectedPlugin.output_datasets ?? []).length > 0 && (
+                <details className="service-technical-details">
+                  <summary>{'\u0412\u044b\u0445\u043e\u0434\u043d\u044b\u0435 \u043d\u0430\u0431\u043e\u0440\u044b \u0434\u0430\u043d\u043d\u044b\u0445'}</summary>
+                  <div className="service-plugin-datasets">
+                    {selectedPlugin.output_datasets.map((dataset) => (
+                      <div key={dataset.id} className="service-plugin-dataset">
+                        <strong>{dataset.label}</strong>
+                        <span>{dataset.id} · {dataset.filename}</span>
+                        <span>{dataset.required_columns.join(', ')}</span>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              )}
               {Object.keys(selectedPlugin.config_schema).length > 0 && (
                 <details className="service-technical-details">
                   <summary>Схема настраиваемых параметров</summary>

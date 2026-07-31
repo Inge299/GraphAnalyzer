@@ -11,7 +11,7 @@ from app.config import settings
 from app.database import engine, Base
 
 # Import all routers
-from app.api.routes import projects, schema, nodes, edges, graphs, project_data, console
+from app.api.routes import projects, schema, nodes, edges, graphs, project_data, project_domain, console
 from app.routers import plugins, analytics, domain_model
 from app.api.routes import artifacts
 from app.api.routes import history
@@ -125,6 +125,7 @@ app.include_router(nodes.router, prefix="/api/v1", tags=["nodes"])
 app.include_router(edges.router, prefix="/api/v1", tags=["edges"])
 app.include_router(graphs.router, prefix="/api/v1", tags=["graphs"])
 app.include_router(project_data.router, prefix="/api/v1", tags=["project-data"])
+app.include_router(project_domain.router, prefix="/api/v1", tags=["project-domain"])
 app.include_router(console.profiles_router, prefix="/api/v1", tags=["console"])
 app.include_router(console.router, prefix="/api/v1", tags=["console"])
 app.include_router(plugins.router, prefix="/api/v1/plugins", tags=["plugins"])

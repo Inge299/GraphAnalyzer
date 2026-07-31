@@ -28,6 +28,7 @@ import type {
   ProjectDataLoadResponse,
   ProjectDataPreviewResponse,
   ProjectDataStats,
+  ReferenceProvider,
 } from '../types/api';
 import { layoutConfig } from '../config/layout';
 
@@ -150,7 +151,14 @@ export const pluginApi = {
       { timeout: 120000 },
     ).then(res => res.data),
   updatePythonGraphPlugin: (pluginId: string, payload: Record<string, any>) =>
-    api.put('/api/v1/plugins/python-plugins/' + encodeURIComponent(pluginId), payload).then(res => res.data),  uploadInput: (projectId: number, file: File) => {
+    api.put('/api/v1/plugins/python-plugins/' + encodeURIComponent(pluginId), payload).then(res => res.data),
+  listAnalysisPresets: () =>
+    api.get<{ presets: import('../types/api').AnalysisPluginPreset[] }>('/api/v1/plugins/analysis-presets').then(res => res.data),
+  saveAnalysisPreset: (payload: import('../types/api').AnalysisPluginPreset) =>
+    api.post<{ preset: import('../types/api').AnalysisPluginPreset }>('/api/v1/plugins/analysis-presets', payload).then(res => res.data),
+  deleteAnalysisPreset: (presetId: string) =>
+    api.delete<{ deleted: boolean; preset_id: string }>('/api/v1/plugins/analysis-presets/' + encodeURIComponent(presetId)).then(res => res.data),
+  uploadInput: (projectId: number, file: File) => {
     const formData = new FormData();
     formData.append('project_id', String(projectId));
     formData.append('file', file, file.name);
@@ -317,6 +325,7 @@ export const consoleApi = {
 };
 export const domainModelApi = {
   get: () => api.get<DomainModelConfig>('/api/v1/config/domain-model').then(res => res.data),
+  save: (payload: DomainModelConfig) => api.put<DomainModelConfig>('/api/v1/config/domain-model', payload, { timeout: 120000 }).then(res => res.data),
   listNodeTypes: () => api.get<DomainNodeType[]>('/api/v1/config/domain-model/node-types').then(res => res.data),
   saveNodeType: (payload: DomainNodeType) =>
     api.post<DomainModelConfig>('/api/v1/config/domain-model/node-types', payload, { timeout: 120000 }).then(res => res.data),
@@ -331,6 +340,10 @@ export const domainModelApi = {
     api.get<MetadataBundle>('/api/v1/config/metadata-bundle', { timeout: 120000 }).then(res => res.data),
   importMetadataBundle: (payload: MetadataBundle) =>
     api.post<MetadataBundle>('/api/v1/config/metadata-bundle', { payload }, { timeout: 120000 }).then(res => res.data),
+  listReferenceProviders: () =>
+    api.get<ReferenceProvider[]>('/api/v1/config/reference-providers', { timeout: 120000 }).then(res => res.data),
+  saveReferenceProvider: (providerId: string, payload: Pick<ReferenceProvider, 'name' | 'description' | 'enabled' | 'config'>) =>
+    api.put<ReferenceProvider>(`/api/v1/config/reference-providers/${encodeURIComponent(providerId)}`, payload, { timeout: 120000 }).then(res => res.data),
 };
 
 export default api;

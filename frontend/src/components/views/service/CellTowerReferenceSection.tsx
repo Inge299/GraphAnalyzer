@@ -1,82 +1,24 @@
 import React from 'react';
 
 interface CellTowerReferenceSectionProps {
-  referencePath: string;
-  onReferencePathChange: (value: string) => void;
-  onLoadReference: () => void;
-  onRefreshStats: () => void;
-  cellLoadLoading: boolean;
+  cellStats: { provider_enabled?: boolean; provider_label?: string; provider_detail?: string } | null;
   cellStatsLoading: boolean;
-  cellLoadReport: unknown | null;
-  cellStats: {
-    cell_tower_reference_count?: number;
-    last_loaded_at?: unknown;
-  } | null;
   cellStatsError: string | null;
-  formatDateTime: (value: unknown) => string;
+  onRefreshStats: () => void;
 }
 
-const CellTowerReferenceSection: React.FC<CellTowerReferenceSectionProps> = ({
-  referencePath,
-  onReferencePathChange,
-  onLoadReference,
-  onRefreshStats,
-  cellLoadLoading,
-  cellStatsLoading,
-  cellLoadReport,
-  cellStats,
-  cellStatsError,
-  formatDateTime,
-}) => (
+const CellTowerReferenceSection: React.FC<CellTowerReferenceSectionProps> = ({ cellStats, cellStatsLoading, cellStatsError, onRefreshStats }) => (
   <div className="service-card">
-    <h3>Загрузка справочника базовых станций</h3>
-    <p className="service-card-hint">
-      Загрузка полностью заменяет текущий справочник БС. Он используется при определении координат по MCC/MNC/LAC/CID и fallback LAC/CID.
-    </p>
-
-    <label className="service-label">Путь к CSV (относительно /app/data)</label>
-    <div className="service-row">
-      <input
-        className="service-input"
-        type="text"
-        value={referencePath}
-        onChange={(event) => onReferencePathChange(event.target.value)}
-        placeholder="reference/cell_towers_full.csv"
-      />
-      <button
-        type="button"
-        className="service-btn primary"
-        onClick={onLoadReference}
-        disabled={cellLoadLoading}
-      >
-        {cellLoadLoading ? 'Загрузка...' : 'Загрузить'}
-      </button>
-      <button
-        type="button"
-        className="service-btn"
-        onClick={onRefreshStats}
-        disabled={cellStatsLoading}
-      >
-        {cellStatsLoading ? 'Обновление...' : 'Обновить статистику'}
-      </button>
-    </div>
-
-    {cellStatsError ? <p className="service-inline-error">{cellStatsError}</p> : null}
-
+    <h3>Внешний справочник базовых станций</h3>
+    <p className="service-card-hint">Каталог БС не хранится в базе проектов Nodex. Гео-плагины получают координаты пакетными запросами к отдельному источнику PostgreSQL.</p>
     <div className="service-report-grid">
-      <div className="service-report-item">
-        <span>Записей в справочнике</span>
-        <strong>{cellStats?.cell_tower_reference_count ?? 0}</strong>
-      </div>
-      <div className="service-report-item">
-        <span>Последняя загрузка</span>
-        <strong>{formatDateTime(cellStats?.last_loaded_at)}</strong>
-      </div>
+      <div className="service-report-item"><span>Провайдер</span><strong>{cellStats?.provider_label || 'Внешний справочник БС'}</strong></div>
+      <div className="service-report-item"><span>Состояние</span><strong>{cellStats?.provider_enabled ? 'Подключён' : 'Не настроен'}</strong></div>
+      <div className="service-report-item"><span>Источник</span><strong>{cellStats?.provider_detail || '—'}</strong></div>
     </div>
-
-    {cellLoadReport != null && (
-      <pre className="service-json">{JSON.stringify(cellLoadReport, null, 2)}</pre>
-    )}
+    <div className="service-row"><button type="button" className="service-btn" onClick={onRefreshStats} disabled={cellStatsLoading}>{cellStatsLoading ? 'Проверка...' : 'Проверить подключение'}</button></div>
+    <p className="service-card-hint">Настройка: <code>CELL_TOWER_REFERENCE_DSN</code>, <code>CELL_TOWER_REFERENCE_TABLE</code>. CSV загружается и обслуживается вне Nodex.</p>
+    {cellStatsError ? <p className="service-inline-error">{cellStatsError}</p> : null}
   </div>
 );
 

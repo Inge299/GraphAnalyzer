@@ -1,4 +1,5 @@
 import React from 'react';
+import { NODE_SYSTEM_ATTRIBUTE_KEYS, normalizeAttributeValue } from './inspectorPanelUtils';
 import type { DomainEdgeTypeOption, EdgeExtraAttributeState, GraphSelectionState, NodeExtraAttributeState } from './inspectorPanelUtils';
 
 type IconOption = {
@@ -52,6 +53,45 @@ type InspectorElementsTabProps = {
   EdgeTypeSelectComponent: React.ComponentType<EdgeTypeSelectProps>;
 };
 
+const SelectedNodeOverview: React.FC<{
+  graphSelection: GraphSelectionState;
+  elementLabel: string;
+  nodeExtraAttributes: NodeExtraAttributeState[];
+}> = ({ graphSelection, elementLabel, nodeExtraAttributes }) => {
+  if (graphSelection.mode !== 'nodes' || graphSelection.nodes.length !== 1) return null;
+
+  const node = graphSelection.nodes[0]?.data || {};
+  const attributes = node.attributes && typeof node.attributes === 'object' ? node.attributes : {};
+  const identifier = String(node.node_id ?? node.external_key ?? node.id ?? '');
+  const type = String(node.type ?? node.node_type ?? '');
+  const fields = nodeExtraAttributes.length > 0
+    ? nodeExtraAttributes.filter((field) => !NODE_SYSTEM_ATTRIBUTE_KEYS.has(field.key))
+    : Object.entries(attributes)
+        .filter(([key]) => !NODE_SYSTEM_ATTRIBUTE_KEYS.has(key))
+        .map(([key, value]) => ({ key, label: key, value: normalizeAttributeValue(value), mixed: false, type: 'string', visibleOnGraph: 'off' as const }));
+
+  return (
+    <details className="inspector-selection-overview" open>
+      <summary>{'\u0414\u0430\u043d\u043d\u044b\u0435 \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u043e\u0433\u043e \u043e\u0431\u044a\u0435\u043a\u0442\u0430'}</summary>
+      <div className="inspector-selection-overview-grid">
+        {type && <div className="inspector-selection-overview-row"><span>{'\u0422\u0438\u043f'}</span><strong>{type}</strong></div>}
+        {identifier && <div className="inspector-selection-overview-row"><span>{'\u0418\u0434\u0435\u043d\u0442\u0438\u0444\u0438\u043a\u0430\u0442\u043e\u0440'}</span><strong>{identifier}</strong></div>}
+        {elementLabel && <div className="inspector-selection-overview-row"><span>{'\u041f\u043e\u0434\u043f\u0438\u0441\u044c'}</span><strong>{elementLabel}</strong></div>}
+        {fields.map((field) => {
+          const value = normalizeAttributeValue(field.value);
+          return (
+            <div key={field.key} className="inspector-selection-overview-row">
+              <span>{field.label || field.key}</span>
+              <div className={value.includes('\n') || value.length > 120 ? 'inspector-selection-overview-value multiline' : 'inspector-selection-overview-value'}>
+                {value || '\u2014'}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </details>
+  );
+};
 export const InspectorElementsTab: React.FC<InspectorElementsTabProps> = ({
   labels,
   graphSelection,
@@ -96,6 +136,8 @@ export const InspectorElementsTab: React.FC<InspectorElementsTabProps> = ({
         <div className="property-value">{labels.mixedSelection}</div>
       ) : (
         <>
+          <SelectedNodeOverview graphSelection={graphSelection} elementLabel={elementLabel} nodeExtraAttributes={nodeExtraAttributes} />
+
           <div className="property-group">
             <label>{labels.selectedCount}</label>
             <div className="property-value">{graphSelection.total}</div>

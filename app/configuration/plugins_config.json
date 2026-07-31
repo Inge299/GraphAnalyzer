@@ -1,41 +1,81 @@
 {
-  "version": 1,
+  "version": 2,
   "plugins": {
-    "abonent_period_enricher": {
-      "connection": {
-        "url": "mssql+pymssql://AI:31415927pi@host.docker.internal:1433/TestData",
-        "db": {
-          "driver": "mssql+pymssql",
-          "host": "host.docker.internal",
-          "instance": "SQL_LOCAL",
-          "port": 1433,
-          "database": "TestData",
-          "auth_type": "sql",
-          "username": "AI",
-          "password": "31415927pi"
-        }
-      },
-      "query": {
-        "table": "[TestData].[dbo].[abonents_list]"
-      }
-    },
-    "abonent_communications": {
-      "connection": {
-        "url": "mssql+pymssql://AI:31415927pi@host.docker.internal:1433/TestData",
-        "db": {
-          "driver": "mssql+pymssql",
-          "host": "host.docker.internal",
-          "instance": "SQL_LOCAL",
-          "port": 1433,
-          "database": "TestData",
-          "auth_type": "sql",
-          "username": "AI",
-          "password": "31415927pi"
-        }
-      },
-      "query": {
-        "table": "[dbo].[communications]"
+    "expand_typed_relations": {
+      "ui": {
+        "is_active": true,
+        "is_visible": false,
+        "menu_path": "Служебное",
+        "menu_order": 0
       }
     }
-  }
+  },
+  "analysis_presets": [
+    {
+      "id": "telephony_connections",
+      "base_plugin_id": "expand_typed_relations",
+      "name": "Соединения",
+      "description": "Телефонные соединения выбранных MSISDN.",
+      "menu_path": "Телефония",
+      "menu_order": 10,
+      "fixed_params": {
+        "relation_type": "msisdn_communication"
+      }
+    },
+    {
+      "id": "telephony_msisdn_imsi",
+      "base_plugin_id": "expand_typed_relations",
+      "name": "MSISDN — IMSI",
+      "description": "Факты использования IMSI.",
+      "menu_path": "Телефония",
+      "menu_order": 20,
+      "fixed_params": {
+        "relation_type": "msisdn_imsi_usage"
+      }
+    },
+    {
+      "id": "telephony_msisdn_imei",
+      "base_plugin_id": "expand_typed_relations",
+      "name": "MSISDN — IMEI",
+      "description": "Факты использования аппатов.",
+      "menu_path": "Телефония",
+      "menu_order": 30,
+      "fixed_params": {
+        "relation_type": "msisdn_imei_usage"
+      }
+    },
+    {
+      "id": "messenger_address_book",
+      "base_plugin_id": "expand_typed_relations",
+      "name": "Адресная книга",
+      "description": "Кто у кого записан в адресной книге.",
+      "menu_path": "Мессенджер",
+      "menu_order": 10,
+      "fixed_params": {
+        "relation_type": "address_book_link"
+      }
+    },
+    {
+      "id": "messenger_recorded_as",
+      "base_plugin_id": "expand_typed_relations",
+      "name": "Записан как",
+      "description": "Собрать все названия номера в один текстовый объект.",
+      "menu_path": "Мессенджер",
+      "menu_order": 20,
+      "fixed_params": {
+        "relation_type": "msisdn_text_link"
+      }
+    },
+    {
+      "id": "messenger_used_devices",
+      "base_plugin_id": "expand_typed_relations",
+      "name": "Используемые устройства",
+      "description": "Устройства, используемые номером в действиях пользователей.",
+      "menu_path": "Мессенджер",
+      "menu_order": 30,
+      "fixed_params": {
+        "relation_type": "msisdn_device_link"
+      }
+    }
+  ]
 }

@@ -1,5 +1,5 @@
 // frontend/src/App.tsx
-import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { lazy, Suspense, useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useAppDispatch, useAppSelector } from './store';
 import { fetchProjects, setCurrentProject } from './store/slices/projectsSlice';
 import { setCurrentArtifact, fetchArtifacts } from './store/slices/artifactsSlice';
@@ -8,10 +8,8 @@ import TabBar from './components/layout/TabBar';
 import Sidebar from './components/layout/Sidebar';
 import InspectorPanel from './components/layout/InspectorPanel';
 import PluginsPanel from './components/layout/PluginsPanel';
-import ServiceFunctionsView, { type ServiceCategory } from './components/views/ServiceFunctionsView';
+import type { ServiceCategory } from './components/views/ServiceFunctionsView';
 import AppEmptyProjectsState from './components/app/AppEmptyProjectsState';
-import ArtifactContentView from './components/app/ArtifactContentView';
-import AppGraphBottomPanel from './components/app/AppGraphBottomPanel';
 import { useActionWithUndo } from './hooks/useActionWithUndo';
 import { useConsoleArtifact } from './hooks/useConsoleArtifact';
 import { useGraphBottomPanelViewModel } from './hooks/useGraphBottomPanelViewModel';
@@ -21,6 +19,10 @@ import { useGraphBottomPanelState } from './hooks/useGraphBottomPanelState';
 import { projectApi } from './services/api';
 import './App.css';
 import './components/layout/TabBar.css';
+
+const ServiceFunctionsView = lazy(() => import('./components/views/ServiceFunctionsView'));
+const ArtifactContentView = lazy(() => import('./components/app/ArtifactContentView'));
+const AppGraphBottomPanel = lazy(() => import('./components/app/AppGraphBottomPanel'));
 
 interface Tab {
   id: string;
@@ -1044,6 +1046,7 @@ function App() {
             </div>
           </div>
           <div className="workspace-content-body">
+            <Suspense fallback={<div className="workspace-loading">Загрузка рабочего представления...</div>}>
             {isProjectDataScreenActive ? (
               <ServiceFunctionsView
                 projectId={currentProject?.id || null}
@@ -1082,6 +1085,7 @@ function App() {
                 }}
               />
             )}
+            </Suspense>
           </div>
         </div>
         {!isServiceScreenActive && !isProjectDataScreenActive && (
@@ -1135,7 +1139,8 @@ function App() {
         )}
       </div>
       {!isServiceScreenActive && !isProjectDataScreenActive && activeArtifact?.type === 'graph' && (
-        <AppGraphBottomPanel
+        <Suspense fallback={null}>
+          <AppGraphBottomPanel
           projectId={activeArtifact?.project_id || 0}
           artifactTitle={activeArtifact?.name || 'Граф'}
           isOpen={isBottomPanelOpen}
@@ -1185,7 +1190,8 @@ function App() {
           showOnlySelected={showOnlySelected}
           setShowOnlySelected={setShowOnlySelected}
           resultTabs={resultTabs}
-        />
+          />
+        </Suspense>
       )}
     </div>
   );

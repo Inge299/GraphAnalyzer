@@ -838,3 +838,55 @@
 
 
 
+
+.inspector-selection-overview {
+  margin: 0 0 10px;
+  border: 1px solid #d7e3f4;
+  border-radius: 7px;
+  background: #f8fbff;
+  overflow: hidden;
+}
+
+.inspector-selection-overview summary {
+  cursor: pointer;
+  padding: 8px 9px;
+  color: #1e3a5f;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.inspector-selection-overview-grid {
+  display: grid;
+  gap: 6px;
+  padding: 0 9px 9px;
+}
+
+.inspector-selection-overview-row {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.inspector-selection-overview-row > span {
+  color: #64748b;
+  font-size: 11px;
+}
+
+.inspector-selection-overview-row strong,
+.inspector-selection-overview-value {
+  color: #1e293b;
+  font-size: 12px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.inspector-selection-overview-value.multiline {
+  max-height: 180px;
+  overflow: auto;
+  padding: 6px 7px;
+  border: 1px solid #dbe5f1;
+  border-radius: 5px;
+  background: #fff;
+  line-height: 1.35;
+  white-space: pre-wrap;
+}

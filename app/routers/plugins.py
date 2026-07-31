@@ -14,13 +14,20 @@ from app.models.artifact import Artifact, ArtifactVersion, ArtifactRelation
 from app.models.action import GraphAction
 from app.services.plugin_service import PluginService
 from app.services.plugin_contract import validate_plugin_execution
-from app.services.plugins_config_service import delete_plugin_config, update_plugin_ui_settings
+from app.services.plugins_config_service import (
+    delete_analysis_plugin_preset,
+    delete_plugin_config,
+    get_analysis_plugin_presets,
+    upsert_analysis_plugin_preset,
+    update_plugin_ui_settings,
+)
 from plugins import delete_graph_plugin_file, install_graph_plugin_file
 from app.services.console_artifact_service import (
     build_console_artifact_metadata,
     normalize_console_artifact_data,
 )
 from app.services.history_cache import HistoryCache, get_redis_client
+from app.services.project_domain_store import upsert_manual_domain_entities
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -61,6 +68,8 @@ class PluginParamSpecResponse(BaseModel):
     type: str
     required: bool = False
     default: Any = None
+    multiline: bool = False
+    options: List[Dict[str, str]] = Field(default_factory=list)
 
 
 class PluginMetadataResponse(BaseModel):
@@ -234,6 +243,26 @@ async def update_python_graph_plugin(plugin_id: str, payload: Dict[str, Any]):
     )
     return service.metadata_for(plugin_id)
 
+@router.get("/analysis-presets")
+async def list_analysis_presets():
+    return {"presets": get_analysis_plugin_presets()}
+
+
+@router.post("/analysis-presets")
+async def save_analysis_preset(payload: Dict[str, Any]):
+    try:
+        preset = upsert_analysis_plugin_preset(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"preset": preset}
+
+
+@router.delete("/analysis-presets/{preset_id}")
+async def delete_analysis_preset(preset_id: str):
+    if not delete_analysis_plugin_preset(preset_id):
+        raise HTTPException(status_code=404, detail="Analysis profile not found")
+    return {"deleted": True, "preset_id": preset_id}
+
 @router.post("/applicable", response_model=ApplicablePluginsResponse)
 async def list_applicable_plugins(
     request: ApplicablePluginsRequest,
@@ -380,8 +409,28 @@ async def execute_plugin(
     cache = HistoryCache(redis_client)
 
     try:
-        output_mode = str((getattr(plugin, "output_strategy", {}) or {}).get("mode", "create_new"))
+        domain_commands: list[dict[str, Any]] = []
+        for spec in outputs:
+            if not isinstance(spec, dict):
+                continue
+            metadata = spec.get("metadata")
+            if not isinstance(metadata, dict):
+                continue
+            commands = metadata.pop("domain_entity_commands", [])
+            if isinstance(commands, list):
+                domain_commands.extend(item for item in commands if isinstance(item, dict))
+        if domain_commands:
+            storage_result = await upsert_manual_domain_entities(db, request.project_id, domain_commands)
+            for spec in outputs:
+                if isinstance(spec, dict) and isinstance(spec.get("metadata"), dict):
+                    spec["metadata"]["domain_storage"] = storage_result
 
+        output_mode = str((getattr(plugin, "output_strategy", {}) or {}).get("mode", "create_new"))
+        if output_mode == "dynamic":
+            requested_mode = str((outputs[0] if outputs else {}).get("output_mode") or "create_new").strip()
+            if requested_mode not in {"update_current", "replace_input", "merge_into_current", "create_new"}:
+                raise HTTPException(status_code=400, detail="Dynamic plugin returned unsupported output mode")
+            output_mode = requested_mode
         if output_mode in {"update_current", "replace_input", "merge_into_current"}:
             if len(outputs) != 1:
                 raise HTTPException(status_code=400, detail="Update mode plugin must return exactly one artifact spec")

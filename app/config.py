@@ -55,14 +55,9 @@ class Settings(BaseSettings):
     MAX_NODES_PER_GRAPH: int = 5000
     MAX_EDGES_PER_GRAPH: int = 50000
 
-    # Inference service
-    INFERENCE_URL: str = "http://inference:8001"
-    INFERENCE_TIMEOUT_SECONDS: int = 60
-    INFERENCE_EMBEDDING_MODEL: str = "BAAI/bge-m3"
-    INFERENCE_RERANK_MODEL: str = "BAAI/bge-reranker-v2-m3"
-
     # LLM service (OpenAI-compatible, e.g. LM Studio)
     LLM_BASE_URL: str = "http://host.docker.internal:1234/v1"
+    LLM_ENABLED: bool = True
     LLM_API_KEY: str = "lm-studio"
     LLM_TIMEOUT_SECONDS: int = 120
     LLM_MAX_CONTEXT_CHARS: int = 24000
@@ -81,6 +76,12 @@ class Settings(BaseSettings):
     GEOCODER_USER_AGENT: str = "Nodex/0.1"
     GEOCODER_TIMEOUT_SECONDS: int = 10
     GEOCODER_MIN_INTERVAL_SECONDS: float = 1.0
+
+    # External reference-provider. The cell-tower catalogue is intentionally
+    # stored outside the project database and queried by analysis plugins.
+    CELL_TOWER_REFERENCE_DSN: str = ""
+    CELL_TOWER_REFERENCE_TABLE: str = "cell_tower_reference"
+    CELL_TOWER_REFERENCE_TIMEOUT_SECONDS: int = 20
 
     class Config:
         env_file = ".env"

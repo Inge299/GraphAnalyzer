@@ -60,29 +60,23 @@ export interface ApiProject {
 
 export interface ProjectDataStats {
   project_id: number;
-  communications_count: number;
-  device_history_count: number;
-  location_events_count: number;
-  ip_bindings_count: number;
-  user_msisdn_facts_count: number;
-  ip_msisdn_facts_count: number;
-  msisdn_device_facts_count: number;
-  msisdn_text_facts_count: number;
+  entities_count: number;
+  facts_count: number;
+  relations_count: number;
+  entity_counts: Record<string, number>;
+  fact_counts: Record<string, number>;
+  relation_counts: Record<string, number>;
 }
-
 export interface ProjectDataImportQualityReport {
   project_id: number;
   summary: {
     latest_batch: string;
     import_runs: number;
     latest_sources: number;
-    read_total: number;
-    communications_rows: number;
-    technical_rows: number;
-    events_after_dedup: number;
+    source_rows: number;
   };
-  runs: Array<Record<string, string | number>>;
-  warnings: Array<Record<string, string | number>>;
+  runs: Array<Record<string, unknown>>;
+  warnings: Array<Record<string, unknown>>;
 }
 export interface ProjectDataLoadResponse {
   message: string;
@@ -91,22 +85,11 @@ export interface ProjectDataLoadResponse {
   output_dir: string;
   import_plugin_id: string;
   import_plugin_name: string;
-  communications_rows: number;
-  device_history_rows: number;
-  location_events_rows: number;
-  ip_bindings_rows: number;
-  user_msisdn_facts_rows: number;
-  ip_msisdn_facts_rows: number;
-  msisdn_device_facts_rows: number;
-  msisdn_text_facts_rows: number;
-  inserted_communications: number;
-  inserted_device_history: number;
-  inserted_location_events: number;
-  inserted_ip_bindings: number;
-  inserted_user_msisdn_facts: number;
-  inserted_ip_msisdn_facts: number;
-  inserted_msisdn_device_facts: number;
-  inserted_msisdn_text_facts: number;
+  entities: number;
+  facts: number;
+  relations: number;
+  source_counts: Record<string, number>;
+  fact_counts: Record<string, number>;
   load_batch_id: string;
   load_log: Record<string, any>;
   graph_artifact?: ApiArtifact | Record<string, any> | null;
@@ -130,10 +113,12 @@ export interface ProjectDataPreviewResponse {
     plugin_id?: string | null;
     plugin_name?: string | null;
     score?: number | null;
+    members?: Array<{ path: string; plugin_id: string; plugin_name: string; score: number }>;
   }>;
   runs: Array<{
     plugin: { id: string; name: string; description?: string };
     recognized_files: string[];
+    source_files?: string[];
     score: number;
     datasets: ProjectDataPreviewDataset[];
     manifest?: Record<string, unknown>;
@@ -154,7 +139,9 @@ export interface ProjectDataImportPlugin {
   version: string;
   sdk_version: string;
   config_schema: Record<string, unknown>;
+  input_contract: Record<string, unknown>;
   capabilities: string[];
+  output_datasets: Array<{ id: string; label: string; filename: string; required_columns: string[] }> ;
   source: string;
   removable: boolean;
 }
@@ -182,16 +169,10 @@ export interface MetadataBundle {
 export interface ProjectDataClearResponse {
   message: string;
   project_id: number;
-  communications_deleted: number;
-  device_history_deleted: number;
-  location_events_deleted: number;
-  ip_bindings_deleted: number;
-  user_msisdn_facts_deleted: number;
-  ip_msisdn_facts_deleted: number;
-  msisdn_device_facts_deleted: number;
-  msisdn_text_facts_deleted: number;
+  entities_deleted: number;
+  facts_deleted: number;
+  relations_deleted: number;
 }
-
 export interface CellTowerReferenceLoadResponse {
   message: string;
   source_path: string;
@@ -224,6 +205,7 @@ export interface DomainNodeType {
   id: string;
   label: string;
   icon: string;
+  identity_attribute?: string;
   default_visual: {
     color: string;
     iconScale: number;
@@ -236,6 +218,10 @@ export interface DomainNodeType {
 export interface DomainEdgeType {
   id: string;
   label: string;
+  from_type: string;
+  to_type: string;
+  supports_reverse?: boolean;
+  system?: boolean;
   allowed_from: string[];
   allowed_to: string[];
   attributes: DomainAttributeDefinition[];
@@ -253,10 +239,38 @@ export interface DomainEdgeType {
   menu_order?: number;
 }
 
+export interface AnalysisPluginPreset {
+  id: string;
+  base_plugin_id: 'expand_typed_relations';
+  name: string;
+  description: string;
+  menu_path: string;
+  menu_order: number;
+  fixed_params: {
+    relation_type: string;
+  };
+}
+export interface DomainFactType {
+  id: string;
+  label: string;
+  attributes: DomainAttributeDefinition[];
+}
+
+export interface DomainIngestionMapping {
+  id: string;
+  label: string;
+  source: string;
+  fact: Record<string, unknown>;
+  entities: Array<Record<string, unknown>>;
+  relations: Array<Record<string, unknown>>;
+}
+
 export interface DomainModelConfig {
   version: number;
   node_types: DomainNodeType[];
   edge_types: DomainEdgeType[];
+  fact_types?: DomainFactType[];
+  ingestion_mappings?: DomainIngestionMapping[];
   rules?: Record<string, any>;
 }
 
@@ -411,6 +425,8 @@ export interface PluginParamSpec {
   label?: string;
   type: 'string' | 'number' | 'integer' | 'boolean' | 'date';
   required?: boolean;
+  multiline?: boolean;
+  options?: Array<{ value: string; label: string }>;
   default?: any;
 }
 
@@ -432,10 +448,19 @@ export interface ApiPlugin {
   plugin_scope?: 'context' | 'global' | string;
 }
 
+export interface SelectedDomainEntity {
+  type_id: string;
+  external_key: string;
+  label?: string;
+  attributes?: Record<string, any>;
+  source?: string;
+}
+
 export interface PluginExecutionContext {
   selected_nodes?: string[];
   selected_edges?: string[];
-  selected_rows?: string[];
+  selected_rows?: Array<string | Record<string, any>>;
+  selected_entities?: SelectedDomainEntity[];
   selected_text?: string;
   selected_geo?: Record<string, any>;
 }
@@ -470,3 +495,15 @@ export interface ApiPluginExecuteResponse {
   updated: ApiArtifact[];
 }
 
+
+export interface ReferenceProvider {
+  id: string;
+  kind: string;
+  name: string;
+  description: string;
+  enabled: boolean;
+  capabilities: string[];
+  config: Record<string, string>;
+  editable_fields: string[];
+  source: string;
+}

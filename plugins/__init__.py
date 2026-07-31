@@ -39,6 +39,7 @@ class PluginBase:
         "history_action": "plugin_execute",
     }
     plugin_scope: str = "context"
+    domain_requirements: Dict[str, Any] = {}
 
     async def execute(self, input_artifacts: List[dict], params: Optional[dict] = None) -> List[dict]:
         raise NotImplementedError
@@ -78,6 +79,7 @@ class PluginBase:
             "params_schema": self._normalized_params_schema(),
             "output_strategy": self.output_strategy,
             "plugin_scope": self.plugin_scope,
+            "domain_requirements": dict(self.domain_requirements or {}),
             "source": str(getattr(self, "_installed_file", "builtin")),
             "removable": bool(getattr(self, "_installed_file", None)),
         }
