@@ -8,11 +8,10 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import AsyncSessionLocal, get_db
+from app.database import get_db
 from app.models.project import Project
 from app.import_plugin_sdk import ImportPluginContractError
 from app.services.cell_tower_reference_provider import get_cell_tower_reference_provider_status
-from app.services.project_data_graph_service import sync_project_data_graph_artifact
 from app.services.project_data_import_utils import save_uploaded_files
 from app.services.import_quality_service import get_import_quality_report
 from app.services.project_data_service import (
@@ -33,16 +32,6 @@ from app.services.project_data_import_plugins import (
 )
 
 router = APIRouter(prefix="/projects", tags=["project-data"])
-
-
-async def _sync_project_data_graph_artifact_in_background(project_id: int) -> None:
-    async with AsyncSessionLocal() as db:
-        try:
-            await sync_project_data_graph_artifact(db=db, project_id=project_id)
-            await db.commit()
-        except Exception:
-            await db.rollback()
-            raise
 
 
 class ProjectDataLoadRequest(BaseModel):
@@ -177,7 +166,6 @@ def _build_project_data_load_response(
 async def load_data_for_project(
     project_id: int,
     payload: ProjectDataLoadRequest,
-    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ):
     project = (await db.execute(select(Project).where(Project.id == project_id))).scalar_one_or_none()
@@ -187,7 +175,6 @@ async def load_data_for_project(
     await acquire_project_data_lock(db=db, project_id=project_id)
     result = await load_project_data(db=db, project_id=project_id, source_path=payload.source_path)
     await db.commit()
-    background_tasks.add_task(_sync_project_data_graph_artifact_in_background, project_id)
 
     return _build_project_data_load_response(
         project_id=project_id,

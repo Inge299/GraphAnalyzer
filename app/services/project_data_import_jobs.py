@@ -7,7 +7,6 @@ from typing import Any
 from uuid import uuid4
 
 from app.database import AsyncSessionLocal
-from app.services.project_data_graph_service import sync_project_data_graph_artifact
 from app.services.project_data_service import LoadResult, acquire_project_data_lock, load_project_data
 
 
@@ -79,13 +78,9 @@ async def run_project_data_import_job(job_id: str) -> None:
                 lambda progress, message: _update(job, progress, message),
             )
             await db.commit()
-        await _update(job, 94, "\u041e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u0435 \u0433\u0440\u0430\u0444\u0430 \u043f\u0440\u043e\u0435\u043a\u0442\u0430")
-        try:
-            async with AsyncSessionLocal() as db:
-                await sync_project_data_graph_artifact(db=db, project_id=job.project_id)
-                await db.commit()
-        except Exception:
-            pass
+        # A complete project graph can contain millions of facts. It is created explicitly
+        # by analysis plugins with their own limits, never as a post-import side effect.
+        await _update(job, 96, "\u0421\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u0438\u0435 \u0440\u0435\u0437\u0443\u043b\u044c\u0442\u0430\u0442\u043e\u0432 \u0438\u043c\u043f\u043e\u0440\u0442\u0430")
         async with _jobs_lock:
             job.status, job.progress, job.message = "completed", 100, "\u0418\u043c\u043f\u043e\u0440\u0442 \u0437\u0430\u0432\u0435\u0440\u0448\u0451\u043d"
             job.result = _serialize_result(job.project_id, result)
