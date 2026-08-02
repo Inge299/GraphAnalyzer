@@ -16,6 +16,7 @@ interface GraphClickParams {
 
 interface NetworkLike {
   DOMtoCanvas: (point: { x: number; y: number }) => { x: number; y: number };
+  getNodeAt?: (point: { x: number; y: number }) => string | number | undefined | null;
   unselectAll: () => void;
   getScale: () => number;
   getSelectedNodes: () => Array<string | number>;
@@ -52,8 +53,13 @@ export const applyRegularSelectionClick = (
   updateSelectionFromNetwork: () => void,
   updateNodeTooltipsByScale: (scale: number) => void,
 ) => {
-  const clickedNodes = Array.isArray(params?.nodes) ? params.nodes.map((id) => String(id)) : [];
-  const clickedEdges = Array.isArray(params?.edges) ? params.edges.map((id) => String(id)) : [];
+  const nodeAtPointer = params?.pointer?.DOM ? network.getNodeAt?.(params.pointer.DOM) : undefined;
+  const clickedNodes = nodeAtPointer !== undefined && nodeAtPointer !== null
+    ? [String(nodeAtPointer)]
+    : (Array.isArray(params?.nodes) ? params.nodes.map((id) => String(id)) : []);
+  const clickedEdges = clickedNodes.length === 0 && Array.isArray(params?.edges)
+    ? params.edges.map((id) => String(id))
+    : [];
   const additive = Boolean(
     params?.event?.srcEvent?.shiftKey ||
     params?.event?.srcEvent?.ctrlKey ||

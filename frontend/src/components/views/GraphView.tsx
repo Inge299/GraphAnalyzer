@@ -58,7 +58,11 @@ import './GraphView.css';
 interface GraphViewProps {
   artifact: ApiArtifact;
   onNodeMove: (nodeId: string, x: number, y: number, groupId?: string | null) => void;
-  onNodesMove?: (moves: Array<{ nodeId: string; x: number; y: number }>, groupId?: string | null) => void;
+  onNodesMove?: (
+    moves: Array<{ nodeId: string; x: number; y: number }>,
+    groupId?: string | null,
+    history?: { description?: string; actionType?: string },
+  ) => Promise<void> | void;
   onAddEdge?: (sourceId: string, targetId: string, edgeType?: string) => void;
   onDeleteSelection?: (nodeIds: string[], edgeIds: string[]) => void;
   onAddNodeAtPosition?: (label: string, typeId: string, x: number, y: number) => void;
@@ -114,6 +118,9 @@ const DEFAULT_SOURCE_IDS = 'All';
 const PERIOD_START_KEYS = ['begtime', 'period_start', 'start_date', 'date_from', 'from_date', 'begin_date', 'beg_date'];
 const PERIOD_END_KEYS = ['endtime', 'period_end', 'end_date', 'date_to', 'to_date', 'finish_date'];
 const GRAPH_CLIPBOARD_STORAGE_KEY = 'graph-selection-clipboard-v1';
+const PNG_EXPORT_MAX_DIMENSION = 12_000;
+const PNG_EXPORT_MAX_PIXELS = 72_000_000;
+const PNG_VIEWPORT_EXPORT_SCALE = 3;
 
 const getParamKey = (param: any): string => String(param?.key || param?.name || '').trim();
 const getParamKeyLower = (param: any): string => getParamKey(param).toLowerCase();
@@ -199,6 +206,8 @@ export const GraphView: React.FC<GraphViewProps> = ({
   const [analysisProfiles, setAnalysisProfiles] = useState<ConsoleProfile[]>([]);
   const [hasStoredClipboard, setHasStoredClipboard] = useState<boolean>(() => Boolean(readStoredGraphClipboard()?.nodes?.length));
   const [labelsHidden, setLabelsHidden] = useState(false);
+  const [pngExportDialogOpen, setPngExportDialogOpen] = useState(false);
+  const [pngExportWarning, setPngExportWarning] = useState<string | null>(null);
   const edgeTypesRef = useRef<Array<any>>([]);
   const pasteCounterRef = useRef(0);
   const selectionCountsRef = useRef({ nodes: 0, edges: 0 });
@@ -909,34 +918,52 @@ export const GraphView: React.FC<GraphViewProps> = ({
       });
     };
 
+    // Keep the group captured on mouse-down. At mouse-up the pointer can be over
+    // another element, so recalculating it there used to persist only one node.
+    let activeDragNodeIds: string[] = [];
+
     network.on('dragStart', (params: any) => {
-      if (params.nodes && params.nodes.length > 0) {
-        if (params.nodes.length === 1) {
-          const draggedNodeId = String(params.nodes[0]);
-          const selected = new Set(network.getSelectedNodes().map((id: any) => String(id)));
-          if (!selected.has(draggedNodeId)) {
-            const additive = Boolean(
-              params?.event?.srcEvent?.shiftKey ||
-              params?.event?.srcEvent?.ctrlKey ||
-              params?.event?.srcEvent?.metaKey
-            );
-            network.selectNodes([draggedNodeId], additive);
-            updateSelectionFromNetwork();
-          }
+      const pointerNodeId = params?.pointer?.DOM ? network.getNodeAt(params.pointer.DOM) : undefined;
+      const selected = network.getSelectedNodes().map((id: any) => String(id));
+      const paramNodes = (params.nodes || []).map((id: unknown) => String(id));
+      let draggedNodes = paramNodes;
+
+      if (pointerNodeId !== undefined && pointerNodeId !== null) {
+        const draggedNodeId = String(pointerNodeId);
+        if (selected.includes(draggedNodeId)) {
+          // A node wins the hit test, but dragging a selected node moves its whole group.
+          draggedNodes = selected;
+        } else {
+          const additive = Boolean(
+            params?.event?.srcEvent?.shiftKey ||
+            params?.event?.srcEvent?.ctrlKey ||
+            params?.event?.srcEvent?.metaKey
+          );
+          network.selectNodes([draggedNodeId], additive);
+          updateSelectionFromNetwork();
+          draggedNodes = network.getSelectedNodes().map((id: any) => String(id));
         }
+      }
+
+      activeDragNodeIds = Array.from(new Set(draggedNodes.map((id: unknown) => String(id))));
+      if (activeDragNodeIds.length > 0) {
         isDraggingRef.current = true;
         batchGroupIdRef.current = createBatchGroup();
-        console.log('[GraphView] Started drag batch for ' + params.nodes.length + ' nodes');
+        console.log('[GraphView] Started drag batch for ' + activeDragNodeIds.length + ' nodes');
       }
     });
 
-    network.on('dragEnd', (params) => {
-      if (!params.nodes || params.nodes.length === 0) {
+    network.on('dragEnd', (params: any) => {
+      const draggedNodes = activeDragNodeIds.length > 0
+        ? activeDragNodeIds
+        : (params.nodes || []).map((id: unknown) => String(id));
+      activeDragNodeIds = [];
+      if (draggedNodes.length === 0) {
         isDraggingRef.current = false;
         return;
       }
 
-      const moves: PendingMove[] = params.nodes.map((nodeId: string) => {
+      const moves: PendingMove[] = draggedNodes.map((nodeId: string) => {
         const position = network.getPosition(nodeId);
         return { nodeId, x: Math.round(position.x), y: Math.round(position.y) };
       });
@@ -985,9 +1012,13 @@ export const GraphView: React.FC<GraphViewProps> = ({
     });
 
     network.on('click', (params: any) => {
+      const pointerNodeId = params?.pointer?.DOM ? network.getNodeAt(params.pointer.DOM) : undefined;
+      const preferredParams = pointerNodeId !== undefined && pointerNodeId !== null
+        ? { ...params, nodes: [String(pointerNodeId)], edges: [] }
+        : params;
       const created = handleNodeCreateClick({
         network,
-        params,
+        params: preferredParams,
         nodeCreateSpecRef,
         onAddNodeAtPositionRef,
         onNodeCreateCompleteRef,
@@ -995,12 +1026,12 @@ export const GraphView: React.FC<GraphViewProps> = ({
       if (created) return;
 
       if (!connectModeRef.current) {
-        applyRegularSelectionClick(network, params, updateSelectionFromNetwork, updateNodeTooltipsByScale);
+        applyRegularSelectionClick(network, preferredParams, updateSelectionFromNetwork, updateNodeTooltipsByScale);
         return;
       }
 
       handleConnectClick({
-        params,
+        params: preferredParams,
         artifactData: artifactDataRef.current,
         getNodeId: (node: any) => String(getNodeId(node)),
         connectTypeRef,
@@ -1226,17 +1257,126 @@ export const GraphView: React.FC<GraphViewProps> = ({
     setLabelsSuppressed(!labelsSuppressedStateRef.current);
   }, [setLabelsSuppressed]);
 
-  const handleExportPngClick = useCallback(() => {
+  const handleOpenPngExportDialog = useCallback(() => {
     const network = networkRef.current as any;
-    const canvas = network?.canvas?.frame?.canvas as HTMLCanvasElement | undefined;
-    if (!canvas) return;
-    const link = document.createElement('a');
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const safeName = String(artifact.name || 'graph').replace(/[\\/:*?"<>|]+/g, '-').trim() || 'graph';
-    link.href = canvas.toDataURL('image/png');
-    link.download = `${safeName}-${timestamp}.png`;
-    link.click();
-  }, [artifact.name]);
+    const nodes = artifactDataRef.current?.nodes || [];
+    if (!network || nodes.length === 0) return;
+    const boxes = nodes.map((node: any) => network.getBoundingBox?.(String(getNodeId(node))))
+      .filter((box: any) => box && Number.isFinite(box.left) && Number.isFinite(box.right));
+    if (!boxes.length) return;
+    const bounds = boxes.reduce((result: any, box: any) => ({ left: Math.min(result.left, box.left), right: Math.max(result.right, box.right), top: Math.min(result.top, box.top), bottom: Math.max(result.bottom, box.bottom) }), { left: Infinity, right: -Infinity, top: Infinity, bottom: -Infinity });
+    const width = Math.max(1, bounds.right - bounds.left + 300);
+    const height = Math.max(1, bounds.bottom - bounds.top + 300);
+    const scale = Math.min(2, PNG_EXPORT_MAX_DIMENSION / width, PNG_EXPORT_MAX_DIMENSION / height, Math.sqrt(PNG_EXPORT_MAX_PIXELS / (width * height)));
+    setPngExportWarning(scale < 0.8 ? '\u0414\u043b\u044f \u043f\u043e\u043b\u043d\u043e\u0433\u043e \u0433\u0440\u0430\u0444\u0430 \u0434\u043e\u0441\u0442\u0443\u043f\u043d\u044b\u0439 \u043c\u0430\u0441\u0448\u0442\u0430\u0431 \u043d\u0438\u0436\u0435 \u0440\u0435\u043a\u043e\u043c\u0435\u043d\u0434\u0443\u0435\u043c\u043e\u0433\u043e: \u043f\u043e\u0434\u043f\u0438\u0441\u0438 \u043c\u043e\u0433\u0443\u0442 \u0431\u044b\u0442\u044c \u043c\u0435\u043b\u043a\u0438\u043c\u0438. \u041b\u0443\u0447\u0448\u0435 \u044d\u043a\u0441\u043f\u043e\u0440\u0442\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0442\u0435\u043a\u0443\u0449\u0443\u044e \u043e\u0431\u043b\u0430\u0441\u0442\u044c \u0438\u043b\u0438 \u0441\u043e\u043a\u0440\u0430\u0442\u0438\u0442\u044c \u0441\u0445\u0435\u043c\u0443.' : null);
+    setPngExportDialogOpen(true);
+  }, [getNodeId]);
+
+  const handleExportPngClick = useCallback(async (mode: 'viewport' | 'full') => {
+    const network = networkRef.current as any;
+    const container = containerRef.current;
+    const sourceCanvas = network?.canvas?.frame?.canvas as HTMLCanvasElement | undefined;
+    const nodes = artifactDataRef.current?.nodes || [];
+    if (!network || !container || !sourceCanvas || nodes.length === 0) return;
+    setPngExportDialogOpen(false);
+
+    const view = { position: network.getViewPosition(), scale: network.getScale() };
+    const selection = network.getSelection();
+    const size = network.getSize?.() || { width: container.clientWidth, height: container.clientHeight };
+    const visibility = container.style.visibility;
+    const copyWithWhiteBackground = (canvas: HTMLCanvasElement) => {
+      if (canvas.width < 1 || canvas.height < 1) return null;
+      const output = document.createElement('canvas');
+      output.width = canvas.width;
+      output.height = canvas.height;
+      const context = output.getContext('2d');
+      if (!context) return null;
+      context.fillStyle = '#ffffff';
+      context.fillRect(0, 0, output.width, output.height);
+      context.drawImage(canvas, 0, 0);
+      return output;
+    };
+    let viewportFallback: HTMLCanvasElement | null = null;
+    let exportResized = false;
+    const waitForPaint = () => new Promise<void>((resolve) => {
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+    });
+
+    try {
+      network.setSelection({ nodes: [], edges: [] }, { unselectAll: true, highlightEdges: false });
+      nodesDataSetRef.current?.update(nodes.map((node: any) => ({
+        id: String(getNodeId(node)), label: getNodeLabel(node, nodeAttributePreviewRef.current, nodeTypeAttributesRef.current),
+        color: getNodeColors(node), borderWidth: getNodeRingEnabled(node) ? getNodeRingWidth(node) : 0,
+        shadow: getNodeIcon(node) ? { enabled: true, size: 18, x: 0, y: 4, color: 'rgba(15, 23, 42, 0.35)' } : false,
+      })));
+      edgesDataSetRef.current?.update((artifactDataRef.current?.edges || []).map((edge: any) => {
+        const visual = edge.attributes?.visual || {};
+        const color = String(visual.color || edge.attributes?.color || '#848484');
+        return { id: String(edge.id), label: getEdgeLabel(edge), width: Number(visual.width || edge.attributes?.width || 2), color: { color, highlight: '#2563eb' }, shadow: false, font: { size: 14, color: '#0f172a', align: 'middle', face: 'Inter, Arial, sans-serif', strokeWidth: 3, strokeColor: '#ffffff' } };
+      }));
+      network.redraw();
+      await waitForPaint();
+      // Keep an independent, labelled frame before resizing the vis canvas.
+      viewportFallback = copyWithWhiteBackground(network.canvas.frame.canvas as HTMLCanvasElement);
+
+      let renderedCanvas = network.canvas.frame.canvas as HTMLCanvasElement;
+      if (mode === 'viewport') {
+        const viewportScale = Math.max(
+          1,
+          Math.min(
+            PNG_VIEWPORT_EXPORT_SCALE,
+            PNG_EXPORT_MAX_DIMENSION / Math.max(1, size.width),
+            PNG_EXPORT_MAX_DIMENSION / Math.max(1, size.height),
+            Math.sqrt(PNG_EXPORT_MAX_PIXELS / Math.max(1, size.width * size.height)),
+          ),
+        );
+        container.style.visibility = 'hidden';
+        exportResized = true;
+        network.setSize(`${Math.max(1, Math.round(size.width * viewportScale))}px`, `${Math.max(1, Math.round(size.height * viewportScale))}px`);
+        network.moveTo({ position: view.position, scale: view.scale * viewportScale, animation: false });
+        network.redraw();
+        await waitForPaint();
+        renderedCanvas = network.canvas.frame.canvas as HTMLCanvasElement;
+      } else {
+        const boxes = nodes.map((node: any) => network.getBoundingBox?.(String(getNodeId(node))))
+          .filter((box: any) => box && Number.isFinite(box.left) && Number.isFinite(box.right));
+        if (!boxes.length) return;
+        const bounds = boxes.reduce((result: any, box: any) => ({ left: Math.min(result.left, box.left), right: Math.max(result.right, box.right), top: Math.min(result.top, box.top), bottom: Math.max(result.bottom, box.bottom) }), { left: Infinity, right: -Infinity, top: Infinity, bottom: -Infinity });
+        const graphWidth = Math.max(1, bounds.right - bounds.left + 300);
+        const graphHeight = Math.max(1, bounds.bottom - bounds.top + 300);
+        const scale = Math.max(0.35, Math.min(2, PNG_EXPORT_MAX_DIMENSION / graphWidth, PNG_EXPORT_MAX_DIMENSION / graphHeight, Math.sqrt(PNG_EXPORT_MAX_PIXELS / (graphWidth * graphHeight))));
+        container.style.visibility = 'hidden';
+        exportResized = true;
+        network.setSize(`${Math.max(900, Math.ceil(graphWidth * scale))}px`, `${Math.max(700, Math.ceil(graphHeight * scale))}px`);
+        network.moveTo({ position: { x: (bounds.left + bounds.right) / 2, y: (bounds.top + bounds.bottom) / 2 }, scale, animation: false });
+        network.redraw();
+        await waitForPaint();
+        renderedCanvas = network.canvas.frame.canvas as HTMLCanvasElement;
+      }
+
+      const fallback = viewportFallback;
+      const output = copyWithWhiteBackground(renderedCanvas) || fallback;
+      let blob = output ? await new Promise<Blob | null>((resolve) => output.toBlob(resolve, 'image/png')) : null;
+      if ((!blob || blob.size === 0) && fallback && output !== fallback) {
+        blob = await new Promise<Blob | null>((resolve) => fallback.toBlob(resolve, 'image/png'));
+      }
+      if (!blob || blob.size === 0) return;
+      const link = document.createElement('a');
+      const safeName = String(artifact.name || 'graph').replace(/[\\/:*?"<>|]+/g, '-').trim() || 'graph';
+      const objectUrl = URL.createObjectURL(blob);
+      link.href = objectUrl;
+      link.download = `${safeName}-${new Date().toISOString().replace(/[:.]/g, '-')}.png`;
+      link.click();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 30_000);
+    } finally {
+      if (exportResized) network.setSize(`${size.width}px`, `${size.height}px`);
+      network.moveTo({ position: view.position, scale: view.scale, animation: false });
+      network.setSelection(selection, { unselectAll: true, highlightEdges: false });
+      container.style.visibility = visibility;
+      updateNodeTooltipsByScale(view.scale, true);
+      network.redraw();
+    }
+  }, [artifact.name, getNodeId, updateNodeTooltipsByScale]);
 
   const estimateNodeFootprint = (node: any) => {
     const nodeSize = Number(getNodeSize(node) || 24);
@@ -1322,11 +1462,24 @@ export const GraphView: React.FC<GraphViewProps> = ({
         onZoomOut={handleZoomOutClick}
         onResetView={handleResetViewClick}
         onToggleLabels={handleToggleLabelsClick}
-        onExportPng={handleExportPngClick}
+        onExportPng={handleOpenPngExportDialog}
         version={artifact.version}
       />
 
       
+      {pngExportDialogOpen && <div className="graph-export-dialog-backdrop" role="presentation">
+        <section className="graph-export-dialog" role="dialog" aria-modal="true" aria-labelledby="graph-export-title">
+          <h2 id="graph-export-title">{'\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u0438\u0437\u043e\u0431\u0440\u0430\u0436\u0435\u043d\u0438\u0435 \u0433\u0440\u0430\u0444\u0430'}</h2>
+          <p>{'\u0412\u044b\u0431\u0435\u0440\u0438 \u043e\u0431\u043b\u0430\u0441\u0442\u044c \u044d\u043a\u0441\u043f\u043e\u0440\u0442\u0430. \u041f\u043e\u0434\u043f\u0438\u0441\u0438 \u0438 \u0430\u0442\u0440\u0438\u0431\u0443\u0442\u044b \u0431\u0443\u0434\u0443\u0442 \u043f\u043e\u043a\u0430\u0437\u0430\u043d\u044b, \u0432\u044b\u0434\u0435\u043b\u0435\u043d\u0438\u0435 \u0432 \u0438\u0437\u043e\u0431\u0440\u0430\u0436\u0435\u043d\u0438\u0435 \u043d\u0435 \u043f\u043e\u043f\u0430\u0434\u0451\u0442.'}</p>
+          {pngExportWarning && <p className="graph-export-warning">{pngExportWarning}</p>}
+          <div className="graph-export-dialog-actions">
+            <button type="button" className="graph-export-secondary" onClick={() => setPngExportDialogOpen(false)}>{'\u041e\u0442\u043c\u0435\u043d\u0430'}</button>
+            <button type="button" className="graph-export-secondary" onClick={() => void handleExportPngClick('viewport')}>{'\u0422\u0435\u043a\u0443\u0449\u0430\u044f \u043e\u0431\u043b\u0430\u0441\u0442\u044c'}</button>
+            <button type="button" className="graph-export-primary" onClick={() => void handleExportPngClick('full')}>{'\u041f\u043e\u043b\u043d\u044b\u0439 \u0433\u0440\u0430\u0444'}</button>
+          </div>
+        </section>
+      </div>}
+
       <GraphStatusOverlays
         isRecording={isRecording}
         lastError={lastError}

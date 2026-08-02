@@ -157,3 +157,73 @@
     display: none;
   }
 }
+
+
+.graph-export-dialog-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 500;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.34);
+}
+
+.graph-export-dialog {
+  width: min(480px, 100%);
+  padding: 20px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.24);
+}
+
+.graph-export-dialog h2 {
+  margin: 0 0 8px;
+  font-size: 16px;
+  color: #0f172a;
+}
+
+.graph-export-dialog p {
+  margin: 0;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.graph-export-warning {
+  margin-top: 12px !important;
+  padding: 9px 10px;
+  border: 1px solid #fbbf24;
+  border-radius: 6px;
+  background: #fffbeb;
+  color: #92400e !important;
+}
+
+.graph-export-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.graph-export-dialog-actions button {
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.graph-export-secondary {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+}
+
+.graph-export-primary {
+  border: 1px solid #2563eb;
+  background: #2563eb;
+  color: #ffffff;
+}

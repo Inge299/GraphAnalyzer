@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { domainModelApi, projectDataApi } from '../../../services/api';
-import type { MetadataBundle, ProjectDataImportPlugin, ProjectDataLoadResponse, ProjectDataPreviewResponse } from '../../../types/api';
+import type { MetadataBundle, ProjectDataImportJob, ProjectDataImportPlugin, ProjectDataLoadResponse, ProjectDataPreviewResponse } from '../../../types/api';
 import { createLocalId, detectProjectDataFileKind } from './formOptions';
 import type { ProjectDataSelectedFileItem } from './types';
 
@@ -78,6 +78,7 @@ export const useProjectDataAdmin = ({
   const [projectDataPreview, setProjectDataPreview] = useState<ProjectDataPreviewResponse | null>(null);
   const [projectDataClearing, setProjectDataClearing] = useState(false);
   const [projectDataLastLoadResult, setProjectDataLastLoadResult] = useState<ProjectDataLoadResponse | null>(null);
+  const [projectDataImportJob, setProjectDataImportJob] = useState<ProjectDataImportJob | null>(null);
   const [projectDataSelectedFiles, setProjectDataSelectedFiles] = useState<ProjectDataSelectedFileItem[]>([]);
 
   const [availableImportPlugins, setAvailableImportPlugins] = useState<ProjectDataImportPlugin[]>([]);
@@ -418,27 +419,40 @@ export const useProjectDataAdmin = ({
           path: (item.file as any).webkitRelativePath || item.file.name,
           plugin_id: item.recognizedPluginId as string,
         }));
-      const result = await projectDataApi.loadFromFiles(
+      let job = await projectDataApi.loadFromFiles(
         projectId,
         projectDataSelectedFiles.map((item) => item.file),
         pluginOverrides,
       );
-      const totalRead = Object.values(result.source_counts || {}).reduce(
-        (sum, count) => sum + Number(count || 0),
-        0,
-      );
-      onMessage(`\u0418\u043c\u043f\u043e\u0440\u0442 \u0437\u0430\u0432\u0435\u0440\u0448\u0451\u043d: \u043e\u0431\u0440\u0430\u0431\u043e\u0442\u0430\u043d\u043e ${totalRead} \u0441\u0442\u0440\u043e\u043a, \u0441\u043e\u0437\u0434\u0430\u043d\u043e ${result.entities} \u0441\u0443\u0449\u043d\u043e\u0441\u0442\u0435\u0439, ${result.facts} \u0444\u0430\u043a\u0442\u043e\u0432, ${result.relations} \u0441\u0432\u044f\u0437\u0435\u0439.`);
-      setProjectDataLastLoadResult(result);
+      setProjectDataImportJob(job);
       setProjectDataSelectedFiles([]);
       setProjectDataPreview(null);
-      await Promise.all([fetchProjectStats(), fetchCellStats()]);
+      onMessage('\\u0418\\u043c\\u043f\\u043e\\u0440\\u0442 \\u0437\\u0430\\u043f\\u0443\\u0449\\u0435\\u043d \\u0432 \\u0444\\u043e\\u043d\\u0435. \\u041e\\u0441\\u0442\\u0430\\u0432\\u044c\\u0442\\u0435 \\u0441\\u0442\\u0440\\u0430\\u043d\\u0438\\u0446\\u0443 \\u043e\\u0442\\u043a\\u0440\\u044b\\u0442\\u043e\\u0439 \\u0434\\u043b\\u044f \\u043e\\u0442\\u0441\\u043b\\u0435\\u0436\\u0438\\u0432\\u0430\\u043d\\u0438\\u044f \\u043f\\u0440\\u043e\\u0433\\u0440\\u0435\\u0441\\u0441\\u0430.');
+
+      while (job.status === 'queued' || job.status === 'running') {
+        await new Promise((resolve) => window.setTimeout(resolve, 1000));
+        job = await projectDataApi.getImportJob(projectId, job.id);
+        setProjectDataImportJob(job);
+      }
+
+      if (job.status === 'completed' && job.result) {
+        const result = job.result;
+        const totalRead = Object.values(result.source_counts || {}).reduce(
+          (sum, count) => sum + Number(count || 0),
+          0,
+        );
+        onMessage(`\\u0418\\u043c\\u043f\\u043e\\u0440\\u0442 \\u0437\\u0430\\u0432\\u0435\\u0440\\u0448\\u0451\\u043d: \\u043e\\u0431\\u0440\\u0430\\u0431\\u043e\\u0442\\u0430\\u043d\\u043e ${totalRead} \\u0441\\u0442\\u0440\\u043e\\u043a, \\u0441\\u043e\\u0437\\u0434\\u0430\\u043d\\u043e ${result.entities} \\u0441\\u0443\\u0449\\u043d\\u043e\\u0441\\u0442\\u0435\\u0439, ${result.facts} \\u0444\\u0430\\u043a\\u0442\\u043e\\u0432, ${result.relations} \\u0441\\u0432\\u044f\\u0437\\u0435\\u0439.`);
+        setProjectDataLastLoadResult(result);
+        await Promise.all([fetchProjectStats(), fetchCellStats()]);
+      } else {
+        onError(job.error || '\\u0418\\u043c\\u043f\\u043e\\u0440\\u0442 \\u0437\\u0430\\u0432\\u0435\\u0440\\u0448\\u0438\\u043b\\u0441\\u044f \\u0441 \\u043e\\u0448\\u0438\\u0431\\u043a\\u043e\\u0439');
+      }
     } catch (err: unknown) {
-      onError(getRequestErrorMessage(err, '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c \u0434\u0430\u043d\u043d\u044b\u0435 \u043f\u0440\u043e\u0435\u043a\u0442\u0430'));
+      onError(getRequestErrorMessage(err, '\\u041d\\u0435 \\u0443\\u0434\\u0430\\u043b\\u043e\\u0441\\u044c \\u0437\\u0430\\u043f\\u0443\\u0441\\u0442\\u0438\\u0442\\u044c \\u0438\\u043c\\u043f\\u043e\\u0440\\u0442 \\u0434\\u0430\\u043d\\u043d\\u044b\\u0445 \\u043f\\u0440\\u043e\\u0435\\u043a\\u0442\\u0430'));
     } finally {
       setProjectDataLoading(false);
     }
   }, [fetchCellStats, fetchProjectStats, getRequestErrorMessage, onError, onMessage, projectDataSelectedFiles, projectId]);
-
   const handleClearProjectData = useCallback(async () => {
     if (!projectId) return;
     if (!window.confirm(`\u041e\u0447\u0438\u0441\u0442\u0438\u0442\u044c \u0434\u0430\u043d\u043d\u044b\u0435 \u043f\u0440\u043e\u0435\u043a\u0442\u0430?\n\nProject ID: ${projectId}`)) return;
@@ -514,6 +528,7 @@ export const useProjectDataAdmin = ({
     projectDataPreview,
     projectDataClearing,
     projectDataLastLoadResult,
+    projectDataImportJob,
     projectDataSelectedFiles,
     projectDataSelectedSummary,
     availableImportPlugins,

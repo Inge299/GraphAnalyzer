@@ -5,7 +5,7 @@ import shutil
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Awaitable, Callable
 
 from fastapi import HTTPException
 from sqlalchemy import text
@@ -69,7 +69,13 @@ async def ensure_project_data_tables(db: AsyncSession) -> None:
 
     await ensure_project_domain_store(db)
 
-async def load_project_data(db: AsyncSession, project_id: int, source_path: str) -> LoadResult:
+async def load_project_data(
+    db: AsyncSession,
+    project_id: int,
+    source_path: str,
+    plugin_overrides: dict[str, str] | None = None,
+    progress_callback: Callable[[int, str], Awaitable[None]] | None = None,
+) -> LoadResult:
     source_dir = _resolve_source_path(source_path)
     timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
     load_batch_id = timestamp
@@ -83,6 +89,8 @@ async def load_project_data(db: AsyncSession, project_id: int, source_path: str)
         output_dir=output_dir,
         load_batch_id=load_batch_id,
         mode="source_path",
+        plugin_overrides=plugin_overrides,
+        progress_callback=progress_callback,
     )
 
 
@@ -234,7 +242,10 @@ async def _load_project_data_from_collected_files(
     load_batch_id: str,
     mode: str,
     plugin_overrides: dict[str, str] | None = None,
+    progress_callback: Callable[[int, str], Awaitable[None]] | None = None,
 ) -> LoadResult:
+    if progress_callback:
+        await progress_callback(5, "\u0420\u0430\u0441\u043f\u043e\u0437\u043d\u0430\u0432\u0430\u043d\u0438\u0435 \u0444\u043e\u0440\u043c\u0430\u0442\u043e\u0432 \u0444\u0430\u0439\u043b\u043e\u0432")
     matches = classify_project_data_import_files(source_dir, input_files, plugin_overrides=plugin_overrides)
     groups: dict[str, list[dict[str, Any]]] = {}
     for input_file, match in zip(input_files, matches, strict=False):
@@ -247,13 +258,18 @@ async def _load_project_data_from_collected_files(
     import_runs: list[dict[str, Any]] = []
 
     from app.services.project_data_import_plugins import IMPORT_PLUGIN_BY_ID
-    for plugin_id, grouped_files in groups.items():
+    group_count = max(1, len(groups))
+    for group_index, (plugin_id, grouped_files) in enumerate(groups.items(), start=1):
         match = next(item for item in matches if item.plugin_id == plugin_id)
         plugin_source_dir = source_dir / "_plugin_groups" / plugin_id
         plugin_output_dir = output_dir / plugin_id
         _copy_input_group(source_dir, plugin_source_dir, grouped_files)
         plugin = IMPORT_PLUGIN_BY_ID[plugin_id]
-        result = execute_project_data_import_plugin(plugin, plugin_source_dir, plugin_output_dir)
+        if progress_callback:
+            await progress_callback(10 + int((group_index - 1) * 70 / group_count), f"\u041e\u0431\u0440\u0430\u0431\u043e\u0442\u043a\u0430: {plugin.name}")
+        result = await asyncio.to_thread(execute_project_data_import_plugin, plugin, plugin_source_dir, plugin_output_dir)
+        if progress_callback:
+            await progress_callback(15 + int(group_index * 70 / group_count), f"\u0421\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u0438\u0435: {plugin.name}")
         insert_result = await insert_normalized_source_rows(db, project_id, result.normalized_sources, load_batch_id)
         total_entities += insert_result.entities
         total_facts += insert_result.facts
@@ -276,6 +292,9 @@ async def _load_project_data_from_collected_files(
             "score": match.score,
             "warnings": result.warnings,
         })
+
+    if progress_callback:
+        await progress_callback(90, "\u0417\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u0438\u0435 \u0438\u043c\u043f\u043e\u0440\u0442\u0430")
 
     load_log = {
         "mode": mode,

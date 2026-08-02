@@ -173,15 +173,21 @@ export const resolvePluginMenuTargets = (
   params: PluginMenuParams,
 ): { domPoint: PluginMenuPointer; clickedNodes: string[]; clickedEdges: string[] } => {
   const domPoint = params?.pointer?.DOM || params?.event?.center || { x: 0, y: 0 };
+  // At small scales an edge may overlap a node visually. A node is always the
+  // actionable target in that case, so links cannot steal the context menu.
+  const hoveredNode = network.getNodeAt(domPoint);
+  if (hoveredNode !== undefined && hoveredNode !== null) {
+    return { domPoint, clickedNodes: [String(hoveredNode)], clickedEdges: [] };
+  }
+
   const clickedNodes = Array.isArray(params?.nodes) ? params.nodes.map((id) => String(id)) : [];
-  const clickedEdges = Array.isArray(params?.edges) ? params.edges.map((id) => String(id)) : [];
+  const clickedEdges = clickedNodes.length === 0 && Array.isArray(params?.edges)
+    ? params.edges.map((id) => String(id))
+    : [];
 
   if (clickedNodes.length === 0 && clickedEdges.length === 0) {
-    const hoveredNode = network.getNodeAt(domPoint);
     const hoveredEdge = network.getEdgeAt(domPoint);
-    if (hoveredNode !== undefined && hoveredNode !== null) {
-      clickedNodes.push(String(hoveredNode));
-    } else if (hoveredEdge !== undefined && hoveredEdge !== null) {
+    if (hoveredEdge !== undefined && hoveredEdge !== null) {
       clickedEdges.push(String(hoveredEdge));
     }
   }

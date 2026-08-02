@@ -95,6 +95,18 @@ export interface ProjectDataLoadResponse {
   graph_artifact?: ApiArtifact | Record<string, any> | null;
 }
 
+export interface ProjectDataImportJob {
+  id: string;
+  project_id: number;
+  status: 'queued' | 'running' | 'completed' | 'failed';
+  progress: number;
+  message: string;
+  result?: ProjectDataLoadResponse | null;
+  error?: string | null;
+  created_at: string;
+  started_at?: string | null;
+  finished_at?: string | null;
+}
 export interface ProjectDataPreviewDataset {
   id: string;
   label: string;

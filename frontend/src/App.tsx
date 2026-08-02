@@ -401,7 +401,8 @@ function App() {
 
   const handleNodesMove = useCallback(async (
     moves: Array<{ nodeId: string; x: number; y: number }>,
-    groupId?: string | null
+    groupId?: string | null,
+    history?: { description?: string; actionType?: string },
   ) => {
     if (!activeArtifact || moves.length === 0) return;
 
@@ -431,8 +432,8 @@ function App() {
     await execute(
       async () => afterState,
       {
-        description: `\u041f\u0435\u0440\u0435\u043c\u0435\u0449\u0435\u043d\u0438\u0435 ${moves.length} \u0443\u0437\u043b\u043e\u0432`,
-        actionType: 'batch_move',
+        description: history?.description || `\u041f\u0435\u0440\u0435\u043c\u0435\u0449\u0435\u043d\u0438\u0435 ${moves.length} \u0443\u0437\u043b\u043e\u0432`,
+        actionType: history?.actionType || 'batch_move',
         groupId: groupId || undefined
       }
     );

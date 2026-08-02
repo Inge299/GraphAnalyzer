@@ -292,6 +292,7 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({
             projectDataSelectedSummary={projectDataAdmin.projectDataSelectedSummary}
             availableImportPlugins={projectDataAdmin.availableImportPlugins}
             projectDataLastLoadResult={projectDataAdmin.projectDataLastLoadResult}
+            projectDataImportJob={projectDataAdmin.projectDataImportJob}
             projectStats={projectDataAdmin.projectStats}
             formatBytes={formatBytes}
             formatDateTime={formatDateTime}

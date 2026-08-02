@@ -125,3 +125,72 @@ async def contacts(project_id: int, msisdn: str) -> List[Dict[str, Any]]:
     async with AsyncSessionLocal() as db:
         result = await db.execute(query, {"project_id": project_id, "msisdn": msisdn})
         return [dict(row) for row in result.mappings().all()]
+
+async def location_events(project_id: int, msisdn: str) -> List[Dict[str, Any]]:
+    """Return known MSISDN registrations grouped neither by source nor import format."""
+
+    query = text("""
+        WITH location_rows AS (
+            SELECT
+                fact.occurred_at AS event_time,
+                COALESCE(
+                    NULLIF(BTRIM(fact.payload ->> 'address'), ''),
+                    NULLIF(CONCAT_WS('/',
+                        NULLIF(BTRIM(fact.payload ->> 'mcc'), ''),
+                        NULLIF(BTRIM(fact.payload ->> 'mnc'), ''),
+                        NULLIF(BTRIM(fact.payload ->> 'lac'), ''),
+                        NULLIF(BTRIM(fact.payload ->> 'bs'), '')
+                    ), ''),
+                    'Unknown base station'
+                ) AS location
+            FROM project_domain_fact_participants AS participant
+            JOIN project_domain_facts AS fact ON fact.id = participant.fact_id
+            WHERE participant.project_id = :project_id
+              AND participant.entity_type = 'msisdn'
+              AND participant.entity_key = :msisdn
+              AND participant.fact_type = 'location_event'
+              AND fact.occurred_at IS NOT NULL
+              AND NULLIF(BTRIM(fact.payload ->> 'lac'), '') IS NOT NULL
+              AND NULLIF(BTRIM(fact.payload ->> 'bs'), '') IS NOT NULL
+              AND lower(BTRIM(fact.payload ->> 'bs')) NOT IN ('0', 'null', 'none', 'n/a', 'na', '-')
+
+            UNION ALL
+
+            SELECT
+                fact.occurred_at AS event_time,
+                COALESCE(NULLIF(BTRIM(location_link.to_key), ''), NULLIF(BTRIM(fact.payload ->> 'base_station'), ''), 'Unknown base station') AS location
+            FROM project_domain_fact_participants AS participant
+            JOIN project_domain_facts AS fact ON fact.id = participant.fact_id
+            LEFT JOIN project_domain_relations AS location_link
+              ON location_link.project_id = fact.project_id
+             AND location_link.relation_type = 'base_station_location'
+             AND location_link.from_type = 'base_station'
+             AND location_link.from_key = BTRIM(fact.payload ->> 'base_station')
+            WHERE participant.project_id = :project_id
+              AND participant.entity_type = 'msisdn'
+              AND participant.entity_key = :msisdn
+              AND participant.fact_type = 'telecom_base_station_observation'
+              AND fact.occurred_at IS NOT NULL
+              AND NULLIF(BTRIM(fact.payload ->> 'base_station'), '') IS NOT NULL
+        )
+        SELECT event_time, location
+        FROM location_rows
+        WHERE location <> ''
+        ORDER BY event_time ASC
+    """)
+    async with AsyncSessionLocal() as db:
+        await ensure_project_domain_fact_participants(db, project_id)
+        result = await db.execute(query, {"project_id": project_id, "msisdn": msisdn})
+        rows = [dict(row) for row in result.mappings().all()]
+        await db.commit()
+        return rows
+
+
+def period_share(first: Any, last: Any, overall_events: List[datetime]) -> str:
+    if not overall_events or not isinstance(first, datetime) or not isinstance(last, datetime):
+        return "-"
+    total_seconds = (overall_events[-1] - overall_events[0]).total_seconds()
+    item_seconds = max(0, (last - first).total_seconds())
+    if total_seconds <= 0:
+        return "100.0%" if item_seconds <= 0 else "-"
+    return f"{item_seconds * 100 / total_seconds:.1f}%"

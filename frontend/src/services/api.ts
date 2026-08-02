@@ -26,6 +26,7 @@ import type {
   ProjectDataClearResponse,
   ProjectDataImportPlugin, ProjectDataImportPluginInstallResponse, ProjectDataImportQualityReport,
   ProjectDataLoadResponse,
+  ProjectDataImportJob,
   ProjectDataPreviewResponse,
   ProjectDataStats,
   ReferenceProvider,
@@ -225,12 +226,14 @@ export const projectDataApi = {
     if (pluginOverrides.length > 0) {
       formData.append('plugin_overrides_json', JSON.stringify(pluginOverrides));
     }
-    return api.post<ProjectDataLoadResponse>(`/api/v1/projects/${projectId}/data/load-upload`, formData, {
+    return api.post<ProjectDataImportJob>(`/api/v1/projects/${projectId}/data/load-upload`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
       timeout: layoutConfig.network.projectDataLoadTimeoutMs,
     }).then(res => res.data);
   },
-  clear: (projectId: number) =>
+  getImportJob: (projectId: number, jobId: string) =>
+    api.get<ProjectDataImportJob>(`/api/v1/projects/${projectId}/data/import-jobs/${encodeURIComponent(jobId)}`,
+      { timeout: 30000 }).then(res => res.data),  clear: (projectId: number) =>
     api.post<ProjectDataClearResponse>(
       `/api/v1/projects/${projectId}/data/clear`,
       {},

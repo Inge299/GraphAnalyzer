@@ -400,6 +400,7 @@ async def find_project_domain_relation_summaries(
     relation_type: str,
     *,
     endpoints: Iterable[tuple[str, Iterable[str]]] = (),
+    limit: int | None = None,
 ) -> list[dict[str, Any]]:
     """Aggregate relations by endpoint pair for compact graph rendering."""
 
@@ -460,7 +461,8 @@ async def find_project_domain_relation_summaries(
             from_entity.attributes,
             to_entity.attributes
         ORDER BY first_occurred_at ASC NULLS LAST, from_key, to_key
-    """), bind)
+        LIMIT COALESCE(:limit, 2147483647)
+    """), {**bind, "limit": max(1, int(limit)) if limit is not None else None})
     return [dict(row) for row in result.mappings().all()]
 
 def _mapping_value(row: dict[str, Any], spec: Any) -> Any:

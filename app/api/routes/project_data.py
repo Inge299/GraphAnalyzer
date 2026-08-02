@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, Field
@@ -12,8 +13,10 @@ from app.models.project import Project
 from app.import_plugin_sdk import ImportPluginContractError
 from app.services.cell_tower_reference_provider import get_cell_tower_reference_provider_status
 from app.services.project_data_graph_service import sync_project_data_graph_artifact
+from app.services.project_data_import_utils import save_uploaded_files
 from app.services.import_quality_service import get_import_quality_report
 from app.services.project_data_service import (
+    DATA_ROOT,
     acquire_project_data_lock,
     clear_project_data,
     ensure_project_data_tables,
@@ -74,6 +77,18 @@ class ProjectDataLoadResponse(BaseModel):
     load_batch_id: str
     load_log: dict
     graph_artifact: dict | None = None
+
+class ProjectDataImportJobResponse(BaseModel):
+    id: str
+    project_id: int
+    status: str
+    progress: int
+    message: str
+    result: dict | None = None
+    error: str | None = None
+    created_at: str
+    started_at: str | None = None
+    finished_at: str | None = None
 
 class ProjectDataClearResponse(BaseModel):
     message: str
@@ -217,7 +232,7 @@ async def preview_data_for_project_upload(
         sample_limit=sample_limit,
     )
 
-@router.post("/{project_id}/data/load-upload", response_model=ProjectDataLoadResponse)
+@router.post("/{project_id}/data/load-upload", response_model=ProjectDataImportJobResponse)
 async def load_data_for_project_upload(
     project_id: int,
     background_tasks: BackgroundTasks,
@@ -228,7 +243,6 @@ async def load_data_for_project_upload(
     project = (await db.execute(select(Project).where(Project.id == project_id))).scalar_one_or_none()
     if not project:
         raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
-
     plugin_overrides: dict[str, str] | None = None
     if plugin_overrides_json:
         try:
@@ -237,31 +251,30 @@ async def load_data_for_project_upload(
             raise HTTPException(status_code=400, detail=f"Invalid plugin_overrides_json: {exc.msg}") from exc
         if not isinstance(raw_payload, list):
             raise HTTPException(status_code=400, detail="plugin_overrides_json must be a JSON array")
-        plugin_overrides = {}
-        for item in raw_payload:
-            if not isinstance(item, dict):
-                continue
-            path = str(item.get("path") or "").strip()
-            plugin_id = str(item.get("plugin_id") or "").strip()
-            if path and plugin_id:
-                plugin_overrides[path] = plugin_id
+        plugin_overrides = {
+            str(item.get("path") or "").strip(): str(item.get("plugin_id") or "").strip()
+            for item in raw_payload
+            if isinstance(item, dict) and str(item.get("path") or "").strip() and str(item.get("plugin_id") or "").strip()
+        }
+    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S_%f")
+    source_dir = DATA_ROOT / "uploads" / f"project_{project_id}" / timestamp
+    await save_uploaded_files(source_dir, files)
+    from app.services.project_data_import_jobs import create_project_data_import_job, run_project_data_import_job
+    job = await create_project_data_import_job(project_id, str(source_dir), plugin_overrides)
+    background_tasks.add_task(run_project_data_import_job, job["id"])
+    return job
 
-    await acquire_project_data_lock(db=db, project_id=project_id)
-    result = await load_project_data_from_upload(
-        db=db,
-        project_id=project_id,
-        files=files,
-        plugin_overrides=plugin_overrides,
-    )
-    await db.commit()
-    background_tasks.add_task(_sync_project_data_graph_artifact_in_background, project_id)
 
-    return _build_project_data_load_response(
-        project_id=project_id,
-        result=result,
-        graph_artifact=None,
-    )
-
+@router.get("/{project_id}/data/import-jobs/{job_id}", response_model=ProjectDataImportJobResponse)
+async def get_data_import_job(project_id: int, job_id: str, db: AsyncSession = Depends(get_db)):
+    project = (await db.execute(select(Project).where(Project.id == project_id))).scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
+    from app.services.project_data_import_jobs import get_project_data_import_job
+    job = await get_project_data_import_job(project_id, job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Import job not found")
+    return job
 
 @router.get("/{project_id}/data/stats", response_model=ProjectDataStatsResponse)
 async def get_data_stats_for_project(

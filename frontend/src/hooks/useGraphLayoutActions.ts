@@ -3,9 +3,14 @@ import type { MutableRefObject } from 'react';
 import { layoutConfig } from '../config/layout';
 
 type MoveItem = { nodeId: string; x: number; y: number };
+type MoveHistoryOptions = { description?: string; actionType?: string };
 type Position = { x: number; y: number };
 type Blocker = { x: number; y: number; radius: number };
 type LayoutEdge = { id: string; from: string; to: string; weight: number };
+
+// Force simulation gives pleasant results for small diagrams, but its cost grows
+// too quickly for a connected component with hundreds of nodes.
+const TOPOLOGY_LAYOUT_THRESHOLD = 90;
 
 interface UseGraphLayoutActionsArgs {
   networkRef: MutableRefObject<any>;
@@ -13,7 +18,7 @@ interface UseGraphLayoutActionsArgs {
   edgesDataSetRef: MutableRefObject<any>;
   artifactDataRef: MutableRefObject<any>;
   onNodeMove: (nodeId: string, x: number, y: number, groupId?: string | null) => void;
-  onNodesMove?: (moves: MoveItem[], groupId?: string | null) => void;
+  onNodesMove?: (moves: MoveItem[], groupId?: string | null, history?: MoveHistoryOptions) => Promise<void> | void;
   setLabelsSuppressed: (value: boolean) => void;
   updateSelectionFromNetwork: () => void;
   getNodeId: (node: any) => string;
@@ -267,6 +272,163 @@ const runAntiOverlap = (
   return next;
 };
 
+
+const findConnectedComponents = (nodeIds: string[], edges: LayoutEdge[]) => {
+  const available = new Set(nodeIds);
+  const neighbors = new Map<string, Set<string>>();
+  nodeIds.forEach((id) => neighbors.set(id, new Set()));
+  edges.forEach((edge) => {
+    if (!available.has(edge.from) || !available.has(edge.to)) return;
+    neighbors.get(edge.from)?.add(edge.to);
+    neighbors.get(edge.to)?.add(edge.from);
+  });
+
+  const visited = new Set<string>();
+  const components: string[][] = [];
+  nodeIds.forEach((root) => {
+    if (visited.has(root)) return;
+    const component: string[] = [];
+    const queue = [root];
+    visited.add(root);
+    while (queue.length) {
+      const id = queue.shift()!;
+      component.push(id);
+      neighbors.get(id)?.forEach((neighbor) => {
+        if (!visited.has(neighbor)) {
+          visited.add(neighbor);
+          queue.push(neighbor);
+        }
+      });
+    }
+    components.push(component);
+  });
+  return components;
+};
+
+const separateComponents = (
+  initialPositions: Map<string, Position>,
+  components: string[][],
+  radiusById: Map<string, number>,
+  minimumDistance: number,
+) => {
+  if (components.length < 2) return initialPositions;
+
+  const gap = Math.max(minimumDistance * 1.8, 220);
+  const prepared = components.map((ids) => {
+    const points = ids.map((id) => ({ id, point: initialPositions.get(id) || { x: 0, y: 0 }, radius: radiusById.get(id) || 30 }));
+    const minX = Math.min(...points.map(({ point, radius }) => point.x - radius));
+    const maxX = Math.max(...points.map(({ point, radius }) => point.x + radius));
+    const minY = Math.min(...points.map(({ point, radius }) => point.y - radius));
+    const maxY = Math.max(...points.map(({ point, radius }) => point.y + radius));
+    return { ids, minX, minY, width: Math.max(minimumDistance, maxX - minX), height: Math.max(minimumDistance, maxY - minY) };
+  }).sort((left, right) => right.height * right.width - left.height * left.width);
+
+  const totalArea = prepared.reduce((sum, item) => sum + item.width * item.height, 0);
+  const rowWidthLimit = Math.max(gap * 3, Math.sqrt(totalArea) * 1.5);
+  const next = new Map(initialPositions);
+  let cursorX = 0;
+  let cursorY = 0;
+  let rowHeight = 0;
+  prepared.forEach((component) => {
+    if (cursorX > 0 && cursorX + component.width > rowWidthLimit) {
+      cursorX = 0;
+      cursorY += rowHeight + gap;
+      rowHeight = 0;
+    }
+    const offsetX = cursorX - component.minX;
+    const offsetY = cursorY - component.minY;
+    component.ids.forEach((id) => {
+      const point = next.get(id) || { x: 0, y: 0 };
+      next.set(id, { x: point.x + offsetX, y: point.y + offsetY });
+    });
+    cursorX += component.width + gap;
+    rowHeight = Math.max(rowHeight, component.height);
+  });
+  return next;
+};
+
+
+const layoutComponentByLayers = (
+  componentIds: string[],
+  edges: LayoutEdge[],
+  minimumDistance: number,
+) => {
+  const ids = new Set(componentIds);
+  const neighbors = new Map<string, Set<string>>();
+  componentIds.forEach((id) => neighbors.set(id, new Set()));
+  edges.forEach((edge) => {
+    if (!ids.has(edge.from) || !ids.has(edge.to)) return;
+    neighbors.get(edge.from)?.add(edge.to);
+    neighbors.get(edge.to)?.add(edge.from);
+  });
+
+  const degree = (id: string) => neighbors.get(id)?.size || 0;
+  const root = [...componentIds].sort((left, right) => degree(right) - degree(left) || left.localeCompare(right))[0];
+  const levels: string[][] = [];
+  const visited = new Set<string>([root]);
+  let frontier = [root];
+  while (frontier.length > 0) {
+    levels.push(frontier);
+    const next: string[] = [];
+    frontier.forEach((id) => {
+      [...(neighbors.get(id) || [])]
+        .sort((left, right) => degree(right) - degree(left) || left.localeCompare(right))
+        .forEach((neighbor) => {
+          if (visited.has(neighbor)) return;
+          visited.add(neighbor);
+          next.push(neighbor);
+        });
+    });
+    frontier = next;
+  }
+
+  const positions = new Map<string, Position>();
+  positions.set(root, { x: 0, y: 0 });
+  levels.slice(1).forEach((level, depth) => {
+    const count = level.length;
+    // For wide layers, sqrt growth avoids an impractically huge ring while
+    // retaining enough room for readable node labels.
+    const radius = Math.max(
+      (depth + 1) * minimumDistance * 1.15,
+      Math.sqrt(count) * minimumDistance * 1.3,
+    );
+    const startAngle = -Math.PI / 2;
+    level.forEach((id, index) => {
+      const angle = startAngle + (Math.PI * 2 * index) / Math.max(1, count);
+      positions.set(id, { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius });
+    });
+  });
+  return positions;
+};
+
+const layoutByTopology = (
+  nodeIds: string[],
+  edges: LayoutEdge[],
+  radiusById: Map<string, number>,
+  minimumDistance: number,
+) => {
+  const components = findConnectedComponents(nodeIds, edges);
+  const positions = new Map<string, Position>();
+  components.forEach((component) => {
+    const componentPositions = layoutComponentByLayers(component, edges, minimumDistance);
+    componentPositions.forEach((position, id) => positions.set(id, position));
+  });
+  return separateComponents(positions, components, radiusById, minimumDistance);
+};
+
+const persistPositionsInArtifact = (artifactDataRef: MutableRefObject<any>, moves: MoveItem[]) => {
+  const current = artifactDataRef.current;
+  if (!current || !Array.isArray(current.nodes) || moves.length === 0) return;
+  const positions = new Map(moves.map((move) => [move.nodeId, move]));
+  artifactDataRef.current = {
+    ...current,
+    nodes: current.nodes.map((node: any) => {
+      const move = positions.get(String(node?.id ?? node?.node_id ?? ''));
+      return move ? { ...node, position_x: move.x, position_y: move.y } : node;
+    }),
+  };
+};
+
 export const useGraphLayoutActions = ({
   networkRef,
   nodesDataSetRef,
@@ -300,61 +462,61 @@ export const useGraphLayoutActions = ({
     try {
       const targetSet = new Set<string>(targetIds);
       const allIds = allNodes.map((node: any) => String(getNodeId(node)));
-      const physicsFlags = allIds.map((id: string) => ({ id, physics: targetSet.has(id) }));
-      nodesDataSetRef.current.update(physicsFlags);
+      const nodeById = new Map(allNodes.map((node: any) => [String(getNodeId(node)), node]));
+      const minimumDistance = resolveLayoutDistancePx();
+      const layoutEdges = collectLayoutEdges(Array.isArray(data.edges) ? data.edges : []);
+      const radiusById = new Map<string, number>();
+      targetIds.forEach((id: string) => radiusById.set(id, estimateNodeFootprint(nodeById.get(id))));
 
-      const cfg = layoutConfig.physicsEngine;
-      const spacingMultiplier = resolveLayoutSpacingMultiplier(Number(cfg.springLength || 285));
-
-      networkRef.current.setOptions({
-        physics: {
-          enabled: true,
-          solver: cfg.solver,
-          forceAtlas2Based: {
-            gravitationalConstant: cfg.gravitationalConstant,
-            centralGravity: cfg.centralGravity,
-            springLength: Number(cfg.springLength || 285) * spacingMultiplier,
-            springConstant: cfg.springConstant,
-            damping: cfg.damping,
-            avoidOverlap: cfg.avoidOverlap,
-          },
-          minVelocity: cfg.minVelocity,
-          timestep: cfg.timestep,
-          stabilization: {
-            enabled: true,
-            iterations: cfg.iterations,
-            fit: false,
-            updateInterval: 25,
-          },
-        },
-      });
-
-      networkRef.current.startSimulation();
-      await waitForLayoutSettled(
-        networkRef.current,
-        targetIds,
-        resolveSettlingMaxDurationMs('balanced', targetIds.length),
-      );
-
-      networkRef.current.stopSimulation();
+      // Balance is intentionally static. Physics gave a pleasant animation on tiny
+      // diagrams, but also left a late second jump when vis-network stopped.
+      // A deterministic topology layout is faster and produces one final state.
+      let componentPositions: Map<string, Position>;
+      if (targetIds.length === allIds.length) {
+        componentPositions = layoutByTopology(targetIds, layoutEdges, radiusById, minimumDistance);
+      } else {
+        const blockers: Blocker[] = allNodes
+          .filter((node: any) => !targetSet.has(String(getNodeId(node))))
+          .map((node: any) => {
+            const nodeId = String(getNodeId(node));
+            const position = networkRef.current!.getPosition(nodeId);
+            return {
+              x: Number(position?.x ?? node.position_x ?? 0),
+              y: Number(position?.y ?? node.position_y ?? 0),
+              radius: estimateNodeFootprint(node),
+            };
+          });
+        componentPositions = runAntiOverlap(
+          targetIds,
+          capturePositions(networkRef.current, targetIds),
+          radiusById,
+          blockers,
+          undefined,
+          minimumDistance,
+        );
+      }
 
       const moves: MoveItem[] = targetIds.map((id: string) => {
-        const pos = networkRef.current!.getPosition(id);
-        return { nodeId: id, x: Math.round(Number(pos.x || 0)), y: Math.round(Number(pos.y || 0)) };
+        const pos = componentPositions.get(id) || { x: 0, y: 0 };
+        return { nodeId: id, x: Math.round(pos.x), y: Math.round(pos.y) };
       });
 
+      persistPositionsInArtifact(artifactDataRef, moves);
       nodesDataSetRef.current.update([
         ...allIds.map((id: string) => ({ id, physics: false })),
-        ...moves.map((move) => ({ id: move.nodeId, x: move.x, y: move.y })),
+        ...moves.map((move) => ({ id: move.nodeId, x: move.x, y: move.y, physics: false })),
       ]);
 
       networkRef.current.setOptions({ physics: { enabled: false } });
 
       const groupId = createLayoutGroupId();
       if (onNodesMove && moves.length > 1) {
-        onNodesMove(moves, groupId);
+        await onNodesMove(moves, groupId, {
+          actionType: 'balanced_layout',
+          description: `???????????? ?????: ${moves.length} ?????`,
+        });
       } else {
-        moves.forEach((move) => onNodeMove(move.nodeId, move.x, move.y, groupId));
+        await Promise.all(moves.map((move) => onNodeMove(move.nodeId, move.x, move.y, groupId)));
       }
 
       networkRef.current.selectNodes(targetIds, false);
@@ -402,82 +564,100 @@ export const useGraphLayoutActions = ({
               };
             })
         : [];
-      const spacingMultiplier = resolveLayoutSpacingMultiplier(layoutConfig.hybrid.physics.springLengthBase);
-
-      const physicsFlags = allIds.map((id: string) => ({ id, physics: targetSet.has(id) }));
-      nodesDataSetRef.current.update(physicsFlags);
-
-      networkRef.current.setOptions({
-        physics: {
-          enabled: true,
-          solver: 'forceAtlas2Based',
-          forceAtlas2Based: {
-            gravitationalConstant: layoutConfig.hybrid.physics.gravitationalConstantBase * spacingMultiplier,
-            centralGravity: layoutConfig.hybrid.physics.centralGravityBase / spacingMultiplier,
-            springLength: layoutConfig.hybrid.physics.springLengthBase * spacingMultiplier,
-            springConstant: layoutConfig.hybrid.physics.springConstant,
-            avoidOverlap: layoutConfig.hybrid.physics.avoidOverlap,
-          },
-          minVelocity: layoutConfig.hybrid.physics.minVelocity,
-          timestep: layoutConfig.hybrid.physics.timestep,
-          stabilization: false,
-        },
-      });
-
-      networkRef.current.startSimulation();
-      await waitForLayoutSettled(
-        networkRef.current,
-        targetIds,
-        resolveSettlingMaxDurationMs('auto', targetIds.length),
-      );
-      networkRef.current.stopSimulation();
-
-      const forcePositions = new Map<string, Position>();
-      targetIds.forEach((id: string) => {
-        const pos = networkRef.current!.getPosition(id);
-        forcePositions.set(id, { x: Number(pos.x || 0), y: Number(pos.y || 0) });
-      });
-
       const radiusById = new Map<string, number>();
       targetIds.forEach((id: string) => {
-        const node = nodeById.get(id);
-        radiusById.set(id, estimateNodeFootprint(node));
+        radiusById.set(id, estimateNodeFootprint(nodeById.get(id)));
       });
 
-      const crossingAdjusted = reduceEdgeCrossings(
-        capturePositions(networkRef.current, allIds),
-        layoutEdges,
-        targetSet,
-        minimumDistance,
-      );
-      const adjustedTargetPositions = new Map<string, Position>();
-      targetIds.forEach((id: string) => adjustedTargetPositions.set(id, crossingAdjusted.get(id) || forcePositions.get(id) || { x: 0, y: 0 }));
+      const useTopologyLayout = targetIds.length === allIds.length
+        && targetIds.length >= TOPOLOGY_LAYOUT_THRESHOLD;
+      let componentPositions: Map<string, Position>;
+      let fallbackPositions = new Map<string, Position>();
 
-      const finalPositions = runAntiOverlap(
-        targetIds,
-        adjustedTargetPositions,
-        radiusById,
-        blockers,
-        Math.max(12, minimumDistance * 0.08),
-        minimumDistance,
-      );
+      if (useTopologyLayout) {
+        // Large diagrams are positioned synchronously. It is deterministic,
+        // scales linearly with the graph, and never finishes with a physics jump.
+        networkRef.current.stopSimulation();
+        networkRef.current.setOptions({ physics: { enabled: false } });
+        componentPositions = layoutByTopology(targetIds, layoutEdges, radiusById, minimumDistance);
+        fallbackPositions = componentPositions;
+      } else {
+        const spacingMultiplier = resolveLayoutSpacingMultiplier(layoutConfig.hybrid.physics.springLengthBase);
+        const physicsFlags = allIds.map((id: string) => ({ id, physics: targetSet.has(id) }));
+        nodesDataSetRef.current.update(physicsFlags);
+
+        networkRef.current.setOptions({
+          physics: {
+            enabled: true,
+            solver: 'forceAtlas2Based',
+            forceAtlas2Based: {
+              gravitationalConstant: layoutConfig.hybrid.physics.gravitationalConstantBase * spacingMultiplier,
+              centralGravity: layoutConfig.hybrid.physics.centralGravityBase / spacingMultiplier,
+              springLength: layoutConfig.hybrid.physics.springLengthBase * spacingMultiplier,
+              springConstant: layoutConfig.hybrid.physics.springConstant,
+              avoidOverlap: layoutConfig.hybrid.physics.avoidOverlap,
+            },
+            minVelocity: layoutConfig.hybrid.physics.minVelocity,
+            timestep: layoutConfig.hybrid.physics.timestep,
+            stabilization: false,
+          },
+        });
+
+        networkRef.current.startSimulation();
+        await waitForLayoutSettled(
+          networkRef.current,
+          targetIds,
+          resolveSettlingMaxDurationMs('auto', targetIds.length),
+        );
+        networkRef.current.stopSimulation();
+        networkRef.current.setOptions({ physics: { enabled: false } });
+
+        const forcePositions = capturePositions(networkRef.current, targetIds);
+        fallbackPositions = forcePositions;
+        const crossingAdjusted = reduceEdgeCrossings(
+          capturePositions(networkRef.current, allIds),
+          layoutEdges,
+          targetSet,
+          minimumDistance,
+        );
+        const adjustedTargetPositions = new Map<string, Position>();
+        targetIds.forEach((id: string) => adjustedTargetPositions.set(id, crossingAdjusted.get(id) || forcePositions.get(id) || { x: 0, y: 0 }));
+
+        const finalPositions = runAntiOverlap(
+          targetIds,
+          adjustedTargetPositions,
+          radiusById,
+          blockers,
+          Math.max(12, minimumDistance * 0.08),
+          minimumDistance,
+        );
+        componentPositions = targetIds.length === allIds.length
+          ? separateComponents(finalPositions, findConnectedComponents(targetIds, layoutEdges), radiusById, minimumDistance)
+          : finalPositions;
+      }
+
       const moves: MoveItem[] = targetIds.map((id: string) => {
-        const pos = finalPositions.get(id) || forcePositions.get(id) || { x: 0, y: 0 };
+        const pos = componentPositions.get(id) || fallbackPositions.get(id) || { x: 0, y: 0 };
         return { nodeId: id, x: Math.round(pos.x), y: Math.round(pos.y) };
       });
 
+      // Keep the graph's live snapshot in sync before React persists the batch.
+      // This prevents a stale artifact render from snapping nodes back briefly.
+      persistPositionsInArtifact(artifactDataRef, moves);
       nodesDataSetRef.current.update([
         ...allIds.map((id: string) => ({ id, physics: false })),
-        ...moves.map((move) => ({ id: move.nodeId, x: move.x, y: move.y })),
+        ...moves.map((move) => ({ id: move.nodeId, x: move.x, y: move.y, physics: false })),
       ]);
-
       networkRef.current.setOptions({ physics: { enabled: false } });
 
       const groupId = createLayoutGroupId();
       if (onNodesMove && moves.length > 1) {
-        onNodesMove(moves, groupId);
+        await onNodesMove(moves, groupId, {
+          actionType: 'auto_layout',
+          description: `?????????????? ?????: ${moves.length} ?????`,
+        });
       } else {
-        moves.forEach((move) => onNodeMove(move.nodeId, move.x, move.y, groupId));
+        await Promise.all(moves.map((move) => onNodeMove(move.nodeId, move.x, move.y, groupId)));
       }
 
       networkRef.current.selectNodes(targetIds, false);

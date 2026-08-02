@@ -1,5 +1,5 @@
 import React from 'react';
-import type { ProjectDataImportPlugin, ProjectDataLoadResponse, ProjectDataPreviewResponse } from '../../../types/api';
+import type { ProjectDataImportJob, ProjectDataImportPlugin, ProjectDataLoadResponse, ProjectDataPreviewResponse } from '../../../types/api';
 import type { ProjectDataSelectedFileItem } from './types';
 
 const text = {
@@ -48,6 +48,7 @@ interface ProjectDataSectionProps {
   projectDataSelectedSummary: { totalFiles: number; totalSizeBytes: number; byKind: Array<[string, number]> };
   availableImportPlugins: ProjectDataImportPlugin[];
   projectDataLastLoadResult: ProjectDataLoadResponse | null;
+  projectDataImportJob: ProjectDataImportJob | null;
   projectStats: any | null;
   formatBytes: (sizeBytes: number) => string;
   formatDateTime: (value: unknown) => string;
@@ -64,7 +65,7 @@ interface ProjectDataSectionProps {
 const ProjectDataSection: React.FC<ProjectDataSectionProps> = ({
   projectId, projectDataFilesInputRef, projectDataFileInputId, projectDataLoading, projectDataPreviewLoading,
   projectDataPreview, projectDataClearing, projectStatsLoading, projectDataSelectedFiles, projectDataSelectedSummary,
-  availableImportPlugins, projectDataLastLoadResult, projectStats, formatBytes, onLoadProjectDataFiles,
+  availableImportPlugins, projectDataLastLoadResult, projectDataImportJob, projectStats, formatBytes, onLoadProjectDataFiles,
   onRefreshStats, onPreview, onUpload, onClearSelection, onClearData, onRemoveFile, onChangeFilePlugin,
 }) => {
   const hasFiles = projectDataSelectedFiles.length > 0;
@@ -110,6 +111,10 @@ const ProjectDataSection: React.FC<ProjectDataSectionProps> = ({
             </div>
           </div>
 
+          {projectDataImportJob && projectDataImportJob.status !== 'completed' && <div className={`service-preview-summary ${projectDataImportJob.status === 'failed' ? 'error' : 'ready'}`}>
+            <div><strong>{projectDataImportJob.status === 'failed' ? '\u0418\u043c\u043f\u043e\u0440\u0442 \u043d\u0435 \u0437\u0430\u0432\u0435\u0440\u0448\u0451\u043d' : '\u0418\u043c\u043f\u043e\u0440\u0442 \u0432\u044b\u043f\u043e\u043b\u043d\u044f\u0435\u0442\u0441\u044f \u0432 \u0444\u043e\u043d\u0435'}</strong><span>{projectDataImportJob.error || projectDataImportJob.message}</span></div>
+            <div className="service-preview-summary-stats"><span>{projectDataImportJob.progress}%</span><span>{'\u041c\u043e\u0436\u043d\u043e \u043e\u0441\u0442\u0430\u0432\u0438\u0442\u044c \u044d\u0442\u0443 \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0443 \u043e\u0442\u043a\u0440\u044b\u0442\u043e\u0439.'}</span></div>
+          </div>}
           {projectDataPreview && <div className={`service-preview-summary ${projectDataPreview.errors.length ? 'error' : 'ready'}`}>
             <div><strong>{projectDataPreview.errors.length ? '\u041d\u0443\u0436\u043d\u043e \u0432\u043d\u0435\u0441\u0442\u0438 \u0438\u0437\u043c\u0435\u043d\u0435\u043d\u0438\u044f' : '\u0424\u043e\u0440\u043c\u0430\u0442 \u043f\u0440\u043e\u0432\u0435\u0440\u0435\u043d'}</strong><span>{'\u041f\u0440\u043e\u0432\u0435\u0440\u043a\u0430 \u043d\u0435 \u0438\u0437\u043c\u0435\u043d\u044f\u0435\u0442 \u0434\u0430\u043d\u043d\u044b\u0435 \u043f\u0440\u043e\u0435\u043a\u0442\u0430.'}</span></div>
             <div className="service-preview-summary-stats"><span>{projectDataPreview.files.length} {'\u0444\u0430\u0439\u043b.'}</span><span>{previewRows} {'\u0441\u0442\u0440\u043e\u043a'}</span><span>{projectDataPreview.errors.length} {'\u043e\u0448\u0438\u0431.'}</span></div>

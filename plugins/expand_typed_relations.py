@@ -44,6 +44,15 @@ class ExpandTypedRelationsPlugin(PluginBase):
             "required": True,
             "options": [],
         },
+        {
+            "key": "max_relations",
+            "label": "Maximum relations on graph",
+            "type": "number",
+            "required": False,
+            "default": 2000,
+            "min": 1,
+            "max": 2500,
+        },
     ]
 
     def __init__(self) -> None:
@@ -63,7 +72,7 @@ class ExpandTypedRelationsPlugin(PluginBase):
                 and str(item.get("from_type") or "").strip()
                 and str(item.get("to_type") or "").strip()
             ],
-        }]
+        }, self.params_schema[1]]
         return metadata
 
     @staticmethod
@@ -154,6 +163,7 @@ class ExpandTypedRelationsPlugin(PluginBase):
         project_id: int,
         relation_type: str,
         entities: List[Dict[str, str]],
+        limit: int,
     ) -> List[Dict[str, Any]]:
         endpoints: Dict[str, List[str]] = {}
         for entity in entities:
@@ -169,6 +179,7 @@ class ExpandTypedRelationsPlugin(PluginBase):
                     (type_id, dedupe_preserve_order(keys))
                     for type_id, keys in endpoints.items()
                 ],
+                limit=limit,
             )
 
     @staticmethod
@@ -266,7 +277,13 @@ class ExpandTypedRelationsPlugin(PluginBase):
                 f"\u00ab{from_type}\u00bb \u0438\u043b\u0438 \u00ab{to_type}\u00bb"
             )
 
-        rows = await self._load_relation_summaries(project_id, relation_type, selected)
+        try:
+            max_relations = max(1, min(2500, int(params_dict.get("max_relations") or 2000)))
+        except (TypeError, ValueError):
+            max_relations = 2000
+        rows = await self._load_relation_summaries(project_id, relation_type, selected, max_relations + 1)
+        truncated = len(rows) > max_relations
+        rows = rows[:max_relations]
         commands = [self._entity_command(item["type_id"], item["external_key"]) for item in selected]
         created_nodes = 0
         created_edges = 0
@@ -365,6 +382,8 @@ class ExpandTypedRelationsPlugin(PluginBase):
                 "relation_type": relation_type,
                 "selected_entities": len(selected),
                 "relations_found": len(rows),
+                "relations_limit": max_relations,
+                "relations_truncated": truncated,
                 "created_nodes": created_nodes,
                 "created_edges": created_edges,
                 "domain_entity_commands": commands,
