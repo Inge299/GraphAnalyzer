@@ -11,6 +11,7 @@ from app.console_plugins._graph_analysis_utils import column, graph_payload, nod
 from app.database import AsyncSessionLocal
 from app.services.project_domain_store import ensure_project_domain_fact_participants
 from app.services.cell_tower_reference_provider import get_cell_tower_reference_provider_status, resolve_cell_towers
+from app.services.project_cell_tower_geocoding_service import resolve_project_cell_towers
 
 
 def _digits(value: object) -> str:
@@ -143,11 +144,24 @@ class LocationTimelineExecutor(ConsoleExecutorPlugin):
             await db.commit()
         provider_status = get_cell_tower_reference_provider_status()
         tower_by_cell = await resolve_cell_towers(source_rows) if provider_status.enabled else {}
+        project_towers = await resolve_project_cell_towers(project_id, source_rows)
+        project_coordinates_used = 0
+        external_coordinates_used = 0
         for item in source_rows:
-            tower = tower_by_cell.get((_display_value(item.get("mcc"), ""), _display_value(item.get("mnc"), "").lstrip("0"), _display_value(item.get("lac"), ""), _display_value(item.get("bs"), "")))
+            cell_key = (_display_value(item.get("mcc"), ""), _display_value(item.get("mnc"), "").lstrip("0") or "0", _display_value(item.get("lac"), ""), _display_value(item.get("bs"), ""))
+            tower = tower_by_cell.get(cell_key)
             if tower:
                 item.update(tower)
                 item["resolved_address"] = tower.get("address") or item.get("address")
+                item["coordinate_source"] = "external"
+                external_coordinates_used += 1
+                continue
+            tower = project_towers.get(cell_key)
+            if tower:
+                item.update(tower)
+                item["resolved_address"] = tower.get("address") or item.get("address")
+                item["coordinate_source"] = "nominatim"
+                project_coordinates_used += 1
             else:
                 item["latitude"] = None
                 item["longitude"] = None
@@ -175,7 +189,8 @@ class LocationTimelineExecutor(ConsoleExecutorPlugin):
                     "latitude": float(latitude), "longitude": float(longitude),
                     "address": _display_value(row.get("resolved_address") or row.get("address")), "lac": _display_value(row.get("lac")), "bs": _display_value(row.get("bs")),
                 })
-        map_data = {"provider": "external_cell_tower_reference", "points": points, "route": [point["id"] for point in points], "source": {"plugin_id": self.id, "msisdns": msisdns, "provider_id": provider_status.provider_id, "provider_label": provider_status.label, "provider_detail": provider_status.detail}}
+        map_provider = "external_cell_tower_reference" if external_coordinates_used else ("project_cell_tower_geocoding" if project_coordinates_used else "external_cell_tower_reference")
+        map_data = {"provider": map_provider, "points": points, "route": [point["id"] for point in points], "source": {"plugin_id": self.id, "msisdns": msisdns, "provider_id": provider_status.provider_id, "provider_label": provider_status.label, "provider_detail": provider_status.detail, "external_coordinates_used": external_coordinates_used, "project_coordinates_used": project_coordinates_used}}
         return {
             "profile_id": self.id, "profile_name": self.name,
             "tabs": [

@@ -290,6 +290,8 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({
             availableImportPlugins={projectDataAdmin.availableImportPlugins}
             projectDataLastLoadResult={projectDataAdmin.projectDataLastLoadResult}
             projectDataImportJob={projectDataAdmin.projectDataImportJob}
+            cellTowerEnrichmentJob={projectDataAdmin.cellTowerEnrichmentJob}
+            cellTowerEnrichmentLoading={projectDataAdmin.cellTowerEnrichmentLoading}
             projectStats={projectDataAdmin.projectStats}
             formatBytes={formatBytes}
             onLoadProjectDataFiles={(event) => void projectDataAdmin.handleLoadProjectDataFiles(event)}
@@ -297,6 +299,7 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({
             onUpload={() => void projectDataAdmin.handleUploadProjectData()}
             onClearSelection={projectDataAdmin.handleClearProjectDataSelection}
             onClearData={() => void projectDataAdmin.handleClearProjectData()}
+            onEnrichCellTowers={() => void projectDataAdmin.handleEnrichCellTowersByAddress()}
             onRemoveFile={projectDataAdmin.handleRemoveProjectDataFile}
             onChangeFilePlugin={projectDataAdmin.handleChangeProjectDataFilePlugin}
           />

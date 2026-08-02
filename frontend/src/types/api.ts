@@ -107,6 +107,19 @@ export interface ProjectDataImportJob {
   started_at?: string | null;
   finished_at?: string | null;
 }
+export interface ProjectCellTowerGeocodingJob {
+  id: string;
+  project_id: number;
+  status: 'queued' | 'running' | 'completed' | 'failed';
+  progress: number;
+  message: string;
+  result?: Record<string, number> | null;
+  error?: string | null;
+  created_at: string;
+  started_at?: string | null;
+  finished_at?: string | null;
+}
+
 export interface ProjectDataImportPlugin {
   id: string;
   name: string;
@@ -159,13 +172,6 @@ export interface CellTowerReferenceLoadResponse {
   loaded_at: string;
 }
 
-export interface CellTowerReferenceEnrichResponse {
-  message: string;
-  project_id: number;
-  raw_candidates: number;
-  matched_by_address: number;
-  inserted_rows: number;
-}
 
 export interface CellTowerReferenceStats {
   cell_tower_reference_count: number;

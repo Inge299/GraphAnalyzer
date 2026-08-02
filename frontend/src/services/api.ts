@@ -3,7 +3,6 @@ import axios from 'axios';
 import type {
   ApiPluginExecuteResponse,
   PluginArtifactDataOverride,
-  CellTowerReferenceEnrichResponse,
   CellTowerReferenceLoadResponse,
   CellTowerReferenceStats,
   ConsoleDataSource,
@@ -27,6 +26,7 @@ import type {
   ProjectDataImportPlugin, ProjectDataImportPluginInstallResponse, ProjectDataImportQualityReport,
   ProjectDataLoadResponse,
   ProjectDataImportJob,
+  ProjectCellTowerGeocodingJob,
   ProjectDataStats,
   ReferenceProvider,
 } from '../types/api';
@@ -244,10 +244,15 @@ export const projectDataApi = {
       { timeout: layoutConfig.network.cellTowerStatsTimeoutMs },
     ).then(res => res.data),
   enrichCellTowersByProjectAddresses: (projectId: number) =>
-    api.post<CellTowerReferenceEnrichResponse>(
+    api.post<ProjectCellTowerGeocodingJob>(
       `/api/v1/projects/${projectId}/data/cell-towers/enrich-by-address`,
       {},
-      { timeout: layoutConfig.network.cellTowerEnrichTimeoutMs },
+      { timeout: 30000 },
+    ).then(res => res.data),
+  getCellTowerEnrichmentJob: (projectId: number, jobId: string) =>
+    api.get<ProjectCellTowerGeocodingJob>(
+      `/api/v1/projects/${projectId}/data/cell-towers/enrichment-jobs/${encodeURIComponent(jobId)}`,
+      { timeout: 30000 },
     ).then(res => res.data),
 };
 

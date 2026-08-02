@@ -27,6 +27,7 @@ from app.services.project_data_import_plugins import (
 from app.import_plugin_sdk import ProjectDataImportPlugin
 from app.services.project_data_import_pipeline import insert_normalized_source_rows
 from app.services.project_domain_store import clear_project_domain_store, ensure_project_domain_store
+from app.services.project_cell_tower_geocoding_service import clear_project_cell_tower_geocoding
 from app.services.project_data_stats_service import get_project_domain_stats
 
 DATA_ROOT = Path("/app/data")
@@ -346,6 +347,7 @@ async def clear_project_data(db: AsyncSession, project_id: int) -> dict[str, int
 
     stats = await get_project_domain_stats(db, project_id)
     domain_cleanup = await clear_project_domain_store(db, project_id)
+    await clear_project_cell_tower_geocoding(db, project_id)
     return {
         "entities_deleted": stats["entities_count"],
         "facts_deleted": stats["facts_count"],

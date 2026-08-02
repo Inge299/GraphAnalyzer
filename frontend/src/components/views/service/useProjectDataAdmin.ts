@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { domainModelApi, projectDataApi } from '../../../services/api';
-import type { MetadataBundle, ProjectDataImportJob, ProjectDataImportPlugin, ProjectDataLoadResponse } from '../../../types/api';
+import type { MetadataBundle, ProjectCellTowerGeocodingJob, ProjectDataImportJob, ProjectDataImportPlugin, ProjectDataLoadResponse } from '../../../types/api';
 import { createLocalId, detectProjectDataFileKind } from './formOptions';
 import type { ProjectDataSelectedFileItem } from './types';
 
@@ -96,8 +96,8 @@ export const useProjectDataAdmin = ({
   const [cellStatsLoading, setCellStatsLoading] = useState(false);
   const [cellStatsError, setCellStatsError] = useState<string | null>(null);
 
-  const [enrichLoading, setEnrichLoading] = useState(false);
-  const [enrichReport, setEnrichReport] = useState<any | null>(null);
+  const [cellTowerEnrichmentJob, setCellTowerEnrichmentJob] = useState<ProjectCellTowerGeocodingJob | null>(null);
+  const [cellTowerEnrichmentLoading, setCellTowerEnrichmentLoading] = useState(false);
 
   const projectDataFilesInputRef = useRef<HTMLInputElement | null>(null);
   const projectDataFileInputId = 'project-data-files-input';
@@ -427,29 +427,29 @@ export const useProjectDataAdmin = ({
     }
   }, [fetchCellStats, fetchProjectStats, getRequestErrorMessage, onError, onMessage, projectId]);
   const handleEnrichCellTowersByAddress = useCallback(async () => {
-    if (!projectId) {
-      onError('Сначала выбери проект');
-      return;
-    }
-    setEnrichLoading(true);
-    setEnrichReport(null);
+    if (!projectId) return;
+    setCellTowerEnrichmentLoading(true);
     onMessage(null);
     onError(null);
     try {
-      const report = await projectDataApi.enrichCellTowersByProjectAddresses(projectId);
-      setEnrichReport(report);
-      onMessage('Справочник БС обогащён по адресам из данных проекта.');
+      let job = await projectDataApi.enrichCellTowersByProjectAddresses(projectId);
+      setCellTowerEnrichmentJob(job);
+      while (job.status === 'queued' || job.status === 'running') {
+        await new Promise((resolve) => window.setTimeout(resolve, 1200));
+        job = await projectDataApi.getCellTowerEnrichmentJob(projectId, job.id);
+        setCellTowerEnrichmentJob(job);
+      }
+      if (job.status === 'completed') {
+        const result = job.result || {};
+        onMessage(`\u041e\u0431\u043e\u0433\u0430\u0449\u0435\u043d\u0438\u0435 \u0411\u0421 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u043e: \u0430\u0434\u0440\u0435\u0441\u043e\u0432 \u0441 \u043a\u043e\u043e\u0440\u0434\u0438\u043d\u0430\u0442\u0430\u043c\u0438 ${Number(result.resolved_addresses || 0)}, \u0431\u0435\u0437 \u0440\u0435\u0437\u0443\u043b\u044c\u0442\u0430\u0442\u0430 ${Number(result.not_found_addresses || 0)}.`);
+      } else {
+        onError(job.error || '\u041e\u0431\u043e\u0433\u0430\u0449\u0435\u043d\u0438\u0435 \u0411\u0421 \u0437\u0430\u0432\u0435\u0440\u0448\u0438\u043b\u043e\u0441\u044c \u0441 \u043e\u0448\u0438\u0431\u043a\u043e\u0439');
+      }
       await Promise.all([fetchCellStats(), fetchProjectStats()]);
     } catch (err: unknown) {
-      onError(
-        getRequestErrorMessage(
-          err,
-          'Не удалось обогатить справочник по адресам',
-          'Обогащение справочника БС по адресам выполняется дольше обычного. Попробуй позже или увеличь время на операцию.',
-        ),
-      );
+      onError(getRequestErrorMessage(err, '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0437\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u044c \u043e\u0431\u043e\u0433\u0430\u0449\u0435\u043d\u0438\u0435 \u0411\u0421'));
     } finally {
-      setEnrichLoading(false);
+      setCellTowerEnrichmentLoading(false);
     }
   }, [fetchCellStats, fetchProjectStats, getRequestErrorMessage, onError, onMessage, projectId]);
 
@@ -498,8 +498,8 @@ export const useProjectDataAdmin = ({
     cellStats,
     cellStatsLoading,
     cellStatsError,
-    enrichLoading,
-    enrichReport,
+    cellTowerEnrichmentJob,
+    cellTowerEnrichmentLoading,
     fetchCellStats,
     fetchProjectStats,
     handleLoadProjectDataFiles,

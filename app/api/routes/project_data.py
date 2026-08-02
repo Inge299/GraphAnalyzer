@@ -93,12 +93,17 @@ class CellTowerReferenceLoadResponse(BaseModel):
     loaded_at: str
 
 
-class CellTowerReferenceEnrichResponse(BaseModel):
-    message: str
+class ProjectCellTowerGeocodingJobResponse(BaseModel):
+    id: str
     project_id: int
-    raw_candidates: int
-    matched_by_address: int
-    inserted_rows: int
+    status: str
+    progress: int
+    message: str
+    result: dict | None = None
+    error: str | None = None
+    created_at: str
+    started_at: str | None = None
+    finished_at: str | None = None
 
 
 class CellTowerReferenceStatsResponse(BaseModel):
@@ -329,12 +334,34 @@ async def load_cell_tower_reference_data(
     raise HTTPException(status_code=410, detail="Cell tower CSV loading is retired. Configure the external cell-tower reference provider instead.")
 
 
-@router.post("/{project_id}/data/cell-towers/enrich-by-address", response_model=CellTowerReferenceEnrichResponse)
+@router.post("/{project_id}/data/cell-towers/enrich-by-address", response_model=ProjectCellTowerGeocodingJobResponse)
 async def enrich_cell_tower_reference_by_project_addresses(
     project_id: int,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ):
-    raise HTTPException(status_code=410, detail="Cell tower enrichment is managed by the external reference provider.")
+    project = (await db.execute(select(Project).where(Project.id == project_id))).scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
+    from app.services.project_cell_tower_geocoding_jobs import (
+        create_project_cell_tower_geocoding_job,
+        run_project_cell_tower_geocoding_job,
+    )
+    job = await create_project_cell_tower_geocoding_job(project_id)
+    background_tasks.add_task(run_project_cell_tower_geocoding_job, job["id"])
+    return job
+
+
+@router.get("/{project_id}/data/cell-towers/enrichment-jobs/{job_id}", response_model=ProjectCellTowerGeocodingJobResponse)
+async def get_cell_tower_enrichment_job(project_id: int, job_id: str, db: AsyncSession = Depends(get_db)):
+    project = (await db.execute(select(Project).where(Project.id == project_id))).scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
+    from app.services.project_cell_tower_geocoding_jobs import get_project_cell_tower_geocoding_job
+    job = await get_project_cell_tower_geocoding_job(project_id, job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Cell tower enrichment job not found")
+    return job
 
 
 @router.get("/data/cell-towers/stats", response_model=CellTowerReferenceStatsResponse)

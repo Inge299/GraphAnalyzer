@@ -211,7 +211,6 @@ export const layoutConfig = {
     cellTowerStatsTimeoutMs: 60000,
 
     // Таймаут обогащения справочника БС по адресам из данных проекта.
-    cellTowerEnrichTimeoutMs: 180000,
 
     // Таймаут выполнения тяжелых console-процедур.
     consoleRefreshTimeoutMs: 180000
