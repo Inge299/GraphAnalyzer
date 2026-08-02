@@ -107,39 +107,6 @@ export interface ProjectDataImportJob {
   started_at?: string | null;
   finished_at?: string | null;
 }
-export interface ProjectDataPreviewDataset {
-  id: string;
-  label: string;
-  row_count: number;
-  columns: string[];
-  sample_rows: Array<Record<string, unknown>>;
-}
-
-export interface ProjectDataPreviewResponse {
-  project_id: number;
-  dry_run: true;
-  write_performed: false;
-  files: Array<{
-    path: string;
-    size_bytes?: number;
-    plugin_id?: string | null;
-    plugin_name?: string | null;
-    score?: number | null;
-    members?: Array<{ path: string; plugin_id: string; plugin_name: string; score: number }>;
-  }>;
-  runs: Array<{
-    plugin: { id: string; name: string; description?: string };
-    recognized_files: string[];
-    source_files?: string[];
-    score: number;
-    datasets: ProjectDataPreviewDataset[];
-    manifest?: Record<string, unknown>;
-    converter_stdout?: string;
-    converter_stderr?: string;
-  }>;
-  warnings: string[];
-  errors: Array<{ path?: string; plugin_id?: string; stage: string; message: string }>;
-}
 export interface ProjectDataImportPlugin {
   id: string;
   name: string;

@@ -27,7 +27,6 @@ import type {
   ProjectDataImportPlugin, ProjectDataImportPluginInstallResponse, ProjectDataImportQualityReport,
   ProjectDataLoadResponse,
   ProjectDataImportJob,
-  ProjectDataPreviewResponse,
   ProjectDataStats,
   ReferenceProvider,
 } from '../types/api';
@@ -195,25 +194,7 @@ export const projectDataApi = {
       { source_path: sourcePath },
       { timeout: layoutConfig.network.projectDataLoadTimeoutMs },
     ).then(res => res.data),
-  previewFiles: (
-    projectId: number,
-    files: File[],
-    pluginOverrides: Array<{ path: string; plugin_id: string }> = [],
-  ) => {
-    const formData = new FormData();
-    files.forEach((file) => {
-      const relativeName = (file as any).webkitRelativePath || file.name;
-      formData.append('files', file, relativeName);
-    });
-    formData.append('sample_limit', '10');
-    if (pluginOverrides.length > 0) {
-      formData.append('plugin_overrides_json', JSON.stringify(pluginOverrides));
-    }
-    return api.post<ProjectDataPreviewResponse>('/api/v1/projects/' + projectId + '/data/preview-upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      timeout: layoutConfig.network.projectDataLoadTimeoutMs,
-    }).then(res => res.data);
-  },  loadFromFiles: (
+  loadFromFiles: (
     projectId: number,
     files: File[],
     pluginOverrides: Array<{ path: string; plugin_id: string }> = [],

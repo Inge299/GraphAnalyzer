@@ -24,7 +24,6 @@ import ServiceCategorySidebar from './service/ServiceCategorySidebar';
 import { useConsoleRegistryAdmin } from './service/useConsoleRegistryAdmin';
 import { useProcedureFormEditor } from './service/useProcedureFormEditor';
 import { useProjectDataAdmin } from './service/useProjectDataAdmin';
-import { formatDateTime } from '../../utils/formatters';
 import type { ProcedureParamFormItem, ProcedureResultSetFormItem, ServiceCategory } from './service/types';
 import './ServiceFunctionsView.css';
 
@@ -284,8 +283,6 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({
             projectDataFilesInputRef={projectDataAdmin.projectDataFilesInputRef}
             projectDataFileInputId={projectDataAdmin.projectDataFileInputId}
             projectDataLoading={projectDataAdmin.projectDataLoading}
-            projectDataPreviewLoading={projectDataAdmin.projectDataPreviewLoading}
-            projectDataPreview={projectDataAdmin.projectDataPreview}
             projectDataClearing={projectDataAdmin.projectDataClearing}
             projectStatsLoading={projectDataAdmin.projectStatsLoading}
             projectDataSelectedFiles={projectDataAdmin.projectDataSelectedFiles}
@@ -295,10 +292,8 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({
             projectDataImportJob={projectDataAdmin.projectDataImportJob}
             projectStats={projectDataAdmin.projectStats}
             formatBytes={formatBytes}
-            formatDateTime={formatDateTime}
             onLoadProjectDataFiles={(event) => void projectDataAdmin.handleLoadProjectDataFiles(event)}
             onRefreshStats={() => void projectDataAdmin.fetchProjectStats()}
-            onPreview={() => void projectDataAdmin.handlePreviewProjectData()}
             onUpload={() => void projectDataAdmin.handleUploadProjectData()}
             onClearSelection={projectDataAdmin.handleClearProjectDataSelection}
             onClearData={() => void projectDataAdmin.handleClearProjectData()}

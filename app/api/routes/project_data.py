@@ -22,7 +22,6 @@ from app.services.project_data_service import (
     get_project_data_stats,
     load_project_data,
     load_project_data_from_upload,
-    preview_project_data_from_upload,
 )
 from app.services.project_data_import_plugins import (
     delete_project_data_import_plugin,
@@ -182,42 +181,6 @@ async def load_data_for_project(
         graph_artifact=None,
     )
 
-
-@router.post("/{project_id}/data/preview-upload", response_model=dict)
-async def preview_data_for_project_upload(
-    project_id: int,
-    files: list[UploadFile] = File(...),
-    plugin_overrides_json: str | None = Form(None),
-    sample_limit: int = Form(10),
-    db: AsyncSession = Depends(get_db),
-):
-    project = (await db.execute(select(Project).where(Project.id == project_id))).scalar_one_or_none()
-    if not project:
-        raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
-
-    plugin_overrides: dict[str, str] | None = None
-    if plugin_overrides_json:
-        try:
-            raw_payload = json.loads(plugin_overrides_json)
-        except json.JSONDecodeError as exc:
-            raise HTTPException(status_code=400, detail=f"Invalid plugin_overrides_json: {exc.msg}") from exc
-        if not isinstance(raw_payload, list):
-            raise HTTPException(status_code=400, detail="plugin_overrides_json must be a JSON array")
-        plugin_overrides = {}
-        for item in raw_payload:
-            if not isinstance(item, dict):
-                continue
-            path = str(item.get("path") or "").strip()
-            plugin_id = str(item.get("plugin_id") or "").strip()
-            if path and plugin_id:
-                plugin_overrides[path] = plugin_id
-
-    return await preview_project_data_from_upload(
-        project_id=project_id,
-        files=files,
-        plugin_overrides=plugin_overrides,
-        sample_limit=sample_limit,
-    )
 
 @router.post("/{project_id}/data/load-upload", response_model=ProjectDataImportJobResponse)
 async def load_data_for_project_upload(

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { domainModelApi, projectDataApi } from '../../../services/api';
-import type { MetadataBundle, ProjectDataImportJob, ProjectDataImportPlugin, ProjectDataLoadResponse, ProjectDataPreviewResponse } from '../../../types/api';
+import type { MetadataBundle, ProjectDataImportJob, ProjectDataImportPlugin, ProjectDataLoadResponse } from '../../../types/api';
 import { createLocalId, detectProjectDataFileKind } from './formOptions';
 import type { ProjectDataSelectedFileItem } from './types';
 
@@ -74,8 +74,6 @@ export const useProjectDataAdmin = ({
   const [projectStatsError, setProjectStatsError] = useState<string | null>(null);
 
   const [projectDataLoading, setProjectDataLoading] = useState(false);
-  const [projectDataPreviewLoading, setProjectDataPreviewLoading] = useState(false);
-  const [projectDataPreview, setProjectDataPreview] = useState<ProjectDataPreviewResponse | null>(null);
   const [projectDataClearing, setProjectDataClearing] = useState(false);
   const [projectDataLastLoadResult, setProjectDataLastLoadResult] = useState<ProjectDataLoadResponse | null>(null);
   const [projectDataImportJob, setProjectDataImportJob] = useState<ProjectDataImportJob | null>(null);
@@ -296,7 +294,6 @@ export const useProjectDataAdmin = ({
 
     onError(null);
     setProjectDataLastLoadResult(null);
-    setProjectDataPreview(null);
 
     const recognized = await Promise.all(
       files.map(async (file) => {
@@ -331,18 +328,15 @@ export const useProjectDataAdmin = ({
   }, [availableImportPlugins, onError, onMessage]);
 
   const handleRemoveProjectDataFile = useCallback((fileId: string) => {
-    setProjectDataPreview(null);
     setProjectDataSelectedFiles((prev) => prev.filter((item) => item.id !== fileId));
   }, []);
 
   const handleClearProjectDataSelection = useCallback(() => {
-    setProjectDataPreview(null);
     setProjectDataSelectedFiles([]);
     onMessage(null);
   }, [onMessage]);
 
   const handleChangeProjectDataFilePlugin = useCallback((fileId: string, pluginId: string) => {
-    setProjectDataPreview(null);
     const selectedPlugin = availableImportPlugins.find((plugin) => plugin.id === pluginId) ?? null;
     setProjectDataSelectedFiles((prev) =>
       prev.map((item) =>
@@ -358,51 +352,6 @@ export const useProjectDataAdmin = ({
     );
   }, [availableImportPlugins]);
 
-  const handlePreviewProjectData = useCallback(async () => {
-    if (!projectId || projectDataSelectedFiles.length === 0) return;
-
-    setProjectDataPreviewLoading(true);
-    setProjectDataPreview(null);
-    onError(null);
-    onMessage(null);
-
-    try {
-      const pluginOverrides = projectDataSelectedFiles
-        .filter((item) => item.recognizedPluginId)
-        .map((item) => ({
-          path: (item.file as any).webkitRelativePath || item.file.name,
-          plugin_id: item.recognizedPluginId as string,
-        }));
-      const result = await projectDataApi.previewFiles(
-        projectId,
-        projectDataSelectedFiles.map((item) => item.file),
-        pluginOverrides,
-      );
-      setProjectDataPreview(result);
-      const detectedPluginsByPath = new Map(
-        result.files
-          .filter((file) => file.plugin_id)
-          .map((file) => [file.path, { id: file.plugin_id ?? null, name: file.plugin_name ?? null }]),
-      );
-      setProjectDataSelectedFiles((previous) => previous.map((item) => {
-        if (item.pluginSelectionMode === 'manual') return item;
-        const path = (item.file as File & { webkitRelativePath?: string }).webkitRelativePath || item.file.name;
-        const detected = detectedPluginsByPath.get(path);
-        return detected
-          ? { ...item, recognizedPluginId: detected.id, recognizedPluginName: detected.name, pluginSelectionMode: 'auto' }
-          : item;
-      }));
-      const totalRows = result.runs.reduce(
-        (sum, run) => sum + run.datasets.reduce((datasetSum, dataset) => datasetSum + Number(dataset.row_count || 0), 0),
-        0,
-      );
-      onMessage(`\u041f\u0440\u043e\u0432\u0435\u0440\u043a\u0430 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u0430: \u0440\u0430\u0441\u043f\u043e\u0437\u043d\u0430\u043d\u043e ${result.files.length} \u0444\u0430\u0439\u043b\u043e\u0432, \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043e ${totalRows} \u0441\u0442\u0440\u043e\u043a.`);
-    } catch (err: unknown) {
-      onError(getRequestErrorMessage(err, '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u0444\u0430\u0439\u043b\u044b \u043f\u0440\u043e\u0435\u043a\u0442\u0430'));
-    } finally {
-      setProjectDataPreviewLoading(false);
-    }
-  }, [getRequestErrorMessage, onError, onMessage, projectDataSelectedFiles, projectId]);
 
   const handleUploadProjectData = useCallback(async () => {
     if (!projectId || projectDataSelectedFiles.length === 0) return;
@@ -426,7 +375,6 @@ export const useProjectDataAdmin = ({
       );
       setProjectDataImportJob(job);
       setProjectDataSelectedFiles([]);
-      setProjectDataPreview(null);
       onMessage('\\u0418\\u043c\\u043f\\u043e\\u0440\\u0442 \\u0437\\u0430\\u043f\\u0443\\u0449\\u0435\\u043d \\u0432 \\u0444\\u043e\\u043d\\u0435. \\u041e\\u0441\\u0442\\u0430\\u0432\\u044c\\u0442\\u0435 \\u0441\\u0442\\u0440\\u0430\\u043d\\u0438\\u0446\\u0443 \\u043e\\u0442\\u043a\\u0440\\u044b\\u0442\\u043e\\u0439 \\u0434\\u043b\\u044f \\u043e\\u0442\\u0441\\u043b\\u0435\\u0436\\u0438\\u0432\\u0430\\u043d\\u0438\\u044f \\u043f\\u0440\\u043e\\u0433\\u0440\\u0435\\u0441\\u0441\\u0430.');
 
       while (job.status === 'queued' || job.status === 'running') {
@@ -511,7 +459,6 @@ export const useProjectDataAdmin = ({
   useEffect(() => {
     setProjectDataSelectedFiles([]);
     setProjectDataLastLoadResult(null);
-    setProjectDataPreview(null);
   }, [projectId]);
 
   return {
@@ -524,8 +471,6 @@ export const useProjectDataAdmin = ({
     projectStatsLoading,
     projectStatsError,
     projectDataLoading,
-    projectDataPreviewLoading,
-    projectDataPreview,
     projectDataClearing,
     projectDataLastLoadResult,
     projectDataImportJob,
@@ -555,7 +500,6 @@ export const useProjectDataAdmin = ({
     handleRemoveProjectDataFile,
     handleClearProjectDataSelection,
     handleChangeProjectDataFilePlugin,
-    handlePreviewProjectData,
     handleUploadProjectData,
     handleClearProjectData,
     handleEnrichCellTowersByAddress,
