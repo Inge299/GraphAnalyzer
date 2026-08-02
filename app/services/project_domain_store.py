@@ -678,13 +678,12 @@ async def mirror_source_rows(
     for batch in _batches(relations):
         await db.execute(relation_insert, batch)
 
-    fact_count_rows = await db.execute(text("""
-        SELECT fact_type, COUNT(*)::integer AS count
-        FROM project_domain_facts
-        WHERE project_id = :project_id AND load_batch_id = :load_batch_id
-        GROUP BY fact_type
-    """), {"project_id": project_id, "load_batch_id": load_batch_id})
-    fact_counts = {str(row[0]): int(row[1]) for row in fact_count_rows}
+    # Report this write batch only. Querying the whole load batch here turns a
+    # multi-part import into an increasingly expensive repeated aggregation.
+    fact_counts: dict[str, int] = {}
+    for fact in fact_rows:
+        fact_type = str(fact["fact_type"])
+        fact_counts[fact_type] = fact_counts.get(fact_type, 0) + 1
     return {
         "entities": len(entity_rows),
         "facts": len(fact_rows),

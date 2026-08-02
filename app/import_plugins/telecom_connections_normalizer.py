@@ -151,15 +151,32 @@ def _append(rows: list[dict[str, Any]], seen: set[tuple[Any, ...]], row: dict[st
         rows.append(row)
 
 
-def normalize_telecom_connections(source_dir: Path) -> dict[str, list[dict[str, Any]]]:
-    sources: dict[str, list[dict[str, Any]]] = {
-        "telecom_msisdn_imsi": [],
-        "telecom_msisdn_imei": [],
-        "telecom_connections": [],
-        "telecom_msisdn_base_stations": [],
-        "telecom_base_stations": [],
-        "telecom_base_station_locations": [],
-    }
+SOURCE_NAMES = (
+    "telecom_msisdn_imsi",
+    "telecom_msisdn_imei",
+    "telecom_connections",
+    "telecom_msisdn_base_stations",
+    "telecom_base_stations",
+    "telecom_base_station_locations",
+)
+
+
+def _empty_sources() -> dict[str, list[dict[str, Any]]]:
+    return {name: [] for name in SOURCE_NAMES}
+
+
+def _sources_size(sources: dict[str, list[dict[str, Any]]]) -> int:
+    return sum(len(rows) for rows in sources.values())
+
+
+def iter_normalized_telecom_connections(
+    source_dir: Path,
+    batch_size: int = 2_000,
+) -> Iterator[dict[str, list[dict[str, Any]]]]:
+    """Normalize telecom files in bounded batches for immediate persistence."""
+
+    batch_size = max(1, int(batch_size))
+    sources = _empty_sources()
     seen: dict[str, set[tuple[Any, ...]]] = defaultdict(set)
     stations: dict[str, dict[str, str]] = {}
 
@@ -228,5 +245,26 @@ def normalize_telecom_connections(source_dir: Path) -> dict[str, list[dict[str, 
                 if address:
                     _append(sources["telecom_base_station_locations"], seen["telecom_base_station_locations"], {"base_station": station, "location": address}, ("base_station", "location"))
 
-    sources["telecom_base_stations"] = list(stations.values())
-    return sources
+            if _sources_size(sources) >= batch_size:
+                yield sources
+                sources = _empty_sources()
+                seen = defaultdict(set)
+
+    if _sources_size(sources):
+        yield sources
+
+    station_rows = list(stations.values())
+    for offset in range(0, len(station_rows), batch_size):
+        sources = _empty_sources()
+        sources["telecom_base_stations"] = station_rows[offset:offset + batch_size]
+        yield sources
+
+
+def normalize_telecom_connections(source_dir: Path) -> dict[str, list[dict[str, Any]]]:
+    """Compatibility adapter for callers that still need a fully materialized result."""
+
+    merged = _empty_sources()
+    for batch in iter_normalized_telecom_connections(source_dir):
+        for name, rows in batch.items():
+            merged[name].extend(rows)
+    return merged

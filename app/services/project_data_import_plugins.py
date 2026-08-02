@@ -15,8 +15,8 @@ from typing import Any, Mapping, Type
 from fastapi import HTTPException
 
 from app.import_plugins.user_actions_address_book_normalizer import normalize_user_actions_address_book
-from app.import_plugins.traffic_geo_normalizer import normalize_traffic_geo
-from app.import_plugins.telecom_connections_normalizer import normalize_telecom_connections
+from app.import_plugins.traffic_geo_normalizer import iter_normalized_traffic_geo, normalize_traffic_geo
+from app.import_plugins.telecom_connections_normalizer import iter_normalized_telecom_connections, normalize_telecom_connections
 from app.import_plugin_sdk import (
     ImportExecutionContext,
     ImportPluginContractError,
@@ -469,6 +469,9 @@ class NodexTelecomConnectionsImportPlugin(ProjectDataImportPlugin):
     def normalize_sources(self, source_dir: Path) -> Mapping[str, list[dict[str, Any]]]:
         return normalize_telecom_connections(source_dir)
 
+    def iter_normalized_source_batches(self, source_dir: Path, batch_size: int = 2_000):
+        return iter_normalized_telecom_connections(source_dir, batch_size)
+
     def recognize_file(self, source_dir: Path, input_file: dict[str, Any]) -> int:
         required = {
             "\u0432\u0440\u0435\u043c\u044f \u043d\u0430\u0447\u0430\u043b\u0430 \u0441\u043e\u0435\u0434\u0438\u043d\u0435\u043d\u0438\u044f",
@@ -509,6 +512,9 @@ class NodexTrafficGeoImportPlugin(ProjectDataImportPlugin):
         return 100 if _is_traffic_headers(_normalize_header_values(_read_csv_headers(path))) else -1
     def normalize_sources(self, source_dir: Path) -> Mapping[str, list[dict[str, Any]]]:
         return normalize_traffic_geo(source_dir)
+
+    def iter_normalized_source_batches(self, source_dir: Path, batch_size: int = 2_000):
+        return iter_normalized_traffic_geo(source_dir, batch_size)
 
 IMPORT_PLUGINS, IMPORT_PLUGIN_BY_ID = _build_import_plugin_registry()
 

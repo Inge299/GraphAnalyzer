@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from app.import_plugins.telecom_connections_normalizer import normalize_telecom_connections
+from app.import_plugins.telecom_connections_normalizer import iter_normalized_telecom_connections, normalize_telecom_connections
 
 
 class TelecomConnectionsNormalizerTests(unittest.TestCase):
@@ -25,6 +25,26 @@ class TelecomConnectionsNormalizerTests(unittest.TestCase):
         self.assertEqual(sources["telecom_base_stations"][0]["azimuth_deg"], "190")
         self.assertEqual(len(sources["telecom_msisdn_imsi"]), 2)
         self.assertEqual(len(sources["telecom_msisdn_imei"]), 2)
+
+    def test_streaming_normalizer_keeps_all_rows(self) -> None:
+        headers = [
+            "\u0412\u0440\u0435\u043c\u044f \u043d\u0430\u0447\u0430\u043b\u0430 \u0441\u043e\u0435\u0434\u0438\u043d\u0435\u043d\u0438\u044f", "\u041d\u043e\u043c\u0435\u0440 \u0430\u0431\u043e\u043d\u0435\u043d\u0442\u0430", "IMSI \u0430\u0431\u043e\u043d\u0435\u043d\u0442\u0430", "IMEI \u0430\u0431\u043e\u043d\u0435\u043d\u0442\u0430", "\u041c/\u041f \u0430\u0431\u043e\u043d\u0435\u043d\u0442\u0430 \u043d\u0430 \u043d\u0430\u0447\u0430\u043b\u043e",
+        ]
+        rows = [
+            [f"01.07.2026 09:45:0{index}", "79283100198", "250028772665482", "86008205035995", "42615/67297568"]
+            for index in range(3)
+        ]
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "connections.csv"
+            path.write_text(
+                ";".join(headers) + "\n" + "\n".join(";".join(row) for row in rows) + "\n",
+                encoding="utf-8",
+            )
+            batches = list(iter_normalized_telecom_connections(Path(directory), batch_size=1))
+
+        self.assertGreaterEqual(len(batches), 3)
+        self.assertEqual(sum(len(batch.get("telecom_msisdn_imsi", [])) for batch in batches), 3)
+        self.assertEqual(sum(len(batch.get("telecom_msisdn_imei", [])) for batch in batches), 3)
 
 
 if __name__ == "__main__":

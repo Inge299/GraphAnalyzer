@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import shutil
 from dataclasses import dataclass
@@ -23,6 +24,7 @@ from app.services.project_data_import_plugins import (
     classify_project_data_import_files,
     execute_project_data_import_plugin,
 )
+from app.import_plugin_sdk import ProjectDataImportPlugin
 from app.services.project_data_import_pipeline import insert_normalized_source_rows
 from app.services.project_domain_store import clear_project_domain_store, ensure_project_domain_store
 from app.services.project_data_stats_service import get_project_domain_stats
@@ -30,6 +32,29 @@ from app.services.project_data_stats_service import get_project_domain_stats
 DATA_ROOT = Path("/app/data")
 IMPORT_GROUP_MAX_BYTES = 256 * 1024 * 1024
 IMPORT_GROUPED_PLUGIN_IDS = {"nodex_traffic_geo", "nodex_telecom_connections"}
+STREAM_IMPORT_BATCH_SIZE = 2_000
+
+
+def _next_normalized_batch(iterator):
+    try:
+        return next(iterator)
+    except StopIteration:
+        return None
+
+
+def _write_stream_import_manifest(output_dir: Path, plugin: ProjectDataImportPlugin, source_counts: dict[str, int]) -> Path:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    manifest_path = output_dir / "normalized_import_manifest.json"
+    manifest_path.write_text(json.dumps({
+        "plugin_id": plugin.id,
+        "sdk_version": "2.0",
+        "mode": "streamed_normalized_sources",
+        "generated_at": datetime.utcnow().isoformat() + "Z",
+        "input_dir": str(output_dir.parent),
+        "sources": source_counts,
+    }, ensure_ascii=False, indent=2), encoding="utf-8")
+    return manifest_path
+
 _project_data_schema_ready = False
 _project_data_schema_lock = asyncio.Lock()
 @dataclass
@@ -198,31 +223,79 @@ async def _load_project_data_from_collected_files(
         await asyncio.to_thread(_link_input_group, source_dir, plugin_source_dir, grouped_files)
         plugin = IMPORT_PLUGIN_BY_ID[plugin_id]
         if progress_callback:
-            await progress_callback(10 + int((group_index - 1) * 70 / group_count), f"?????????: {plugin.name}")
-        result = await asyncio.to_thread(execute_project_data_import_plugin, plugin, plugin_source_dir, plugin_output_dir)
+            await progress_callback(10 + int((group_index - 1) * 70 / group_count), f"\u041f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043a\u0430: {plugin.name}")
+        supports_streaming = type(plugin).iter_normalized_source_batches is not ProjectDataImportPlugin.iter_normalized_source_batches
+        batch_source_counts: dict[str, int] = {}
+        batch_fact_counts: dict[str, int] = {}
+        batch_entities = batch_facts = batch_relations = 0
+        warnings: list[str] = []
+        if supports_streaming:
+            batches = plugin.iter_normalized_source_batches(plugin_source_dir, STREAM_IMPORT_BATCH_SIZE)
+            batch_number = 0
+            while True:
+                normalized_sources = await asyncio.to_thread(_next_normalized_batch, batches)
+                if normalized_sources is None:
+                    break
+                if not any(normalized_sources.values()):
+                    continue
+                batch_number += 1
+                if progress_callback:
+                    batch_progress = min(
+                        85,
+                        10 + int((group_index - 1) * 70 / group_count) + min(65, batch_number // 5),
+                    )
+                    await progress_callback(
+                        batch_progress,
+                        f"\u0421\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u0438\u0435: {plugin.name}, \u043f\u043e\u0440\u0446\u0438\u044f {batch_number}",
+                    )
+                insert_result = await insert_normalized_source_rows(db, project_id, normalized_sources, load_batch_id)
+                batch_entities += insert_result.entities
+                batch_facts += insert_result.facts
+                batch_relations += insert_result.relations
+                for name, count in insert_result.source_counts.items():
+                    batch_source_counts[name] = batch_source_counts.get(name, 0) + count
+                for name, count in insert_result.fact_counts.items():
+                    batch_fact_counts[name] = batch_fact_counts.get(name, 0) + count
+            manifest_path = await asyncio.to_thread(_write_stream_import_manifest, plugin_output_dir, plugin, batch_source_counts)
+            result = ProjectDataImportExecutionResult(
+                plugin_id=plugin.id,
+                plugin_name=plugin.name,
+                plugin_description=plugin.description,
+                manifest_path=manifest_path,
+                normalized_sources={},
+                stdout="Streamed normalization completed",
+            )
+        else:
+            result = await asyncio.to_thread(execute_project_data_import_plugin, plugin, plugin_source_dir, plugin_output_dir)
+            insert_result = await insert_normalized_source_rows(db, project_id, result.normalized_sources, load_batch_id)
+            batch_entities = insert_result.entities
+            batch_facts = insert_result.facts
+            batch_relations = insert_result.relations
+            batch_source_counts = dict(insert_result.source_counts)
+            batch_fact_counts = dict(insert_result.fact_counts)
+            warnings = list(result.warnings)
         if progress_callback:
-            await progress_callback(15 + int(group_index * 70 / group_count), f"??????????: {plugin.name}")
-        insert_result = await insert_normalized_source_rows(db, project_id, result.normalized_sources, load_batch_id)
-        total_entities += insert_result.entities
-        total_facts += insert_result.facts
-        total_relations += insert_result.relations
-        for name, count in insert_result.source_counts.items():
+            await progress_callback(15 + int(group_index * 70 / group_count), f"\u0421\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u043e: {plugin.name}")
+        total_entities += batch_entities
+        total_facts += batch_facts
+        total_relations += batch_relations
+        for name, count in batch_source_counts.items():
             total_sources[name] = total_sources.get(name, 0) + count
-        for name, count in insert_result.fact_counts.items():
+        for name, count in batch_fact_counts.items():
             total_fact_types[name] = total_fact_types.get(name, 0) + count
         import_runs.append({
             "plugin": {"id": result.plugin_id, "name": result.plugin_name, "description": result.plugin_description},
             "recognized_files": [str(item["path"]) for item in grouped_files],
             "output": {
-                "sources": insert_result.source_counts,
-                "entities": insert_result.entities,
-                "facts": insert_result.facts,
-                "relations": insert_result.relations,
-                "fact_types": insert_result.fact_counts,
+                "sources": batch_source_counts,
+                "entities": batch_entities,
+                "facts": batch_facts,
+                "relations": batch_relations,
+                "fact_types": batch_fact_counts,
             },
             "manifest": read_manifest(result.manifest_path),
             "score": match.score,
-            "warnings": result.warnings,
+            "warnings": warnings,
         })
 
     if progress_callback:

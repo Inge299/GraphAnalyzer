@@ -144,8 +144,20 @@ def _append_location(target: list[dict[str, Any]], seen: set[tuple[Any, ...]], *
         target.append(row)
 
 
-def normalize_traffic_geo(source_dir: Path) -> dict[str, list[dict[str, Any]]]:
-    sources: dict[str, list[dict[str, Any]]] = {"communications": [], "device_history": [], "location_events": [], "ip_bindings": []}
+SOURCE_NAMES = ("communications", "device_history", "location_events", "ip_bindings")
+
+
+def _empty_sources() -> dict[str, list[dict[str, Any]]]:
+    return {name: [] for name in SOURCE_NAMES}
+
+
+def _has_rows(sources: dict[str, list[dict[str, Any]]]) -> bool:
+    return any(sources.values())
+
+
+def iter_normalized_traffic_geo(source_dir: Path, batch_size: int = 2_000) -> Iterator[dict[str, list[dict[str, Any]]]]:
+    """Normalize traffic exports in bounded batches for multi-gigabyte sources."""
+    sources = _empty_sources()
     devices: dict[tuple[str, str, str], list[str]] = {}
     location_seen: set[tuple[Any, ...]] = set()
 
@@ -178,21 +190,41 @@ def normalize_traffic_geo(source_dir: Path) -> dict[str, list[dict[str, Any]]]:
                     if imsi or imei:
                         key = (phone, imsi, imei)
                         devices[key] = [min(devices.get(key, [start, end])[0], start), max(devices.get(key, [start, end])[1], end)]
-                continue
+            elif abon and event_time:
+                cell, address, ip_address = _value(row, "cell"), _value(row, "address"), _text(_value(row, "ip"))
+                identifiers = (("msisdn", abon), ("imsi", abon_imsi), ("imei", abon_imei))
+                for identifier_type, identifier_value in identifiers:
+                    _append_location(sources["location_events"], location_seen, identifier_type=identifier_type, identifier_value=identifier_value, event_time=event_time, address=address, imsi=abon_imsi, cell=cell)
+                    if ip_address and identifier_value:
+                        lac, bs = _cell(cell)
+                        mcc, mnc = _mcc_mnc(abon_imsi)
+                        sources["ip_bindings"].append({"identifier_type": identifier_type, "identifier_value": identifier_value, "ip_address": ip_address, "event_time": event_time, "address": address, "mcc": mcc, "mnc": mnc, "lac": lac, "bs": bs})
+                if abon_imsi or abon_imei:
+                    key = (abon, abon_imsi, abon_imei)
+                    devices[key] = [min(devices.get(key, [event_time, event_time])[0], event_time), max(devices.get(key, [event_time, event_time])[1], event_time)]
 
-            if not abon or not event_time:
-                continue
-            cell, address, ip_address = _value(row, "cell"), _value(row, "address"), _text(_value(row, "ip"))
-            identifiers = (("msisdn", abon), ("imsi", abon_imsi), ("imei", abon_imei))
-            for identifier_type, identifier_value in identifiers:
-                _append_location(sources["location_events"], location_seen, identifier_type=identifier_type, identifier_value=identifier_value, event_time=event_time, address=address, imsi=abon_imsi, cell=cell)
-                if ip_address and identifier_value:
-                    lac, bs = _cell(cell)
-                    mcc, mnc = _mcc_mnc(abon_imsi)
-                    sources["ip_bindings"].append({"identifier_type": identifier_type, "identifier_value": identifier_value, "ip_address": ip_address, "event_time": event_time, "address": address, "mcc": mcc, "mnc": mnc, "lac": lac, "bs": bs})
-            if abon_imsi or abon_imei:
-                key = (abon, abon_imsi, abon_imei)
-                devices[key] = [min(devices.get(key, [event_time, event_time])[0], event_time), max(devices.get(key, [event_time, event_time])[1], event_time)]
+            if sum(len(rows) for rows in sources.values()) >= batch_size:
+                yield sources
+                sources = _empty_sources()
+                location_seen.clear()
 
-    sources["device_history"] = [{"abon": phone, "imsi": imsi, "imei": imei, "period_start": period[0], "period_end": period[1]} for (phone, imsi, imei), period in devices.items()]
-    return sources
+    if _has_rows(sources):
+        yield sources
+
+    device_batch: list[dict[str, Any]] = []
+    for (phone, imsi, imei), period in devices.items():
+        device_batch.append({"abon": phone, "imsi": imsi, "imei": imei, "period_start": period[0], "period_end": period[1]})
+        if len(device_batch) >= batch_size:
+            yield {"device_history": device_batch}
+            device_batch = []
+    if device_batch:
+        yield {"device_history": device_batch}
+
+
+def normalize_traffic_geo(source_dir: Path) -> dict[str, list[dict[str, Any]]]:
+    """Compatibility adapter for external callers of the original list-based API."""
+    merged = _empty_sources()
+    for batch in iter_normalized_traffic_geo(source_dir):
+        for name, rows in batch.items():
+            merged.setdefault(name, []).extend(rows)
+    return merged

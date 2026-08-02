@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Iterator, Mapping
 
 IMPORT_PLUGIN_SDK_VERSION = "2.0"
 
@@ -96,6 +96,19 @@ class ProjectDataImportPlugin:
 
     def normalize_sources(self, source_dir: Path) -> Mapping[str, list[dict[str, Any]]]:
         raise NotImplementedError
+
+    def iter_normalized_source_batches(
+        self,
+        source_dir: Path,
+        batch_size: int = 2_000,
+    ) -> Iterator[Mapping[str, list[dict[str, Any]]]]:
+        """Yield normalized rows in write-ready batches.
+
+        Third-party plugins keep the original one-result behavior until they opt in.
+        """
+
+        del batch_size
+        yield self.normalize_sources(source_dir)
 
     def recognize_file(self, source_dir: Path, input_file: dict[str, Any]) -> int:
         raise NotImplementedError
