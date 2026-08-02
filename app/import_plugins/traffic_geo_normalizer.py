@@ -5,7 +5,7 @@ import re
 from collections import defaultdict
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 
 # Input aliases are deliberately kept here, next to the parser. The domain
@@ -88,22 +88,37 @@ def _mcc_mnc(imsi: str) -> tuple[str, str]:
     return (imsi[:3], imsi[3:5].lstrip("0") or "0") if imsi else ("", "")
 
 
-def _read_rows(path: Path) -> list[dict[str, str]]:
-    raw = path.read_bytes()
-    source = ""
-    for encoding in ("utf-8-sig", "utf-8", "cp1251", "cp866"):
+def _read_rows(path: Path) -> Iterator[dict[str, str]]:
+    """Yield CSV rows without loading a potentially multi-gigabyte file into memory."""
+    try:
+        with path.open("rb") as raw_stream:
+            sample = raw_stream.read(64 * 1024)
+    except OSError:
+        return
+
+    encoding = ""
+    for candidate in ("utf-8-sig", "utf-8", "cp1251", "cp866"):
         try:
-            source = raw.decode(encoding)
+            sample.decode(candidate)
+            encoding = candidate
             break
         except UnicodeDecodeError:
             continue
-    if not source:
-        return []
-    lines = source.splitlines()
-    if not lines:
-        return []
-    delimiter = max((";", ",", "\t"), key=lines[0].count)
-    return [{_text(key): _text(value) for key, value in row.items() if key} for row in csv.DictReader(lines, delimiter=delimiter)]
+    if not encoding:
+        return
+
+    try:
+        with path.open("r", encoding=encoding, newline="") as source:
+            header = source.readline()
+            if not header:
+                return
+            delimiter = max((";", ",", "\t"), key=header.count)
+            source.seek(0)
+            reader = csv.DictReader(source, delimiter=delimiter)
+            for row in reader:
+                yield {_text(key): _text(value) for key, value in row.items() if key}
+    except (OSError, UnicodeError, csv.Error):
+        return
 
 
 def _value(row: dict[str, str], field: str) -> str:

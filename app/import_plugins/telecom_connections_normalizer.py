@@ -5,7 +5,7 @@ import re
 from collections import defaultdict
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 HEADERS = {
     "time": ("\u0412\u0440\u0435\u043c\u044f \u043d\u0430\u0447\u0430\u043b\u0430 \u0441\u043e\u0435\u0434\u0438\u043d\u0435\u043d\u0438\u044f",),
@@ -111,21 +111,37 @@ def _address(value: Any) -> str:
     return "" if raw.casefold() in NULL_VALUES else raw
 
 
-def _read_rows(path: Path) -> list[dict[str, str]]:
-    raw = path.read_bytes()
-    for encoding in ("utf-8-sig", "utf-8", "cp1251", "cp866"):
+def _read_rows(path: Path) -> Iterator[dict[str, str]]:
+    """Yield CSV rows without loading a potentially multi-gigabyte file into memory."""
+    try:
+        with path.open("rb") as raw_stream:
+            sample = raw_stream.read(64 * 1024)
+    except OSError:
+        return
+
+    encoding = ""
+    for candidate in ("utf-8-sig", "utf-8", "cp1251", "cp866"):
         try:
-            text = raw.decode(encoding)
+            sample.decode(candidate)
+            encoding = candidate
             break
         except UnicodeDecodeError:
             continue
-    else:
-        return []
-    lines = text.splitlines()
-    if not lines:
-        return []
-    delimiter = max((";", ",", "\t"), key=lines[0].count)
-    return [{_text(key): _text(value) for key, value in row.items() if key} for row in csv.DictReader(lines, delimiter=delimiter)]
+    if not encoding:
+        return
+
+    try:
+        with path.open("r", encoding=encoding, newline="") as source:
+            header = source.readline()
+            if not header:
+                return
+            delimiter = max((";", ",", "\t"), key=header.count)
+            source.seek(0)
+            reader = csv.DictReader(source, delimiter=delimiter)
+            for row in reader:
+                yield {_text(key): _text(value) for key, value in row.items() if key}
+    except (OSError, UnicodeError, csv.Error):
+        return
 
 
 def _append(rows: list[dict[str, Any]], seen: set[tuple[Any, ...]], row: dict[str, Any], keys: tuple[str, ...]) -> None:

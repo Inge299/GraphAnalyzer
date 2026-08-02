@@ -6,7 +6,7 @@ import re
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 
 HEADERS = {
@@ -41,24 +41,37 @@ def _event_time(value: Any) -> str:
     return ""
 
 
-def _read_rows(path: Path) -> list[dict[str, str]]:
-    raw = path.read_bytes()
-    for encoding in ("utf-8-sig", "utf-8", "cp1251", "cp866"):
+def _read_rows(path: Path) -> Iterator[dict[str, str]]:
+    """Yield CSV rows without loading a potentially multi-gigabyte file into memory."""
+    try:
+        with path.open("rb") as raw_stream:
+            sample = raw_stream.read(64 * 1024)
+    except OSError:
+        return
+
+    encoding = ""
+    for candidate in ("utf-8-sig", "utf-8", "cp1251", "cp866"):
         try:
-            content = raw.decode(encoding)
+            sample.decode(candidate)
+            encoding = candidate
             break
         except UnicodeDecodeError:
             continue
-    else:
-        return []
-    lines = content.splitlines()
-    if not lines:
-        return []
-    delimiter = max((";", ",", "\t"), key=lines[0].count)
-    return [
-        {_text(key): _text(value) for key, value in row.items() if key}
-        for row in csv.DictReader(lines, delimiter=delimiter)
-    ]
+    if not encoding:
+        return
+
+    try:
+        with path.open("r", encoding=encoding, newline="") as source:
+            header = source.readline()
+            if not header:
+                return
+            delimiter = max((";", ",", "\t"), key=header.count)
+            source.seek(0)
+            reader = csv.DictReader(source, delimiter=delimiter)
+            for row in reader:
+                yield {_text(key): _text(value) for key, value in row.items() if key}
+    except (OSError, UnicodeError, csv.Error):
+        return
 
 
 def _extract_technical_data(value: Any) -> tuple[str, str]:

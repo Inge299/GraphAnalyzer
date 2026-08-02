@@ -28,6 +28,8 @@ from app.services.project_domain_store import clear_project_domain_store, ensure
 from app.services.project_data_stats_service import get_project_domain_stats
 
 DATA_ROOT = Path("/app/data")
+IMPORT_GROUP_MAX_BYTES = 256 * 1024 * 1024
+IMPORT_GROUPED_PLUGIN_IDS = {"nodex_traffic_geo", "nodex_telecom_connections"}
 _project_data_schema_ready = False
 _project_data_schema_lock = asyncio.Lock()
 @dataclass
@@ -120,6 +122,26 @@ async def load_project_data_from_upload(
     )
 
 
+def _split_import_file_groups(plugin_id: str, files: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
+    """Keep memory bounded for high-volume plugins while preserving small-file batches."""
+    if plugin_id not in IMPORT_GROUPED_PLUGIN_IDS or len(files) < 2:
+        return [files]
+
+    groups: list[list[dict[str, Any]]] = []
+    current: list[dict[str, Any]] = []
+    current_bytes = 0
+    for item in files:
+        size_bytes = max(0, int(item.get("size_bytes") or 0))
+        if current and current_bytes + size_bytes > IMPORT_GROUP_MAX_BYTES:
+            groups.append(current)
+            current, current_bytes = [], 0
+        current.append(item)
+        current_bytes += size_bytes
+    if current:
+        groups.append(current)
+    return groups
+
+
 def _link_input_group(source_dir: Path, target_dir: Path, files: list[dict[str, Any]]) -> None:
     """Expose a plugin input group without duplicating multi-gigabyte source files."""
     for item in files:
@@ -163,18 +185,23 @@ async def _load_project_data_from_collected_files(
     import_runs: list[dict[str, Any]] = []
 
     from app.services.project_data_import_plugins import IMPORT_PLUGIN_BY_ID
-    group_count = max(1, len(groups))
-    for group_index, (plugin_id, grouped_files) in enumerate(groups.items(), start=1):
+    grouped_batches = [
+        (plugin_id, files_batch)
+        for plugin_id, grouped_files in groups.items()
+        for files_batch in _split_import_file_groups(plugin_id, grouped_files)
+    ]
+    group_count = max(1, len(grouped_batches))
+    for group_index, (plugin_id, grouped_files) in enumerate(grouped_batches, start=1):
         match = next(item for item in matches if item.plugin_id == plugin_id)
-        plugin_source_dir = source_dir / "_plugin_groups" / plugin_id
-        plugin_output_dir = output_dir / plugin_id
+        plugin_source_dir = source_dir / "_plugin_groups" / plugin_id / f"{group_index:04d}"
+        plugin_output_dir = output_dir / plugin_id / f"{group_index:04d}"
         await asyncio.to_thread(_link_input_group, source_dir, plugin_source_dir, grouped_files)
         plugin = IMPORT_PLUGIN_BY_ID[plugin_id]
         if progress_callback:
-            await progress_callback(10 + int((group_index - 1) * 70 / group_count), f"\u041e\u0431\u0440\u0430\u0431\u043e\u0442\u043a\u0430: {plugin.name}")
+            await progress_callback(10 + int((group_index - 1) * 70 / group_count), f"?????????: {plugin.name}")
         result = await asyncio.to_thread(execute_project_data_import_plugin, plugin, plugin_source_dir, plugin_output_dir)
         if progress_callback:
-            await progress_callback(15 + int(group_index * 70 / group_count), f"\u0421\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u0438\u0435: {plugin.name}")
+            await progress_callback(15 + int(group_index * 70 / group_count), f"??????????: {plugin.name}")
         insert_result = await insert_normalized_source_rows(db, project_id, result.normalized_sources, load_batch_id)
         total_entities += insert_result.entities
         total_facts += insert_result.facts
