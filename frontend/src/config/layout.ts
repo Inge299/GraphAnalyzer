@@ -196,7 +196,7 @@ export const layoutConfig = {
     artifactsLoadTimeoutMs: 30000,
 
     // Таймаут загрузки исходных данных проекта из выбранных файлов.
-    projectDataLoadTimeoutMs: 300000,
+    projectDataLoadTimeoutMs: 3600000,
 
     // Таймаут обновления статистики проекта после загрузки и очистки.
     projectDataStatsTimeoutMs: 60000,

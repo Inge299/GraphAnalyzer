@@ -368,10 +368,16 @@ export const useProjectDataAdmin = ({
           path: (item.file as any).webkitRelativePath || item.file.name,
           plugin_id: item.recognizedPluginId as string,
         }));
+      onMessage('\u041f\u0435\u0440\u0435\u0434\u0430\u0447\u0430 \u0444\u0430\u0439\u043b\u043e\u0432 \u043d\u0430 \u0441\u0435\u0440\u0432\u0435\u0440...');
       let job = await projectDataApi.loadFromFiles(
         projectId,
         projectDataSelectedFiles.map((item) => item.file),
         pluginOverrides,
+        (loaded, total) => {
+          if (total && total > 0) {
+            onMessage(`\u041f\u0435\u0440\u0435\u0434\u0430\u0447\u0430 \u0444\u0430\u0439\u043b\u043e\u0432 \u043d\u0430 \u0441\u0435\u0440\u0432\u0435\u0440: ${Math.min(100, Math.round((loaded / total) * 100))}%`);
+          }
+        },
       );
       setProjectDataImportJob(job);
       setProjectDataSelectedFiles([]);

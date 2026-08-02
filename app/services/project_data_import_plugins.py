@@ -29,6 +29,8 @@ CONFIG_PATH = Path(__file__).resolve().parents[1] / "configuration" / "project_d
 SUPPORTED_IMPORT_EXTENSIONS = {".csv", ".txt", ".zip"}
 IMPORT_PLUGIN_PACKAGE = "app.import_plugins"
 EXTERNAL_IMPORT_PLUGIN_DIR = Path(os.getenv("IMPORT_PLUGIN_DIR", "/app/data/import_plugins"))
+RECOGNITION_SAMPLE_ROWS = 1_000
+RECOGNITION_SAMPLE_BYTES = 4 * 1024 * 1024
 
 logger = logging.getLogger(__name__)
 
@@ -95,15 +97,22 @@ def _is_traffic_headers(headers: set[str]) -> bool:
         or "\u0432\u0440\u0435\u043c\u044f \u043e\u043f\u0440\u0435\u0434\u0435\u043b\u0435\u043d\u0438\u044f \u043c\u0435\u0441\u0442\u043e\u043f\u043e\u043b\u043e\u0436\u0435\u043d\u0438\u044f" in headers
     )
 
+def _read_csv_headers_from_sample(raw: bytes) -> list[str]:
+    """Read a header from a bounded recognition sample, never from a whole file."""
+    text_data = _decode_text(raw)
+    sample_lines = text_data.splitlines()[:RECOGNITION_SAMPLE_ROWS]
+    reader = csv.reader(sample_lines, delimiter=";")
+    return next(reader, [])
+
+
 def _read_csv_headers(path: Path) -> list[str]:
     try:
-        raw = path.read_bytes()
+        with path.open("rb") as source:
+            raw = source.read(RECOGNITION_SAMPLE_BYTES)
     except OSError:
         return []
 
-    text_data = _decode_text(raw)
-    reader = csv.reader(text_data.splitlines(), delimiter=";")
-    return next(reader, [])
+    return _read_csv_headers_from_sample(raw)
 
 
 def _read_zip_csv_headers(path: Path) -> list[tuple[str, list[str]]]:
@@ -118,12 +127,10 @@ def _read_zip_csv_headers(path: Path) -> list[tuple[str, list[str]]]:
                     continue
                 try:
                     with archive.open(info, "r") as raw_stream:
-                        raw_bytes = raw_stream.read(65536)
+                        raw_bytes = raw_stream.read(RECOGNITION_SAMPLE_BYTES)
                 except OSError:
                     continue
-                text_data = _decode_text(raw_bytes)
-                reader = csv.reader(text_data.splitlines(), delimiter=";")
-                headers = next(reader, [])
+                headers = _read_csv_headers_from_sample(raw_bytes)
                 results.append((internal_name, headers))
     except (OSError, zipfile.BadZipFile):
         return []

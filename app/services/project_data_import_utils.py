@@ -13,7 +13,8 @@ from fastapi import HTTPException
 KNOWN_ENCODINGS = ("utf-8-sig", "cp1251", "cp866", "utf-8")
 MISSING_TEXT_MARKERS = {"null", "none", "n/a", "na", "-"}
 MAX_ARCHIVE_MEMBERS = 10_000
-MAX_ARCHIVE_UNCOMPRESSED_BYTES = 2 * 1024 * 1024 * 1024
+MAX_ARCHIVE_UNCOMPRESSED_BYTES = 10 * 1024 * 1024 * 1024
+UPLOAD_CHUNK_SIZE = 8 * 1024 * 1024
 
 
 def parse_iso_datetime(value: str) -> datetime | None:
@@ -145,11 +146,19 @@ async def save_uploaded_files(upload_dir: Path, files: list[Any]) -> list[dict[s
         if root not in target.parents and target != root:
             raise HTTPException(status_code=400, detail="Invalid uploaded file path")
         target.parent.mkdir(parents=True, exist_ok=True)
-        content = await file_obj.read()
-        if not content:
+        size_bytes = 0
+        try:
+            with target.open("wb") as target_stream:
+                while chunk := await file_obj.read(UPLOAD_CHUNK_SIZE):
+                    target_stream.write(chunk)
+                    size_bytes += len(chunk)
+        except Exception:
+            target.unlink(missing_ok=True)
+            raise
+        if not size_bytes:
+            target.unlink(missing_ok=True)
             continue
-        target.write_bytes(content)
-        saved.append({"path": str(rel_path).replace("\\", "/"), "size_bytes": len(content)})
+        saved.append({"path": str(rel_path).replace("\\", "/"), "size_bytes": size_bytes})
 
     if not saved:
         raise HTTPException(status_code=400, detail="No files received for upload")

@@ -198,6 +198,7 @@ export const projectDataApi = {
     projectId: number,
     files: File[],
     pluginOverrides: Array<{ path: string; plugin_id: string }> = [],
+    onUploadProgress?: (loaded: number, total: number | undefined) => void,
   ) => {
     const formData = new FormData();
     files.forEach((file) => {
@@ -210,6 +211,7 @@ export const projectDataApi = {
     return api.post<ProjectDataImportJob>(`/api/v1/projects/${projectId}/data/load-upload`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
       timeout: layoutConfig.network.projectDataLoadTimeoutMs,
+      onUploadProgress: (event) => onUploadProgress?.(event.loaded, event.total),
     }).then(res => res.data);
   },
   getImportJob: (projectId: number, jobId: string) =>
