@@ -17,6 +17,7 @@ from app.services.import_quality_service import get_import_quality_report
 from app.services.project_data_service import (
     DATA_ROOT,
     acquire_project_data_lock,
+    try_acquire_project_data_lock,
     clear_project_data,
     ensure_project_data_tables,
     get_project_data_stats,
@@ -306,7 +307,11 @@ async def clear_data_for_project(
     if not project:
         raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
 
-    await acquire_project_data_lock(db=db, project_id=project_id)
+    if not await try_acquire_project_data_lock(db=db, project_id=project_id):
+        raise HTTPException(
+            status_code=409,
+            detail="Project data are being imported or cleared. Wait for the current operation to finish.",
+        )
     deleted = await clear_project_data(db=db, project_id=project_id)
     await db.commit()
     return ProjectDataClearResponse(

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import shutil
 from dataclasses import dataclass
 from datetime import datetime
@@ -80,7 +81,8 @@ async def load_project_data(
     timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
     load_batch_id = timestamp
     output_dir = DATA_ROOT / "imports" / f"project_{project_id}" / timestamp
-    input_files = expand_import_containers(source_dir, collect_input_files(source_dir))
+    input_files = await asyncio.to_thread(collect_input_files, source_dir)
+    input_files = await asyncio.to_thread(expand_import_containers, source_dir, input_files)
     return await _load_project_data_from_collected_files(
         db=db,
         project_id=project_id,
@@ -104,7 +106,7 @@ async def load_project_data_from_upload(
     load_batch_id = timestamp
     source_dir = DATA_ROOT / "uploads" / f"project_{project_id}" / timestamp
     uploaded_files = await save_uploaded_files(source_dir, files)
-    uploaded_files = expand_import_containers(source_dir, uploaded_files)
+    uploaded_files = await asyncio.to_thread(expand_import_containers, source_dir, uploaded_files)
     output_dir = DATA_ROOT / "imports" / f"project_{project_id}" / timestamp
     return await _load_project_data_from_collected_files(
         db=db,
@@ -118,7 +120,8 @@ async def load_project_data_from_upload(
     )
 
 
-def _copy_input_group(source_dir: Path, target_dir: Path, files: list[dict[str, Any]]) -> None:
+def _link_input_group(source_dir: Path, target_dir: Path, files: list[dict[str, Any]]) -> None:
+    """Expose a plugin input group without duplicating multi-gigabyte source files."""
     for item in files:
         relative_path = Path(str(item.get("path") or ""))
         if not relative_path.parts:
@@ -126,7 +129,11 @@ def _copy_input_group(source_dir: Path, target_dir: Path, files: list[dict[str, 
         source_path = source_dir / relative_path
         target_path = target_dir / relative_path
         target_path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(source_path, target_path)
+        try:
+            os.link(source_path, target_path)
+        except OSError:
+            # A hard link is unavailable across filesystems; keep the portable fallback.
+            shutil.copy2(source_path, target_path)
 
 
 
@@ -161,7 +168,7 @@ async def _load_project_data_from_collected_files(
         match = next(item for item in matches if item.plugin_id == plugin_id)
         plugin_source_dir = source_dir / "_plugin_groups" / plugin_id
         plugin_output_dir = output_dir / plugin_id
-        _copy_input_group(source_dir, plugin_source_dir, grouped_files)
+        await asyncio.to_thread(_link_input_group, source_dir, plugin_source_dir, grouped_files)
         plugin = IMPORT_PLUGIN_BY_ID[plugin_id]
         if progress_callback:
             await progress_callback(10 + int((group_index - 1) * 70 / group_count), f"\u041e\u0431\u0440\u0430\u0431\u043e\u0442\u043a\u0430: {plugin.name}")
@@ -222,6 +229,14 @@ async def acquire_project_data_lock(db: AsyncSession, project_id: int) -> None:
 
     lock_key = 910000000 + int(project_id)
     await db.execute(text("SELECT pg_advisory_xact_lock(:lock_key)"), {"lock_key": lock_key})
+
+
+async def try_acquire_project_data_lock(db: AsyncSession, project_id: int) -> bool:
+    """Acquire a project lock immediately, without leaving an interactive request waiting."""
+
+    lock_key = 910000000 + int(project_id)
+    result = await db.execute(text("SELECT pg_try_advisory_xact_lock(:lock_key)"), {"lock_key": lock_key})
+    return bool(result.scalar())
 
 async def get_project_data_stats(db: AsyncSession, project_id: int) -> dict[str, Any]:
     return await get_project_domain_stats(db, project_id)

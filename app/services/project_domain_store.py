@@ -540,7 +540,10 @@ async def mirror_source_rows(
         fact_definition = mapping.get("fact") if isinstance(mapping.get("fact"), dict) else {}
         entities_definition = mapping.get("entities") if isinstance(mapping.get("entities"), list) else []
         relations_definition = mapping.get("relations") if isinstance(mapping.get("relations"), list) else []
-        for row in rows:
+        for row_index, row in enumerate(rows, start=1):
+            # Keep the API responsive while a large normalized source is prepared.
+            if row_index % 1_000 == 0:
+                await asyncio.sleep(0)
             if not isinstance(row, dict):
                 continue
             fact_participants: list[dict[str, str]] = []
