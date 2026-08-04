@@ -15,6 +15,7 @@ interface MapViewProps {
   descriptionOverride?: string;
   selectedPointId?: string | null;
   onSelectPointIds?: (pointIds: string[]) => void;
+  showRouteTable?: boolean;
 }
 
 type MapPoint = {
@@ -107,7 +108,7 @@ const updateMapOverlays = (map: MapLibreMap, groups: Array<[string, MapPoint[]]>
   if (fitToRoute && !bounds.isEmpty()) map.fitBounds(bounds, { padding: 32, maxZoom: 15, duration: 0 });
 };
 
-const MapView: React.FC<MapViewProps> = ({ artifact, dataOverride, titleOverride, descriptionOverride, selectedPointId, onSelectPointIds }) => {
+const MapView: React.FC<MapViewProps> = ({ artifact, dataOverride, titleOverride, descriptionOverride, selectedPointId, onSelectPointIds, showRouteTable = true }) => {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const markerRefs = useRef<maplibregl.Marker[]>([]);
@@ -315,6 +316,7 @@ const MapView: React.FC<MapViewProps> = ({ artifact, dataOverride, titleOverride
           </div>
         </aside>
       </div>
+      {showRouteTable && (
       <section className="map-route-table">
         <header><h3>События маршрута</h3><span>{points.length}</span></header>
         <div className="map-route-table-scroll">
@@ -333,6 +335,7 @@ const MapView: React.FC<MapViewProps> = ({ artifact, dataOverride, titleOverride
           </table>
         </div>
       </section>
+      )}
     </div>
   );
 };

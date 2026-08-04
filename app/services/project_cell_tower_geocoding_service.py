@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -170,6 +171,61 @@ async def _write_supplement(db: AsyncSession, candidate: dict[str, str], cached:
            "longitude": cached.get("longitude"), "resolved_address": cached.get("display_name"), "status": cached["status"]})
 
 
+async def _write_common_reference(db: AsyncSession, project_id: int, candidates: list[dict[str, Any]]) -> int:
+    """Persist resolved address coordinates so later projects can use them too."""
+    rows = [
+        {
+            "mcc": item["mcc"], "mnc": item["mnc"], "lac": item["lac"], "cid": item["cid"],
+            "address": item["address"], "address_norm": item["address_norm"],
+            "latitude": item["latitude"], "longitude": item["longitude"],
+            "resolved_address": item.get("resolved_address") or item["address"],
+        }
+        for item in candidates
+        if item.get("latitude") is not None and item.get("longitude") is not None
+    ]
+    if not rows:
+        return 0
+
+    result = await db.execute(text("""
+        WITH source_rows AS (
+          SELECT * FROM json_to_recordset(CAST(:rows AS json)) AS r(
+            mcc TEXT, mnc TEXT, lac TEXT, cid TEXT, address TEXT, address_norm TEXT,
+            latitude DOUBLE PRECISION, longitude DOUBLE PRECISION, resolved_address TEXT
+          )
+        ), missing_rows AS (
+          SELECT DISTINCT ON (NULLIF(r.mcc, ''), NULLIF(r.mnc, ''), r.lac, r.cid, r.address_norm, r.latitude, r.longitude)
+            r.*
+          FROM source_rows r
+          WHERE NOT EXISTS (
+            SELECT 1 FROM cell_tower_reference c
+            WHERE c.lac = r.lac AND c.cid = r.cid
+              AND c.mcc IS NOT DISTINCT FROM NULLIF(r.mcc, '')
+              AND c.mnc IS NOT DISTINCT FROM NULLIF(r.mnc, '')
+              AND c.address_norm IS NOT DISTINCT FROM r.address_norm
+              AND c.latitude IS NOT DISTINCT FROM r.latitude
+              AND c.longitude IS NOT DISTINCT FROM r.longitude
+          )
+        ), numbered AS (
+          SELECT m.*, row_number() OVER (ORDER BY m.lac, m.cid, m.address_norm) AS rn
+          FROM missing_rows m
+        ), max_id AS (
+          SELECT coalesce(MAX(id), 0) AS base_id FROM cell_tower_reference
+        )
+        INSERT INTO cell_tower_reference (
+          id, mcc, mnc, lac, cid, g, latitude, longitude, azimuth, height,
+          address, address_norm, beg_date, end_date, region_id, ref_source, loaded_at
+        )
+        SELECT
+          max_id.base_id + numbered.rn,
+          NULLIF(numbered.mcc, ''), NULLIF(numbered.mnc, ''), numbered.lac, numbered.cid,
+          NULL, numbered.latitude, numbered.longitude, NULL, NULL,
+          numbered.resolved_address, numbered.address_norm, NULL, NULL, NULL,
+          concat('nominatim [project_', CAST(:project_id AS text), '_addr_enrich]'), NOW()
+        FROM numbered CROSS JOIN max_id
+    """), {"rows": json.dumps(rows, ensure_ascii=False), "project_id": project_id})
+    return int(result.rowcount or 0)
+
+
 async def _enrich_project_cell_towers(db: AsyncSession, project_id: int, progress: ProgressCallback | None = None) -> dict[str, int]:
     await ensure_project_cell_tower_geocoding_tables(db)
     candidates = await _collect_candidates(db, project_id)
@@ -199,14 +255,24 @@ async def _enrich_project_cell_towers(db: AsyncSession, project_id: int, progres
         if progress:
             await progress(12 + int(78 * index / total), f"\u0413\u0435\u043e\u043a\u043e\u0434\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u0435 \u0430\u0434\u0440\u0435\u0441\u043e\u0432: {index} / {len(pending)}")
     written = 0
+    common_reference_candidates: list[dict[str, Any]] = []
     for item in active:
         cached = cache.get(item["address_norm"])
         if cached:
             item["project_id"] = project_id
             await _write_supplement(db, item, cached)
             written += 1
+            if cached.get("status") == "resolved":
+                common_reference_candidates.append({
+                    **item,
+                    "latitude": cached.get("latitude"),
+                    "longitude": cached.get("longitude"),
+                    "resolved_address": cached.get("display_name"),
+                })
+    common_reference_added = await _write_common_reference(db, project_id, common_reference_candidates)
     return {"candidates": len(candidates), "unique_addresses": len({item["address_norm"] for item in active}),
             "external_reference_matches": len(external), "conflicting_cells": len(conflicts), "written": written,
+            "common_reference_added": common_reference_added,
             "resolved_addresses": resolved, "not_found_addresses": not_found, "failed_addresses": failed,
             "cached_addresses": max(0, len(cache) - resolved - not_found)}
 
