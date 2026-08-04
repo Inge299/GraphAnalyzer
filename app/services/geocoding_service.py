@@ -85,14 +85,13 @@ class NominatimGeocoder:
             return None
 
         async with self._lock:
-            elapsed = monotonic() - self._last_request_at
-            wait_for = max(0.0, settings.GEOCODER_MIN_INTERVAL_SECONDS - elapsed)
-            if wait_for:
-                await asyncio.sleep(wait_for)
-            self._last_request_at = monotonic()
-
             async with httpx.AsyncClient(timeout=settings.GEOCODER_TIMEOUT_SECONDS) as client:
                 for candidate in address_query_variants(query):
+                    elapsed = monotonic() - self._last_request_at
+                    wait_for = max(0.0, settings.GEOCODER_MIN_INTERVAL_SECONDS - elapsed)
+                    if wait_for:
+                        await asyncio.sleep(wait_for)
+                    self._last_request_at = monotonic()
                     response = await client.get(
                         f"{self.base_url}/search",
                         params={"q": candidate, "format": "jsonv2", "limit": 1, "countrycodes": "ru"},
