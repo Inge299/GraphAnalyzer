@@ -10,6 +10,7 @@ from fastapi import HTTPException
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.database import AsyncSessionLocal
 from app.services.project_data_import_utils import KNOWN_ENCODINGS, normalize_address
 
 DATA_ROOT = Path("/app/data")
@@ -51,6 +52,67 @@ def _parse_date(value: str):
         except ValueError:
             continue
     return None
+
+
+def _cell_value(value: object) -> str:
+    return str(value or "").strip()
+
+
+async def resolve_local_cell_towers(cells: list[dict[str, Any]]) -> dict[tuple[str, str, str, str], dict[str, Any]]:
+    """Resolve cells from the locally loaded reference without an external DSN."""
+    requested = {
+        (
+            _cell_value(item.get("mcc")),
+            _cell_value(item.get("mnc")).lstrip("0") or "0",
+            _cell_value(item.get("lac")),
+            _cell_value(item.get("bs") or item.get("cid")),
+        )
+        for item in cells
+    }
+    requested = {item for item in requested if item[2] and item[3]}
+    if not requested:
+        return {}
+
+    resolved: dict[tuple[str, str, str, str], dict[str, Any]] = {}
+    async with AsyncSessionLocal() as db:
+        for offset in range(0, len(requested), 500):
+            chunk = list(requested)[offset:offset + 500]
+            values_sql = ", ".join(f"(:mcc{i}, :mnc{i}, :lac{i}, :cid{i})" for i in range(len(chunk)))
+            params: dict[str, Any] = {}
+            for i, (mcc, mnc, lac, cid) in enumerate(chunk):
+                params.update({f"mcc{i}": mcc, f"mnc{i}": mnc, f"lac{i}": lac, f"cid{i}": cid})
+            result = await db.execute(text(f"""
+                WITH requested(mcc, mnc, lac, cid) AS (VALUES {values_sql}),
+                candidates AS (
+                    SELECT
+                        r.mcc AS request_mcc, r.mnc AS request_mnc, r.lac AS request_lac, r.cid AS request_cid,
+                        tower.latitude, tower.longitude, tower.address,
+                        row_number() OVER (
+                            PARTITION BY r.mcc, r.mnc, r.lac, r.cid
+                            ORDER BY CASE WHEN r.mcc <> '' AND COALESCE(tower.mcc, '') = r.mcc THEN 0 ELSE 1 END,
+                                     CASE WHEN r.mnc <> '' AND LTRIM(COALESCE(tower.mnc, ''), '0') = r.mnc THEN 0 ELSE 1 END,
+                                     tower.id
+                        ) AS rank
+                    FROM requested r
+                    JOIN cell_tower_reference tower
+                      ON tower.lac = r.lac
+                     AND tower.cid = r.cid
+                     AND (r.mcc = '' OR COALESCE(tower.mcc, '') = r.mcc)
+                     AND (r.mnc = '' OR LTRIM(COALESCE(tower.mnc, ''), '0') = r.mnc)
+                    WHERE tower.latitude IS NOT NULL AND tower.longitude IS NOT NULL
+                )
+                SELECT request_mcc, request_mnc, request_lac, request_cid, latitude, longitude, address
+                FROM candidates
+                WHERE rank = 1
+            """), params)
+            for row in result.mappings():
+                key = (row["request_mcc"], row["request_mnc"], row["request_lac"], row["request_cid"])
+                resolved[key] = {
+                    "latitude": float(row["latitude"]),
+                    "longitude": float(row["longitude"]),
+                    "address": _cell_value(row["address"]) or None,
+                }
+    return resolved
 
 
 async def load_cell_tower_reference(db: AsyncSession, source_path: str) -> dict[str, Any]:

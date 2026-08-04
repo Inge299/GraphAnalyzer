@@ -11,6 +11,7 @@ from app.console_plugins import ConsoleExecutorPlugin
 from app.console_plugins._graph_analysis_utils import column, graph_payload, node_id, node_label, selected_node_ids, tab
 from app.database import AsyncSessionLocal
 from app.services.cell_tower_reference_provider import get_cell_tower_reference_provider_status, resolve_cell_towers
+from app.services.cell_tower_reference_service import resolve_local_cell_towers
 from app.services.project_cell_tower_geocoding_service import resolve_project_cell_towers
 from app.services.project_domain_store import ensure_project_domain_fact_participants
 
@@ -182,8 +183,10 @@ class MovementAnalysisExecutor(ConsoleExecutorPlugin):
 
         provider = get_cell_tower_reference_provider_status()
         external_towers = await resolve_cell_towers(source_rows) if provider.enabled else {}
+        local_towers = await resolve_local_cell_towers(source_rows)
         project_towers = await resolve_project_cell_towers(project_id, source_rows)
         external_count = 0
+        local_count = 0
         project_count = 0
         for row in source_rows:
             tower = external_towers.get(_cell_key(row))
@@ -191,6 +194,12 @@ class MovementAnalysisExecutor(ConsoleExecutorPlugin):
                 row.update(tower)
                 row["resolved_address"] = tower.get("address") or row.get("address")
                 external_count += 1
+                continue
+            tower = local_towers.get(_cell_key(row))
+            if tower:
+                row.update(tower)
+                row["resolved_address"] = tower.get("address") or row.get("address")
+                local_count += 1
                 continue
             tower = project_towers.get(_cell_key(row))
             if tower:
@@ -213,7 +222,10 @@ class MovementAnalysisExecutor(ConsoleExecutorPlugin):
             }
             for index, item in enumerate(mapped_stays, start=1)
         ]
-        source_label = "external_cell_tower_reference" if external_count else ("project_cell_tower_geocoding" if project_count else "external_cell_tower_reference")
+        source_label = (
+            "external_cell_tower_reference" if external_count
+            else ("local_cell_tower_reference" if local_count else ("project_cell_tower_geocoding" if project_count else "local_cell_tower_reference"))
+        )
         summary_rows = []
         for msisdn in msisdns:
             events = [row for row in source_rows if row.get("msisdn") == msisdn]
@@ -257,7 +269,7 @@ class MovementAnalysisExecutor(ConsoleExecutorPlugin):
                 tab("moves", "\u041f\u0435\u0440\u0435\u043c\u0435\u0449\u0435\u043d\u0438\u044f", [
                     column("msisdn", "MSISDN", "string", 150), column("from_time", "\u0412\u044b\u0431\u044b\u043b", "datetime", 180), column("to_time", "\u041f\u0440\u0438\u0431\u044b\u043b", "datetime", 180), column("travel_time", "\u041f\u0430\u0443\u0437\u0430", "string", 120), column("from_cell", "\u041e\u0442\u043a\u0443\u0434\u0430 (\u0411\u0421)", "string", 150), column("to_cell", "\u041a\u0443\u0434\u0430 (\u0411\u0421)", "string", 150), column("distance_km", "\u0420\u0430\u0441\u0441\u0442\u043e\u044f\u043d\u0438\u0435, \u043a\u043c", "number", 130), column("from_address", "\u0410\u0434\u0440\u0435\u0441 \u043e\u0442\u043a\u0443\u0434\u0430", "string", 300), column("to_address", "\u0410\u0434\u0440\u0435\u0441 \u043a\u0443\u0434\u0430", "string", 300),
                 ], move_rows),
-                {"id": "map", "name": "\u041a\u0430\u0440\u0442\u0430", "view": "map", "columns": [], "rows": [], "row_count": len(points), "map_data": {"provider": source_label, "points": points, "source": {"plugin_id": self.id, "provider_id": provider.provider_id, "provider_label": provider.label, "provider_detail": provider.detail, "external_coordinates_used": external_count, "project_coordinates_used": project_count}}},
+                {"id": "map", "name": "\u041a\u0430\u0440\u0442\u0430", "view": "map", "columns": [], "rows": [], "row_count": len(points), "map_data": {"provider": source_label, "points": points, "source": {"plugin_id": self.id, "provider_id": provider.provider_id, "provider_label": provider.label, "provider_detail": provider.detail, "external_coordinates_used": external_count, "local_coordinates_used": local_count, "project_coordinates_used": project_count}}},
             ],
             "active_tab_id": "summary",
         }
