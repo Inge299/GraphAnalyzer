@@ -89,6 +89,22 @@ async def _collect_candidates(db: AsyncSession, project_id: int) -> list[dict[st
         WHERE project_id = :project_id AND fact_type = 'location_event'
           AND NULLIF(BTRIM(payload ->> 'address'), '') IS NOT NULL
         UNION ALL
+        SELECT split_part(fact.payload ->> 'base_station', '/', 1),
+               split_part(fact.payload ->> 'base_station', '/', 2),
+               split_part(fact.payload ->> 'base_station', '/', 3),
+               split_part(fact.payload ->> 'base_station', '/', 4),
+               relation.to_key
+        FROM project_domain_facts AS fact
+        JOIN project_domain_relations AS relation
+          ON relation.project_id = fact.project_id
+         AND relation.relation_type = 'base_station_location'
+         AND relation.from_type = 'base_station'
+         AND relation.from_key = BTRIM(fact.payload ->> 'base_station')
+        WHERE fact.project_id = :project_id
+          AND fact.fact_type = 'telecom_base_station_observation'
+          AND NULLIF(BTRIM(fact.payload ->> 'base_station'), '') IS NOT NULL
+          AND NULLIF(BTRIM(relation.to_key), '') IS NOT NULL
+        UNION ALL
         SELECT split_part(from_key, '/', 1), split_part(from_key, '/', 2),
                split_part(from_key, '/', 3), split_part(from_key, '/', 4), to_key
         FROM project_domain_relations

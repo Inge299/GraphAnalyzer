@@ -124,10 +124,18 @@ class MovementAnalysisExecutor(ConsoleExecutorPlugin):
             "participant.project_id = :project_id",
             "participant.entity_type = 'msisdn'",
             "participant.entity_key = ANY(:msisdns)",
-            "participant.fact_type = 'location_event'",
-            "NULLIF(BTRIM(location.payload ->> 'lac'), '') IS NOT NULL",
-            "NULLIF(BTRIM(location.payload ->> 'bs'), '') IS NOT NULL",
-            "lower(BTRIM(location.payload ->> 'bs')) NOT IN ('0', 'null', 'none', 'n/a', 'na', '-')",
+            "participant.fact_type IN ('location_event', 'telecom_base_station_observation')",
+            """(
+                (participant.fact_type = 'location_event'
+                 AND NULLIF(BTRIM(location.payload ->> 'lac'), '') IS NOT NULL
+                 AND NULLIF(BTRIM(location.payload ->> 'bs'), '') IS NOT NULL
+                 AND lower(BTRIM(location.payload ->> 'bs')) NOT IN ('0', 'null', 'none', 'n/a', 'na', '-'))
+                OR
+                (participant.fact_type = 'telecom_base_station_observation'
+                 AND NULLIF(BTRIM(location.payload ->> 'base_station'), '') IS NOT NULL
+                 AND NULLIF(BTRIM(split_part(location.payload ->> 'base_station', '/', 3)), '') IS NOT NULL
+                 AND NULLIF(BTRIM(split_part(location.payload ->> 'base_station', '/', 4)), '') IS NOT NULL)
+            )""",
         ]
         if date_from:
             filters.append("location.occurred_at >= :date_from")
@@ -139,23 +147,28 @@ class MovementAnalysisExecutor(ConsoleExecutorPlugin):
             SELECT DISTINCT ON (
                 participant.entity_key,
                 location.occurred_at,
-                COALESCE(location.payload ->> 'lac', ''),
+                COALESCE(location.payload ->> 'base_station', location.payload ->> 'lac', ''),
                 COALESCE(location.payload ->> 'bs', '')
             )
                 participant.entity_key AS msisdn,
                 location.occurred_at AS event_time,
-                location.payload ->> 'address' AS address,
-                location.payload ->> 'mcc' AS mcc,
-                location.payload ->> 'mnc' AS mnc,
-                location.payload ->> 'lac' AS lac,
-                location.payload ->> 'bs' AS bs
+                COALESCE(location.payload ->> 'address', station_location.to_key) AS address,
+                COALESCE(location.payload ->> 'mcc', split_part(location.payload ->> 'base_station', '/', 1)) AS mcc,
+                COALESCE(location.payload ->> 'mnc', split_part(location.payload ->> 'base_station', '/', 2)) AS mnc,
+                COALESCE(location.payload ->> 'lac', split_part(location.payload ->> 'base_station', '/', 3)) AS lac,
+                COALESCE(location.payload ->> 'bs', split_part(location.payload ->> 'base_station', '/', 4)) AS bs
             FROM project_domain_fact_participants AS participant
             JOIN project_domain_facts AS location ON location.id = participant.fact_id
+            LEFT JOIN project_domain_relations AS station_location
+              ON station_location.project_id = location.project_id
+             AND station_location.relation_type = 'base_station_location'
+             AND station_location.from_type = 'base_station'
+             AND station_location.from_key = BTRIM(location.payload ->> 'base_station')
             WHERE """ + " AND ".join(filters) + """
             ORDER BY
                 participant.entity_key,
                 location.occurred_at,
-                COALESCE(location.payload ->> 'lac', ''),
+                COALESCE(location.payload ->> 'base_station', location.payload ->> 'lac', ''),
                 COALESCE(location.payload ->> 'bs', '')
             LIMIT :limit
         """

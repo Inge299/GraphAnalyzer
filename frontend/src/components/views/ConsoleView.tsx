@@ -79,21 +79,21 @@ interface SelectionContextShape {
 }
 
 const bindingModeLabels: Record<string, string> = {
-  manual: 'Р’СЂСѓС‡РЅСѓСЋ',
-  fixed: 'Р¤РёРєСЃРёСЂРѕРІР°РЅРЅРѕРµ Р·РЅР°С‡РµРЅРёРµ',
-  project_context: 'РР· РєРѕРЅС‚РµРєСЃС‚Р° РїСЂРѕРµРєС‚Р°',
-  selection_json: 'JSON РІС‹РґРµР»РµРЅРёСЏ',
-  selected_node_ids_csv: 'ID РІС‹Р±СЂР°РЅРЅС‹С… СѓР·Р»РѕРІ',
-  selected_edge_ids_csv: 'ID РІС‹Р±СЂР°РЅРЅС‹С… СЃРІСЏР·РµР№',
-  selected_node_labels_csv: 'РџРѕРґРїРёСЃРё РІС‹Р±СЂР°РЅРЅС‹С… СѓР·Р»РѕРІ',
-  selected_node_types_csv: 'РўРёРїС‹ РІС‹Р±СЂР°РЅРЅС‹С… СѓР·Р»РѕРІ',
-  selected_node_attr_csv: 'РђС‚СЂРёР±СѓС‚С‹ РІС‹Р±СЂР°РЅРЅС‹С… СѓР·Р»РѕРІ',
+  manual: '\u0412\u0440\u0443\u0447\u043d\u0443\u044e',
+  fixed: '\u0424\u0438\u043a\u0441\u0438\u0440\u043e\u0432\u0430\u043d\u043d\u043e\u0435 \u0437\u043d\u0430\u0447\u0435\u043d\u0438\u0435',
+  project_context: '\u0418\u0437 \u043a\u043e\u043d\u0442\u0435\u043a\u0441\u0442\u0430 \u043f\u0440\u043e\u0435\u043a\u0442\u0430',
+  selection_json: 'JSON \u0432\u044b\u0434\u0435\u043b\u0435\u043d\u0438\u044f',
+  selected_node_ids_csv: 'ID \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u044b\u0445 \u0443\u0437\u043b\u043e\u0432',
+  selected_edge_ids_csv: 'ID \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u044b\u0445 \u0441\u0432\u044f\u0437\u0435\u0439',
+  selected_node_labels_csv: '\u041f\u043e\u0434\u043f\u0438\u0441\u0438 \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u044b\u0445 \u0443\u0437\u043b\u043e\u0432',
+  selected_node_types_csv: '\u0422\u0438\u043f\u044b \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u044b\u0445 \u0443\u0437\u043b\u043e\u0432',
+  selected_node_attr_csv: '\u0410\u0442\u0440\u0438\u0431\u0443\u0442\u044b \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u044b\u0445 \u0443\u0437\u043b\u043e\u0432',
 };
 
 const projectContextSourceLabels: Record<string, string> = {
-  project_id: 'ID РїСЂРѕРµРєС‚Р°',
-  artifact_id: 'ID console-Р°СЂС‚РµС„Р°РєС‚Р°',
-  context_artifact_id: 'ID РіСЂР°С„Р°-РёСЃС‚РѕС‡РЅРёРєР°',
+  project_id: 'ID проекта',
+  artifact_id: 'ID console-артефакта',
+  context_artifact_id: 'ID графа-источника',
 };
 
 const normalize = (value: unknown): string => {
@@ -119,17 +119,17 @@ const parseDateTime = (value: unknown): number | null => {
   return Number.isNaN(result.getTime()) ? null : result.getTime();
 };
 const artifactTypeLabels: Record<string, string> = {
-  console: 'РљРѕРЅСЃРѕР»СЊРЅС‹Р№ СЂРµР·СѓР»СЊС‚Р°С‚',
-  graph: 'Р“СЂР°С„',
-  table: 'РўР°Р±Р»РёС†Р°',
-  map: 'РљР°СЂС‚Р°',
-  report: 'РћС‚С‡РµС‚',
-  text: 'РўРµРєСЃС‚РѕРІС‹Р№ РґРѕРєСѓРјРµРЅС‚',
+  console: 'Консольный результат',
+  graph: 'Граф',
+  table: 'Таблица',
+  map: 'Карта',
+  report: 'Отчет',
+  text: 'Текстовый документ',
 };
 
 const getFriendlyArtifactType = (value: unknown): string => {
   const key = String(value || '').trim().toLowerCase();
-  return artifactTypeLabels[key] || String(value || 'РђСЂС‚РµС„Р°РєС‚');
+  return artifactTypeLabels[key] || String(value || 'Артефакт');
 };
 
 const normalizeColumn = (value: string | ConsoleColumnData): ConsoleColumnData => {
@@ -265,10 +265,10 @@ const getParamBindingHint = (param: ConsoleProcedureParam): string => {
   const attrKey = String(param.binding_config?.attr_key || '').trim();
 
   if (bindingMode === 'project_context') {
-    return projectContextSourceLabels[bindingSource || 'project_id'] || 'РР· РєРѕРЅС‚РµРєСЃС‚Р° РїСЂРѕРµРєС‚Р°';
+    return projectContextSourceLabels[bindingSource || 'project_id'] || '\u0418\u0437 \u043a\u043e\u043d\u0442\u0435\u043a\u0441\u0442\u0430 \u043f\u0440\u043e\u0435\u043a\u0442\u0430';
   }
   if (bindingMode === 'selected_node_attr_csv' && attrKey) {
-    return `РР· Р°С‚СЂРёР±СѓС‚Р° "${attrKey}" РІС‹Р±СЂР°РЅРЅС‹С… СѓР·Р»РѕРІ`;
+    return `\u0418\u0437 \u0430\u0442\u0440\u0438\u0431\u0443\u0442\u0430 "${attrKey}" \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u044b\u0445 \u0443\u0437\u043b\u043e\u0432`;
   }
   return bindingModeLabels[bindingMode] || bindingMode;
 };
@@ -497,13 +497,13 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
 
   const resultTitle = useMemo(() => {
     if (activeTab?.name) return String(activeTab.name);
-    return String(selectedProfile?.name || data.profile_name || 'Р РµР·СѓР»СЊС‚Р°С‚');
+    return String(selectedProfile?.name || data.profile_name || 'Результат');
   }, [activeTab?.name, selectedProfile?.name, data.profile_name]);
 
   const resultDescription = useMemo(() => {
     if (selectedProfile?.description) return String(selectedProfile.description);
     if (selectedProfileId === 'project_artifacts_inventory') {
-      return 'РЎРїРёСЃРѕРє РІСЃРµС… Р°СЂС‚РµС„Р°РєС‚РѕРІ С‚РµРєСѓС‰РµРіРѕ РїСЂРѕРµРєС‚Р° СЃ С‚РёРїРѕРј, РЅР°Р·РІР°РЅРёРµРј, РІРµСЂСЃРёРµР№ Рё РІСЂРµРјРµРЅРµРј РїРѕСЃР»РµРґРЅРµРіРѕ РѕР±РЅРѕРІР»РµРЅРёСЏ.';
+      return 'Список всех артефактов текущего проекта с типом, названием, версией и временем последнего обновления.';
     }
     return '';
   }, [selectedProfile?.description, selectedProfileId]);
@@ -536,7 +536,7 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
         setSelectedProfileId(String(nextProfiles[0].key || nextProfiles[0].id));
       }
     } catch (err: any) {
-      setError(String(err?.response?.data?.detail || err?.message || 'РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ РїСЂРѕС„РёР»Рё РєРѕРЅСЃРѕР»Рё'));
+      setError(String(err?.response?.data?.detail || err?.message || 'Не удалось загрузить профили консоли'));
     } finally {
       setProfilesLoading(false);
     }
@@ -587,7 +587,7 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
 
   const handleExecute = useCallback(async () => {
     if (!selectedProfile) {
-      setError('Р’С‹Р±РµСЂРё РїСЂРѕС„РёР»СЊ РєРѕРЅСЃРѕР»Рё');
+      setError('Выбери профиль консоли');
       return;
     }
 
@@ -621,9 +621,9 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
 
       dispatch(setCurrentArtifact(updated.id));
       await dispatch(fetchArtifacts(artifact.project_id));
-      setMessage(`РљРѕРЅСЃРѕР»СЊ РѕР±РЅРѕРІР»РµРЅР°: ${selectedProfile.name}`);
+      setMessage(`Консоль обновлена: ${selectedProfile.name}`);
     } catch (err: any) {
-      setError(String(err?.response?.data?.detail || err?.message || 'РќРµ СѓРґР°Р»РѕСЃСЊ РІС‹РїРѕР»РЅРёС‚СЊ РїСЂРѕС†РµРґСѓСЂСѓ'));
+      setError(String(err?.response?.data?.detail || err?.message || 'Не удалось выполнить процедуру'));
     } finally {
       setExecuting(false);
     }
@@ -665,9 +665,9 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
           <div style={{ fontSize: 12, color: '#475569' }}>
-            РџСЂРѕС„РёР»СЊ: <strong>{String(data.profile_name || data.profile_key || data.profile_id || '-')}</strong>
-            <span style={{ marginLeft: 12 }}>Р’РєР»Р°РґРѕРє: <strong>{tabs.length}</strong></span>
-            <span style={{ marginLeft: 12 }}>РЎС‚СЂРѕРє: <strong>{filteredRows.length}</strong></span>
+            Профиль: <strong>{String(data.profile_name || data.profile_key || data.profile_id || '-')}</strong>
+            <span style={{ marginLeft: 12 }}>Вкладок: <strong>{tabs.length}</strong></span>
+            <span style={{ marginLeft: 12 }}>Строк: <strong>{filteredRows.length}</strong></span>
           </div>
           <button
             type="button"
@@ -675,7 +675,7 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
             onClick={() => void loadProfiles()}
             disabled={profilesLoading || executing}
           >
-            {profilesLoading ? 'Р—Р°РіСЂСѓР·РєР° РїСЂРѕС„РёР»РµР№...' : 'РћР±РЅРѕРІРёС‚СЊ РїСЂРѕС„РёР»Рё'}
+            {profilesLoading ? 'Загрузка профилей...' : 'Обновить профили'}
           </button>
         </div>
 
@@ -703,13 +703,13 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
 
         <div className="service-form-grid" style={{ gridTemplateColumns: 'repeat(2, minmax(240px, 1fr))' }}>
           <label className="service-field">
-            <span>РџСЂРѕС†РµРґСѓСЂР°</span>
+            <span>Процедура</span>
             <select
               className="service-input"
               value={selectedProfileId}
               onChange={(event) => setSelectedProfileId(event.target.value)}
             >
-              <option value="">Р’С‹Р±РµСЂРё РїСЂРѕС†РµРґСѓСЂСѓ</option>
+              <option value="">Выбери процедуру</option>
               {visibleProfiles.map((profile) => (
                 <option key={String(profile.key || profile.id)} value={String(profile.key || profile.id)}>
                   {profile.menu_path ? profile.menu_path + ' / ' : ''}{profile.name} ({profile.key || profile.id})
@@ -719,13 +719,13 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
           </label>
 
           <label className="service-field">
-            <span>Р“СЂР°С„-РёСЃС‚РѕС‡РЅРёРє РєРѕРЅС‚РµРєСЃС‚Р°</span>
+            <span>Граф-источник контекста</span>
             <select
               className="service-input"
               value={contextArtifactId}
               onChange={(event) => setContextArtifactId(event.target.value)}
             >
-              <option value="">Р‘РµР· РіСЂР°С„РѕРІРѕРіРѕ РєРѕРЅС‚РµРєСЃС‚Р°</option>
+              <option value="">Без графового контекста</option>
               {graphArtifacts.map((graphArtifact) => (
                 <option key={graphArtifact.id} value={String(graphArtifact.id)}>
                   {graphArtifact.name} (#{graphArtifact.id})
@@ -739,15 +739,15 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
           <div style={{ fontSize: 12, color: '#475569', display: 'flex', flexDirection: 'column', gap: 4 }}>
             <div>
               {selectedProfile.executor_type === 'python' ? (
-                <>РџР»Р°РіРёРЅ: <strong>{selectedProfile.name}</strong></>
+                <>Плагин: <strong>{selectedProfile.name}</strong></>
               ) : (
-                <>РџСЂРѕС†РµРґСѓСЂР°: <strong>{selectedProfile.schema_name || 'dbo'}.{selectedProfile.procedure_name || '-'}</strong></>
+                <>Процедура: <strong>{selectedProfile.schema_name || 'dbo'}.{selectedProfile.procedure_name || '-'}</strong></>
               )}
-              {selectedProfile.source_name && <span style={{ marginLeft: 12 }}>РСЃС‚РѕС‡РЅРёРє: <strong>{selectedProfile.source_name}</strong></span>}
+              {selectedProfile.source_name && <span style={{ marginLeft: 12 }}>{'\u0418\u0441\u0442\u043e\u0447\u043d\u0438\u043a'}: <strong>{selectedProfile.source_name}</strong></span>}
             </div>
             <div>
-              Р’С‹РґРµР»РµРЅРѕ РІ РєРѕРЅС‚РµРєСЃС‚Рµ: <strong>{selectionContext.nodesCount}</strong> СѓР·Р». Рё <strong>{selectionContext.edgesCount}</strong> СЃРІСЏР·.
-              {selectedContextArtifact && <span style={{ marginLeft: 12 }}>РР· РіСЂР°С„Р°: <strong>{selectedContextArtifact.name}</strong></span>}
+              Выделено в контексте: <strong>{selectionContext.nodesCount}</strong> узл. и <strong>{selectionContext.edgesCount}</strong> связ.
+              {selectedContextArtifact && <span style={{ marginLeft: 12 }}>{'\u0418\u0437 \u0433\u0440\u0430\u0444\u0430'}: <strong>{selectedContextArtifact.name}</strong></span>}
             </div>
           </div>
         )}
@@ -769,8 +769,8 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
               <div style={{ fontSize: 12, color: '#475569' }}>{resultDescription}</div>
             )}
             <div style={{ fontSize: 12, color: '#334155' }}>
-              РђРєС‚РёРІРЅР°СЏ РІРєР»Р°РґРєР°: <strong>{activeTab?.name || 'РћСЃРЅРѕРІРЅР°СЏ'}</strong>. РџРѕРєР°Р·Р°РЅРѕ СЃС‚СЂРѕРє: <strong>{filteredRows.length}</strong>
-              {rows.length !== filteredRows.length && <span> РёР· <strong>{rows.length}</strong></span>}.
+              Активная вкладка: <strong>{activeTab?.name || 'Основная'}</strong>. Показано строк: <strong>{filteredRows.length}</strong>
+              {rows.length !== filteredRows.length && <span> из <strong>{rows.length}</strong></span>}.
             </div>
             {resultSummary && (
               <div style={{ fontSize: 12, color: '#334155' }}>{resultSummary}</div>
@@ -792,10 +792,10 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
           >
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>
-                Preview СѓР·Р»РѕРІ ({selectionContext.nodesCount})
+                Preview узлов ({selectionContext.nodesCount})
               </div>
               {nodePreview.visible.length === 0 ? (
-                <div style={{ fontSize: 12, color: '#64748b' }}>РЎРµР№С‡Р°СЃ РЅР° РІС‹Р±СЂР°РЅРЅРѕРј РіСЂР°С„Рµ РЅРµ РІС‹РґРµР»РµРЅРѕ РЅРё РѕРґРЅРѕРіРѕ СѓР·Р»Р°.</div>
+                <div style={{ fontSize: 12, color: '#64748b' }}>Сейчас на выбранном графе не выделено ни одного узла.</div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {nodePreview.visible.map((node) => (
@@ -812,7 +812,7 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
                     </div>
                   ))}
                   {nodePreview.remaining > 0 && (
-                    <div style={{ fontSize: 12, color: '#64748b' }}>Р РµС‰С‘ {nodePreview.remaining} СѓР·Р».</div>
+                    <div style={{ fontSize: 12, color: '#64748b' }}>{'\u0418 \u0435\u0449\u0451'} {nodePreview.remaining} {'\u0443\u0437\u043b\u043e\u0432'}.</div>
                   )}
                 </div>
               )}
@@ -820,10 +820,10 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
 
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>
-                Preview СЃРІСЏР·РµР№ ({selectionContext.edgesCount})
+                Preview связей ({selectionContext.edgesCount})
               </div>
               {edgePreview.visible.length === 0 ? (
-                <div style={{ fontSize: 12, color: '#64748b' }}>РЎРµР№С‡Р°СЃ РЅР° РІС‹Р±СЂР°РЅРЅРѕРј РіСЂР°С„Рµ РЅРµ РІС‹РґРµР»РµРЅРѕ РЅРё РѕРґРЅРѕР№ СЃРІСЏР·Рё.</div>
+                <div style={{ fontSize: 12, color: '#64748b' }}>Сейчас на выбранном графе не выделено ни одной связи.</div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {edgePreview.visible.map((edge) => (
@@ -840,7 +840,7 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
                     </div>
                   ))}
                   {edgePreview.remaining > 0 && (
-                    <div style={{ fontSize: 12, color: '#64748b' }}>Р РµС‰С‘ {edgePreview.remaining} СЃРІСЏР·РµР№.</div>
+                    <div style={{ fontSize: 12, color: '#64748b' }}>{'\u0418 \u0435\u0449\u0451'} {edgePreview.remaining} {'\u0441\u0432\u044f\u0437\u0435\u0439'}.</div>
                   )}
                 </div>
               )}
@@ -860,7 +860,7 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
               gap: 10,
             }}
           >
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>РџР°СЂР°РјРµС‚СЂС‹ РїСЂРѕС†РµРґСѓСЂС‹</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>Параметры процедуры</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(240px, 1fr))', gap: 10 }}>
               {(selectedProfile.params || []).map((param) => {
                 const key = getParamKey(param);
@@ -902,7 +902,7 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
                           disabled={!isManual}
                           onChange={(event) => setParamValues((prev) => ({ ...prev, [key]: event.target.checked }))}
                         />
-                        <span>{param.required ? 'РћР±СЏР·Р°С‚РµР»СЊРЅС‹Р№ РїР°СЂР°РјРµС‚СЂ' : 'РќРµРѕР±СЏР·Р°С‚РµР»СЊРЅС‹Р№ РїР°СЂР°РјРµС‚СЂ'}</span>
+                        <span>{param.required ? 'Обязательный параметр' : 'Необязательный параметр'}</span>
                       </label>
                     </div>
                   );
@@ -919,7 +919,7 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
                           rows={5}
                           value={String(value)}
                           onChange={(event) => setParamValues((prev) => ({ ...prev, [key]: event.target.value }))}
-                          placeholder={param.required ? 'РћР±СЏР·Р°С‚РµР»СЊРЅС‹Р№ РїР°СЂР°РјРµС‚СЂ' : ''}
+                          placeholder={param.required ? 'Обязательный параметр' : ''}
                         />
                       ) : (
                         <input
@@ -927,7 +927,7 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
                           type={type === 'number' || type === 'float' || type === 'integer' || type === 'int' ? 'number' : 'text'}
                           value={String(value)}
                           onChange={(event) => setParamValues((prev) => ({ ...prev, [key]: event.target.value }))}
-                          placeholder={param.required ? 'РћР±СЏР·Р°С‚РµР»СЊРЅС‹Р№ РїР°СЂР°РјРµС‚СЂ' : ''}
+                          placeholder={param.required ? 'Обязательный параметр' : ''}
                           style={{ minWidth: 0 }}
                         />
                       )
@@ -946,12 +946,12 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
                           overflow: isLongText ? 'auto' : undefined,
                         }}
                       >
-                        {String(previewValue || '') || 'РџСѓСЃС‚РѕРµ Р·РЅР°С‡РµРЅРёРµ'}
+                        {String(previewValue || '') || 'Пустое значение'}
                       </div>
                     )}
                     <div style={{ fontSize: 12, color: '#64748b' }}>
-                      РўРёРї: {type}
-                      {param.required ? ' В· РѕР±СЏР·Р°С‚РµР»СЊРЅС‹Р№' : ' В· РЅРµРѕР±СЏР·Р°С‚РµР»СЊРЅС‹Р№'}
+                      {'\u0422\u0438\u043f'}: {type}
+                      {param.required ? ' · обязательный' : ' · необязательный'}
                     </div>
                   </div>
                 );
@@ -967,7 +967,7 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
             onClick={() => void handleExecute()}
             disabled={!selectedProfile || executing}
           >
-            {executing ? 'Р’С‹РїРѕР»РЅРµРЅРёРµ...' : 'Р—Р°РїСѓСЃС‚РёС‚СЊ'}
+            {executing ? 'Выполнение...' : 'Запустить'}
           </button>
         </div>
         </>)}
@@ -977,7 +977,7 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
         <div style={{ display: 'flex', gap: 8, padding: '8px 12px', borderBottom: '1px solid #dbe3f0', overflowX: 'auto', flexShrink: 0 }}>
           {isLocationTimeline && activeTab?.id === 'locations' && (
             <button type="button" className="service-btn" onClick={() => setShowUnmappedLocationRows((value) => !value)}>
-              {showUnmappedLocationRows ? 'РЎРєСЂС‹С‚СЊ Р±РµР· РєРѕРѕСЂРґРёРЅР°С‚' : 'РџРѕРєР°Р·Р°С‚СЊ Р±РµР· РєРѕРѕСЂРґРёРЅР°С‚'}
+              {showUnmappedLocationRows ? 'Скрыть без координат' : 'Показать без координат'}
             </button>
           )}          {tabs.filter((tab) => !isLocationTimeline || tab.view !== 'map').map((tab) => (
             <button
@@ -1003,11 +1003,11 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
 
       <div style={{ flex: '1 1 420px', overflow: 'auto', minHeight: 320 }}>
         {isLocationTimeline && locationTopTab === 'map' && locationMapTab?.map_data ? (
-          <MapView artifact={artifact} _onUpdate={() => {}} dataOverride={locationMapTab.map_data} titleOverride={`${artifact.name}: РљР°СЂС‚Р°`} descriptionOverride="РњР°СЂС€СЂСѓС‚ РїРѕ СЃРѕР±С‹С‚РёСЏРј Р»РѕРєР°С†РёР№." selectedPointId={selectedLocationIds[0] || null} onSelectPointIds={setSelectedLocationIds} />
+          <MapView artifact={artifact} _onUpdate={() => {}} dataOverride={locationMapTab.map_data} titleOverride={`${artifact.name}: Карта`} descriptionOverride="Маршрут по событиям локаций." selectedPointId={selectedLocationIds[0] || null} onSelectPointIds={setSelectedLocationIds} />
         ) : (
           <>
         {!isLocationTimeline && locationMapTab?.map_data && (
-          <MapView artifact={artifact} _onUpdate={() => {}} dataOverride={locationMapTab.map_data} titleOverride={`${artifact.name}: РљР°СЂС‚Р°`} descriptionOverride="РњР°СЂС€СЂСѓС‚ РїРѕ СЃРѕР±С‹С‚РёСЏРј Р»РѕРєР°С†РёР№ Рё РєРѕРѕСЂРґРёРЅР°С‚Р°Рј РёР· СЃРїСЂР°РІРѕС‡РЅРёРєР° Р±Р°Р·РѕРІС‹С… СЃС‚Р°РЅС†РёР№." selectedPointId={selectedLocationIds[0] || null} onSelectPointIds={setSelectedLocationIds} />
+          <MapView artifact={artifact} _onUpdate={() => {}} dataOverride={locationMapTab.map_data} titleOverride={`${artifact.name}: Карта`} descriptionOverride="Маршрут по событиям локаций и координатам из справочника базовых станций." selectedPointId={selectedLocationIds[0] || null} onSelectPointIds={setSelectedLocationIds} />
         )}
         {activeTab?.view === 'map' && activeTab.map_data ? (
           <MapView
@@ -1015,7 +1015,7 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
             _onUpdate={() => {}}
             dataOverride={activeTab.map_data}
             titleOverride={`${artifact.name}: ${activeTab.name}`}
-            descriptionOverride="РњР°СЂС€СЂСѓС‚ РїРѕ СЃРѕР±С‹С‚РёСЏРј Р»РѕРєР°С†РёР№ Рё РєРѕРѕСЂРґРёРЅР°С‚Р°Рј РёР· СЃРїСЂР°РІРѕС‡РЅРёРєР° Р±Р°Р·РѕРІС‹С… СЃС‚Р°РЅС†РёР№."
+            descriptionOverride="Маршрут по событиям локаций и координатам из справочника базовых станций."
           />
         ) : columns.length === 0 ? (
           <div style={{ padding: 16, color: '#64748b' }}>
