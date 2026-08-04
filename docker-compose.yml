@@ -59,6 +59,11 @@ services:
       - LLM_TEMPERATURE_DRAFT=0.3
       - LLM_TEMPERATURE_EDIT=0.2
       - LLM_RUNTIME_LABEL=GPU (RTX 4060 via LM Studio)
+      - GEOCODER_ENABLED=${GEOCODER_ENABLED:-true}
+      - GEOCODER_BASE_URL=${GEOCODER_BASE_URL:-https://nominatim.openstreetmap.org}
+      - GEOCODER_USER_AGENT=${GEOCODER_USER_AGENT:-Nodex/1.0}
+      - GEOCODER_TIMEOUT_SECONDS=${GEOCODER_TIMEOUT_SECONDS:-10}
+      - GEOCODER_MIN_INTERVAL_SECONDS=${GEOCODER_MIN_INTERVAL_SECONDS:-1}
     depends_on:
       postgres:
         condition: service_healthy

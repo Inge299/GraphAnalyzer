@@ -142,7 +142,7 @@ async def _cached_addresses(db: AsyncSession, address_norms: Iterable[str]) -> d
         return {}
     result = await db.execute(text("""
         SELECT address_norm, address, latitude, longitude, display_name, status, provider
-        FROM geocoder_address_cache WHERE address_norm = ANY(:values)
+        FROM geocoder_address_cache WHERE address_norm = ANY(:values) AND status = 'resolved'
     """), {"values": values})
     return {row["address_norm"]: dict(row) for row in result.mappings()}
 
