@@ -367,53 +367,50 @@ async def _upsert_derived_artifacts(
     source_artifact: Artifact,
     descriptors: Any,
 ) -> list[Dict[str, Any]]:
-    """Persist derived artifacts returned by a console executor.
+    """Persist maps and documents emitted by a console executor.
 
-    The source console is the stable key, so rerunning the plugin updates its
-    previous map instead of filling the project with duplicate maps.
+    One source console owns at most one derived artifact of each type. Re-running
+    an analysis therefore refreshes its existing map or report instead of adding
+    duplicate artifacts to the project.
     """
-    map_descriptors = [
+    supported_types = {"map", "document"}
+    normalized = [
         descriptor
         for descriptor in (descriptors if isinstance(descriptors, list) else [])
-        if isinstance(descriptor, dict) and descriptor.get("type") == "map"
+        if isinstance(descriptor, dict) and str(descriptor.get("type") or "") in supported_types
     ]
-    if not map_descriptors:
-        # A plugin that no longer returns a map must not leave a stale derived artifact behind.
-        result = await db.execute(
-            select(Artifact).where(Artifact.project_id == project_id, Artifact.type == "map")
-        )
-        for target in result.scalars().all():
-            if isinstance(target.artifact_metadata, dict) and target.artifact_metadata.get("source_console_artifact_id") == source_artifact.id:
-                await db.delete(target)
-        return []
+    desired_types = {str(descriptor["type"]) for descriptor in normalized}
+    existing_result = await db.execute(
+        select(Artifact).where(Artifact.project_id == project_id, Artifact.type.in_(supported_types))
+    )
+    existing = [
+        item for item in existing_result.scalars().all()
+        if isinstance(item.artifact_metadata, dict)
+        and item.artifact_metadata.get("source_console_artifact_id") == source_artifact.id
+    ]
+    for target in existing:
+        if target.type not in desired_types:
+            await db.delete(target)
 
     created: list[Dict[str, Any]] = []
-    for descriptor in map_descriptors:
+    for descriptor in normalized:
+        artifact_type = str(descriptor["type"])
         name = str(descriptor.get("name") or "").strip()
         data = descriptor.get("data") if isinstance(descriptor.get("data"), dict) else {}
         if not name:
             continue
-        result = await db.execute(
-            select(Artifact).where(Artifact.project_id == project_id, Artifact.type == "map")
-        )
-        target = next(
-            (
-                item
-                for item in result.scalars().all()
-                if isinstance(item.artifact_metadata, dict)
-                and item.artifact_metadata.get("source_console_artifact_id") == source_artifact.id
-            ),
-            None,
-        )
+        target = next((item for item in existing if item.type == artifact_type), None)
         metadata = {
             "source_console_artifact_id": source_artifact.id,
             "source_plugin_id": descriptor.get("source_plugin_id"),
-            "map_provider": data.get("provider"),
+            "derived_kind": artifact_type,
         }
+        if artifact_type == "map":
+            metadata["map_provider"] = data.get("provider")
         if target is None:
             target = Artifact(
                 project_id=project_id,
-                type="map",
+                type=artifact_type,
                 name=name,
                 description=descriptor.get("description"),
                 data=data,

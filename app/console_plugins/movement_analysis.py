@@ -90,6 +90,97 @@ def _distance_km(left: Dict[str, Any], right: Dict[str, Any]) -> float | None:
     return round(6371.0088 * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a)), 2)
 
 
+async def fetch_movement_source_rows(
+    *,
+    project_id: int,
+    msisdns: list[str],
+    date_from: datetime | None,
+    date_to: datetime | None,
+    limit: int,
+) -> list[Dict[str, Any]]:
+    bind: dict[str, Any] = {"project_id": project_id, "msisdns": msisdns, "limit": limit}
+    filters = [
+        "participant.project_id = :project_id",
+        "participant.entity_type = 'msisdn'",
+        "participant.entity_key = ANY(:msisdns)",
+        "participant.fact_type IN ('location_event', 'telecom_base_station_observation')",
+        """(
+            (participant.fact_type = 'location_event'
+             AND NULLIF(BTRIM(location.payload ->> 'lac'), '') IS NOT NULL
+             AND NULLIF(BTRIM(location.payload ->> 'bs'), '') IS NOT NULL
+             AND lower(BTRIM(location.payload ->> 'bs')) NOT IN ('0', 'null', 'none', 'n/a', 'na', '-'))
+            OR
+            (participant.fact_type = 'telecom_base_station_observation'
+             AND NULLIF(BTRIM(location.payload ->> 'base_station'), '') IS NOT NULL
+             AND NULLIF(BTRIM(split_part(location.payload ->> 'base_station', '/', 3)), '') IS NOT NULL
+             AND NULLIF(BTRIM(split_part(location.payload ->> 'base_station', '/', 4)), '') IS NOT NULL)
+        )""",
+    ]
+    if date_from:
+        filters.append("location.occurred_at >= :date_from")
+        bind["date_from"] = date_from
+    if date_to:
+        filters.append("location.occurred_at < :date_to_exclusive")
+        bind["date_to_exclusive"] = date_to + timedelta(days=1)
+    sql = """
+        SELECT DISTINCT ON (
+            participant.entity_key,
+            location.occurred_at,
+            COALESCE(location.payload ->> 'base_station', location.payload ->> 'lac', ''),
+            COALESCE(location.payload ->> 'bs', '')
+        )
+            participant.entity_key AS msisdn,
+            location.occurred_at AS event_time,
+            NULLIF(BTRIM(location.payload ->> 'address'), '') AS address,
+            COALESCE(
+                NULLIF(BTRIM(location.payload ->> 'base_station'), ''),
+                CONCAT_WS('/',
+                    NULLIF(BTRIM(location.payload ->> 'mcc'), ''),
+                    NULLIF(BTRIM(location.payload ->> 'mnc'), ''),
+                    NULLIF(BTRIM(location.payload ->> 'lac'), ''),
+                    NULLIF(BTRIM(location.payload ->> 'bs'), '')
+                )
+            ) AS base_station,
+            COALESCE(location.payload ->> 'mcc', split_part(location.payload ->> 'base_station', '/', 1)) AS mcc,
+            COALESCE(location.payload ->> 'mnc', split_part(location.payload ->> 'base_station', '/', 2)) AS mnc,
+            COALESCE(location.payload ->> 'lac', split_part(location.payload ->> 'base_station', '/', 3)) AS lac,
+            COALESCE(location.payload ->> 'bs', split_part(location.payload ->> 'base_station', '/', 4)) AS bs
+        FROM project_domain_fact_participants AS participant
+        JOIN project_domain_facts AS location ON location.id = participant.fact_id
+        WHERE """ + " AND ".join(filters) + """
+        ORDER BY
+            participant.entity_key,
+            location.occurred_at,
+            COALESCE(location.payload ->> 'base_station', location.payload ->> 'lac', ''),
+            COALESCE(location.payload ->> 'bs', '')
+        LIMIT :limit
+    """
+    async with AsyncSessionLocal() as db:
+        await ensure_project_domain_fact_participants(db, project_id)
+        result = await db.execute(text(sql), bind)
+        rows = [dict(row._mapping) for row in result.fetchall()]
+        station_keys = list({str(row.get("base_station") or "").strip() for row in rows if str(row.get("base_station") or "").strip()})
+        if station_keys:
+            location_result = await db.execute(
+                text("""
+                    SELECT from_key, MIN(to_key) AS address
+                    FROM project_domain_relations
+                    WHERE project_id = :project_id
+                      AND relation_type = 'base_station_location'
+                      AND from_type = 'base_station'
+                      AND from_key = ANY(:station_keys)
+                    GROUP BY from_key
+                """),
+                {"project_id": project_id, "station_keys": station_keys},
+            )
+            addresses = {str(row.from_key): row.address for row in location_result.fetchall()}
+            for row in rows:
+                if not row.get("address"):
+                    row["address"] = addresses.get(str(row.get("base_station") or "").strip())
+        await db.commit()
+    return rows
+
+
 class MovementAnalysisExecutor(ConsoleExecutorPlugin):
     id = "movement_analysis"
     name = "\u0410\u043d\u0430\u043b\u0438\u0437 \u043f\u0435\u0440\u0435\u043c\u0435\u0449\u0435\u043d\u0438\u0439"
@@ -120,64 +211,13 @@ class MovementAnalysisExecutor(ConsoleExecutorPlugin):
         except ValueError:
             return self._empty("\u041f\u0440\u043e\u0432\u0435\u0440\u044c\u0442\u0435 \u0434\u0430\u0442\u044b \u0438 \u0447\u0438\u0441\u043b\u043e\u0432\u044b\u0435 \u043f\u0430\u0440\u0430\u043c\u0435\u0442\u0440\u044b.")
 
-        bind: dict[str, Any] = {"project_id": project_id, "msisdns": msisdns, "limit": limit}
-        filters = [
-            "participant.project_id = :project_id",
-            "participant.entity_type = 'msisdn'",
-            "participant.entity_key = ANY(:msisdns)",
-            "participant.fact_type IN ('location_event', 'telecom_base_station_observation')",
-            """(
-                (participant.fact_type = 'location_event'
-                 AND NULLIF(BTRIM(location.payload ->> 'lac'), '') IS NOT NULL
-                 AND NULLIF(BTRIM(location.payload ->> 'bs'), '') IS NOT NULL
-                 AND lower(BTRIM(location.payload ->> 'bs')) NOT IN ('0', 'null', 'none', 'n/a', 'na', '-'))
-                OR
-                (participant.fact_type = 'telecom_base_station_observation'
-                 AND NULLIF(BTRIM(location.payload ->> 'base_station'), '') IS NOT NULL
-                 AND NULLIF(BTRIM(split_part(location.payload ->> 'base_station', '/', 3)), '') IS NOT NULL
-                 AND NULLIF(BTRIM(split_part(location.payload ->> 'base_station', '/', 4)), '') IS NOT NULL)
-            )""",
-        ]
-        if date_from:
-            filters.append("location.occurred_at >= :date_from")
-            bind["date_from"] = date_from
-        if date_to:
-            filters.append("location.occurred_at < :date_to_exclusive")
-            bind["date_to_exclusive"] = date_to + timedelta(days=1)
-        sql = """
-            SELECT DISTINCT ON (
-                participant.entity_key,
-                location.occurred_at,
-                COALESCE(location.payload ->> 'base_station', location.payload ->> 'lac', ''),
-                COALESCE(location.payload ->> 'bs', '')
-            )
-                participant.entity_key AS msisdn,
-                location.occurred_at AS event_time,
-                COALESCE(location.payload ->> 'address', station_location.to_key) AS address,
-                COALESCE(location.payload ->> 'mcc', split_part(location.payload ->> 'base_station', '/', 1)) AS mcc,
-                COALESCE(location.payload ->> 'mnc', split_part(location.payload ->> 'base_station', '/', 2)) AS mnc,
-                COALESCE(location.payload ->> 'lac', split_part(location.payload ->> 'base_station', '/', 3)) AS lac,
-                COALESCE(location.payload ->> 'bs', split_part(location.payload ->> 'base_station', '/', 4)) AS bs
-            FROM project_domain_fact_participants AS participant
-            JOIN project_domain_facts AS location ON location.id = participant.fact_id
-            LEFT JOIN project_domain_relations AS station_location
-              ON station_location.project_id = location.project_id
-             AND station_location.relation_type = 'base_station_location'
-             AND station_location.from_type = 'base_station'
-             AND station_location.from_key = BTRIM(location.payload ->> 'base_station')
-            WHERE """ + " AND ".join(filters) + """
-            ORDER BY
-                participant.entity_key,
-                location.occurred_at,
-                COALESCE(location.payload ->> 'base_station', location.payload ->> 'lac', ''),
-                COALESCE(location.payload ->> 'bs', '')
-            LIMIT :limit
-        """
-        async with AsyncSessionLocal() as db:
-            await ensure_project_domain_fact_participants(db, project_id)
-            result = await db.execute(text(sql), bind)
-            source_rows = [dict(row._mapping) for row in result.fetchall()]
-            await db.commit()
+        source_rows = await fetch_movement_source_rows(
+            project_id=project_id,
+            msisdns=msisdns,
+            date_from=date_from,
+            date_to=date_to,
+            limit=limit,
+        )
         if not source_rows:
             return self._empty("\u041f\u043e \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u044b\u043c \u0443\u0441\u043b\u043e\u0432\u0438\u044f\u043c \u0441\u043e\u0431\u044b\u0442\u0438\u0439 \u043b\u043e\u043a\u0430\u0446\u0438\u0439 \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u043e.")
 

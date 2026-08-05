@@ -745,14 +745,16 @@ export const GraphView: React.FC<GraphViewProps> = ({
       const derivedArtifacts = Array.isArray(refreshedConsole.metadata?.derived_artifacts)
         ? refreshedConsole.metadata.derived_artifacts
         : [];
-      const mapArtifactId = Number(derivedArtifacts.find((item: any) => item?.type === 'map')?.id || 0);
+      const derivedArtifactId = Number(
+        derivedArtifacts.find((item: any) => item?.type === 'map' || item?.type === 'document')?.id || 0,
+      );
       const refreshedArtifact = await artifactApi.get(artifact.project_id, consoleArtifact.id);
       let targetArtifact = refreshedArtifact;
       dispatch(updateArtifactSync(refreshedArtifact));
-      if (mapArtifactId) {
-        const mapArtifact = await artifactApi.get(artifact.project_id, mapArtifactId);
-        dispatch(updateArtifactSync(mapArtifact));
-        targetArtifact = mapArtifact;
+      if (derivedArtifactId) {
+        const derivedArtifact = await artifactApi.get(artifact.project_id, derivedArtifactId);
+        dispatch(updateArtifactSync(derivedArtifact));
+        targetArtifact = derivedArtifact;
       }
       // Let the successful refresh transaction become visible to the list query.
       await new Promise<void>((resolve) => window.setTimeout(resolve, 120));
