@@ -30,6 +30,14 @@ def _display(value: object, fallback: str = "-") -> str:
     return fallback if result.casefold() in {"", "null", "none", "n/a", "na", "-"} else result
 
 
+def _display_azimuth(value: object) -> str:
+    try:
+        azimuth = float(value)
+    except (TypeError, ValueError):
+        return "-"
+    return f"{azimuth:g}\N{DEGREE SIGN}" if 0 <= azimuth < 360 else "-"
+
+
 def _requested_msisdns(value: object) -> list[str]:
     values = [_digits(item) for item in re.split(r"[\s,;]+", str(value or ""))]
     return [item for item in dict.fromkeys(values) if item]
@@ -246,28 +254,28 @@ async def resolve_movement_coordinates(project_id: int, rows: list[Dict[str, Any
             row.update(tower)
             row["resolved_address"] = tower.get("address") or row.get("address")
             external_count += 1
-            continue
-        tower = local_towers.get(_cell_key(row))
-        if tower and (not tower.get("address") or is_concrete_geocoded_address(tower.get("address"))):
-            row.update(tower)
-            row["resolved_address"] = tower.get("address") or row.get("address")
-            local_count += 1
-            continue
-        tower = project_towers.get(_cell_key(row))
-        if tower and (not tower.get("address") or is_concrete_geocoded_address(tower.get("address"))):
-            row.update(tower)
-            row["resolved_address"] = tower.get("address") or row.get("address")
-            project_count += 1
-            continue
-        tower = project_addresses.get(normalize_address(row.get("address")))
-        if tower and (not tower.get("address") or is_concrete_geocoded_address(tower.get("address"))):
-            row.update(tower)
-            row["resolved_address"] = tower.get("address") or row.get("address")
-            address_count += 1
         else:
-            row["latitude"] = None
-            row["longitude"] = None
-            row["resolved_address"] = row.get("address")
+            tower = local_towers.get(_cell_key(row))
+            if tower and (not tower.get("address") or is_concrete_geocoded_address(tower.get("address"))):
+                row.update(tower)
+                row["resolved_address"] = tower.get("address") or row.get("address")
+                local_count += 1
+            else:
+                tower = project_towers.get(_cell_key(row))
+                if tower and (not tower.get("address") or is_concrete_geocoded_address(tower.get("address"))):
+                    row.update(tower)
+                    row["resolved_address"] = tower.get("address") or row.get("address")
+                    project_count += 1
+                else:
+                    tower = project_addresses.get(normalize_address(row.get("address")))
+                    if tower and (not tower.get("address") or is_concrete_geocoded_address(tower.get("address"))):
+                        row.update(tower)
+                        row["resolved_address"] = tower.get("address") or row.get("address")
+                        address_count += 1
+                    else:
+                        row["latitude"] = None
+                        row["longitude"] = None
+                        row["resolved_address"] = row.get("address")
         if row.get("latitude") is not None and row.get("longitude") is not None:
             _apply_probabilistic_location(row)
     return {
@@ -368,7 +376,7 @@ class MovementAnalysisExecutor(ConsoleExecutorPlugin):
                 "msisdn": item["msisdn"], "started_at": item["started_at"].isoformat(), "ended_at": item["ended_at"].isoformat(),
                 "duration": _format_delta(item["ended_at"] - item["started_at"]), "events": item["events"],
                 "address": _display(item.get("address")), "mcc": _display(item.get("mcc")), "mnc": _display(item.get("mnc")),
-                "lac": _display(item.get("lac")), "bs": _display(item.get("bs")),
+                "lac": _display(item.get("lac")), "bs": _display(item.get("bs")), "azimuth": _display_azimuth(item.get("azimuth")),
                 "coordinates": f"{float(item['latitude']):.6f}, {float(item['longitude']):.6f}" if item.get("latitude") is not None else "\u041d\u0435\u0442 \u043a\u043e\u043e\u0440\u0434\u0438\u043d\u0430\u0442",
             }
             for item in stays
@@ -382,6 +390,7 @@ class MovementAnalysisExecutor(ConsoleExecutorPlugin):
                 "msisdn": item["msisdn"], "from_time": item["from_time"].isoformat(), "to_time": item["to_time"].isoformat(),
                 "travel_time": _format_delta(item["to_time"] - item["from_time"]), "from_cell": item["from_cell"], "to_cell": item["to_cell"],
                 "from_address": _display(item.get("from_address")), "to_address": _display(item.get("to_address")),
+                "from_azimuth": _display_azimuth(item.get("from_azimuth")), "to_azimuth": _display_azimuth(item.get("to_azimuth")),
                 "distance_km": item["distance_km"] if item["distance_km"] is not None else "-",
             }
             for item in moves
@@ -395,10 +404,10 @@ class MovementAnalysisExecutor(ConsoleExecutorPlugin):
                     column("stays", "\u0421\u0442\u043e\u044f\u043d\u043e\u043a", "integer", 110), column("moves", "\u041f\u0435\u0440\u0435\u043c\u0435\u0449\u0435\u043d\u0438\u0439", "integer", 130), column("first_event", "\u041f\u0435\u0440\u0432\u043e\u0435 \u0441\u043e\u0431\u044b\u0442\u0438\u0435", "datetime", 180), column("last_event", "\u041f\u043e\u0441\u043b\u0435\u0434\u043d\u0435\u0435 \u0441\u043e\u0431\u044b\u0442\u0438\u0435", "datetime", 180),
                 ], summary_rows),
                 tab("stays", "\u0421\u0442\u043e\u044f\u043d\u043a\u0438", [
-                    column("sequence", "#", "integer", 70), column("msisdn", "MSISDN", "string", 150), column("started_at", "\u041d\u0430\u0447\u0430\u043b\u043e", "datetime", 160), column("ended_at", "\u041e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u0435", "datetime", 160), column("duration", "\u0414\u043b\u0438\u0442\u0435\u043b\u044c\u043d\u043e\u0441\u0442\u044c", "string", 130), column("events", "\u0424\u0430\u043a\u0442\u043e\u0432", "integer", 90), column("address", "\u0410\u0434\u0440\u0435\u0441", "string", 380), column("mcc", "MCC", "string", 70), column("mnc", "MNC", "string", 70), column("lac", "LAC", "string", 100), column("bs", "\u0411\u0421", "string", 100), column("coordinates", "\u041a\u043e\u043e\u0440\u0434\u0438\u043d\u0430\u0442\u044b", "string", 180),
+                    column("sequence", "#", "integer", 70), column("msisdn", "MSISDN", "string", 150), column("started_at", "\u041d\u0430\u0447\u0430\u043b\u043e", "datetime", 160), column("ended_at", "\u041e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u0435", "datetime", 160), column("duration", "\u0414\u043b\u0438\u0442\u0435\u043b\u044c\u043d\u043e\u0441\u0442\u044c", "string", 130), column("events", "\u0424\u0430\u043a\u0442\u043e\u0432", "integer", 90), column("address", "\u0410\u0434\u0440\u0435\u0441", "string", 380), column("mcc", "MCC", "string", 70), column("mnc", "MNC", "string", 70), column("lac", "LAC", "string", 100), column("bs", "\u0411\u0421", "string", 100), column("azimuth", "\u0410\u0437\u0438\u043c\u0443\u0442 \u0411\u0421", "string", 100), column("coordinates", "\u041a\u043e\u043e\u0440\u0434\u0438\u043d\u0430\u0442\u044b", "string", 180),
                 ], stay_rows),
                 tab("moves", "\u041f\u0435\u0440\u0435\u043c\u0435\u0449\u0435\u043d\u0438\u044f", [
-                    column("msisdn", "MSISDN", "string", 150), column("from_time", "\u0412\u044b\u0431\u044b\u043b", "datetime", 160), column("to_time", "\u041f\u0440\u0438\u0431\u044b\u043b", "datetime", 160), column("travel_time", "\u041f\u0430\u0443\u0437\u0430", "string", 120), column("from_cell", "\u041e\u0442\u043a\u0443\u0434\u0430 (\u0411\u0421)", "string", 150), column("to_cell", "\u041a\u0443\u0434\u0430 (\u0411\u0421)", "string", 150), column("distance_km", "\u0420\u0430\u0441\u0441\u0442\u043e\u044f\u043d\u0438\u0435, \u043a\u043c", "number", 130), column("from_address", "\u0410\u0434\u0440\u0435\u0441 \u043e\u0442\u043a\u0443\u0434\u0430", "string", 300), column("to_address", "\u0410\u0434\u0440\u0435\u0441 \u043a\u0443\u0434\u0430", "string", 300),
+                    column("msisdn", "MSISDN", "string", 150), column("from_time", "\u0412\u044b\u0431\u044b\u043b", "datetime", 160), column("to_time", "\u041f\u0440\u0438\u0431\u044b\u043b", "datetime", 160), column("travel_time", "\u041f\u0430\u0443\u0437\u0430", "string", 120), column("from_cell", "\u041e\u0442\u043a\u0443\u0434\u0430 (\u0411\u0421)", "string", 150), column("from_azimuth", "\u0410\u0437\u0438\u043c\u0443\u0442 \u043e\u0442\u043a\u0443\u0434\u0430", "string", 115), column("to_cell", "\u041a\u0443\u0434\u0430 (\u0411\u0421)", "string", 150), column("to_azimuth", "\u0410\u0437\u0438\u043c\u0443\u0442 \u043a\u0443\u0434\u0430", "string", 110), column("distance_km", "\u0420\u0430\u0441\u0441\u0442\u043e\u044f\u043d\u0438\u0435, \u043a\u043c", "number", 130), column("from_address", "\u0410\u0434\u0440\u0435\u0441 \u043e\u0442\u043a\u0443\u0434\u0430", "string", 300), column("to_address", "\u0410\u0434\u0440\u0435\u0441 \u043a\u0443\u0434\u0430", "string", 300),
                 ], move_rows),
                 {"id": "map", "name": "\u041a\u0430\u0440\u0442\u0430", "view": "map", "columns": [], "rows": [], "row_count": len(points), "map_data": {"provider": source_label, "points": points, "source": {"plugin_id": self.id, "provider_id": provider.provider_id, "provider_label": provider.label, "provider_detail": provider.detail, "external_coordinates_used": external_count, "local_coordinates_used": local_count, "project_coordinates_used": project_count, "project_address_coordinates_used": address_count}}},
             ],
@@ -468,6 +477,7 @@ class MovementAnalysisExecutor(ConsoleExecutorPlugin):
                         "msisdn": stay["msisdn"], "from_time": previous["ended_at"], "to_time": stay["started_at"],
                         "from_cell": "/".join(part for part in previous["cell_key"] if part), "to_cell": "/".join(part for part in stay["cell_key"] if part),
                         "from_address": from_address, "to_address": to_address, "distance_km": distance_km,
+                        "from_azimuth": previous.get("azimuth"), "to_azimuth": stay.get("azimuth"),
                         "from_point_id": previous.get("map_point_id", ""), "to_point_id": stay.get("map_point_id", ""),
                     })
             previous = stay
