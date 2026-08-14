@@ -29,7 +29,9 @@ export const ArtifactContentView: React.FC<ArtifactContentViewProps> = ({
     );
   }
 
-  if (activeArtifact.data_loaded === false || isLoading) {
+  const pluginExecutionPending = activeArtifact.data?.plugin_execution_pending === true;
+
+  if (activeArtifact.data_loaded === false || isLoading || pluginExecutionPending) {
     return (
       <div className="artifact-load-state" role="status" aria-live="polite">
         <div className="artifact-load-spinner" />

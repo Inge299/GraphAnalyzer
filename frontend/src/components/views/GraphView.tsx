@@ -729,10 +729,18 @@ export const GraphView: React.FC<GraphViewProps> = ({
         },
       });
 
-      // Open the placeholder immediately. The analyst sees the new result while the plugin runs.
-      dispatch(updateArtifactSync(consoleArtifact));
+      // Open the placeholder immediately and keep the common progress screen visible
+      // until the plugin transaction has returned the populated artifact.
+      const pendingConsoleArtifact = {
+        ...consoleArtifact,
+        data: {
+          ...consoleArtifact.data,
+          plugin_execution_pending: true,
+        },
+      };
+      dispatch(updateArtifactSync(pendingConsoleArtifact));
       dispatch(setCurrentArtifact(consoleArtifact.id));
-      onOpenArtifact?.(consoleArtifact);
+      onOpenArtifact?.(pendingConsoleArtifact);
       const refreshedConsole = await consoleApi.refresh(
         artifact.project_id,
         consoleArtifact.id,
