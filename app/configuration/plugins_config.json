@@ -16,7 +16,7 @@
       "base_plugin_id": "expand_typed_relations",
       "name": "Соединения",
       "description": "Телефонные соединения выбранных MSISDN.",
-      "menu_path": "Телефония",
+      "menu_path": ["Связи", "Телефония"],
       "menu_order": 10,
       "fixed_params": {
         "relation_type": "msisdn_communication"
@@ -27,7 +27,7 @@
       "base_plugin_id": "expand_typed_relations",
       "name": "MSISDN — IMSI",
       "description": "Факты использования IMSI.",
-      "menu_path": "Телефония",
+      "menu_path": ["Связи", "Телефония"],
       "menu_order": 20,
       "fixed_params": {
         "relation_type": "msisdn_imsi_usage"
@@ -38,7 +38,7 @@
       "base_plugin_id": "expand_typed_relations",
       "name": "MSISDN — IMEI",
       "description": "Факты использования аппатов.",
-      "menu_path": "Телефония",
+      "menu_path": ["Связи", "Телефония"],
       "menu_order": 30,
       "fixed_params": {
         "relation_type": "msisdn_imei_usage"
@@ -49,7 +49,7 @@
       "base_plugin_id": "expand_typed_relations",
       "name": "Адресная книга",
       "description": "Кто у кого записан в адресной книге.",
-      "menu_path": "Мессенджер",
+      "menu_path": ["Связи", "Мессенджер"],
       "menu_order": 10,
       "fixed_params": {
         "relation_type": "address_book_link"
@@ -60,7 +60,7 @@
       "base_plugin_id": "expand_typed_relations",
       "name": "Записан как",
       "description": "Собрать все названия номера в один текстовый объект.",
-      "menu_path": "Мессенджер",
+      "menu_path": ["Связи", "Мессенджер"],
       "menu_order": 20,
       "fixed_params": {
         "relation_type": "msisdn_text_link"
@@ -71,7 +71,7 @@
       "base_plugin_id": "expand_typed_relations",
       "name": "Используемые устройства",
       "description": "Устройства, используемые номером в действиях пользователей.",
-      "menu_path": "Мессенджер",
+      "menu_path": ["Связи", "Мессенджер"],
       "menu_order": 30,
       "fixed_params": {
         "relation_type": "msisdn_device_link"
@@ -82,7 +82,7 @@
       "base_plugin_id": "expand_typed_relations",
       "name": "MSISDN — IMSI",
       "description": "Показывает IMSI, связанные с выбранными абонентскими номерами.",
-      "menu_path": "Принадлежность",
+      "menu_path": ["Связи", "Принадлежность"],
       "menu_order": 10,
       "fixed_params": {
         "relation_type": "subscriber_msisdn_imsi"
@@ -93,7 +93,7 @@
       "base_plugin_id": "expand_typed_relations",
       "name": "MSISDN — паспорт",
       "description": "Показывает паспортные данные, связанные с выбранными абонентскими номерами.",
-      "menu_path": "Принадлежность",
+      "menu_path": ["Связи", "Принадлежность"],
       "menu_order": 20,
       "fixed_params": {
         "relation_type": "subscriber_msisdn_passport"
@@ -104,7 +104,7 @@
       "base_plugin_id": "expand_typed_relations",
       "name": "Субъект — паспорт",
       "description": "Показывает паспортные данные субъекта.",
-      "menu_path": "Принадлежность",
+      "menu_path": ["Связи", "Принадлежность"],
       "menu_order": 30,
       "fixed_params": {
         "relation_type": "subscriber_person_passport"
@@ -115,7 +115,7 @@
       "base_plugin_id": "expand_typed_relations",
       "name": "Паспорт — адрес",
       "description": "Показывает адрес обслуживания, связанный с паспортными данными.",
-      "menu_path": "Принадлежность",
+      "menu_path": ["Связи", "Принадлежность"],
       "menu_order": 40,
       "fixed_params": {
         "relation_type": "subscriber_passport_address"

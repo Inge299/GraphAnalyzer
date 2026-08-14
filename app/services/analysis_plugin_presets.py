@@ -6,7 +6,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from plugins import PluginBase
-from app.services.plugins_config_service import get_analysis_plugin_presets
+from app.services.domain_model_service import list_edge_types
+from app.services.plugins_config_service import get_analysis_plugin_presets, normalize_menu_path
 
 
 @dataclass(frozen=True)
@@ -15,7 +16,7 @@ class AnalysisPluginPreset:
     base_plugin_id: str
     name: str
     description: str
-    menu_path: str
+    menu_path: list[str]
     menu_order: int
     fixed_params: dict[str, Any]
 
@@ -33,7 +34,7 @@ def list_analysis_plugin_presets() -> list[AnalysisPluginPreset]:
             base_plugin_id=base_plugin_id,
             name=str(item.get("name") or preset_id).strip() or preset_id,
             description=str(item.get("description") or "").strip(),
-            menu_path=str(item.get("menu_path") or "\u0410\u043d\u0430\u043b\u0438\u0437").strip() or "\u0410\u043d\u0430\u043b\u0438\u0437",
+            menu_path=normalize_menu_path(item.get("menu_path")),
             menu_order=int(item.get("menu_order") or 0),
             fixed_params=dict(fixed_params),
         ))
@@ -55,12 +56,24 @@ class PresetPlugin(PluginBase):
         self.name = preset.name
         self.version = base_plugin.version
         self.description = preset.description or base_plugin.description
-        self.menu_path = preset.menu_path
+        self.menu_path = "/".join(preset.menu_path)
         self.input_types = list(base_plugin.input_types)
         self.output_types = list(base_plugin.output_types)
         self.applicable_to = list(base_plugin.applicable_to)
         self.inputs = dict(base_plugin.inputs)
         self.applicable_when = dict(base_plugin.applicable_when)
+        edge_type = self._edge_type()
+        endpoint_types = [
+            str(edge_type.get(key) or "").strip()
+            for key in ("from_type", "to_type")
+            if str(edge_type.get(key) or "").strip()
+        ]
+        if endpoint_types:
+            self.inputs = {
+                **self.inputs,
+                "selection": {**dict(self.inputs.get("selection") or {}), "node_types": endpoint_types, "min": 1},
+            }
+            self.applicable_when = {**self.applicable_when, "node_types": endpoint_types, "min_selection": 1}
         self.output_strategy = dict(base_plugin.output_strategy)
         self.plugin_scope = base_plugin.plugin_scope
         self.domain_requirements = dict(base_plugin.domain_requirements)
@@ -83,6 +96,34 @@ class PresetPlugin(PluginBase):
             ],
         })
         return metadata
+
+    def _edge_type(self) -> dict[str, Any]:
+        relation_type = str(self.preset.fixed_params.get("relation_type") or "").strip()
+        return next((item for item in list_edge_types() if str(item.get("id") or "").strip() == relation_type), {})
+
+    def is_applicable_with_context(self, input_artifacts: list[dict], context: dict | None) -> bool:
+        edge_type = self._edge_type()
+        endpoint_types = {
+            str(edge_type.get(key) or "").strip().lower()
+            for key in ("from_type", "to_type")
+            if str(edge_type.get(key) or "").strip()
+        }
+        if not endpoint_types or not input_artifacts:
+            return False
+
+        artifact = input_artifacts[0]
+        if str(artifact.get("type") or "").strip() != "graph":
+            return False
+        selected_ids = {str(item) for item in (context or {}).get("selected_nodes", [])}
+        if not selected_ids:
+            return False
+        data = artifact.get("data") if isinstance(artifact.get("data"), dict) else {}
+        return any(
+            str(node.get("id") or "") in selected_ids
+            and str(node.get("type") or "").strip().lower() in endpoint_types
+            for node in data.get("nodes", [])
+            if isinstance(node, dict)
+        )
 
     async def validate(self, input_artifacts: list[dict]) -> bool:
         return await self.base_plugin.validate(input_artifacts)

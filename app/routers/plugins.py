@@ -18,6 +18,7 @@ from app.services.plugins_config_service import (
     delete_analysis_plugin_preset,
     delete_plugin_config,
     get_analysis_plugin_presets,
+    normalize_menu_path,
     upsert_analysis_plugin_preset,
     update_plugin_ui_settings,
 )
@@ -31,6 +32,11 @@ from app.services.project_domain_store import upsert_manual_domain_entities
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+def _serialize_analysis_preset(preset: Dict[str, Any]) -> Dict[str, Any]:
+    """Keep the public API compatible while config stores menu path segments."""
+    return {**preset, "menu_path": "/".join(normalize_menu_path(preset.get("menu_path")))}
 
 
 class PluginExecuteRequest(BaseModel):
@@ -245,7 +251,7 @@ async def update_python_graph_plugin(plugin_id: str, payload: Dict[str, Any]):
 
 @router.get("/analysis-presets")
 async def list_analysis_presets():
-    return {"presets": get_analysis_plugin_presets()}
+    return {"presets": [_serialize_analysis_preset(item) for item in get_analysis_plugin_presets()]}
 
 
 @router.post("/analysis-presets")
@@ -254,7 +260,7 @@ async def save_analysis_preset(payload: Dict[str, Any]):
         preset = upsert_analysis_plugin_preset(payload)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return {"preset": preset}
+    return {"preset": _serialize_analysis_preset(preset)}
 
 
 @router.delete("/analysis-presets/{preset_id}")

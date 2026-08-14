@@ -42,6 +42,13 @@ DEFAULT_ANALYSIS_PLUGIN_PRESETS = [
 _DEFAULT_CONFIG: Dict[str, Any] = {"version": 2, "plugins": {}, "analysis_presets": DEFAULT_ANALYSIS_PLUGIN_PRESETS}
 
 
+def normalize_menu_path(value: Any, default: tuple[str, ...] = ("Анализ",)) -> list[str]:
+    """Accept legacy slash-separated paths and persist canonical segments."""
+    raw_segments = value if isinstance(value, list) else str(value or "").split("/")
+    segments = [str(segment).strip() for segment in raw_segments if str(segment).strip()]
+    return segments or list(default)
+
+
 @lru_cache(maxsize=1)
 def _config_path() -> Path:
     return Path(__file__).resolve().parent.parent / "configuration" / "plugins_config.json"
@@ -100,7 +107,7 @@ def normalize_analysis_plugin_preset(payload: Dict[str, Any]) -> Dict[str, Any]:
     if not name:
         raise ValueError("Profile name is required")
 
-    menu_path = str(payload.get("menu_path") or "Analysis").strip() or "Analysis"
+    menu_path = normalize_menu_path(payload.get("menu_path"))
     fixed_params = payload.get("fixed_params") or {}
     relation_type = str(fixed_params.get("relation_type") or "").strip() if isinstance(fixed_params, dict) else ""
     if not relation_type:
