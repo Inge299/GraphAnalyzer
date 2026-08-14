@@ -413,7 +413,7 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
 
   useEffect(() => {
     if (!isMovementAnalysis || activeTabId !== 'map') return;
-    setActiveTabId(tabs.find((tab) => tab.id === 'stays')?.id || tabs.find((tab) => tab.id !== 'map')?.id || '');
+    setActiveTabId(tabs.find((tab) => tab.id === 'locations')?.id || tabs.find((tab) => tab.id !== 'map')?.id || '');
   }, [activeTabId, isMovementAnalysis, tabs]);
 
   const activeTab = useMemo(
@@ -1040,7 +1040,7 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
               _onUpdate={() => {}}
               dataOverride={movementMapTab.map_data}
               titleOverride={'\u041a\u0430\u0440\u0442\u0430 \u043f\u0435\u0440\u0435\u043c\u0435\u0449\u0435\u043d\u0438\u0439'}
-              descriptionOverride={'\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0441\u0442\u0440\u043e\u043a\u0443 \u0441\u0442\u043e\u044f\u043d\u043a\u0438 \u0438\u043b\u0438 \u043f\u0435\u0440\u0435\u043c\u0435\u0449\u0435\u043d\u0438\u044f: \u043d\u0430 \u043a\u0430\u0440\u0442\u0435 \u043e\u0441\u0442\u0430\u043d\u0435\u0442\u0441\u044f \u0442\u043e\u043b\u044c\u043a\u043e \u0441\u043e\u043e\u0442\u0432\u0435\u0442\u0441\u0442\u0432\u0443\u044e\u0449\u0430\u044f \u0442\u043e\u0447\u043a\u0430 \u0438\u043b\u0438 \u043e\u0442\u0440\u0435\u0437\u043e\u043a.'}
+              descriptionOverride={'\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0441\u0442\u0440\u043e\u043a\u0438 \u043b\u043e\u043a\u0430\u0446\u0438\u0439, \u0441\u0442\u043e\u044f\u043d\u043e\u043a \u0438\u043b\u0438 \u043f\u0435\u0440\u0435\u043c\u0435\u0449\u0435\u043d\u0438\u0439: \u043d\u0430 \u043a\u0430\u0440\u0442\u0435 \u043e\u0441\u0442\u0430\u043d\u0443\u0442\u0441\u044f \u0442\u043e\u043b\u044c\u043a\u043e \u0441\u043e\u043e\u0442\u0432\u0435\u0442\u0441\u0442\u0432\u0443\u044e\u0449\u0438\u0435 \u0442\u043e\u0447\u043a\u0438 \u0438\u043b\u0438 \u043c\u0430\u0440\u0448\u0440\u0443\u0442.'}
               selectedPointId={selectedMapPointId || selectedLocationIds[0] || null}
               visiblePointIds={selectedLocationIds}
               onSelectPointIds={(pointIds) => {
@@ -1194,7 +1194,13 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
                         });
                       }
                       if (locationPointIds.length) {
-                        setSelectedLocationIds(locationPointIds);
+                        setSelectedLocationIds((previous) => {
+                          if (!event.ctrlKey && !event.metaKey) return locationPointIds;
+                          const next = new Set(previous);
+                          const alreadySelected = locationPointIds.every((pointId) => next.has(pointId));
+                          locationPointIds.forEach((pointId) => alreadySelected ? next.delete(pointId) : next.add(pointId));
+                          return [...next];
+                        });
                         setSelectedMapPointId(String(row.map_point_id || row.to_point_id || row.from_point_id || locationPointIds[0] || ''));
                       }
                       if (isArtifactRow) handleOpenArtifact(row);
