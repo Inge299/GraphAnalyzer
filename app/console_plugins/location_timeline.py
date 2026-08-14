@@ -67,6 +67,8 @@ def _selected_msisdns(artifact: Optional[Dict[str, Any]], context: Optional[Dict
 
 
 class LocationTimelineExecutor(ConsoleExecutorPlugin):
+    # Replaced by movement_analysis, which supports the current universal facts.
+    abstract_plugin = True
     id = "location_timeline"
     name = "Последовательность локаций"
     description = "Показывает события местоположения выбранных MSISDN и создаёт обновляемую карту маршрута по известным координатам базовых станций."

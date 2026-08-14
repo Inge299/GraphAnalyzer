@@ -9,6 +9,8 @@
 .map-stage { height: min(600px, calc(100vh - 230px)); min-height: 520px; overflow: hidden; border-radius: 10px 10px 0 0; }
 .map-stage .maplibregl-map { height: 100%; width: 100%; font: inherit; }
 .map-attribution { margin: 0; padding: 8px 12px; border-top: 1px solid #dbe4ef; color: #66758a; font-size: 12px; }
+.map-heat-legend { position: absolute; z-index: 3; left: 14px; bottom: 48px; display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 6px; background: rgb(255 255 255 / 92%); color: #334155; font-size: 11px; }
+.map-heat-legend i { width: 116px; height: 10px; border-radius: 999px; background: linear-gradient(90deg, #38bdf8 0%, #22c55e 33%, #f59e0b 62%, #ea580c 80%, #b91c1c 100%); }
 .map-load-error { position: absolute; z-index: 2; left: 12px; right: 12px; bottom: 44px; padding: 8px 10px; border: 1px solid #f0a3a3; border-radius: 6px; background: rgb(255 244 244 / 94%); color: #9f1239; font-size: 12px; }
 .map-details { max-height: min(600px, calc(100vh - 230px)); overflow: hidden; display: flex; flex-direction: column; padding: 14px; align-self: start; font-size: 13px; }
 .map-details h3 { margin: 0 0 10px; font-size: 14px; }
@@ -41,3 +43,45 @@
 .map-route-table td:last-child { min-width: 280px; }
 .map-route-overlay { position: absolute; inset: 0; z-index: 1; pointer-events: none; overflow: visible; }
 .map-stage .maplibregl-marker { z-index: 2; }
+
+
+.movement-inline-map { height: min(54vh, 540px); min-height: 360px; overflow: hidden; border-bottom: 1px solid #dbe3f0; }
+.movement-inline-map .map-view { height: 100%; overflow: hidden; padding: 10px 12px; }
+.movement-inline-map .map-header { margin-bottom: 8px; }
+.movement-inline-map .map-header h2 { font-size: 15px; }
+.movement-inline-map .map-header p { display: none; }
+.movement-inline-map .map-layout { height: calc(100% - 40px); grid-template-columns: minmax(0, 1fr) 230px; gap: 10px; }
+.movement-inline-map .map-canvas-wrap { min-height: 0; }
+.movement-inline-map .map-stage { height: calc(100% - 36px); min-height: 0; }
+.movement-inline-map .map-details { max-height: none; min-height: 0; padding: 10px; }
+.movement-inline-map .map-point-events { margin-top: 10px; }
+@media (max-width: 900px) { .movement-inline-map { height: 520px; } .movement-inline-map .map-layout { grid-template-columns: 1fr; } .movement-inline-map .map-details { display: none; } }
+
+
+.map-selection-hint {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  text-align: center;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.8);
+  pointer-events: none;
+}
+.map-heat-overlay {
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 2;
+  mix-blend-mode: multiply;
+}
+.map-heat-overlay {
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 2;
+  mix-blend-mode: multiply;
+}

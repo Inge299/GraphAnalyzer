@@ -5,6 +5,7 @@ Artifact management endpoints (API v2).
 from fastapi import APIRouter, HTTPException, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, and_, or_, func
+from sqlalchemy.orm import load_only
 from typing import List, Dict, Any, Optional
 import logging
 from datetime import datetime
@@ -127,6 +128,7 @@ async def list_artifacts(
     project_id: int,
     type: Optional[str] = Query(None, description="Filter by artifact type"),
     search: Optional[str] = Query(None, description="Search in name and description"),
+    include_data: bool = Query(False, description="Include full artifact payloads"),
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
@@ -149,6 +151,19 @@ async def list_artifacts(
             select(
                 Artifact,
                 func.coalesce(latest_version_subquery.c.latest_version, 1).label("latest_version"),
+            )
+            .options(
+                load_only(
+                    Artifact.id,
+                    Artifact.project_id,
+                    Artifact.type,
+                    Artifact.name,
+                    Artifact.description,
+                    Artifact.artifact_metadata,
+                    Artifact.created_at,
+                    Artifact.updated_at,
+                    *([Artifact.data] if include_data else []),
+                )
             )
             .outerjoin(
                 latest_version_subquery,
@@ -179,18 +194,21 @@ async def list_artifacts(
         # Р СџР С•Р В»РЎС“РЎвЂЎР В°Р ВµР С Р С—Р С•РЎРѓР В»Р ВµР Т‘Р Р…РЎР‹РЎР‹ Р Р†Р ВµРЎР‚РЎРѓР С‘РЎР‹ Р Т‘Р В»РЎРЏ Р С”Р В°Р В¶Р Т‘Р С•Р С–Р С• Р В°РЎР‚РЎвЂљР ВµРЎвЂћР В°Р С”РЎвЂљР В°
         response = []
         for artifact, latest_version in rows:
-            response.append({
+            item = {
                 "id": artifact.id,
                 "project_id": artifact.project_id,
                 "type": artifact.type,
                 "name": artifact.name,
                 "description": artifact.description,
-                "data": artifact.data,
                 "metadata": artifact.artifact_metadata,
                 "created_at": artifact.created_at.isoformat() if artifact.created_at else None,
                 "updated_at": artifact.updated_at.isoformat() if artifact.updated_at else None,
                 "version": int(latest_version or 1),
-            })
+                "data_loaded": include_data,
+            }
+            if include_data:
+                item["data"] = artifact.data
+            response.append(item)
         
         return response
     except Exception as e:
@@ -261,6 +279,7 @@ async def get_artifact(
             "description": artifact.description,
             "data": data,
             "metadata": artifact.artifact_metadata,
+            "data_loaded": True,
             "created_at": artifact.created_at.isoformat() if artifact.created_at else None,
             "updated_at": artifact.updated_at.isoformat() if artifact.updated_at else None,
             "version": current_version

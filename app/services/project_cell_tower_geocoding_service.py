@@ -9,6 +9,7 @@ from typing import Any, Awaitable, Callable, Iterable
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.database import AsyncSessionLocal
 from app.services.cell_tower_reference_provider import resolve_cell_towers
 from app.services.geocoding_service import NominatimGeocoder
@@ -26,6 +27,28 @@ def _value(value: object) -> str:
 def normalize_address(value: object) -> str:
     return re.sub(r"\s+", " ", _value(value).casefold()).strip(" ,;.")
 
+
+_CONCRETE_ADDRESS_RE = re.compile(
+    "(?:^|[\\s,])(?:\u0443\u043b(?:\u0438\u0446\u0430)?\\.?|\u043f\u0440\u043e\u0441\u043f\u0435\u043a\u0442\u0430?|\u043f\u0440-?\u043a\u0442\\.?|\u043f\u0435\u0440\u0435\u0443\u043b\u043e\u043a\u0430?|\u043f\u0435\u0440\\.?|\u0431\u0443\u043b\u044c\u0432\u0430\u0440\u0430?|\u0431-\u0440\\.?|\u0448\u043e\u0441\u0441\u0435|\u0448\\.?|\u043f\u043b\u043e\u0449\u0430\u0434\u044c|\u043f\u043b\\.?|\u043f\u0440\u043e\u0435\u0437\u0434\u0430?|\u043d\u0430\u0431\u0435\u0440\u0435\u0436\u043d\u0430\u044f|\u0434\u043e\u043c\u0430?|\u0434\\.?|\u0437\u0434\u0430\u043d\u0438\u0435|\u0437\u0434\\.?|\u043a\u043e\u0440\u043f\u0443\u0441\u0430?|\u043e\u043f\u043e\u0440\u0430|\u0442\u0435\u0440\u0440\u0438\u0442\u043e\u0440\u0438\u044f|\u043c\u0438\u043a\u0440\u043e\u0440\u0430\u0439\u043e\u043d\u0430?|\u043c\u043a\u0440\\.?)(?:[\\s,]|$)",
+    re.IGNORECASE,
+)
+
+
+def is_concrete_geocoded_address(value: object) -> bool:
+    """A city or region centroid is not a usable base-station location."""
+    return bool(_CONCRETE_ADDRESS_RE.search(_value(value)))
+
+
+_HOUSE_LEVEL_ADDRESS_RE = re.compile(
+    "(?:^|[\\s,])(?:\u0434(?:\u043e\u043c)?|\u0437\u0434(?:\u0430\u043d\u0438\u0435)?|\u043a\u043e\u0440\u043f(?:\u0443\u0441)?|\u0441\u0442\u0440(?:\u043e\u0435\u043d\u0438\u0435)?|\u0432\u043b\u0430\u0434\u0435\u043d\u0438\u0435|\u0443\u0447\u0430\u0441\u0442\u043e\u043a|\u0437/\u0443)\\.?\\s*(?:\u2116\\s*)?\\d+[\u0430-\u044fa-z]?(?:[\\s,]|$)",
+    re.IGNORECASE,
+)
+
+
+def is_house_level_address(value: object) -> bool:
+    """Only house-level results are precise enough for subscriber addresses."""
+    address = _value(value)
+    return is_concrete_geocoded_address(address) and bool(_HOUSE_LEVEL_ADDRESS_RE.search(address))
 
 def normalize_cell(mcc: object, mnc: object, lac: object, cid: object) -> tuple[str, str, str, str] | None:
     lac_value, cid_value = _value(lac), _value(cid)
@@ -142,7 +165,7 @@ async def _cached_addresses(db: AsyncSession, address_norms: Iterable[str]) -> d
         return {}
     result = await db.execute(text("""
         SELECT address_norm, address, latitude, longitude, display_name, status, provider
-        FROM geocoder_address_cache WHERE address_norm = ANY(:values) AND status = 'resolved'
+        FROM geocoder_address_cache WHERE address_norm = ANY(:values)
     """), {"values": values})
     return {row["address_norm"]: dict(row) for row in result.mappings()}
 
@@ -157,6 +180,92 @@ async def _upsert_cache(db: AsyncSession, address_norm: str, address: str, resul
     """), {"address_norm": address_norm, "address": address,
            "latitude": getattr(result, "latitude", None), "longitude": getattr(result, "longitude", None),
            "display_name": getattr(result, "display_name", None), "status": status})
+
+
+async def enrich_project_domain_addresses(
+    db: AsyncSession,
+    project_id: int,
+    candidates: Iterable[dict[str, str]],
+    progress: ProgressCallback | None = None,
+) -> dict[str, int]:
+    """Geocode house-level subscriber addresses and write coordinates into domain entities."""
+    await ensure_project_cell_tower_geocoding_tables(db)
+    unique: dict[str, dict[str, str]] = {}
+    skipped = 0
+    for candidate in candidates:
+        address = _value(candidate.get("address"))
+        address_key = _value(candidate.get("address_key")) or normalize_address(address)
+        address_norm = normalize_address(address)
+        if not address or not address_key or not is_house_level_address(address):
+            skipped += 1
+            continue
+        unique.setdefault(address_norm, {"address": address, "address_key": address_key})
+
+    cache = await _cached_addresses(db, unique)
+    pending = {key: item for key, item in unique.items() if key not in cache}
+    resolved = 0
+    not_found = 0
+    failed = 0
+    geocoder = NominatimGeocoder() if settings.GEOCODER_ENABLED else None
+    total = max(1, len(pending))
+    for index, (address_norm, item) in enumerate(pending.items(), start=1):
+        found = None
+        status = "not_found"
+        try:
+            if geocoder is not None:
+                found = await geocoder.search(item["address"])
+            if found is not None and is_house_level_address(getattr(found, "display_name", None)):
+                status = "resolved"
+                resolved += 1
+            elif found is not None:
+                status = "not_precise"
+                not_found += 1
+            else:
+                not_found += 1
+        except Exception:
+            status = "failed"
+            failed += 1
+        await _upsert_cache(db, address_norm, item["address"], found if status == "resolved" else None, status)
+        cache[address_norm] = {
+            "status": status,
+            "latitude": getattr(found, "latitude", None) if status == "resolved" else None,
+            "longitude": getattr(found, "longitude", None) if status == "resolved" else None,
+            "display_name": getattr(found, "display_name", None) if status == "resolved" else None,
+        }
+        if progress:
+            await progress(86 + int(3 * index / total), f"\u0413\u0435\u043e\u043a\u043e\u0434\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u0435 \u0430\u0434\u0440\u0435\u0441\u043e\u0432 \u0430\u0431\u043e\u043d\u0435\u043d\u0442\u043e\u0432: {index} / {len(pending)}")
+
+    updated = 0
+    for address_norm, item in unique.items():
+        cached = cache.get(address_norm) or {}
+        if cached.get("status") != "resolved":
+            continue
+        attributes = json.dumps(
+            {
+                "address": item["address"],
+                "latitude": cached.get("latitude"),
+                "longitude": cached.get("longitude"),
+                "resolved_address": cached.get("display_name"),
+                "geocoder_provider": "nominatim",
+            },
+            ensure_ascii=False,
+        )
+        result = await db.execute(text("""
+            UPDATE project_domain_entities
+            SET attributes = COALESCE(attributes, '{}'::jsonb) || CAST(:attributes AS jsonb), updated_at = NOW()
+            WHERE project_id = :project_id AND type_id = 'address' AND external_key = :address_key
+        """), {"project_id": project_id, "address_key": item["address_key"], "attributes": attributes})
+        updated += int(result.rowcount or 0)
+
+    return {
+        "candidates": len(unique),
+        "cached": len(unique) - len(pending),
+        "resolved": resolved,
+        "not_found": not_found,
+        "failed": failed,
+        "skipped_not_house_level": skipped,
+        "entities_updated": updated,
+    }
 
 
 async def _write_supplement(db: AsyncSession, candidate: dict[str, str], cached: dict[str, Any]) -> None:
@@ -186,7 +295,7 @@ async def _write_common_reference(db: AsyncSession, project_id: int, candidates:
     if not rows:
         return 0
 
-    result = await db.execute(text("""
+    insert_sql = text("""
         WITH source_rows AS (
           SELECT * FROM json_to_recordset(CAST(:rows AS json)) AS r(
             mcc TEXT, mnc TEXT, lac TEXT, cid TEXT, address TEXT, address_norm TEXT,
@@ -222,8 +331,18 @@ async def _write_common_reference(db: AsyncSession, project_id: int, candidates:
           numbered.resolved_address, numbered.address_norm, NULL, NULL, NULL,
           concat('nominatim [project_', CAST(:project_id AS text), '_addr_enrich]'), NOW()
         FROM numbered CROSS JOIN max_id
-    """), {"rows": json.dumps(rows, ensure_ascii=False), "project_id": project_id})
-    return int(result.rowcount or 0)
+    """)
+    inserted = 0
+    # Large projects can contain thousands of resolved addresses. Keeping the
+    # JSON payload bounded avoids a single oversized database statement.
+    for offset in range(0, len(rows), 250):
+        batch = rows[offset:offset + 250]
+        result = await db.execute(
+            insert_sql,
+            {"rows": json.dumps(batch, ensure_ascii=False), "project_id": str(project_id)},
+        )
+        inserted += int(result.rowcount or 0)
+    return inserted
 
 
 async def _enrich_project_cell_towers(db: AsyncSession, project_id: int, progress: ProgressCallback | None = None) -> dict[str, int]:
@@ -239,17 +358,37 @@ async def _enrich_project_cell_towers(db: AsyncSession, project_id: int, progres
     active = [item for item in candidates if (item["mcc"], item["mnc"], item["lac"], item["cid"]) not in conflicts | external]
     cache = await _cached_addresses(db, {item["address_norm"] for item in active})
     pending = {item["address_norm"]: item["address"] for item in active if item["address_norm"] not in cache}
+    if not settings.GEOCODER_ENABLED:
+        # A disabled service is not an address miss. Do not poison the cache with not_found.
+        return {
+            "candidates": len(candidates),
+            "unique_addresses": len({item["address_norm"] for item in active}),
+            "external_reference_matches": len(external),
+            "conflicting_cells": len(conflicts),
+            "written": 0,
+            "common_reference_added": 0,
+            "resolved_addresses": 0,
+            "not_found_addresses": 0,
+            "failed_addresses": 0,
+            "cached_addresses": len(cache),
+            "skipped_geocoding": len(pending),
+            "geocoder_enabled": False,
+        }
     geocoder = NominatimGeocoder()
     resolved, not_found, failed = 0, 0, 0
     total = max(1, len(pending))
     for index, (address_norm, address) in enumerate(pending.items(), start=1):
         try:
             found = await geocoder.search(address)
-            status = "resolved" if found else "not_found"
+            if found is not None and not is_concrete_geocoded_address(getattr(found, "display_name", None)):
+                found = None
+                status = "not_precise"
+            else:
+                status = "resolved" if found else "not_found"
             await _upsert_cache(db, address_norm, address, found, status)
             cache[address_norm] = {"status": status, "latitude": getattr(found, "latitude", None), "longitude": getattr(found, "longitude", None), "display_name": getattr(found, "display_name", None)}
-            resolved += int(found is not None)
-            not_found += int(found is None)
+            resolved += int(status == "resolved")
+            not_found += int(status in {"not_found", "not_precise"})
         except Exception:
             failed += 1
         if progress:
@@ -269,12 +408,26 @@ async def _enrich_project_cell_towers(db: AsyncSession, project_id: int, progres
                     "longitude": cached.get("longitude"),
                     "resolved_address": cached.get("display_name"),
                 })
-    common_reference_added = await _write_common_reference(db, project_id, common_reference_candidates)
-    return {"candidates": len(candidates), "unique_addresses": len({item["address_norm"] for item in active}),
-            "external_reference_matches": len(external), "conflicting_cells": len(conflicts), "written": written,
-            "common_reference_added": common_reference_added,
-            "resolved_addresses": resolved, "not_found_addresses": not_found, "failed_addresses": failed,
-            "cached_addresses": max(0, len(cache) - resolved - not_found)}
+    # Project mappings and the global reference have different purposes. A
+    # failure while extending the shared reference must not discard already
+    # resolved coordinates for the project that started this job.
+    await db.commit()
+    common_reference_error: str | None = None
+    try:
+        common_reference_added = await _write_common_reference(db, project_id, common_reference_candidates)
+        await db.commit()
+    except Exception as exc:
+        await db.rollback()
+        common_reference_added = 0
+        common_reference_error = f"{type(exc).__name__}: {exc}".strip()
+    result = {"candidates": len(candidates), "unique_addresses": len({item["address_norm"] for item in active}),
+              "external_reference_matches": len(external), "conflicting_cells": len(conflicts), "written": written,
+              "common_reference_added": common_reference_added,
+              "resolved_addresses": resolved, "not_found_addresses": not_found, "failed_addresses": failed,
+              "cached_addresses": max(0, len(cache) - resolved - not_found)}
+    if common_reference_error:
+        result["common_reference_error"] = common_reference_error
+    return result
 
 
 async def enrich_project_cell_towers(project_id: int, progress: ProgressCallback | None = None, db: AsyncSession | None = None) -> dict[str, int]:
@@ -310,6 +463,57 @@ async def resolve_project_cell_towers(project_id: int, cells: list[dict[str, Any
                 ORDER BY g.mcc, g.mnc, g.lac, g.cid, g.updated_at DESC
             """), params)
             for row in result.mappings():
-                rows[(row["mcc"], row["mnc"], row["lac"], row["cid"])] = dict(row)
+                mapped = dict(row)
+                if not is_concrete_geocoded_address(mapped.get("address")):
+                    continue
+                rows[(mapped["mcc"], mapped["mnc"], mapped["lac"], mapped["cid"])] = mapped
         await db.commit()
     return rows
+
+
+async def resolve_project_address_coordinates(project_id: int, cells: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """Return cached project coordinates keyed by the source address.
+
+    Cell identifiers in source files occasionally differ in MCC/MNC formatting while
+    the address is identical. Address matching is a safe fallback after the exact
+    cell match and lets route analysis reuse completed geocoding work.
+    """
+    requested = {normalize_address(item.get("address")) for item in cells}
+    requested.discard("")
+    if not requested:
+        return {}
+
+    async with AsyncSessionLocal() as db:
+        await ensure_project_cell_tower_geocoding_tables(db)
+        resolved: dict[str, dict[str, Any]] = {}
+        for offset in range(0, len(requested), 500):
+            chunk = list(requested)[offset:offset + 500]
+            result = await db.execute(text("""
+                SELECT DISTINCT ON (address_norm)
+                    address_norm, latitude, longitude,
+                    COALESCE(resolved_address, address) AS address
+                FROM project_cell_tower_geocoding
+                WHERE project_id = :project_id
+                  AND status = 'resolved'
+                  AND address_norm = ANY(:values)
+                ORDER BY address_norm, updated_at DESC
+            """), {"project_id": project_id, "values": chunk})
+            for row in result.mappings():
+                mapped = dict(row)
+                if is_concrete_geocoded_address(mapped.get("address")):
+                    resolved[mapped["address_norm"]] = mapped
+
+        missing = [item for item in requested if item not in resolved]
+        if missing:
+            result = await db.execute(text("""
+                SELECT address_norm, latitude, longitude,
+                    COALESCE(display_name, address) AS address
+                FROM geocoder_address_cache
+                WHERE status = 'resolved' AND address_norm = ANY(:values)
+            """), {"values": missing})
+            for row in result.mappings():
+                mapped = dict(row)
+                if is_concrete_geocoded_address(mapped.get("address")):
+                    resolved[mapped["address_norm"]] = mapped
+        await db.commit()
+    return resolved

@@ -354,6 +354,14 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
   const data = (artifact.data || {}) as ConsoleArtifactData;
   const tabs = useMemo(() => toTabList(data), [data]);
 
+  const profileId = String(data.profile_id || data.profile_key || '');
+  const isLocationTimeline = profileId === 'location_timeline';
+  const isMovementAnalysis = profileId === 'movement_analysis';
+  const movementMapTab = useMemo(
+    () => tabs.find((tab) => tab.id === 'map' && tab.view === 'map' && tab.map_data),
+    [tabs],
+  );
+
   const initialTabId = useMemo(() => {
     const active = String(data.active_tab_id || '').trim();
     if (active && tabs.some((tab) => tab.id === active)) return active;
@@ -366,7 +374,11 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [dateFilters, setDateFilters] = useState<Record<string, DateFilterValue>>({});
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
+  const [selectedMapPointId, setSelectedMapPointId] = useState<string | null>(null);
   const [selectedRows, setSelectedRows] = useState<Record<string, Record<string, unknown>>>({});
+  const [tablePage, setTablePage] = useState(1);
+  const [tablePageSize, setTablePageSize] = useState(100);
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
   const [consoleTopTab, setConsoleTopTab] = useState<'results' | 'params'>('results');
   const [showUnmappedLocationRows, setShowUnmappedLocationRows] = useState(false);
 
@@ -394,12 +406,20 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
     setFilters({});
     setDateFilters({});
     setSelectedRows({});
+    setSelectedLocationIds([]);
+    setSelectedMapPointId(null);
+    setTablePage(1);
   }, [activeTabId]);
+
+  useEffect(() => {
+    if (!isMovementAnalysis || activeTabId !== 'map') return;
+    setActiveTabId(tabs.find((tab) => tab.id === 'stays')?.id || tabs.find((tab) => tab.id !== 'map')?.id || '');
+  }, [activeTabId, isMovementAnalysis, tabs]);
 
   const activeTab = useMemo(
     () => tabs.find((tab) => tab.id === activeTabId) || tabs[0],
     [tabs, activeTabId],
-  );  const isLocationTimeline = String(data.profile_id || data.profile_key || '') === 'location_timeline';
+  );
   const columns = useMemo(() => {
     if (!activeTab) return [] as ConsoleColumnData[];
     if (activeTab.columns.length > 0) {
@@ -467,6 +487,18 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
     if (!isLocationTimeline || activeTab?.id !== 'locations' || showUnmappedLocationRows) return filteredRows;
     return filteredRows.filter((row) => /^[-+]?\d+(?:\.\d+)?\s*,\s*[-+]?\d+(?:\.\d+)?$/.test(normalize(row.coordinates).trim()));
   }, [activeTab?.id, filteredRows, isLocationTimeline, showUnmappedLocationRows]);
+  const pageCount = Math.max(1, Math.ceil(displayedRows.length / tablePageSize));
+  const currentPage = Math.min(tablePage, pageCount);
+  const pageStart = (currentPage - 1) * tablePageSize;
+  const pagedRows = useMemo(
+    () => displayedRows.slice(pageStart, pageStart + tablePageSize),
+    [displayedRows, pageStart, tablePageSize],
+  );
+
+  useEffect(() => {
+    setTablePage(1);
+  }, [activeTabId, filters, dateFilters, sortKey, sortDir, showUnmappedLocationRows]);
+
   const graphArtifacts = useMemo(
     () =>
       Object.values(artifacts)
@@ -968,7 +1000,7 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
             <button type="button" className="service-btn" onClick={() => setShowUnmappedLocationRows((value) => !value)}>
               {showUnmappedLocationRows ? 'Скрыть без координат' : 'Показать без координат'}
             </button>
-          )}          {tabs.map((tab) => (
+          )}          {tabs.filter((tab) => !(isMovementAnalysis && tab.id === 'map')).map((tab) => (
             <button
               key={tab.id}
               type="button"
@@ -991,14 +1023,41 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
       )}
 
       {consoleTopTab === 'results' && (
-        <div style={{ flex: '1 1 420px', overflow: 'auto', minHeight: 320 }}>
+        <div
+          className={`console-results${isMovementAnalysis ? ' movement-results' : ''}`}
+          style={{
+            flex: '1 1 420px',
+            overflow: isMovementAnalysis ? 'hidden' : 'auto',
+            minHeight: 320,
+            display: isMovementAnalysis ? 'flex' : 'block',
+            flexDirection: isMovementAnalysis ? 'column' : undefined,
+          }}
+        >
+        {isMovementAnalysis && activeTab?.id !== 'map' && movementMapTab?.map_data && (
+          <div className="movement-inline-map">
+            <MapView
+              artifact={artifact}
+              _onUpdate={() => {}}
+              dataOverride={movementMapTab.map_data}
+              titleOverride={'\u041a\u0430\u0440\u0442\u0430 \u043f\u0435\u0440\u0435\u043c\u0435\u0449\u0435\u043d\u0438\u0439'}
+              descriptionOverride={'\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0441\u0442\u0440\u043e\u043a\u0443 \u0441\u0442\u043e\u044f\u043d\u043a\u0438 \u0438\u043b\u0438 \u043f\u0435\u0440\u0435\u043c\u0435\u0449\u0435\u043d\u0438\u044f: \u043d\u0430 \u043a\u0430\u0440\u0442\u0435 \u043e\u0441\u0442\u0430\u043d\u0435\u0442\u0441\u044f \u0442\u043e\u043b\u044c\u043a\u043e \u0441\u043e\u043e\u0442\u0432\u0435\u0442\u0441\u0442\u0432\u0443\u044e\u0449\u0430\u044f \u0442\u043e\u0447\u043a\u0430 \u0438\u043b\u0438 \u043e\u0442\u0440\u0435\u0437\u043e\u043a.'}
+              selectedPointId={selectedMapPointId || selectedLocationIds[0] || null}
+              visiblePointIds={selectedLocationIds}
+              onSelectPointIds={(pointIds) => {
+                setSelectedLocationIds(pointIds);
+                setSelectedMapPointId(pointIds[0] || null);
+              }}
+              showRouteTable={false}
+            />
+          </div>
+        )}
         {activeTab?.view === 'map' && activeTab.map_data ? (
           <MapView
             artifact={artifact}
             _onUpdate={() => {}}
             dataOverride={activeTab.map_data}
             titleOverride={`${artifact.name}: ${activeTab.name}`}
-            descriptionOverride="Маршрут по событиям локаций и координатам из справочника базовых станций."
+            descriptionOverride={'\u041c\u0430\u0440\u0448\u0440\u0443\u0442 \u043f\u043e \u043a\u043e\u043e\u0440\u0434\u0438\u043d\u0430\u0442\u0430\u043c \u0431\u0430\u0437\u043e\u0432\u044b\u0445 \u0441\u0442\u0430\u043d\u0446\u0438\u0439.'}
             showRouteTable={false}
           />
         ) : columns.length === 0 ? (
@@ -1006,6 +1065,26 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
             {'\u041d\u0435\u0442 \u0434\u0430\u043d\u043d\u044b\u0445 \u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0439 \u0432\u043a\u043b\u0430\u0434\u043a\u0435. \u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u043f\u043b\u0430\u0433\u0438\u043d \u0438\u043b\u0438 \u043f\u0440\u043e\u0446\u0435\u0434\u0443\u0440\u0443 \u0438 \u0437\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u0435 \u0435\u0435.'}
           </div>
         ) : (
+          <div className="console-table-scroll">
+          <div className="console-table-pagination">
+            <span>{'\u0421\u0442\u0440\u043e\u043a\u0438 ' + (displayedRows.length ? pageStart + 1 : 0) + '\u2013' + Math.min(pageStart + tablePageSize, displayedRows.length) + ' \u0438\u0437 ' + displayedRows.length}</span>
+            <label>{'\u041d\u0430 \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0435'}
+              <select value={tablePageSize} onChange={(event) => setTablePageSize(Number(event.target.value))}>
+                {[50, 100, 250, 500].map((size) => <option key={size} value={size}>{size}</option>)}
+              </select>
+            </label>
+            <button type="button" className="service-btn" disabled={currentPage <= 1} onClick={() => setTablePage((page) => Math.max(1, page - 1))}>{'\u041d\u0430\u0437\u0430\u0434'}</button>
+            <span>{currentPage} / {pageCount}</span>
+            <button
+              type="button"
+              className="service-btn"
+              aria-expanded={filtersExpanded}
+              onClick={() => setFiltersExpanded((expanded) => !expanded)}
+            >
+              {filtersExpanded ? '\u0421\u043a\u0440\u044b\u0442\u044c \u0444\u0438\u043b\u044c\u0442\u0440\u044b' : '\u0424\u0438\u043b\u044c\u0442\u0440\u044b'}
+            </button>
+            <button type="button" className="service-btn" disabled={currentPage >= pageCount} onClick={() => setTablePage((page) => Math.min(pageCount, page + 1))}>{'\u0414\u0430\u043b\u0435\u0435'}</button>
+          </div>
           <table className="bottom-table" style={{ width: 'max-content', minWidth: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
@@ -1022,7 +1101,7 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
                 ))}
                 <th style={{ width: '120px', minWidth: '120px' }}>{'\u0414\u0435\u0439\u0441\u0442\u0432\u0438\u044f'}</th>
               </tr>
-              <tr>
+              <tr style={{ display: filtersExpanded ? undefined : 'none' }}>
                 {columns.map((column) => {
                   if (isDateTimeColumn(column)) {
                     const dateFilter = dateFilters[column.key] || { mode: 'between' as DateFilterMode, from: '', to: '' };
@@ -1031,15 +1110,15 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
                       ...prev,
                       [column.key]: { ...dateFilter, ...updates },
                     }));
-                    const inputStyle: React.CSSProperties = { width: 148, minWidth: 148, padding: '2px 4px', border: '1px solid #cbd5e1', borderRadius: 4, fontSize: 11, boxSizing: 'border-box' };
+                    const inputStyle: React.CSSProperties = { width: 120, minWidth: 120, padding: '2px 4px', border: '1px solid #cbd5e1', borderRadius: 4, fontSize: 11, boxSizing: 'border-box' };
                     return (
-                      <th key={`flt-${column.key}`} style={{ minWidth: isPeriod ? 388 : 244 }}>
+                      <th key={`flt-${column.key}`} style={{ minWidth: isPeriod ? 322 : 200 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, width: 'max-content' }}>
                           <select
                             value={dateFilter.mode}
                             onChange={(event) => setDateFilter({ mode: event.target.value as DateFilterMode })}
                             aria-label={`${column.label || column.key}: \u0440\u0435\u0436\u0438\u043c \u0444\u0438\u043b\u044c\u0442\u0440\u0430`}
-                            style={{ width: 86, minWidth: 86, padding: '2px 4px', border: '1px solid #cbd5e1', borderRadius: 4, fontSize: 11 }}
+                            style={{ width: 70, minWidth: 70, padding: '2px 4px', border: '1px solid #cbd5e1', borderRadius: 4, fontSize: 11 }}
                           >
                             <option value="before">{'\u0414\u043e'}</option>
                             <option value="after">{'\u041f\u043e\u0441\u043b\u0435'}</option>
@@ -1085,16 +1164,25 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
               </tr>
             </thead>
             <tbody>
-              {displayedRows.map((row, index) => {
-                const rowKey = `${activeTabId}:${index}`;
+              {pagedRows.map((row, index) => {
+                const rowIndex = pageStart + index;
+                const rowKey = `${activeTabId}:${rowIndex}`;
                 const domainEntity = selectedEntityFromRow(row);
                 const isSelected = Boolean(selectedRows[rowKey]);
-                const locationPointId = isLocationTimeline ? `${String(row.msisdn || '')}-${String(row.sequence || '')}` : '';
-                const isLocationSelected = Boolean(locationPointId && selectedLocationIds.includes(locationPointId));
+                const routePointIds = Array.isArray(row.route_point_ids)
+                  ? row.route_point_ids.map((value) => String(value || '')).filter((value) => Boolean(value) && value !== '-')
+                  : [];
+                const locationPointIds = isMovementAnalysis
+                  ? (routePointIds.length ? routePointIds : [row.from_point_id, row.to_point_id, row.map_point_id]
+                    .map((value) => String(value || ''))
+                    .filter((value) => Boolean(value) && value !== '-'))
+                  : (isLocationTimeline ? [`${String(row.msisdn || '')}-${String(row.sequence || '')}`] : []);
+                const isLocationSelected = locationPointIds.some((pointId) => selectedLocationIds.includes(pointId));
                 const isArtifactRow = canOpenArtifactFromRow(row);
                 return (
                   <tr
-                    key={`row-${index}`}
+                    key={`row-${rowIndex}`}
+                    tabIndex={locationPointIds.length ? 0 : undefined}
                     onClick={(event) => {
                       if (domainEntity) {
                         setSelectedRows((previous) => {
@@ -1105,15 +1193,39 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
                           return next;
                         });
                       }
-                      if (locationPointId && locationPointId !== '-') setSelectedLocationIds([locationPointId]);
+                      if (locationPointIds.length) {
+                        setSelectedLocationIds(locationPointIds);
+                        setSelectedMapPointId(String(row.map_point_id || row.to_point_id || row.from_point_id || locationPointIds[0] || ''));
+                      }
                       if (isArtifactRow) handleOpenArtifact(row);
                     }}
+                    onKeyDown={(event) => {
+                      if (!locationPointIds.length || (event.key !== 'ArrowDown' && event.key !== 'ArrowUp')) return;
+                      const targetIndex = index + (event.key === 'ArrowDown' ? 1 : -1);
+                      const targetRow = pagedRows[targetIndex];
+                      if (!targetRow) return;
+                      event.preventDefault();
+                      const targetGlobalIndex = pageStart + targetIndex;
+                      const targetKey = `${activeTabId}:${targetGlobalIndex}`;
+                      const targetRoute = Array.isArray(targetRow.route_point_ids)
+                        ? targetRow.route_point_ids.map((value) => String(value || '')).filter((value) => Boolean(value) && value !== '-')
+                        : [];
+                      const targetPointIds = isMovementAnalysis
+                        ? (targetRoute.length ? targetRoute : [targetRow.from_point_id, targetRow.to_point_id, targetRow.map_point_id]
+                          .map((value) => String(value || '')).filter((value) => Boolean(value) && value !== '-'))
+                        : [`${String(targetRow.msisdn || '')}-${String(targetRow.sequence || '')}`];
+                      setSelectedRows({ [targetKey]: targetRow });
+                      setSelectedLocationIds(targetPointIds);
+                      setSelectedMapPointId(String(targetRow.map_point_id || targetRow.to_point_id || targetRow.from_point_id || targetPointIds[0] || ''));
+                      const rows = event.currentTarget.parentElement?.querySelectorAll('tr[tabindex="0"]');
+                      (rows?.[targetIndex] as HTMLElement | undefined)?.focus();
+                    }}
                     style={(isSelected || isLocationSelected)
-                      ? { cursor: domainEntity || isArtifactRow || locationPointId ? 'pointer' : undefined, background: '#dbeafe' }
-                      : (domainEntity || isArtifactRow || locationPointId ? { cursor: 'pointer' } : undefined)}
+                      ? { cursor: domainEntity || isArtifactRow || locationPointIds.length ? 'pointer' : undefined, background: '#dbeafe' }
+                      : (domainEntity || isArtifactRow || locationPointIds.length ? { cursor: 'pointer' } : undefined)}
                   >
                   {columns.map((column) => (
-                    <td key={`row-${index}-${column.key}`}>{column.key === 'type' ? getFriendlyArtifactType(row[column.key]) : (['date', 'datetime'].includes(String(column.type || '').toLowerCase()) ? formatDateTime(row[column.key]) : normalize(row[column.key]))}</td>
+                    <td key={`row-${rowIndex}-${column.key}`}>{column.key === 'type' ? getFriendlyArtifactType(row[column.key]) : (['date', 'datetime'].includes(String(column.type || '').toLowerCase()) ? formatDateTime(row[column.key]) : normalize(row[column.key]))}</td>
                   ))}
                   <td>
                     {canOpenArtifactFromRow(row) ? (
@@ -1134,6 +1246,7 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
               })}
             </tbody>
           </table>
+          </div>
         )}
         </div>
       )}

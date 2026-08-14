@@ -27,12 +27,19 @@ from app.services.project_data_import_plugins import (
 from app.import_plugin_sdk import ProjectDataImportPlugin
 from app.services.project_data_import_pipeline import insert_normalized_source_rows
 from app.services.project_domain_store import clear_project_domain_store, ensure_project_domain_store
-from app.services.project_cell_tower_geocoding_service import clear_project_cell_tower_geocoding
+from app.services.project_cell_tower_geocoding_service import (
+    clear_project_cell_tower_geocoding,
+    enrich_project_domain_addresses,
+)
 from app.services.project_data_stats_service import get_project_domain_stats
 
 DATA_ROOT = Path("/app/data")
 IMPORT_GROUP_MAX_BYTES = 256 * 1024 * 1024
-IMPORT_GROUPED_PLUGIN_IDS = {"nodex_traffic_geo", "nodex_telecom_connections"}
+IMPORT_GROUPED_PLUGIN_IDS = {
+    "nodex_traffic_geo",
+    "nodex_telecom_connections",
+    "nodex_subscriber_ownership",
+}
 STREAM_IMPORT_BATCH_SIZE = 2_000
 
 
@@ -198,7 +205,7 @@ async def _load_project_data_from_collected_files(
     progress_callback: Callable[[int, str], Awaitable[None]] | None = None,
 ) -> LoadResult:
     if progress_callback:
-        await progress_callback(5, "\u0420\u0430\u0441\u043f\u043e\u0437\u043d\u0430\u0432\u0430\u043d\u0438\u0435 \u0444\u043e\u0440\u043c\u0430\u0442\u043e\u0432 \u0444\u0430\u0439\u043b\u043e\u0432")
+        await progress_callback(5, "Распознавание форматов файлов")
     matches = classify_project_data_import_files(source_dir, input_files, plugin_overrides=plugin_overrides)
     groups: dict[str, list[dict[str, Any]]] = {}
     for input_file, match in zip(input_files, matches, strict=False):
@@ -207,6 +214,17 @@ async def _load_project_data_from_collected_files(
     await ensure_project_domain_store(db)
     total_entities = total_facts = total_relations = 0
     total_sources: dict[str, int] = {}
+    ownership_addresses: dict[str, dict[str, str]] = {}
+
+    def collect_ownership_addresses(normalized_sources: dict[str, list[dict[str, object]]]) -> None:
+        for row in normalized_sources.get("subscriber_passport_addresses", []):
+            address_key = str(row.get("address_key") or "").strip()
+            address = str(row.get("address") or "").strip()
+            if address_key and address:
+                ownership_addresses.setdefault(
+                    address_key,
+                    {"address_key": address_key, "address": address},
+                )
     total_fact_types: dict[str, int] = {}
     import_runs: list[dict[str, Any]] = []
 
@@ -224,7 +242,7 @@ async def _load_project_data_from_collected_files(
         await asyncio.to_thread(_link_input_group, source_dir, plugin_source_dir, grouped_files)
         plugin = IMPORT_PLUGIN_BY_ID[plugin_id]
         if progress_callback:
-            await progress_callback(10 + int((group_index - 1) * 70 / group_count), f"\u041f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043a\u0430: {plugin.name}")
+            await progress_callback(10 + int((group_index - 1) * 70 / group_count), f"Подготовка: {plugin.name}")
         supports_streaming = type(plugin).iter_normalized_source_batches is not ProjectDataImportPlugin.iter_normalized_source_batches
         batch_source_counts: dict[str, int] = {}
         batch_fact_counts: dict[str, int] = {}
@@ -247,8 +265,11 @@ async def _load_project_data_from_collected_files(
                     )
                     await progress_callback(
                         batch_progress,
-                        f"\u0421\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u0438\u0435: {plugin.name}, \u043f\u043e\u0440\u0446\u0438\u044f {batch_number}",
+                        f"Сохранение: {plugin.name}, порция {batch_number}",
                     )
+                if plugin_id == "nodex_subscriber_ownership":
+                    collect_ownership_addresses(normalized_sources)
+
                 insert_result = await insert_normalized_source_rows(db, project_id, normalized_sources, load_batch_id)
                 batch_entities += insert_result.entities
                 batch_facts += insert_result.facts
@@ -268,6 +289,9 @@ async def _load_project_data_from_collected_files(
             )
         else:
             result = await asyncio.to_thread(execute_project_data_import_plugin, plugin, plugin_source_dir, plugin_output_dir)
+            if plugin_id == "nodex_subscriber_ownership":
+                collect_ownership_addresses(result.normalized_sources)
+
             insert_result = await insert_normalized_source_rows(db, project_id, result.normalized_sources, load_batch_id)
             batch_entities = insert_result.entities
             batch_facts = insert_result.facts
@@ -276,7 +300,7 @@ async def _load_project_data_from_collected_files(
             batch_fact_counts = dict(insert_result.fact_counts)
             warnings = list(result.warnings)
         if progress_callback:
-            await progress_callback(15 + int(group_index * 70 / group_count), f"\u0421\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u043e: {plugin.name}")
+            await progress_callback(15 + int(group_index * 70 / group_count), f"Сохранено: {plugin.name}")
         total_entities += batch_entities
         total_facts += batch_facts
         total_relations += batch_relations
@@ -299,8 +323,19 @@ async def _load_project_data_from_collected_files(
             "warnings": warnings,
         })
 
+    ownership_address_geocoding: dict[str, int] = {}
+    if ownership_addresses:
+        if progress_callback:
+            await progress_callback(86, "Геокодирование адресов абонентов")
+        ownership_address_geocoding = await enrich_project_domain_addresses(
+            db,
+            project_id,
+            ownership_addresses.values(),
+            progress_callback,
+        )
+
     if progress_callback:
-        await progress_callback(90, "\u0417\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u0438\u0435 \u0438\u043c\u043f\u043e\u0440\u0442\u0430")
+        await progress_callback(90, "Завершение импорта")
 
     load_log = {
         "mode": mode,
@@ -308,6 +343,7 @@ async def _load_project_data_from_collected_files(
         "input_files": input_files,
         "recognized_files": [{"path": item.path, "plugin_id": item.plugin_id, "plugin_name": item.plugin_name, "score": item.score} for item in matches],
         "import_runs": import_runs,
+        "subscriber_address_geocoding": ownership_address_geocoding,
     }
     primary_plugin_id = matches[0].plugin_id if len(groups) == 1 and matches else "mixed_batch"
     primary_plugin_name = matches[0].plugin_name if len(groups) == 1 and matches else "Several import plugins"

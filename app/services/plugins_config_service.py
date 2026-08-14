@@ -183,7 +183,7 @@ def update_plugin_ui_settings(plugin_id: str, *, is_active: bool, is_visible: bo
         plugins[plugin_id] = plugin_config
     plugin_config["ui"] = {
         "is_active": bool(is_active), "is_visible": bool(is_visible),
-        "menu_path": str(menu_path or "\u0410\u043d\u0430\u043b\u0438\u0437").strip() or "\u0410\u043d\u0430\u043b\u0438\u0437",
+        "menu_path": str(menu_path or "Анализ").strip() or "Анализ",
         "menu_order": int(menu_order),
     }
     return _save(config)

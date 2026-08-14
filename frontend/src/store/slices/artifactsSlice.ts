@@ -8,6 +8,7 @@ interface ArtifactsState {
   items: Record<number, ApiArtifact>;
   currentArtifactId: number | null;
   isLoading: boolean;
+  loadingArtifactId: number | null;
   error: string | null;
 }
 
@@ -15,6 +16,7 @@ const initialState: ArtifactsState = {
   items: {},
   currentArtifactId: null,
   isLoading: false,
+  loadingArtifactId: null,
   error: null
 };
 
@@ -132,7 +134,10 @@ const artifactsSlice = createSlice({
           artifacts.forEach((artifact: ApiArtifact) => {
             if (artifact && artifact.id) {
               returnedIds.add(artifact.id);
-              nextItems[artifact.id] = artifact;
+              const existing = nextItems[artifact.id];
+              nextItems[artifact.id] = existing?.data_loaded && existing.version === artifact.version
+                ? { ...artifact, data: existing.data, data_loaded: true }
+                : artifact;
             }
           });
         }
@@ -155,18 +160,18 @@ const artifactsSlice = createSlice({
       })
 
       // Fetch single artifact
-      .addCase(fetchArtifact.pending, (state) => {
-        state.isLoading = true;
+      .addCase(fetchArtifact.pending, (state, action) => {
+        state.loadingArtifactId = action.meta.arg.id;
       })
       .addCase(fetchArtifact.fulfilled, (state, action) => {
-        state.isLoading = false;
+        state.loadingArtifactId = null;
         const artifact = action.payload;
         if (artifact && artifact.id) {
           state.items[artifact.id] = artifact;
         }
       })
       .addCase(fetchArtifact.rejected, (state, action) => {
-        state.isLoading = false;
+        state.loadingArtifactId = null;
         state.error = action.payload as string;
       })
 

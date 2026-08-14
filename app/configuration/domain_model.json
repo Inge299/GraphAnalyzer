@@ -39,6 +39,11 @@
           "key": "number",
           "type": "string",
           "label": "Номер"
+        },
+        {
+          "key": "passport",
+          "type": "string",
+          "label": "Паспортные данные"
         }
       ]
     },
@@ -689,6 +694,115 @@
       "context_menu_section": null,
       "context_menu_label": null,
       "menu_order": 0
+    },
+    {
+      "id": "subscriber_msisdn_imsi",
+      "label": "Принадлежность IMSI",
+      "from_type": "msisdn",
+      "to_type": "imsi",
+      "supports_reverse": true,
+      "system": false,
+      "default_visual": {
+        "color": "#2563eb",
+        "width": 2,
+        "direction": "both",
+        "dashed": false
+      },
+      "attributes": [
+        {
+          "key": "service_started_at",
+          "type": "datetime",
+          "label": "Дата актуальности"
+        }
+      ],
+      "directed": false,
+      "plugin_id": null,
+      "show_in_context_menu": false,
+      "context_menu_section": null,
+      "context_menu_label": null
+    },
+    {
+      "id": "subscriber_person_passport",
+      "label": "Субъект — паспорт",
+      "from_type": "person",
+      "to_type": "passport",
+      "supports_reverse": true,
+      "system": false,
+      "default_visual": {
+        "color": "#7c3aed",
+        "width": 2,
+        "direction": "both",
+        "dashed": false
+      },
+      "attributes": [
+        {
+          "key": "service_started_at",
+          "type": "datetime",
+          "label": "Дата актуальности"
+        }
+      ],
+      "directed": false,
+      "plugin_id": null,
+      "show_in_context_menu": false,
+      "context_menu_section": null,
+      "context_menu_label": null
+    },
+    {
+      "id": "subscriber_passport_address",
+      "label": "Паспорт — адрес",
+      "from_type": "passport",
+      "to_type": "address",
+      "supports_reverse": true,
+      "system": false,
+      "default_visual": {
+        "color": "#8b5cf6",
+        "width": 2,
+        "direction": "both",
+        "dashed": false
+      },
+      "attributes": [
+        {
+          "key": "service_started_at",
+          "type": "datetime",
+          "label": "Дата актуальности"
+        }
+      ],
+      "directed": false,
+      "plugin_id": null,
+      "show_in_context_menu": false,
+      "context_menu_section": null,
+      "context_menu_label": null
+    },
+    {
+      "id": "subscriber_msisdn_passport",
+      "label": "Номер — паспорт",
+      "from_type": "msisdn",
+      "to_type": "passport",
+      "supports_reverse": true,
+      "system": false,
+      "default_visual": {
+        "color": "#0f766e",
+        "width": 2,
+        "direction": "both",
+        "dashed": false
+      },
+      "attributes": [
+        {
+          "key": "service_started_at",
+          "type": "datetime",
+          "label": "Начало актуальности"
+        },
+        {
+          "key": "service_ended_at",
+          "type": "datetime",
+          "label": "Окончание актуальности"
+        }
+      ],
+      "directed": false,
+      "plugin_id": null,
+      "show_in_context_menu": false,
+      "context_menu_section": null,
+      "context_menu_label": null
     }
   ],
   "rules": {
@@ -732,6 +846,18 @@
     {
       "id": "user_device_observation",
       "label": "Наблюдение устройства пользователя"
+    },
+    {
+      "id": "subscriber_identity",
+      "label": "Принадлежность номера"
+    },
+    {
+      "id": "subscriber_address",
+      "label": "Адрес абонента"
+    },
+    {
+      "id": "subscriber_service",
+      "label": "Актуальность услуги"
     }
   ],
   "ingestion_mappings": [
@@ -1241,6 +1367,176 @@
             "key": "$device"
           },
           "occurred_at": null,
+          "attributes": "$row",
+          "directed": false
+        }
+      ]
+    },
+    {
+      "id": "subscriber_msisdn_imsi",
+      "label": "Номер и IMSI",
+      "source": "subscriber_msisdn_imsi",
+      "fact": {
+        "type": "subscriber_identity",
+        "occurred_at": "$service_started_at"
+      },
+      "entities": [
+        {
+          "type": "msisdn",
+          "key": "$msisdn",
+          "attributes": {
+            "msisdn": "$msisdn"
+          }
+        },
+        {
+          "type": "imsi",
+          "key": "$imsi",
+          "attributes": {
+            "imsi": "$imsi"
+          }
+        }
+      ],
+      "relations": [
+        {
+          "type": "subscriber_msisdn_imsi",
+          "from": {
+            "type": "msisdn",
+            "key": "$msisdn"
+          },
+          "to": {
+            "type": "imsi",
+            "key": "$imsi"
+          },
+          "occurred_at": "$service_started_at",
+          "attributes": "$row",
+          "directed": false
+        }
+      ]
+    },
+    {
+      "id": "subscriber_subject_passport",
+      "label": "Субъект и паспорт",
+      "source": "subscriber_subject_passport",
+      "fact": {
+        "type": "subscriber_identity",
+        "occurred_at": "$service_started_at"
+      },
+      "entities": [
+        {
+          "type": "person",
+          "key": "$subject_key",
+          "label": "$full_name",
+          "attributes": {
+            "full_name": "$full_name",
+            "birth_date": "$birth_date"
+          }
+        },
+        {
+          "type": "passport",
+          "key": "$passport_key",
+          "label": "$passport",
+          "attributes": {
+            "passport": "$passport"
+          }
+        }
+      ],
+      "relations": [
+        {
+          "type": "subscriber_person_passport",
+          "from": {
+            "type": "person",
+            "key": "$subject_key"
+          },
+          "to": {
+            "type": "passport",
+            "key": "$passport_key"
+          },
+          "occurred_at": "$service_started_at",
+          "attributes": "$row",
+          "directed": false
+        }
+      ]
+    },
+    {
+      "id": "subscriber_passport_addresses",
+      "label": "Паспорт и адрес",
+      "source": "subscriber_passport_addresses",
+      "fact": {
+        "type": "subscriber_address",
+        "occurred_at": "$service_started_at"
+      },
+      "entities": [
+        {
+          "type": "passport",
+          "key": "$passport_key",
+          "label": "$passport",
+          "attributes": {
+            "passport": "$passport"
+          }
+        },
+        {
+          "type": "address",
+          "key": "$address_key",
+          "label": "$address",
+          "attributes": {
+            "address": "$address"
+          }
+        }
+      ],
+      "relations": [
+        {
+          "type": "subscriber_passport_address",
+          "from": {
+            "type": "passport",
+            "key": "$passport_key"
+          },
+          "to": {
+            "type": "address",
+            "key": "$address_key"
+          },
+          "occurred_at": "$service_started_at",
+          "attributes": "$row",
+          "directed": false
+        }
+      ]
+    },
+    {
+      "id": "subscriber_msisdn_passport",
+      "label": "Номер и паспорт",
+      "source": "subscriber_msisdn_passport",
+      "fact": {
+        "type": "subscriber_service",
+        "occurred_at": "$service_started_at"
+      },
+      "entities": [
+        {
+          "type": "msisdn",
+          "key": "$msisdn",
+          "attributes": {
+            "msisdn": "$msisdn"
+          }
+        },
+        {
+          "type": "passport",
+          "key": "$passport_key",
+          "label": "$passport",
+          "attributes": {
+            "passport": "$passport"
+          }
+        }
+      ],
+      "relations": [
+        {
+          "type": "subscriber_msisdn_passport",
+          "from": {
+            "type": "msisdn",
+            "key": "$msisdn"
+          },
+          "to": {
+            "type": "passport",
+            "key": "$passport_key"
+          },
+          "occurred_at": "$service_started_at",
           "attributes": "$row",
           "directed": false
         }

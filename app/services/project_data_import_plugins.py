@@ -17,6 +17,10 @@ from fastapi import HTTPException
 from app.import_plugins.user_actions_address_book_normalizer import normalize_user_actions_address_book
 from app.import_plugins.traffic_geo_normalizer import iter_normalized_traffic_geo, normalize_traffic_geo
 from app.import_plugins.telecom_connections_normalizer import iter_normalized_telecom_connections, normalize_telecom_connections
+from app.import_plugins.subscriber_ownership_normalizer import (
+    iter_normalized_subscriber_ownership,
+    normalize_subscriber_ownership,
+)
 from app.import_plugin_sdk import (
     ImportExecutionContext,
     ImportPluginContractError,
@@ -91,10 +95,10 @@ def _is_user_actions_headers(headers: set[str]) -> bool:
 def _is_traffic_headers(headers: set[str]) -> bool:
     if headers & {"abon1", "identifier_type", "identifier_value"}:
         return True
-    return "\u043d\u043e\u043c\u0435\u0440 \u0430\u0431\u043e\u043d\u0435\u043d\u0442\u0430" in headers and (
-        "\u043d\u043e\u043c\u0435\u0440 \u043a\u043e\u043d\u0442\u0430\u043a\u0442\u0430" in headers
-        or "\u0432\u0440\u0435\u043c\u044f \u043d\u0430\u0447\u0430\u043b\u0430 \u0441\u043e\u0435\u0434\u0438\u043d\u0435\u043d\u0438\u044f" in headers
-        or "\u0432\u0440\u0435\u043c\u044f \u043e\u043f\u0440\u0435\u0434\u0435\u043b\u0435\u043d\u0438\u044f \u043c\u0435\u0441\u0442\u043e\u043f\u043e\u043b\u043e\u0436\u0435\u043d\u0438\u044f" in headers
+    return "номер абонента" in headers and (
+        "номер контакта" in headers
+        or "время начала соединения" in headers
+        or "время определения местоположения" in headers
     )
 
 def _read_csv_headers_from_sample(raw: bytes) -> list[str]:
@@ -123,7 +127,7 @@ def _read_zip_csv_headers(path: Path) -> list[tuple[str, list[str]]]:
                 if info.is_dir():
                     continue
                 internal_name = info.filename
-                if not internal_name.lower().endswith(".csv"):
+                if not internal_name.lower().endswith((".csv", ".txt")):
                     continue
                 try:
                     with archive.open(info, "r") as raw_stream:
@@ -354,6 +358,7 @@ def _build_import_plugin_registry() -> tuple[list[ProjectDataImportPlugin], dict
         NodexUserActionsAddressBookImportPlugin,
         NodexTrafficGeoImportPlugin,
         NodexTelecomConnectionsImportPlugin,
+        NodexSubscriberOwnershipImportPlugin,
     ]
     plugin_classes = builtin_classes + _discover_external_import_plugin_classes()
 
@@ -442,28 +447,28 @@ class NodexUserActionsAddressBookImportPlugin(ProjectDataImportPlugin):
         return 100 if _is_user_actions_headers(_normalize_header_values(_read_csv_headers(path))) else -1
 class NodexTelecomConnectionsImportPlugin(ProjectDataImportPlugin):
     id = "nodex_telecom_connections"
-    name = "Nodex: \u0442\u0435\u043b\u0435\u0444\u043e\u043d\u043d\u044b\u0435 \u0441\u043e\u0435\u0434\u0438\u043d\u0435\u043d\u0438\u044f \u0438 \u0431\u0430\u0437\u043e\u0432\u044b\u0435 \u0441\u0442\u0430\u043d\u0446\u0438\u0438"
-    description = "\u0420\u0430\u0437\u0431\u0438\u0440\u0430\u0435\u0442 \u0434\u0435\u0442\u0430\u043b\u0438\u0437\u0430\u0446\u0438\u044e \u0441\u043e\u0435\u0434\u0438\u043d\u0435\u043d\u0438\u0439: MSISDN, IMSI, IMEI, \u0431\u0430\u0437\u043e\u0432\u044b\u0435 \u0441\u0442\u0430\u043d\u0446\u0438\u0438 \u0438 \u0430\u0434\u0440\u0435\u0441\u0430 \u0411\u0421."
+    name = "Nodex: телефонные соединения и базовые станции"
+    description = "Разбирает детализацию соединений: MSISDN, IMSI, IMEI, базовые станции и адреса БС."
     priority = 140
     output_dataset_ids = (
         "telecom_msisdn_imsi", "telecom_msisdn_imei", "telecom_connections",
         "telecom_msisdn_base_stations", "telecom_base_stations", "telecom_base_station_locations",
     )
     output_dataset_labels = {
-        "telecom_msisdn_imsi": "MSISDN \u0438 IMSI",
-        "telecom_msisdn_imei": "MSISDN \u0438 IMEI",
-        "telecom_connections": "\u0421\u043e\u0435\u0434\u0438\u043d\u0435\u043d\u0438\u044f \u0430\u0431\u043e\u043d\u0435\u043d\u0442\u043e\u0432",
-        "telecom_msisdn_base_stations": "MSISDN \u0438 \u0431\u0430\u0437\u043e\u0432\u044b\u0435 \u0441\u0442\u0430\u043d\u0446\u0438\u0438",
-        "telecom_base_stations": "\u0411\u0430\u0437\u043e\u0432\u044b\u0435 \u0441\u0442\u0430\u043d\u0446\u0438\u0438",
-        "telecom_base_station_locations": "\u0411\u0421 \u0438 \u0430\u0434\u0440\u0435\u0441\u0430",
+        "telecom_msisdn_imsi": "MSISDN и IMSI",
+        "telecom_msisdn_imei": "MSISDN и IMEI",
+        "telecom_connections": "Соединения абонентов",
+        "telecom_msisdn_base_stations": "MSISDN и базовые станции",
+        "telecom_base_stations": "Базовые станции",
+        "telecom_base_station_locations": "БС и адреса",
     }
     input_contract = {
         "container": {"zip_members": True},
         "file": {"extensions": [".csv", ".txt"], "encodings": ["utf-8-sig", "utf-8", "cp1251", "cp866"], "delimiters": [";"]},
-        "headers": {"required": ["\u0412\u0440\u0435\u043c\u044f \u043d\u0430\u0447\u0430\u043b\u0430 \u0441\u043e\u0435\u0434\u0438\u043d\u0435\u043d\u0438\u044f", "\u041d\u043e\u043c\u0435\u0440 \u0430\u0431\u043e\u043d\u0435\u043d\u0442\u0430", "\u041c/\u041f \u0430\u0431\u043e\u043d\u0435\u043d\u0442\u0430 \u043d\u0430 \u043d\u0430\u0447\u0430\u043b\u043e"], "optional": ["IMSI \u0430\u0431\u043e\u043d\u0435\u043d\u0442\u0430", "IMEI \u0430\u0431\u043e\u043d\u0435\u043d\u0442\u0430"]},
-        "base_station_key": "MCC/MNC/LAC/CID; MCC/MNC \u0431\u0435\u0440\u0443\u0442\u0441\u044f \u0438\u0437 IMSI (250/02 \u0434\u043b\u044f \u0442\u0435\u043a\u0443\u0449\u0435\u0433\u043e \u0444\u043e\u0440\u043c\u0430\u0442\u0430)",
+        "headers": {"required": ["Время начала соединения", "Номер абонента", "М/П абонента на начало"], "optional": ["IMSI абонента", "IMEI абонента"]},
+        "base_station_key": "MCC/MNC/LAC/CID; MCC/MNC берутся из IMSI (250/02 для текущего формата)",
     }
-    recognition_hint = "CSV \u0438\u043b\u0438 ZIP \u0441 \u0434\u0435\u0442\u0430\u043b\u0438\u0437\u0430\u0446\u0438\u0435\u0439 \u0441\u043e\u0435\u0434\u0438\u043d\u0435\u043d\u0438\u0439, IMSI/IMEI \u0438 \u043f\u043e\u043b\u044f\u043c\u0438 \u041c/\u041f \u043d\u0430 \u043d\u0430\u0447\u0430\u043b\u043e/\u043a\u043e\u043d\u0435\u0446."
+    recognition_hint = "CSV или ZIP с детализацией соединений, IMSI/IMEI и полями М/П на начало/конец."
     capabilities = ("recognize", "preview", "import", "normalize")
 
     def normalize_sources(self, source_dir: Path) -> Mapping[str, list[dict[str, Any]]]:
@@ -474,9 +479,9 @@ class NodexTelecomConnectionsImportPlugin(ProjectDataImportPlugin):
 
     def recognize_file(self, source_dir: Path, input_file: dict[str, Any]) -> int:
         required = {
-            "\u0432\u0440\u0435\u043c\u044f \u043d\u0430\u0447\u0430\u043b\u0430 \u0441\u043e\u0435\u0434\u0438\u043d\u0435\u043d\u0438\u044f",
-            "\u043d\u043e\u043c\u0435\u0440 \u0430\u0431\u043e\u043d\u0435\u043d\u0442\u0430",
-            "\u043c/\u043f \u0430\u0431\u043e\u043d\u0435\u043d\u0442\u0430 \u043d\u0430 \u043d\u0430\u0447\u0430\u043b\u043e",
+            "время начала соединения",
+            "номер абонента",
+            "м/п абонента на начало",
         }
         path = source_dir / str(input_file.get("path") or "")
         headers_sets = (_normalize_header_values(headers) for _, headers in _read_zip_csv_headers(path)) if path.suffix.lower() == ".zip" else (_normalize_header_values(_read_csv_headers(path)),)
@@ -484,8 +489,8 @@ class NodexTelecomConnectionsImportPlugin(ProjectDataImportPlugin):
 
 class NodexTrafficGeoImportPlugin(ProjectDataImportPlugin):
     id = "nodex_traffic_geo"
-    name = "Nodex: \u0441\u0432\u044f\u0437\u0438, \u0443\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432\u0430 \u0438 \u043b\u043e\u043a\u0430\u0446\u0438\u0438"
-    description = "\u0420\u0430\u0441\u043f\u043e\u0437\u043d\u0430\u0451\u0442 CSV \u0438 \u0430\u0440\u0445\u0438\u0432\u044b \u0441\u043e \u0441\u0432\u044f\u0437\u044f\u043c\u0438, \u0438\u0441\u0442\u043e\u0440\u0438\u0435\u0439 \u0443\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432, \u043b\u043e\u043a\u0430\u0446\u0438\u044f\u043c\u0438 \u0438 IP-\u043f\u0440\u0438\u0432\u044f\u0437\u043a\u0430\u043c\u0438."
+    name = "Nodex: связи, устройства и локации"
+    description = "Распознаёт CSV и архивы со связями, историей устройств, локациями и IP-привязками."
     priority = 100
     output_dataset_ids = ("communications", "device_history", "location_events", "ip_bindings")
     output_dataset_labels = {"communications": "Соединения", "device_history": "Использование устройств", "location_events": "Локационные события", "ip_bindings": "IP-привязки"}
@@ -495,12 +500,12 @@ class NodexTrafficGeoImportPlugin(ProjectDataImportPlugin):
         "headers": {
             "signatures": [
                 ["abon1", "identifier_type", "identifier_value"],
-                ["\u041d\u043e\u043c\u0435\u0440 \u0430\u0431\u043e\u043d\u0435\u043d\u0442\u0430", "\u0412\u0440\u0435\u043c\u044f \u043d\u0430\u0447\u0430\u043b\u0430 \u0441\u043e\u0435\u0434\u0438\u043d\u0435\u043d\u0438\u044f"],
-                ["\u041d\u043e\u043c\u0435\u0440 \u0430\u0431\u043e\u043d\u0435\u043d\u0442\u0430", "\u0412\u0440\u0435\u043c\u044f \u043e\u043f\u0440\u0435\u0434\u0435\u043b\u0435\u043d\u0438\u044f \u043c\u0435\u0441\u0442\u043e\u043f\u043e\u043b\u043e\u0436\u0435\u043d\u0438\u044f"],
+                ["Номер абонента", "Время начала соединения"],
+                ["Номер абонента", "Время определения местоположения"],
             ],
         },
     }
-    recognition_hint = "CSV \u0438\u043b\u0438 ZIP \u0441\u043e \u0441\u0432\u044f\u0437\u044f\u043c\u0438, \u043b\u043e\u043a\u0430\u0446\u0438\u044f\u043c\u0438 \u0438 \u0443\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432\u0430\u043c\u0438"
+    recognition_hint = "CSV или ZIP со связями, локациями и устройствами"
 
     def recognize_file(self, source_dir: Path, input_file: dict[str, Any]) -> int:
         path = source_dir / str(input_file.get("path") or "")
@@ -515,6 +520,74 @@ class NodexTrafficGeoImportPlugin(ProjectDataImportPlugin):
 
     def iter_normalized_source_batches(self, source_dir: Path, batch_size: int = 2_000):
         return iter_normalized_traffic_geo(source_dir, batch_size)
+
+
+class NodexSubscriberOwnershipImportPlugin(ProjectDataImportPlugin):
+    id = "nodex_subscriber_ownership"
+    name = "Nodex: принадлежность абонентских номеров"
+    description = (
+        "Распознаёт выгрузки принадлежности номеров: MSISDN, IMSI, "
+        "абонента, паспорт и адрес обслуживания."
+    )
+    priority = 200
+    output_dataset_ids = (
+        "subscriber_msisdn_imsi",
+        "subscriber_subject_passport",
+        "subscriber_passport_addresses",
+        "subscriber_msisdn_passport",
+    )
+    output_dataset_labels = {
+        "subscriber_msisdn_imsi": "MSISDN - IMSI",
+        "subscriber_subject_passport": "Абонент - паспорт",
+        "subscriber_passport_addresses": "Паспорт - адрес",
+        "subscriber_msisdn_passport": "MSISDN - паспорт",
+    }
+    input_contract = {
+        "container": {"zip_members": True},
+        "file": {
+            "extensions": [".csv", ".txt"],
+            "encodings": ["utf-8-sig", "utf-8", "cp1251", "cp866"],
+            "delimiters": [";", ",", "\\t"],
+        },
+        "headers": {
+            "required": [
+                "Телефонный номер",
+                "Абонент",
+                "IMSI абонента",
+                "Подключение основной услуги",
+            ],
+            "optional": [
+                "Отключение основной услуги",
+                "Адрес абонента",
+                "Адреса абонента",
+                "Наименование",
+            ],
+        },
+    }
+    recognition_hint = (
+        "CSV/TXT или ZIP с полями «Телефонный номер», «Абонент», «IMSI абонента»."
+    )
+    capabilities = ("recognize", "preview", "import", "normalize")
+
+    def normalize_sources(self, source_dir: Path) -> Mapping[str, list[dict[str, Any]]]:
+        return normalize_subscriber_ownership(source_dir)
+
+    def iter_normalized_source_batches(self, source_dir: Path, batch_size: int) -> Any:
+        return iter_normalized_subscriber_ownership(source_dir, batch_size)
+
+    def recognize_file(self, source_dir: Path, input_file: dict[str, Any]) -> int:
+        path = source_dir / str(input_file.get("path") or "")
+        required = {
+            "телефонный номер",
+            "абонент",
+            "imsi абонента",
+            "подключение основной услуги",
+        }
+        if path.suffix.lower() == ".zip":
+            headers_sets = [_normalize_header_values(headers) for _, headers in _read_zip_csv_headers(path)]
+        else:
+            headers_sets = [_normalize_header_values(_read_csv_headers(path))]
+        return 100 if any(required.issubset(headers) for headers in headers_sets) else -1
 
 IMPORT_PLUGINS, IMPORT_PLUGIN_BY_ID = _build_import_plugin_registry()
 

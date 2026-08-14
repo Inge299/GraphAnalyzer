@@ -18,7 +18,7 @@ class ProjectDataImportJob:
     plugin_overrides: dict[str, str] | None = None
     status: str = "queued"
     progress: int = 0
-    message: str = "\u0418\u043c\u043f\u043e\u0440\u0442 \u043e\u0436\u0438\u0434\u0430\u0435\u0442 \u0437\u0430\u043f\u0443\u0441\u043a\u0430"
+    message: str = "Импорт ожидает запуска"
     result: dict[str, Any] | None = None
     error: str | None = None
     created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
@@ -68,7 +68,7 @@ async def run_project_data_import_job(job_id: str) -> None:
         job = _jobs.get(job_id)
         if job is None:
             return
-        job.status, job.progress, job.message = "running", 1, "\u041f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043a\u0430 \u0438\u043c\u043f\u043e\u0440\u0442\u0430"
+        job.status, job.progress, job.message = "running", 1, "Подготовка импорта"
         job.started_at = datetime.now(timezone.utc).isoformat()
     try:
         async with AsyncSessionLocal() as db:
@@ -80,13 +80,13 @@ async def run_project_data_import_job(job_id: str) -> None:
             await db.commit()
         # A complete project graph can contain millions of facts. It is created explicitly
         # by analysis plugins with their own limits, never as a post-import side effect.
-        await _update(job, 96, "\u0421\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u0438\u0435 \u0440\u0435\u0437\u0443\u043b\u044c\u0442\u0430\u0442\u043e\u0432 \u0438\u043c\u043f\u043e\u0440\u0442\u0430")
+        await _update(job, 96, "Сохранение результатов импорта")
         async with _jobs_lock:
-            job.status, job.progress, job.message = "completed", 100, "\u0418\u043c\u043f\u043e\u0440\u0442 \u0437\u0430\u0432\u0435\u0440\u0448\u0451\u043d"
+            job.status, job.progress, job.message = "completed", 100, "Импорт завершён"
             job.result = _serialize_result(job.project_id, result)
             job.finished_at = datetime.now(timezone.utc).isoformat()
     except Exception as exc:
         async with _jobs_lock:
-            job.status, job.message = "failed", "\u0418\u043c\u043f\u043e\u0440\u0442 \u0437\u0430\u0432\u0435\u0440\u0448\u0438\u043b\u0441\u044f \u0441 \u043e\u0448\u0438\u0431\u043a\u043e\u0439"
+            job.status, job.message = "failed", "Импорт завершился с ошибкой"
             job.error = str(getattr(exc, "detail", exc))
             job.finished_at = datetime.now(timezone.utc).isoformat()

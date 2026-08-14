@@ -28,8 +28,9 @@ export interface ApiArtifact {
   type: string;
   name: string;
   description: string | null;
-  data: ApiGraphData | any;
+  data?: ApiGraphData | any;
   metadata: Record<string, any>;
+  data_loaded?: boolean;
   created_at: string;
   updated_at: string;
   version: number;

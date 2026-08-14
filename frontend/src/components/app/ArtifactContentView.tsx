@@ -9,12 +9,14 @@ import ConsoleView from '../views/ConsoleView';
 
 type ArtifactContentViewProps = {
   activeArtifact: ApiArtifact | null;
+  isLoading?: boolean;
   labels: Record<string, string>;
   graphViewProps: Omit<React.ComponentProps<typeof GraphView>, 'artifact'>;
 };
 
 export const ArtifactContentView: React.FC<ArtifactContentViewProps> = ({
   activeArtifact,
+  isLoading = false,
   labels,
   graphViewProps,
 }) => {
@@ -23,6 +25,16 @@ export const ArtifactContentView: React.FC<ArtifactContentViewProps> = ({
       <div className="no-selection">
         <h2>{labels.noSelectionTitle}</h2>
         <p>{labels.noSelectionHint}</p>
+      </div>
+    );
+  }
+
+  if (activeArtifact.data_loaded === false || isLoading) {
+    return (
+      <div className="artifact-load-state" role="status" aria-live="polite">
+        <div className="artifact-load-spinner" />
+        <h2>{'\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430 \u0430\u0440\u0442\u0435\u0444\u0430\u043a\u0442\u0430'}</h2>
+        <p>{'\u041f\u043e\u043b\u0443\u0447\u0430\u0435\u043c \u0434\u0430\u043d\u043d\u044b\u0435 \u0430\u0440\u0442\u0435\u0444\u0430\u043a\u0442\u0430. \u0411\u043e\u043b\u044c\u0448\u0438\u0435 \u0440\u0435\u0437\u0443\u043b\u044c\u0442\u0430\u0442\u044b \u043c\u043e\u0433\u0443\u0442 \u0437\u0430\u043d\u044f\u0442\u044c \u043d\u0435\u0441\u043a\u043e\u043b\u044c\u043a\u043e \u0441\u0435\u043a\u0443\u043d\u0434.'}</p>
       </div>
     );
   }

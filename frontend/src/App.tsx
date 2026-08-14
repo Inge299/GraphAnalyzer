@@ -2,7 +2,7 @@
 import { lazy, Suspense, useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useAppDispatch, useAppSelector } from './store';
 import { fetchProjects, setCurrentProject } from './store/slices/projectsSlice';
-import { setCurrentArtifact, fetchArtifacts } from './store/slices/artifactsSlice';
+import { setCurrentArtifact, fetchArtifacts, fetchArtifact } from './store/slices/artifactsSlice';
 import { setSelectedElements } from './store/slices/uiSlice';
 import TabBar from './components/layout/TabBar';
 import Sidebar from './components/layout/Sidebar';
@@ -16,7 +16,7 @@ import { useGraphBottomPanelViewModel } from './hooks/useGraphBottomPanelViewMod
 import { initializeGraphDisplaySettings } from './config/graphDisplaySettings';
 import { useDomainModelVisuals } from './hooks/useDomainModelVisuals';
 import { useGraphBottomPanelState } from './hooks/useGraphBottomPanelState';
-import { projectApi } from './services/api';
+import { api, projectApi } from './services/api';
 import './App.css';
 import './components/layout/TabBar.css';
 
@@ -35,6 +35,11 @@ interface NodeCreationSpec {
   typeId: string;
   label: string;
 }
+
+type BackendHealthState =
+  | { status: 'checking' | 'healthy' }
+  | { status: 'slow'; responseMs: number }
+  | { status: 'offline'; message: string };
 
   const labels = {
   loadingProjects: 'Загрузка проектов...',
@@ -68,6 +73,7 @@ function App() {
   const currentProject = useAppSelector((state) => state.projects.currentProject);
   const artifacts = useAppSelector((state) => state.artifacts.items);
   const currentArtifactId = useAppSelector((state) => state.artifacts.currentArtifactId);
+  const loadingArtifactId = useAppSelector((state) => state.artifacts.loadingArtifactId);
   const projectsLoading = useAppSelector((state) => state.projects.isLoading);
   const projectsError = useAppSelector((state) => state.projects.error);
   const [newProjectName, setNewProjectName] = useState('');
@@ -89,6 +95,7 @@ function App() {
   const [isProjectDataScreenActive, setIsProjectDataScreenActive] = useState(false);
   const [serviceScreenCategory, setServiceScreenCategory] = useState<ServiceCategory>('cell_towers');
   const [isDevServerDisconnected, setIsDevServerDisconnected] = useState(false);
+  const [backendHealth, setBackendHealth] = useState<BackendHealthState>({ status: 'checking' });
 
   const lastNodesStateRef = useRef<any>(null);
   const [edgeCreationType, setEdgeCreationType] = useState<string | null>(null);
@@ -110,6 +117,23 @@ function App() {
   useEffect(() => {
     dispatch(fetchProjects());
   }, [dispatch]);
+
+  useEffect(() => {
+    let active = true;
+    const startedAt = performance.now();
+    api.get('/health', { timeout: 5000 })
+      .then(() => {
+        if (!active) return;
+        const responseMs = Math.round(performance.now() - startedAt);
+        setBackendHealth(responseMs >= 1500 ? { status: 'slow', responseMs } : { status: 'healthy' });
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        const message = error instanceof Error ? error.message : 'Backend is unavailable';
+        setBackendHealth({ status: 'offline', message });
+      });
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     if (!projectsError || projects.length > 0) return;
@@ -140,6 +164,14 @@ function App() {
       dispatch(fetchArtifacts(currentProject.id));
     }
   }, [currentProject?.id, dispatch]);
+
+  useEffect(() => {
+    if (!currentProject?.id || !currentArtifactId) return;
+    const artifact = artifacts[currentArtifactId];
+    if (artifact && artifact.data_loaded === false && loadingArtifactId !== artifact.id) {
+      void dispatch(fetchArtifact({ projectId: currentProject.id, id: artifact.id }));
+    }
+  }, [artifacts, currentArtifactId, currentProject?.id, dispatch, loadingArtifactId]);
 
   useEffect(() => {
     if (!currentArtifactId) return;
@@ -1015,6 +1047,16 @@ function App() {
           </button>
         </div>
       )}
+      {backendHealth.status === 'slow' && (
+        <div className="backend-health-banner" role="status">
+          ?????? ??????? ?? {backendHealth.responseMs} ??. ?????? ????????, ?? ??? ???????? ??????? ?????????? ????? ???? ????????.
+        </div>
+      )}
+      {backendHealth.status === 'offline' && (
+        <div className="backend-health-banner backend-health-banner-error" role="alert">
+          ?????? ?????????? ??????????. ????????? Docker, PostgreSQL ? ???????? ??????, ????? ???????? ????????.
+        </div>
+      )}
       <TabBar
         tabs={tabs}
         activeTabId={activeTabId}
@@ -1062,6 +1104,7 @@ function App() {
             ) : (
               <ArtifactContentView
                 activeArtifact={activeArtifact}
+                isLoading={Boolean(activeArtifact && loadingArtifactId === activeArtifact.id)}
                 labels={labels}
                 graphViewProps={{
                   onNodeMove: handleNodeMove,

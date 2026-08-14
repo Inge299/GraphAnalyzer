@@ -1,7 +1,7 @@
 ﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { setCurrentProject, fetchProjects } from '../../store/slices/projectsSlice';
-import { fetchArtifacts, setCurrentArtifact, createArtifact, deleteArtifact } from '../../store/slices/artifactsSlice';
+import { fetchArtifacts, fetchArtifact, setCurrentArtifact, createArtifact, deleteArtifact } from '../../store/slices/artifactsSlice';
 import { artifactApi, projectApi } from '../../services/api';
 import type { ApiArtifact } from '../../types/api';
 import './Sidebar.css';
@@ -143,12 +143,6 @@ const Sidebar: React.FC<SidebarProps> = ({
   }, []);
 
   useEffect(() => {
-    if (currentProject?.id) {
-      dispatch(fetchArtifacts(currentProject.id));
-    }
-  }, [currentProject?.id, dispatch]);
-
-  useEffect(() => {
     setProjectPanelTab('artifacts');
   }, [currentProject?.id]);
 
@@ -257,10 +251,13 @@ const Sidebar: React.FC<SidebarProps> = ({
   const handleSelectArtifact = useCallback((artifact: ApiArtifact) => {
     setProjectPanelTab('artifacts');
     dispatch(setCurrentArtifact(artifact.id));
+    if (currentProject?.id && artifact.data_loaded === false) {
+      void dispatch(fetchArtifact({ projectId: currentProject.id, id: artifact.id }));
+    }
     onCloseServiceScreen();
     onArtifactSelect(artifact);
     setContextMenu(null);
-  }, [dispatch, onArtifactSelect, onCloseServiceScreen]);
+  }, [currentProject?.id, dispatch, onArtifactSelect, onCloseServiceScreen]);
 
   const handleOpenProjectDataTab = useCallback(() => {
     setProjectPanelTab('project_data');

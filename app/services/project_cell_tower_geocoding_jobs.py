@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
@@ -9,6 +10,9 @@ from uuid import uuid4
 from app.database import AsyncSessionLocal
 from app.services.project_cell_tower_geocoding_service import enrich_project_cell_towers
 from app.services.project_data_service import acquire_project_data_lock
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -73,7 +77,10 @@ async def run_project_cell_tower_geocoding_job(job_id: str) -> None:
             job.result = result
             job.finished_at = datetime.now(timezone.utc).isoformat()
     except Exception as exc:
+        logger.exception("Project cell tower enrichment failed for project %s", job.project_id)
         async with _lock:
-            job.status, job.message = "failed", "\u041e\u0431\u043e\u0433\u0430\u0449\u0435\u043d\u0438\u0435 \u0411\u0421 \u0437\u0430\u0432\u0435\u0440\u0448\u0438\u043b\u043e\u0441\u044c \u0441 \u043e\u0448\u0438\u0431\u043a\u043e\u0439"
-            job.error = str(getattr(exc, "detail", exc))
+            job.status, job.message = "\u041e\u0431\u043e\u0433\u0430\u0449\u0435\u043d\u0438\u0435 \u0411\u0421 \u0437\u0430\u0432\u0435\u0440\u0448\u0438\u043b\u043e\u0441\u044c \u0441 \u043e\u0448\u0438\u0431\u043a\u043e\u0439"
+            detail = getattr(exc, "detail", None)
+            rendered = str(detail if detail is not None else exc).strip()
+            job.error = rendered or f"{type(exc).__name__}: \u043f\u043e\u0434\u0440\u043e\u0431\u043d\u043e\u0441\u0442\u0438 \u0437\u0430\u043f\u0438\u0441\u0430\u043d\u044b \u0432 \u0436\u0443\u0440\u043d\u0430\u043b \u043f\u0440\u0438\u043b\u043e\u0436\u0435\u043d\u0438\u044f"
             job.finished_at = datetime.now(timezone.utc).isoformat()

@@ -49,9 +49,11 @@ const normalizePreviewMarkdown = (value: string): string => {
 
 const DocumentView: React.FC<DocumentViewProps> = ({ artifact }) => {
   const dispatch = useAppDispatch();
-  const initialContent = useMemo(() => {
+  const decodeLiteralNewlines = (value: string) => value.replace(/\\r\\n/g, '\n').replace(/\\n/g, '\n');
+
+const initialContent = useMemo(() => {
     if (artifact?.data && typeof artifact.data === 'object') {
-      return (artifact.data as { content?: string }).content || '';
+      return decodeLiteralNewlines((artifact.data as { content?: string }).content || '');
     }
     return '';
   }, [artifact]);

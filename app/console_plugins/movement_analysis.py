@@ -12,7 +12,12 @@ from app.console_plugins._graph_analysis_utils import column, graph_payload, nod
 from app.database import AsyncSessionLocal
 from app.services.cell_tower_reference_provider import get_cell_tower_reference_provider_status, resolve_cell_towers
 from app.services.cell_tower_reference_service import resolve_local_cell_towers
-from app.services.project_cell_tower_geocoding_service import resolve_project_cell_towers
+from app.services.project_cell_tower_geocoding_service import (
+    is_concrete_geocoded_address,
+    normalize_address,
+    resolve_project_address_coordinates,
+    resolve_project_cell_towers,
+)
 from app.services.project_domain_store import ensure_project_domain_fact_participants
 
 
@@ -181,6 +186,51 @@ async def fetch_movement_source_rows(
     return rows
 
 
+async def resolve_movement_coordinates(project_id: int, rows: list[Dict[str, Any]]) -> Dict[str, Any]:
+    """Resolve rows through configured sources without issuing geocoder requests."""
+    provider = get_cell_tower_reference_provider_status()
+    external_towers = await resolve_cell_towers(rows) if provider.enabled else {}
+    local_towers = await resolve_local_cell_towers(rows)
+    project_towers = await resolve_project_cell_towers(project_id, rows)
+    project_addresses = await resolve_project_address_coordinates(project_id, rows)
+    external_count = local_count = project_count = address_count = 0
+    for row in rows:
+        tower = external_towers.get(_cell_key(row))
+        if tower and (not tower.get("address") or is_concrete_geocoded_address(tower.get("address"))):
+            row.update(tower)
+            row["resolved_address"] = tower.get("address") or row.get("address")
+            external_count += 1
+            continue
+        tower = local_towers.get(_cell_key(row))
+        if tower and (not tower.get("address") or is_concrete_geocoded_address(tower.get("address"))):
+            row.update(tower)
+            row["resolved_address"] = tower.get("address") or row.get("address")
+            local_count += 1
+            continue
+        tower = project_towers.get(_cell_key(row))
+        if tower and (not tower.get("address") or is_concrete_geocoded_address(tower.get("address"))):
+            row.update(tower)
+            row["resolved_address"] = tower.get("address") or row.get("address")
+            project_count += 1
+            continue
+        tower = project_addresses.get(normalize_address(row.get("address")))
+        if tower and (not tower.get("address") or is_concrete_geocoded_address(tower.get("address"))):
+            row.update(tower)
+            row["resolved_address"] = tower.get("address") or row.get("address")
+            address_count += 1
+        else:
+            row["latitude"] = None
+            row["longitude"] = None
+            row["resolved_address"] = row.get("address")
+    return {
+        "provider": provider,
+        "external_count": external_count,
+        "local_count": local_count,
+        "project_count": project_count,
+        "address_count": address_count,
+    }
+
+
 class MovementAnalysisExecutor(ConsoleExecutorPlugin):
     id = "movement_analysis"
     name = "\u0410\u043d\u0430\u043b\u0438\u0437 \u043f\u0435\u0440\u0435\u043c\u0435\u0449\u0435\u043d\u0438\u0439"
@@ -188,14 +238,16 @@ class MovementAnalysisExecutor(ConsoleExecutorPlugin):
     menu_path = "\u0410\u043d\u0430\u043b\u0438\u0437/\u0413\u0435\u043e"
     menu_order = 20
     supports_graph_selection = True
-    default_limit = 2000
+    default_limit = 50000
     timeout_seconds = 120
     params_schema = [
         {"name": "msisdn", "label": "MSISDN (\u0447\u0435\u0440\u0435\u0437 \u0437\u0430\u043f\u044f\u0442\u0443\u044e, \u0435\u0441\u043b\u0438 \u043d\u0435 \u0432\u044b\u0431\u0440\u0430\u043d \u043d\u0430 \u0433\u0440\u0430\u0444\u0435)", "type": "string", "default": "", "required": False},
         {"name": "date_from", "label": "\u041d\u0430\u0447\u0430\u043b\u043e \u043f\u0435\u0440\u0438\u043e\u0434\u0430", "type": "date", "default": "", "required": False},
         {"name": "date_to", "label": "\u041a\u043e\u043d\u0435\u0446 \u043f\u0435\u0440\u0438\u043e\u0434\u0430", "type": "date", "default": "", "required": False},
         {"name": "stay_gap_minutes", "label": "\u041f\u0430\u0443\u0437\u0430 \u0434\u043b\u044f \u0440\u0430\u0437\u0434\u0435\u043b\u0435\u043d\u0438\u044f \u0441\u0442\u043e\u044f\u043d\u043e\u043a, \u043c\u0438\u043d", "type": "integer", "default": 60, "required": False},
-        {"name": "limit", "label": "\u041b\u0438\u043c\u0438\u0442 \u0441\u043e\u0431\u044b\u0442\u0438\u0439 (\u043d\u0435 \u0431\u043e\u043b\u0435\u0435 2500)", "type": "integer", "default": 2000, "required": False},
+        {"name": "minimum_move_distance_m", "label": "\u041c\u0438\u043d\u0438\u043c\u0430\u043b\u044c\u043d\u043e\u0435 \u0440\u0430\u0441\u0441\u0442\u043e\u044f\u043d\u0438\u0435 \u043f\u0435\u0440\u0435\u043c\u0435\u0449\u0435\u043d\u0438\u044f, \u043c", "type": "integer", "default": 2000, "required": False},
+        {"name": "route_window", "label": "\u042d\u0442\u0430\u043f\u043e\u0432 \u0434\u043e/\u043f\u043e\u0441\u043b\u0435 \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u043e\u0433\u043e \u043f\u0435\u0440\u0435\u043c\u0435\u0449\u0435\u043d\u0438\u044f \u043d\u0430 \u043a\u0430\u0440\u0442\u0435", "type": "integer", "default": 5, "required": False},
+        {"name": "limit", "label": "\u041b\u0438\u043c\u0438\u0442 \u0441\u043e\u0431\u044b\u0442\u0438\u0439 (\u043d\u0435 \u0431\u043e\u043b\u0435\u0435 50000)", "type": "integer", "default": 50000, "required": False},
     ]
 
     async def execute(self, *, project_id: int, artifact: Optional[Dict[str, Any]] = None, params: Optional[Dict[str, Any]] = None, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -204,8 +256,10 @@ class MovementAnalysisExecutor(ConsoleExecutorPlugin):
         if not msisdns:
             return self._empty("\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u043d\u0430 \u0433\u0440\u0430\u0444\u0435 MSISDN \u0438\u043b\u0438 \u0443\u043a\u0430\u0436\u0438\u0442\u0435 \u043d\u043e\u043c\u0435\u0440 \u0432 \u043f\u0430\u0440\u0430\u043c\u0435\u0442\u0440\u0435.")
         try:
-            limit = min(2500, max(1, int(values.get("limit") or self.default_limit)))
+            limit = min(50000, max(1, int(values.get("limit") or self.default_limit)))
             stay_gap_minutes = max(0, int(values.get("stay_gap_minutes") or 0))
+            minimum_move_distance_m = max(0, int(values.get("minimum_move_distance_m") or 2000))
+            route_window = min(25, max(1, int(values.get("route_window") or 5)))
             date_from = datetime.fromisoformat(str(values["date_from"]).strip()) if values.get("date_from") else None
             date_to = datetime.fromisoformat(str(values["date_to"]).strip()) if values.get("date_to") else None
         except ValueError:
@@ -221,50 +275,31 @@ class MovementAnalysisExecutor(ConsoleExecutorPlugin):
         if not source_rows:
             return self._empty("\u041f\u043e \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u044b\u043c \u0443\u0441\u043b\u043e\u0432\u0438\u044f\u043c \u0441\u043e\u0431\u044b\u0442\u0438\u0439 \u043b\u043e\u043a\u0430\u0446\u0438\u0439 \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u043e.")
 
-        provider = get_cell_tower_reference_provider_status()
-        external_towers = await resolve_cell_towers(source_rows) if provider.enabled else {}
-        local_towers = await resolve_local_cell_towers(source_rows)
-        project_towers = await resolve_project_cell_towers(project_id, source_rows)
-        external_count = 0
-        local_count = 0
-        project_count = 0
-        for row in source_rows:
-            tower = external_towers.get(_cell_key(row))
-            if tower:
-                row.update(tower)
-                row["resolved_address"] = tower.get("address") or row.get("address")
-                external_count += 1
-                continue
-            tower = local_towers.get(_cell_key(row))
-            if tower:
-                row.update(tower)
-                row["resolved_address"] = tower.get("address") or row.get("address")
-                local_count += 1
-                continue
-            tower = project_towers.get(_cell_key(row))
-            if tower:
-                row.update(tower)
-                row["resolved_address"] = tower.get("address") or row.get("address")
-                project_count += 1
-            else:
-                row["latitude"] = None
-                row["longitude"] = None
-                row["resolved_address"] = row.get("address")
+        coordinate_stats = await resolve_movement_coordinates(project_id, source_rows)
+        provider = coordinate_stats["provider"]
+        external_count = coordinate_stats["external_count"]
+        local_count = coordinate_stats["local_count"]
+        project_count = coordinate_stats["project_count"]
+        address_count = coordinate_stats["address_count"]
 
         stays = self._build_stays(source_rows, timedelta(minutes=stay_gap_minutes))
-        moves = self._build_moves(stays)
+        for index, item in enumerate(stays, start=1):
+            item["sequence"] = index
+            item["map_point_id"] = f"stay-{index}"
+        moves = self._build_moves(stays, minimum_distance_km=minimum_move_distance_m / 1000)
+        self._attach_route_windows(moves, stays, route_window=route_window)
         mapped_stays = [item for item in stays if item.get("latitude") is not None and item.get("longitude") is not None]
         points = [
             {
-                "id": f"stay-{index}", "sequence": index, "msisdn": item["msisdn"],
+                "id": item["map_point_id"], "sequence": item["sequence"], "msisdn": item["msisdn"],
                 "event_time": item["started_at"].isoformat(), "latitude": float(item["latitude"]), "longitude": float(item["longitude"]),
-                "address": _display(item.get("address")), "lac": _display(item.get("lac")), "bs": _display(item.get("bs")),
+                "address": _display(item.get("resolved_address") or item.get("address")), "lac": _display(item.get("lac")), "bs": _display(item.get("bs")),
             }
-            for index, item in enumerate(mapped_stays, start=1)
+            for item in mapped_stays
         ]
         source_label = (
             "external_cell_tower_reference" if external_count
-            else ("local_cell_tower_reference" if local_count else ("project_cell_tower_geocoding" if project_count else "local_cell_tower_reference"))
+            else ("local_cell_tower_reference" if local_count else ("project_cell_tower_geocoding" if project_count or address_count else "local_cell_tower_reference"))
         )
         summary_rows = []
         for msisdn in msisdns:
@@ -278,6 +313,7 @@ class MovementAnalysisExecutor(ConsoleExecutorPlugin):
             })
         stay_rows = [
             {
+                "sequence": item["sequence"], "map_point_id": item["map_point_id"],
                 "msisdn": item["msisdn"], "started_at": item["started_at"].isoformat(), "ended_at": item["ended_at"].isoformat(),
                 "duration": _format_delta(item["ended_at"] - item["started_at"]), "events": item["events"],
                 "address": _display(item.get("address")), "mcc": _display(item.get("mcc")), "mnc": _display(item.get("mnc")),
@@ -288,6 +324,10 @@ class MovementAnalysisExecutor(ConsoleExecutorPlugin):
         ]
         move_rows = [
             {
+                "map_point_id": item.get("to_point_id", ""),
+                "from_point_id": item.get("from_point_id", ""),
+                "to_point_id": item.get("to_point_id", ""),
+                "route_point_ids": item.get("route_point_ids", []),
                 "msisdn": item["msisdn"], "from_time": item["from_time"].isoformat(), "to_time": item["to_time"].isoformat(),
                 "travel_time": _format_delta(item["to_time"] - item["from_time"]), "from_cell": item["from_cell"], "to_cell": item["to_cell"],
                 "from_address": _display(item.get("from_address")), "to_address": _display(item.get("to_address")),
@@ -304,14 +344,14 @@ class MovementAnalysisExecutor(ConsoleExecutorPlugin):
                     column("stays", "\u0421\u0442\u043e\u044f\u043d\u043e\u043a", "integer", 110), column("moves", "\u041f\u0435\u0440\u0435\u043c\u0435\u0449\u0435\u043d\u0438\u0439", "integer", 130), column("first_event", "\u041f\u0435\u0440\u0432\u043e\u0435 \u0441\u043e\u0431\u044b\u0442\u0438\u0435", "datetime", 180), column("last_event", "\u041f\u043e\u0441\u043b\u0435\u0434\u043d\u0435\u0435 \u0441\u043e\u0431\u044b\u0442\u0438\u0435", "datetime", 180),
                 ], summary_rows),
                 tab("stays", "\u0421\u0442\u043e\u044f\u043d\u043a\u0438", [
-                    column("msisdn", "MSISDN", "string", 150), column("started_at", "\u041d\u0430\u0447\u0430\u043b\u043e", "datetime", 180), column("ended_at", "\u041e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u0435", "datetime", 180), column("duration", "\u0414\u043b\u0438\u0442\u0435\u043b\u044c\u043d\u043e\u0441\u0442\u044c", "string", 130), column("events", "\u0424\u0430\u043a\u0442\u043e\u0432", "integer", 90), column("address", "\u0410\u0434\u0440\u0435\u0441", "string", 380), column("mcc", "MCC", "string", 70), column("mnc", "MNC", "string", 70), column("lac", "LAC", "string", 100), column("bs", "\u0411\u0421", "string", 100), column("coordinates", "\u041a\u043e\u043e\u0440\u0434\u0438\u043d\u0430\u0442\u044b", "string", 180),
+                    column("sequence", "#", "integer", 70), column("msisdn", "MSISDN", "string", 150), column("started_at", "\u041d\u0430\u0447\u0430\u043b\u043e", "datetime", 160), column("ended_at", "\u041e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u0435", "datetime", 160), column("duration", "\u0414\u043b\u0438\u0442\u0435\u043b\u044c\u043d\u043e\u0441\u0442\u044c", "string", 130), column("events", "\u0424\u0430\u043a\u0442\u043e\u0432", "integer", 90), column("address", "\u0410\u0434\u0440\u0435\u0441", "string", 380), column("mcc", "MCC", "string", 70), column("mnc", "MNC", "string", 70), column("lac", "LAC", "string", 100), column("bs", "\u0411\u0421", "string", 100), column("coordinates", "\u041a\u043e\u043e\u0440\u0434\u0438\u043d\u0430\u0442\u044b", "string", 180),
                 ], stay_rows),
                 tab("moves", "\u041f\u0435\u0440\u0435\u043c\u0435\u0449\u0435\u043d\u0438\u044f", [
-                    column("msisdn", "MSISDN", "string", 150), column("from_time", "\u0412\u044b\u0431\u044b\u043b", "datetime", 180), column("to_time", "\u041f\u0440\u0438\u0431\u044b\u043b", "datetime", 180), column("travel_time", "\u041f\u0430\u0443\u0437\u0430", "string", 120), column("from_cell", "\u041e\u0442\u043a\u0443\u0434\u0430 (\u0411\u0421)", "string", 150), column("to_cell", "\u041a\u0443\u0434\u0430 (\u0411\u0421)", "string", 150), column("distance_km", "\u0420\u0430\u0441\u0441\u0442\u043e\u044f\u043d\u0438\u0435, \u043a\u043c", "number", 130), column("from_address", "\u0410\u0434\u0440\u0435\u0441 \u043e\u0442\u043a\u0443\u0434\u0430", "string", 300), column("to_address", "\u0410\u0434\u0440\u0435\u0441 \u043a\u0443\u0434\u0430", "string", 300),
+                    column("msisdn", "MSISDN", "string", 150), column("from_time", "\u0412\u044b\u0431\u044b\u043b", "datetime", 160), column("to_time", "\u041f\u0440\u0438\u0431\u044b\u043b", "datetime", 160), column("travel_time", "\u041f\u0430\u0443\u0437\u0430", "string", 120), column("from_cell", "\u041e\u0442\u043a\u0443\u0434\u0430 (\u0411\u0421)", "string", 150), column("to_cell", "\u041a\u0443\u0434\u0430 (\u0411\u0421)", "string", 150), column("distance_km", "\u0420\u0430\u0441\u0441\u0442\u043e\u044f\u043d\u0438\u0435, \u043a\u043c", "number", 130), column("from_address", "\u0410\u0434\u0440\u0435\u0441 \u043e\u0442\u043a\u0443\u0434\u0430", "string", 300), column("to_address", "\u0410\u0434\u0440\u0435\u0441 \u043a\u0443\u0434\u0430", "string", 300),
                 ], move_rows),
-                {"id": "map", "name": "\u041a\u0430\u0440\u0442\u0430", "view": "map", "columns": [], "rows": [], "row_count": len(points), "map_data": {"provider": source_label, "points": points, "source": {"plugin_id": self.id, "provider_id": provider.provider_id, "provider_label": provider.label, "provider_detail": provider.detail, "external_coordinates_used": external_count, "local_coordinates_used": local_count, "project_coordinates_used": project_count}}},
+                {"id": "map", "name": "\u041a\u0430\u0440\u0442\u0430", "view": "map", "columns": [], "rows": [], "row_count": len(points), "map_data": {"provider": source_label, "points": points, "source": {"plugin_id": self.id, "provider_id": provider.provider_id, "provider_label": provider.label, "provider_detail": provider.detail, "external_coordinates_used": external_count, "local_coordinates_used": local_count, "project_coordinates_used": project_count, "project_address_coordinates_used": address_count}}},
             ],
-            "active_tab_id": "summary",
+            "active_tab_id": "stays",
         }
 
     @staticmethod
@@ -335,17 +375,47 @@ class MovementAnalysisExecutor(ConsoleExecutorPlugin):
         return result
 
     @staticmethod
-    def _build_moves(stays: list[Dict[str, Any]]) -> list[Dict[str, Any]]:
+    def _attach_route_windows(moves: list[Dict[str, Any]], stays: list[Dict[str, Any]], *, route_window: int) -> None:
+        mapped_by_msisdn: dict[str, list[str]] = {}
+        for stay in stays:
+            if stay.get("latitude") is None or stay.get("longitude") is None:
+                continue
+            mapped_by_msisdn.setdefault(str(stay.get("msisdn") or ""), []).append(str(stay.get("map_point_id") or ""))
+        positions = {
+            (msisdn, point_id): index
+            for msisdn, point_ids in mapped_by_msisdn.items()
+            for index, point_id in enumerate(point_ids)
+        }
+        for move in moves:
+            msisdn = str(move.get("msisdn") or "")
+            point_ids = mapped_by_msisdn.get(msisdn, [])
+            source = positions.get((msisdn, str(move.get("from_point_id") or "")))
+            target = positions.get((msisdn, str(move.get("to_point_id") or "")))
+            if source is None or target is None:
+                move["route_point_ids"] = [point_id for point_id in (move.get("from_point_id"), move.get("to_point_id")) if point_id]
+                continue
+            start, end = sorted((source, target))
+            move["route_point_ids"] = point_ids[max(0, start - route_window):min(len(point_ids), end + route_window + 1)]
+
+    @staticmethod
+    def _build_moves(stays: list[Dict[str, Any]], *, minimum_distance_km: float) -> list[Dict[str, Any]]:
+        """Keep only address-changing transitions beyond the configured threshold."""
         previous: Dict[str, Any] | None = None
         result: list[Dict[str, Any]] = []
         for stay in stays:
             if previous is not None and previous["msisdn"] == stay["msisdn"] and previous["cell_key"] != stay["cell_key"]:
-                result.append({
-                    "msisdn": stay["msisdn"], "from_time": previous["ended_at"], "to_time": stay["started_at"],
-                    "from_cell": "/".join(part for part in previous["cell_key"] if part), "to_cell": "/".join(part for part in stay["cell_key"] if part),
-                    "from_address": previous.get("resolved_address") or previous.get("address"), "to_address": stay.get("resolved_address") or stay.get("address"),
-                    "distance_km": _distance_km(previous, stay),
-                })
+                from_address = str(previous.get("resolved_address") or previous.get("address") or "").strip()
+                to_address = str(stay.get("resolved_address") or stay.get("address") or "").strip()
+                from_key = re.sub(r"\s+", " ", from_address).casefold()
+                to_key = re.sub(r"\s+", " ", to_address).casefold()
+                distance_km = _distance_km(previous, stay)
+                if from_key and to_key and from_key != to_key and distance_km is not None and distance_km >= minimum_distance_km:
+                    result.append({
+                        "msisdn": stay["msisdn"], "from_time": previous["ended_at"], "to_time": stay["started_at"],
+                        "from_cell": "/".join(part for part in previous["cell_key"] if part), "to_cell": "/".join(part for part in stay["cell_key"] if part),
+                        "from_address": from_address, "to_address": to_address, "distance_km": distance_km,
+                        "from_point_id": previous.get("map_point_id", ""), "to_point_id": stay.get("map_point_id", ""),
+                    })
             previous = stay
         return result
 
