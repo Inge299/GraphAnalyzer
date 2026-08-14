@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { consoleApi } from '../../services/api';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { fetchArtifacts, setCurrentArtifact } from '../../store/slices/artifactsSlice';
@@ -129,6 +130,53 @@ const artifactTypeLabels: Record<string, string> = {
 const weekdayOptions = [
   ['0', 'Пн'], ['1', 'Вт'], ['2', 'Ср'], ['3', 'Чт'], ['4', 'Пт'], ['5', 'Сб'], ['6', 'Вс'],
 ] as const;
+
+const InteractiveHeatmap: React.FC<{ artifact: ApiArtifact; mapData: Record<string, unknown> }> = ({ artifact, mapData }) => {
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [timeFrom, setTimeFrom] = useState('');
+  const [timeTo, setTimeTo] = useState('');
+  const [weekdays, setWeekdays] = useState<Set<string>>(new Set());
+  const rawPoints = useMemo(() => Array.isArray(mapData.filter_points) ? mapData.filter_points.filter((item): item is Record<string, unknown> => Boolean(item && typeof item === 'object')) : [], [mapData.filter_points]);
+  const points = useMemo<Array<Record<string, unknown>>>(() => {
+    const buckets = new Map<string, Record<string, unknown>>();
+    rawPoints.forEach((row) => {
+      const date = new Date(String(row.event_time || ''));
+      if (Number.isNaN(date.getTime())) return;
+      const dateValue = date.toISOString().slice(0, 10);
+      const timeValue = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+      const weekday = String((date.getDay() + 6) % 7);
+      const matchesTime = !timeFrom && !timeTo ? true : !timeFrom ? timeValue <= timeTo : !timeTo ? timeValue >= timeFrom : timeFrom <= timeTo ? timeValue >= timeFrom && timeValue <= timeTo : timeValue >= timeFrom || timeValue <= timeTo;
+      if ((dateFrom && dateValue < dateFrom) || (dateTo && dateValue > dateTo) || (weekdays.size && !weekdays.has(weekday)) || !matchesTime) return;
+      const latitude = Number(row.latitude); const longitude = Number(row.longitude);
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
+      const key = `${latitude.toFixed(6)},${longitude.toFixed(6)}`;
+      const current = buckets.get(key) || { id: `heat-${buckets.size + 1}`, latitude, longitude, weight: 0, msisdns: new Set<string>(), first_event: String(row.event_time || ''), last_event: String(row.event_time || ''), address: row.address || '', lac: row.lac || '', bs: row.bs || '' };
+      current.weight = Number(current.weight || 0) + Number(row.location_probability || 1);
+      (current.msisdns as Set<string>).add(String(row.msisdn || ''));
+      if (String(row.event_time || '') < String(current.first_event || '')) current.first_event = String(row.event_time || '');
+      if (String(row.event_time || '') > String(current.last_event || '')) current.last_event = String(row.event_time || '');
+      buckets.set(key, current);
+    });
+    return [...buckets.values()].map((point) => ({ ...point, msisdn: [...(point.msisdns as Set<string>)].filter(Boolean).slice(0, 3).join(', '), event_time: point.last_event })).sort((a, b) => Number((b as Record<string, unknown>).weight) - Number((a as Record<string, unknown>).weight));
+  }, [dateFrom, dateTo, rawPoints, timeFrom, timeTo, weekdays]);
+  const filteredMapData = useMemo(() => ({ ...mapData, points }), [mapData, points]);
+  const reset = () => { setDateFrom(''); setDateTo(''); setTimeFrom(''); setTimeTo(''); setWeekdays(new Set()); };
+  return <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0, gap: 8 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '8px 12px', border: '1px solid #dbe3f0', borderRadius: 10, background: '#f8fafc', fontSize: 12 }}>
+      <strong style={{ color: '#334155' }}>Фильтр</strong>
+      <label>с <input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} /></label>
+      <label>по <input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} /></label>
+      <span style={{ width: 1, height: 22, background: '#dbe3f0' }} />
+      <label>время <input type="time" value={timeFrom} onChange={(event) => setTimeFrom(event.target.value)} /></label>
+      <span>—</span><input type="time" value={timeTo} onChange={(event) => setTimeTo(event.target.value)} aria-label="Время до" />
+      <span style={{ width: 1, height: 22, background: '#dbe3f0' }} />
+      <div style={{ display: 'flex', gap: 3 }}>{weekdayOptions.map(([day, label]) => <button key={day} type="button" onClick={() => setWeekdays((previous) => { const next = new Set(previous); if (next.has(day)) next.delete(day); else next.add(day); return next; })} style={{ minWidth: 29, padding: '3px 5px', borderRadius: 6, border: weekdays.has(day) ? '1px solid #2563eb' : '1px solid #cbd5e1', background: weekdays.has(day) ? '#dbeafe' : '#fff', color: weekdays.has(day) ? '#1d4ed8' : '#475569', fontWeight: 700 }}>{label}</button>)}</div>
+      <button type="button" className="service-btn" onClick={reset} style={{ marginLeft: 'auto' }}>Сбросить</button>
+    </div>
+    <MapView artifact={artifact} _onUpdate={() => {}} dataOverride={filteredMapData} titleOverride="Тепловая карта" descriptionOverride={`Отфильтровано событий: ${points.reduce((total, point) => total + Number(point.weight || 0), 0).toFixed(2)}`} showRouteTable={false} />
+  </div>;
+};
 
 const getFriendlyArtifactType = (value: unknown): string => {
   const key = String(value || '').trim().toLowerCase();
@@ -617,9 +665,10 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
       return;
     }
 
-    setExecuting(true);
+    flushSync(() => setExecuting(true));
     setError(null);
     setMessage(null);
+    await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
 
     try {
       const params: Record<string, unknown> = {};
@@ -1091,7 +1140,9 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
             />
           </div>
         )}
-        {activeTab?.view === 'map' && activeTab.map_data ? (
+        {activeTab?.view === 'map' && activeTab.map_data && profileId === 'movement_heatmap' ? (
+          <InteractiveHeatmap artifact={artifact} mapData={activeTab.map_data} />
+        ) : activeTab?.view === 'map' && activeTab.map_data ? (
           <MapView
             artifact={artifact}
             _onUpdate={() => {}}

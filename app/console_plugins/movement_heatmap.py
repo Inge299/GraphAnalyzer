@@ -130,6 +130,20 @@ def _heat_points(rows: list[Dict[str, Any]]) -> list[Dict[str, Any]]:
 
 def _map_tab(tab_id: str, name: str, rows: list[Dict[str, Any]], source: Dict[str, Any]) -> Dict[str, Any]:
     points = _heat_points(rows)
+    filter_points = [
+        {
+            "id": f"event-{index}",
+            "latitude": row.get("latitude"),
+            "longitude": row.get("longitude"),
+            "event_time": row["event_time"].isoformat() if isinstance(row.get("event_time"), datetime) else None,
+            "location_probability": row.get("location_probability") or 1.0,
+            "msisdn": row.get("msisdn"),
+            "address": row.get("resolved_address") or row.get("address"),
+            "lac": row.get("lac"),
+            "bs": row.get("bs"),
+        }
+        for index, row in enumerate(rows)
+    ]
     return {
         "id": tab_id,
         "name": name,
@@ -140,6 +154,7 @@ def _map_tab(tab_id: str, name: str, rows: list[Dict[str, Any]], source: Dict[st
         "map_data": {
             "render_mode": "heatmap",
             "points": points,
+            "filter_points": filter_points,
             "provider": source["provider"],
             "source": source,
         },
@@ -182,16 +197,8 @@ class MovementHeatmapExecutor(ConsoleExecutorPlugin):
         rows = await fetch_movement_source_rows(project_id=project_id, msisdns=msisdns, date_from=date_from, date_to=date_to, limit=limit)
         if not rows:
             return self._empty("\u041f\u043e \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u044b\u043c \u0443\u0441\u043b\u043e\u0432\u0438\u044f\u043c \u0441\u043e\u0431\u044b\u0442\u0438\u0439 \u043b\u043e\u043a\u0430\u0446\u0438\u0439 \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u043e.")
-        weekdays = _parse_weekdays(values.get("weekdays"))
-        filtered_rows = [
-            row for row in rows
-            if (not weekdays or (isinstance(row.get("event_time"), datetime) and row["event_time"].weekday() in weekdays))
-            and _matches_time_window(row, time_from, time_to)
-        ]
-        if not filtered_rows:
-            return self._empty("\u041f\u043e \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u044b\u043c \u0444\u0438\u043b\u044c\u0442\u0440\u0430\u043c \u0441\u043e\u0431\u044b\u0442\u0438\u0439 \u043b\u043e\u043a\u0430\u0446\u0438\u0439 \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u043e.")
-        stats = await resolve_movement_coordinates(project_id, filtered_rows)
-        mapped_rows = [row for row in filtered_rows if row.get("latitude") is not None and row.get("longitude") is not None]
+        stats = await resolve_movement_coordinates(project_id, rows)
+        mapped_rows = [row for row in rows if row.get("latitude") is not None and row.get("longitude") is not None]
         source = {
             "plugin_id": self.id,
             "provider": "external_cell_tower_reference" if stats["external_count"] else ("local_cell_tower_reference" if stats["local_count"] else ("project_cell_tower_geocoding" if stats["project_count"] or stats["address_count"] else "local_cell_tower_reference")),
@@ -201,14 +208,14 @@ class MovementHeatmapExecutor(ConsoleExecutorPlugin):
             "local_coordinates_used": stats["local_count"],
             "project_coordinates_used": stats["project_count"],
             "project_address_coordinates_used": stats["address_count"],
-            "filter_description": _filter_description(date_from, date_to, weekdays, time_from, time_to),
+            "filter_description": _filter_description(date_from, date_to, set(), None, None),
         }
         if not mapped_rows:
             return self._empty("\u0414\u043b\u044f \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u044b\u0445 \u0441\u043e\u0431\u044b\u0442\u0438\u0439 \u043d\u0435\u0442 \u043a\u043e\u043e\u0440\u0434\u0438\u043d\u0430\u0442. \u0421\u043d\u0430\u0447\u0430\u043b\u0430 \u043e\u0431\u043e\u0433\u0430\u0442\u044c\u0442\u0435 \u0411\u0421 \u043f\u043e \u0430\u0434\u0440\u0435\u0441\u0430\u043c.")
 
         summary_rows = []
         for msisdn in msisdns:
-            msisdn_rows = [row for row in filtered_rows if row.get("msisdn") == msisdn]
+            msisdn_rows = [row for row in rows if row.get("msisdn") == msisdn]
             msisdn_mapped = [row for row in mapped_rows if row.get("msisdn") == msisdn]
             summary_rows.append({"msisdn": msisdn, "events": len(msisdn_rows), "with_coordinates": len(msisdn_mapped), "unique_places": len(_heat_points(msisdn_mapped)), "filters": source["filter_description"]})
         tabs = [
