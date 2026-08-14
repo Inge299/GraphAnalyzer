@@ -123,9 +123,12 @@ const ServiceFunctionsView: React.FC<ServiceFunctionsViewProps> = ({
   const [activeCategory, setActiveCategory] = useState<ServiceCategory>(initialCategory);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const setReadableMessage = useCallback((value: string | null) => {
+    setMessage(value ? value.replace(/\\u([0-9a-fA-F]{4})/g, (_match, hex: string) => String.fromCharCode(Number.parseInt(hex, 16))) : value);
+  }, []);
 
   const consoleAdmin = useConsoleRegistryAdmin({
-    onMessage: setMessage,
+    onMessage: setReadableMessage,
     onError: setError,
     parseJsonInput,
     toPrettyJson,

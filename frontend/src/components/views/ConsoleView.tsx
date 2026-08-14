@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { flushSync } from 'react-dom';
+import { createPortal, flushSync } from 'react-dom';
 import { consoleApi } from '../../services/api';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { fetchArtifacts, setCurrentArtifact } from '../../store/slices/artifactsSlice';
@@ -99,9 +99,8 @@ const projectContextSourceLabels: Record<string, string> = {
 
 const normalize = (value: unknown): string => {
   if (value === null || value === undefined) return '';
-  if (Array.isArray(value)) return value.join(', ');
-  if (typeof value === 'object') return JSON.stringify(value);
-  return String(value);
+  const source = Array.isArray(value) ? value.join(', ') : typeof value === 'object' ? JSON.stringify(value) : String(value);
+  return source.replace(/\\u([0-9a-fA-F]{4})/g, (_match, hex: string) => String.fromCharCode(Number.parseInt(hex, 16)));
 };
 
 const isDateTimeColumn = (column: ConsoleColumnData): boolean =>
@@ -727,14 +726,15 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
   );
 
   if (executing) {
-    return (
-      <div className="console-view" style={{ height: '100%', minHeight: 0, overflow: 'hidden' }}>
-        <div className="artifact-load-state" role="status" aria-live="polite">
+    return createPortal(
+      <div style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(248, 250, 252, 0.94)', display: 'grid', placeItems: 'center' }}>
+        <div className="artifact-load-state" role="status" aria-live="polite" style={{ minHeight: 0, width: 'min(480px, calc(100vw - 48px))', border: '1px solid #dbe3f0', borderRadius: 14, boxShadow: '0 18px 48px rgba(15, 23, 42, 0.18)', background: '#fff' }}>
           <div className="artifact-load-spinner" />
           <h2>Выполняем анализ</h2>
           <p>Получаем и обрабатываем данные. Для больших выборок это может занять несколько секунд.</p>
         </div>
-      </div>
+      </div>,
+      document.body,
     );
   }
 
