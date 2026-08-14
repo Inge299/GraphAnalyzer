@@ -342,8 +342,9 @@ class MovementAnalysisExecutor(ConsoleExecutorPlugin):
         for index, item in enumerate(stays, start=1):
             item["sequence"] = index
             item["map_point_id"] = f"stay-{index}"
-        moves = self._build_moves(stays, minimum_distance_km=minimum_move_distance_m / 1000)
-        self._attach_route_windows(moves, stays, route_window=route_window)
+        transitions = self._build_transitions(stays, minimum_distance_km=minimum_move_distance_m / 1000)
+        self._attach_route_windows(transitions, stays, route_window=route_window)
+        moves = [item for item in transitions if item.get("classification") == "significant"]
         mapped_stays = [item for item in stays if item.get("latitude") is not None and item.get("longitude") is not None]
         points = [
             {
@@ -395,6 +396,19 @@ class MovementAnalysisExecutor(ConsoleExecutorPlugin):
             }
             for item in moves
         ]
+        transition_rows = [
+            {
+                "map_point_id": item.get("to_point_id", ""), "from_point_id": item.get("from_point_id", ""),
+                "to_point_id": item.get("to_point_id", ""), "route_point_ids": item.get("route_point_ids", []),
+                "msisdn": item["msisdn"], "from_time": item["from_time"].isoformat(), "to_time": item["to_time"].isoformat(),
+                "travel_time": _format_delta(item["to_time"] - item["from_time"]), "from_cell": item["from_cell"], "to_cell": item["to_cell"],
+                "from_address": _display(item.get("from_address")), "to_address": _display(item.get("to_address")),
+                "from_azimuth": _display_azimuth(item.get("from_azimuth")), "to_azimuth": _display_azimuth(item.get("to_azimuth")),
+                "distance_km": item["distance_km"] if item["distance_km"] is not None else "-",
+                "classification": item["classification_label"],
+            }
+            for item in transitions
+        ]
         return {
             "profile_id": self.id,
             "profile_name": self.name,
@@ -409,6 +423,9 @@ class MovementAnalysisExecutor(ConsoleExecutorPlugin):
                 tab("moves", "\u041f\u0435\u0440\u0435\u043c\u0435\u0449\u0435\u043d\u0438\u044f", [
                     column("msisdn", "MSISDN", "string", 150), column("from_time", "\u0412\u044b\u0431\u044b\u043b", "datetime", 160), column("to_time", "\u041f\u0440\u0438\u0431\u044b\u043b", "datetime", 160), column("travel_time", "\u041f\u0430\u0443\u0437\u0430", "string", 120), column("from_cell", "\u041e\u0442\u043a\u0443\u0434\u0430 (\u0411\u0421)", "string", 150), column("from_azimuth", "\u0410\u0437\u0438\u043c\u0443\u0442 \u043e\u0442\u043a\u0443\u0434\u0430", "string", 115), column("to_cell", "\u041a\u0443\u0434\u0430 (\u0411\u0421)", "string", 150), column("to_azimuth", "\u0410\u0437\u0438\u043c\u0443\u0442 \u043a\u0443\u0434\u0430", "string", 110), column("distance_km", "\u0420\u0430\u0441\u0441\u0442\u043e\u044f\u043d\u0438\u0435, \u043a\u043c", "number", 130), column("from_address", "\u0410\u0434\u0440\u0435\u0441 \u043e\u0442\u043a\u0443\u0434\u0430", "string", 300), column("to_address", "\u0410\u0434\u0440\u0435\u0441 \u043a\u0443\u0434\u0430", "string", 300),
                 ], move_rows),
+                tab("transitions", "Переходы БС", [
+                    column("msisdn", "MSISDN", "string", 150), column("from_time", "Выбыл", "datetime", 160), column("to_time", "Прибыл", "datetime", 160), column("travel_time", "Пауза", "string", 120), column("from_cell", "Откуда (БС)", "string", 150), column("from_azimuth", "Азимут откуда", "string", 115), column("to_cell", "Куда (БС)", "string", 150), column("to_azimuth", "Азимут куда", "string", 110), column("distance_km", "Расстояние, км", "number", 130), column("classification", "Статус", "string", 240), column("from_address", "Адрес откуда", "string", 300), column("to_address", "Адрес куда", "string", 300),
+                ], transition_rows),
                 {"id": "map", "name": "\u041a\u0430\u0440\u0442\u0430", "view": "map", "columns": [], "rows": [], "row_count": len(points), "map_data": {"provider": source_label, "points": points, "source": {"plugin_id": self.id, "provider_id": provider.provider_id, "provider_label": provider.label, "provider_detail": provider.detail, "external_coordinates_used": external_count, "local_coordinates_used": local_count, "project_coordinates_used": project_count, "project_address_coordinates_used": address_count}}},
             ],
             "active_tab_id": "stays",
@@ -461,8 +478,8 @@ class MovementAnalysisExecutor(ConsoleExecutorPlugin):
             move["route_point_ids"] = point_ids[max(0, start - route_window):min(len(point_ids), end + route_window + 1)]
 
     @staticmethod
-    def _build_moves(stays: list[Dict[str, Any]], *, minimum_distance_km: float) -> list[Dict[str, Any]]:
-        """Keep only address-changing transitions beyond the configured threshold."""
+    def _build_transitions(stays: list[Dict[str, Any]], *, minimum_distance_km: float) -> list[Dict[str, Any]]:
+        """Describe every consecutive base-station change and classify its analytical value."""
         previous: Dict[str, Any] | None = None
         result: list[Dict[str, Any]] = []
         for stay in stays:
@@ -472,14 +489,24 @@ class MovementAnalysisExecutor(ConsoleExecutorPlugin):
                 from_key = re.sub(r"\s+", " ", from_address).casefold()
                 to_key = re.sub(r"\s+", " ", to_address).casefold()
                 distance_km = _distance_km(previous, stay)
-                if from_key and to_key and from_key != to_key and distance_km is not None and distance_km >= minimum_distance_km:
-                    result.append({
-                        "msisdn": stay["msisdn"], "from_time": previous["ended_at"], "to_time": stay["started_at"],
-                        "from_cell": "/".join(part for part in previous["cell_key"] if part), "to_cell": "/".join(part for part in stay["cell_key"] if part),
-                        "from_address": from_address, "to_address": to_address, "distance_km": distance_km,
-                        "from_azimuth": previous.get("azimuth"), "to_azimuth": stay.get("azimuth"),
-                        "from_point_id": previous.get("map_point_id", ""), "to_point_id": stay.get("map_point_id", ""),
-                    })
+                if distance_km is None:
+                    classification, classification_label = "no_coordinates", "Нет координат у одной из БС"
+                elif not from_key or not to_key:
+                    classification, classification_label = "no_address", "Нет адреса для сопоставления"
+                elif from_key == to_key:
+                    classification, classification_label = "same_address", "Тот же адрес"
+                elif distance_km < minimum_distance_km:
+                    classification, classification_label = "below_threshold", f"Ниже порога {minimum_distance_km:g} км"
+                else:
+                    classification, classification_label = "significant", "Значимое перемещение"
+                result.append({
+                    "msisdn": stay["msisdn"], "from_time": previous["ended_at"], "to_time": stay["started_at"],
+                    "from_cell": "/".join(part for part in previous["cell_key"] if part), "to_cell": "/".join(part for part in stay["cell_key"] if part),
+                    "from_address": from_address, "to_address": to_address, "distance_km": distance_km,
+                    "from_azimuth": previous.get("azimuth"), "to_azimuth": stay.get("azimuth"),
+                    "classification": classification, "classification_label": classification_label,
+                    "from_point_id": previous.get("map_point_id", ""), "to_point_id": stay.get("map_point_id", ""),
+                })
             previous = stay
         return result
 

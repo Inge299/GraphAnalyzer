@@ -190,7 +190,7 @@ const MapView: React.FC<MapViewProps> = ({ artifact, dataOverride, titleOverride
         ? ` \u00b7 азимут ${Math.round(point.azimuth || 0)}\u00b0, ${Math.round(point.location_distance_m || 0)} м`
         : '';
       element.title = `${point.msisdn || 'MSISDN'} \u00b7 ${point.event_time ? formatDateTime(point.event_time) : '\u0432\u0440\u0435\u043c\u044f \u043d\u0435 \u0443\u043a\u0430\u0437\u0430\u043d\u043e'}${estimateDetail}`;
-      element.textContent = point.sequence ? String(point.sequence) : '\u2022';
+      element.textContent = '';
       element.addEventListener('click', (event) => {
         event.preventDefault();
         event.stopPropagation();
