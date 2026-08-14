@@ -32,6 +32,12 @@ type MapPoint = {
   weight?: number;
   first_event?: string;
   last_event?: string;
+  location_method?: string;
+  location_probability?: number;
+  location_distance_m?: number;
+  azimuth?: number;
+  base_station_latitude?: number;
+  base_station_longitude?: number;
 };
 
 type MapData = {
@@ -145,7 +151,14 @@ const MapView: React.FC<MapViewProps> = ({ artifact, dataOverride, titleOverride
     const raw = Array.isArray(data.points) ? data.points : [];
     return raw
       .filter((item: unknown): item is MapPoint => Boolean(item && typeof item === 'object' && Number.isFinite(Number((item as MapPoint).latitude)) && Number.isFinite(Number((item as MapPoint).longitude))))
-      .map((item: MapPoint) => ({ ...item, latitude: Number(item.latitude), longitude: Number(item.longitude) }));
+      .map((item: MapPoint) => ({
+        ...item,
+        latitude: Number(item.latitude),
+        longitude: Number(item.longitude),
+        azimuth: Number.isFinite(Number(item.azimuth)) ? Number(item.azimuth) : undefined,
+        base_station_latitude: Number.isFinite(Number(item.base_station_latitude)) ? Number(item.base_station_latitude) : undefined,
+        base_station_longitude: Number.isFinite(Number(item.base_station_longitude)) ? Number(item.base_station_longitude) : undefined,
+      }));
   }, [data.points]);
 
   const hasPointFilter = visiblePointIds !== undefined;
@@ -171,9 +184,14 @@ const MapView: React.FC<MapViewProps> = ({ artifact, dataOverride, titleOverride
     markerRefs.current = visiblePoints.map((point) => {
       const element = document.createElement('button');
       element.type = 'button';
-      element.className = `map-location-marker${point.id === selectedId ? ' is-selected' : ''}`;
-      element.title = `${point.msisdn || 'MSISDN'} \u00b7 ${point.event_time ? formatDateTime(point.event_time) : '\u0432\u0440\u0435\u043c\u044f \u043d\u0435 \u0443\u043a\u0430\u0437\u0430\u043d\u043e'}`;
-      element.textContent = point.sequence ? String(point.sequence) : '\u2022';
+      const isAzimuthEstimate = point.location_method === 'azimuth_projection';
+      element.className = `map-location-marker${isAzimuthEstimate ? ' is-azimuth-estimate' : ''}${point.id === selectedId ? ' is-selected' : ''}`;
+      if (isAzimuthEstimate) element.style.setProperty('--marker-angle', `${point.azimuth || 0}deg`);
+      const estimateDetail = isAzimuthEstimate
+        ? ` \u00b7 азимут ${Math.round(point.azimuth || 0)}\u00b0, ${Math.round(point.location_distance_m || 0)} м`
+        : '';
+      element.title = `${point.msisdn || 'MSISDN'} \u00b7 ${point.event_time ? formatDateTime(point.event_time) : '\u0432\u0440\u0435\u043c\u044f \u043d\u0435 \u0443\u043a\u0430\u0437\u0430\u043d\u043e'}${estimateDetail}`;
+      element.textContent = isAzimuthEstimate ? '\u25b2' : (point.sequence ? String(point.sequence) : '\u2022');
       element.addEventListener('click', (event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -307,6 +325,29 @@ const MapView: React.FC<MapViewProps> = ({ artifact, dataOverride, titleOverride
         polyline.setAttribute('stroke-linejoin', 'round');
         polyline.setAttribute('opacity', '0.9');
         svg.appendChild(polyline);
+      });
+      visiblePoints.forEach((point) => {
+        if (point.location_method !== 'azimuth_projection' || point.base_station_latitude === undefined || point.base_station_longitude === undefined) return;
+        const base = map.project([point.base_station_longitude, point.base_station_latitude]);
+        const estimate = map.project([point.longitude, point.latitude]);
+        const link = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        link.setAttribute('x1', String(base.x));
+        link.setAttribute('y1', String(base.y));
+        link.setAttribute('x2', String(estimate.x));
+        link.setAttribute('y2', String(estimate.y));
+        link.setAttribute('stroke', '#d97706');
+        link.setAttribute('stroke-width', '1.5');
+        link.setAttribute('stroke-dasharray', '3 3');
+        link.setAttribute('opacity', '0.8');
+        svg.appendChild(link);
+        const tower = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        tower.setAttribute('cx', String(base.x));
+        tower.setAttribute('cy', String(base.y));
+        tower.setAttribute('r', '3');
+        tower.setAttribute('fill', '#64748b');
+        tower.setAttribute('stroke', '#ffffff');
+        tower.setAttribute('stroke-width', '1.2');
+        svg.appendChild(tower);
       });
     };
 

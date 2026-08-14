@@ -342,6 +342,9 @@ class MovementAnalysisExecutor(ConsoleExecutorPlugin):
                 "id": item["map_point_id"], "sequence": item["sequence"], "msisdn": item["msisdn"],
                 "event_time": item["started_at"].isoformat(), "latitude": float(item["latitude"]), "longitude": float(item["longitude"]),
                 "address": _display(item.get("resolved_address") or item.get("address")), "lac": _display(item.get("lac")), "bs": _display(item.get("bs")),
+                "location_method": item.get("location_method"), "location_probability": item.get("location_probability"),
+                "location_distance_m": item.get("location_distance_m"), "azimuth": item.get("azimuth"),
+                "base_station_latitude": item.get("base_station_latitude"), "base_station_longitude": item.get("base_station_longitude"),
             }
             for item in mapped_stays
         ]
@@ -419,7 +422,10 @@ class MovementAnalysisExecutor(ConsoleExecutorPlugin):
                 current["ended_at"] = event_time
                 current["events"] += 1
                 if current.get("latitude") is None and row.get("latitude") is not None:
-                    current.update({key: row.get(key) for key in ("latitude", "longitude", "resolved_address", "address")})
+                    current.update({key: row.get(key) for key in (
+                        "latitude", "longitude", "resolved_address", "address", "location_method", "location_probability",
+                        "location_distance_m", "azimuth", "base_station_latitude", "base_station_longitude",
+                    )})
         return result
 
     @staticmethod
