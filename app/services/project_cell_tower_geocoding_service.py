@@ -4,6 +4,7 @@ import json
 import re
 from collections import defaultdict
 from datetime import datetime, timezone
+from math import asin, cos, radians, sin, sqrt
 from typing import Any, Awaitable, Callable, Iterable
 
 from sqlalchemy import text
@@ -17,6 +18,7 @@ from app.services.project_domain_store import ensure_project_domain_store
 
 
 ProgressCallback = Callable[[int, str], Awaitable[None]]
+CONFLICT_COORDINATE_RADIUS_M = 200.0
 
 
 def _value(value: object) -> str:
@@ -60,6 +62,34 @@ def normalize_cell(mcc: object, mnc: object, lac: object, cid: object) -> tuple[
 def parse_cell_key(value: object) -> tuple[str, str, str, str] | None:
     parts = [_value(item) for item in str(value or "").split("/")]
     return normalize_cell(*parts) if len(parts) == 4 else None
+
+
+def _distance_meters(left: dict[str, Any], right: dict[str, Any]) -> float | None:
+    try:
+        lat1, lon1 = radians(float(left["latitude"])), radians(float(left["longitude"]))
+        lat2, lon2 = radians(float(right["latitude"])), radians(float(right["longitude"]))
+    except (KeyError, TypeError, ValueError):
+        return None
+    value = sin((lat2 - lat1) / 2) ** 2 + cos(lat1) * cos(lat2) * sin((lon2 - lon1) / 2) ** 2
+    return 6_371_000.0 * 2 * asin(sqrt(value))
+
+
+def _reconcile_conflict_coordinates(items: list[dict[str, str]], cache: dict[str, dict[str, Any]]) -> dict[str, Any] | None:
+    resolved = [cache.get(item["address_norm"], {}) for item in items]
+    if len(resolved) != len(items) or any(entry.get("status") != "resolved" or _distance_meters(entry, entry) is None for entry in resolved):
+        return None
+    if any(
+        (_distance_meters(left, right) or float("inf")) > CONFLICT_COORDINATE_RADIUS_M
+        for index, left in enumerate(resolved)
+        for right in resolved[index + 1:]
+    ):
+        return None
+    return {
+        "status": "resolved",
+        "latitude": sum(float(entry["latitude"]) for entry in resolved) / len(resolved),
+        "longitude": sum(float(entry["longitude"]) for entry in resolved) / len(resolved),
+        "display_name": str(resolved[0].get("display_name") or items[0]["address"]),
+    }
 
 
 async def ensure_project_cell_tower_geocoding_tables(db: AsyncSession) -> None:
@@ -356,13 +386,15 @@ async def _enrich_project_cell_towers(db: AsyncSession, project_id: int, progres
     conflicts = {cell for cell, values in by_cell.items() if len({item["address_norm"] for item in values}) > 1}
     external = await _external_keys(candidates)
     active = [item for item in candidates if (item["mcc"], item["mnc"], item["lac"], item["cid"]) not in conflicts | external]
-    cache = await _cached_addresses(db, {item["address_norm"] for item in active})
-    pending = {item["address_norm"]: item["address"] for item in active if item["address_norm"] not in cache}
+    conflict_items = [item for item in candidates if (item["mcc"], item["mnc"], item["lac"], item["cid"]) in conflicts - external]
+    geocoding_candidates = active + conflict_items
+    cache = await _cached_addresses(db, {item["address_norm"] for item in geocoding_candidates})
+    pending = {item["address_norm"]: item["address"] for item in geocoding_candidates if item["address_norm"] not in cache}
     if not settings.GEOCODER_ENABLED:
         # A disabled service is not an address miss. Do not poison the cache with not_found.
         return {
             "candidates": len(candidates),
-            "unique_addresses": len({item["address_norm"] for item in active}),
+            "unique_addresses": len({item["address_norm"] for item in geocoding_candidates}),
             "external_reference_matches": len(external),
             "conflicting_cells": len(conflicts),
             "written": 0,
@@ -408,6 +440,25 @@ async def _enrich_project_cell_towers(db: AsyncSession, project_id: int, progres
                     "longitude": cached.get("longitude"),
                     "resolved_address": cached.get("display_name"),
                 })
+    reconciled_conflicts = 0
+    unresolved_conflicts = 0
+    for cell in conflicts - external:
+        variants = by_cell[cell]
+        reconciled = _reconcile_conflict_coordinates(variants, cache)
+        if reconciled is None:
+            unresolved_conflicts += 1
+            continue
+        reconciled_conflicts += 1
+        for item in variants:
+            item["project_id"] = project_id
+            await _write_supplement(db, item, reconciled)
+            written += 1
+        common_reference_candidates.append({
+            **variants[0],
+            "latitude": reconciled["latitude"],
+            "longitude": reconciled["longitude"],
+            "resolved_address": reconciled["display_name"],
+        })
     # Project mappings and the global reference have different purposes. A
     # failure while extending the shared reference must not discard already
     # resolved coordinates for the project that started this job.
@@ -420,8 +471,9 @@ async def _enrich_project_cell_towers(db: AsyncSession, project_id: int, progres
         await db.rollback()
         common_reference_added = 0
         common_reference_error = f"{type(exc).__name__}: {exc}".strip()
-    result = {"candidates": len(candidates), "unique_addresses": len({item["address_norm"] for item in active}),
-              "external_reference_matches": len(external), "conflicting_cells": len(conflicts), "written": written,
+    result = {"candidates": len(candidates), "unique_addresses": len({item["address_norm"] for item in geocoding_candidates}),
+               "external_reference_matches": len(external), "conflicting_cells": len(conflicts), "written": written,
+               "reconciled_conflicts": reconciled_conflicts, "unresolved_conflicts": unresolved_conflicts,
               "common_reference_added": common_reference_added,
               "resolved_addresses": resolved, "not_found_addresses": not_found, "failed_addresses": failed,
               "cached_addresses": max(0, len(cache) - resolved - not_found)}
