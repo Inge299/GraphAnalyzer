@@ -441,9 +441,14 @@ export const useProjectDataAdmin = ({
       }
       if (job.status === 'completed') {
         const result = job.result || {};
-        const commonReferenceWarning = result.common_reference_error
+        let commonReferenceWarning = result.common_reference_error
           ? ` \u041a\u043e\u043e\u0440\u0434\u0438\u043d\u0430\u0442\u044b \u0441\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u044b \u0432 \u043f\u0440\u043e\u0435\u043a\u0442\u0435, \u043d\u043e \u043e\u0431\u0449\u0438\u0439 \u0441\u043f\u0440\u0430\u0432\u043e\u0447\u043d\u0438\u043a \u043d\u0435 \u043e\u0431\u043d\u043e\u0432\u043b\u0451\u043d: ${String(result.common_reference_error)}.`
           : '';
+        const reconciledConflicts = Number(result.reconciled_conflicts || 0);
+        const unresolvedConflicts = Number(result.unresolved_conflicts || 0);
+        if (reconciledConflicts || unresolvedConflicts) {
+          commonReferenceWarning += ` Согласовано близких конфликтов: ${reconciledConflicts}; оставлено без координат: ${unresolvedConflicts}.`;
+        }
         onMessage(`\u041e\u0431\u043e\u0433\u0430\u0449\u0435\u043d\u0438\u0435 \u0411\u0421 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u043e: \u0430\u0434\u0440\u0435\u0441\u043e\u0432 \u0441 \u043a\u043e\u043e\u0440\u0434\u0438\u043d\u0430\u0442\u0430\u043c\u0438 ${Number(result.resolved_addresses || 0)}, \u0431\u0435\u0437 \u0440\u0435\u0437\u0443\u043b\u044c\u0442\u0430\u0442\u0430 ${Number(result.not_found_addresses || 0)}.${commonReferenceWarning}`);
       } else {
         onError(job.error || '\u041e\u0431\u043e\u0433\u0430\u0449\u0435\u043d\u0438\u0435 \u0411\u0421 \u0437\u0430\u0432\u0435\u0440\u0448\u0438\u043b\u043e\u0441\u044c \u0441 \u043e\u0448\u0438\u0431\u043a\u043e\u0439');
