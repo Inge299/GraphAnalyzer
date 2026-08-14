@@ -258,9 +258,10 @@ const MapView: React.FC<MapViewProps> = ({ artifact, dataOverride, titleOverride
       visiblePoints.forEach((point) => {
         const projected = map.project([point.longitude, point.latitude]);
         const metersPerPixel = 156543.03392 * Math.cos(point.latitude * Math.PI / 180) / Math.pow(2, zoom);
-        const radius = Math.max(8, Math.min(180, Number(point.heat_radius_m || 300) / Math.max(metersPerPixel, 0.01)));
-        const strength = 0.14 + closeZoomBoost * 0.14
-          + Math.log1p(Number(point.weight) || 1) / Math.log1p(maxWeight) * (0.62 + closeZoomBoost * 0.12);
+        const physicalRadius = Number(point.heat_radius_m || 300) / Math.max(metersPerPixel, 0.01);
+        const radius = Math.max(34 + zoom * 1.8, Math.min(360, physicalRadius * 1.7 + 20));
+        const strength = 0.28 + closeZoomBoost * 0.16
+          + Math.log1p(Number(point.weight) || 1) / Math.log1p(maxWeight) * (0.72 + closeZoomBoost * 0.14);
         const gradient = maskContext.createRadialGradient(projected.x, projected.y, 0, projected.x, projected.y, radius);
         gradient.addColorStop(0, 'rgba(255,255,255,' + strength + ')');
         gradient.addColorStop(0.25, 'rgba(255,255,255,' + strength * 0.9 + ')');
@@ -273,13 +274,13 @@ const MapView: React.FC<MapViewProps> = ({ artifact, dataOverride, titleOverride
       const output = context.createImageData(width, height);
       for (let offset = 0; offset < maskPixels.data.length; offset += 4) {
         const density = maskPixels.data[offset + 3] / 255;
-        const visibleDensity = Math.pow(density, 0.92 - closeZoomBoost * 0.18);
-        if (visibleDensity <= 0.009) continue;
-        const [red, green, blue] = colorAt(Math.min(1, visibleDensity * (1.12 + closeZoomBoost * 0.14)));
+        const visibleDensity = Math.pow(density, 0.72 - closeZoomBoost * 0.12);
+        if (visibleDensity <= 0.003) continue;
+        const [red, green, blue] = colorAt(Math.min(1, visibleDensity * (1.2 + closeZoomBoost * 0.16)));
         output.data[offset] = red;
         output.data[offset + 1] = green;
         output.data[offset + 2] = blue;
-        output.data[offset + 3] = Math.min(232, Math.round((visibleDensity * 0.86 + closeZoomBoost * 0.1) * 255));
+        output.data[offset + 3] = Math.min(242, Math.round((visibleDensity * 0.94 + 0.12 + closeZoomBoost * 0.08) * 255));
       }
       context.putImageData(output, 0, 0);
     };
