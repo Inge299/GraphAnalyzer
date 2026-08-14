@@ -17,6 +17,7 @@ interface MapViewProps {
   visiblePointIds?: string[];
   onSelectPointIds?: (pointIds: string[]) => void;
   showRouteTable?: boolean;
+  showDetails?: boolean;
 }
 
 type MapPoint = {
@@ -30,6 +31,7 @@ type MapPoint = {
   lac?: string;
   bs?: string;
   weight?: number;
+  event_count?: number;
   first_event?: string;
   last_event?: string;
   location_method?: string;
@@ -134,7 +136,7 @@ const updateMapOverlays = (map: MapLibreMap, groups: Array<[string, MapPoint[]]>
   if (fitToRoute && !bounds.isEmpty()) map.fitBounds(bounds, { padding: 32, maxZoom: heatmap ? 14 : 15, duration: 0 });
 };
 
-const MapView: React.FC<MapViewProps> = ({ artifact, dataOverride, titleOverride, descriptionOverride, selectedPointId, visiblePointIds, onSelectPointIds, showRouteTable = true }) => {
+const MapView: React.FC<MapViewProps> = ({ artifact, dataOverride, titleOverride, descriptionOverride, selectedPointId, visiblePointIds, onSelectPointIds, showRouteTable = true, showDetails = true }) => {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const markerRefs = useRef<maplibregl.Marker[]>([]);
@@ -453,11 +455,11 @@ const MapView: React.FC<MapViewProps> = ({ artifact, dataOverride, titleOverride
       map.remove();
       mapRef.current = null;
     };
-  }, [points.length, pmtilesUrl, data.map_style_url, defaultStyleUrl]);
+  }, [pmtilesUrl, data.map_style_url, defaultStyleUrl]);
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !points.length) return;
+    if (!map) return;
     updateMapOverlays(map, groups, isHeatmap);
     syncLocationMarkers(map);
     syncRouteOverlay(map);
@@ -469,13 +471,14 @@ const MapView: React.FC<MapViewProps> = ({ artifact, dataOverride, titleOverride
     if (map && selected) map.easeTo({ center: [selected.longitude, selected.latitude], zoom: map.getZoom(), duration: 280 });
   }, [selected]);
 
-  if (!points.length) {
+  if (!points.length && !isHeatmap) {
     return <div className="map-view"><div className="map-empty"><h2>{titleOverride || artifact.name}</h2><p>{'\u0412 \u044d\u0442\u043e\u043c \u0440\u0435\u0437\u0443\u043b\u044c\u0442\u0430\u0442\u0435 \u043f\u043e\u043a\u0430 \u043d\u0435\u0442 \u0441\u043e\u0431\u044b\u0442\u0438\u0439 \u0441 \u043a\u043e\u043e\u0440\u0434\u0438\u043d\u0430\u0442\u0430\u043c\u0438.'}</p></div></div>;
   }
 
   return (
     <div className="map-view">
-      <header className="map-header">
+      <header className={`map-header${isHeatmap ? ' is-heatmap' : ''}`}>
+        {isHeatmap ? <div className="map-heat-summary">{'Координат: ' + visiblePoints.length + ' · регистраций: ' + visiblePoints.reduce((total, point) => total + Number(point.event_count ?? Math.round(Number(point.weight || 1))), 0).toLocaleString('ru-RU')}</div> : null}
         <div>
           <h2>{titleOverride || artifact.name}</h2>
           <p>{descriptionOverride || (isHeatmap ? '\u0418\u043d\u0442\u0435\u043d\u0441\u0438\u0432\u043d\u043e\u0441\u0442\u044c \u043f\u043e\u043a\u0430\u0437\u044b\u0432\u0430\u0435\u0442 \u0447\u0438\u0441\u043b\u043e \u0440\u0435\u0433\u0438\u0441\u0442\u0440\u0430\u0446\u0438\u0439 \u0432 \u043a\u0430\u0436\u0434\u043e\u0439 \u043a\u043e\u043e\u0440\u0434\u0438\u043d\u0430\u0442\u043d\u043e\u0439 \u0442\u043e\u0447\u043a\u0435.' : artifact.description || '\u041c\u0430\u0440\u0448\u0440\u0443\u0442 \u043f\u043e \u043a\u043e\u043e\u0440\u0434\u0438\u043d\u0430\u0442\u0430\u043c \u0431\u0430\u0437\u043e\u0432\u044b\u0445 \u0441\u0442\u0430\u043d\u0446\u0438\u0439.')}</p>
@@ -497,7 +500,7 @@ const MapView: React.FC<MapViewProps> = ({ artifact, dataOverride, titleOverride
             {data.provider === 'external_cell_tower_reference' ? (data.source?.provider_label || '\u0432\u043d\u0435\u0448\u043d\u0438\u0439 \u0441\u043f\u0440\u0430\u0432\u043e\u0447\u043d\u0438\u043a \u0431\u0430\u0437\u043e\u0432\u044b\u0445 \u0441\u0442\u0430\u043d\u0446\u0438\u0439') : data.provider === 'local_cell_tower_reference' || data.provider === 'cell_tower_reference' ? '\u043b\u043e\u043a\u0430\u043b\u044c\u043d\u044b\u0439 \u0441\u043f\u0440\u0430\u0432\u043e\u0447\u043d\u0438\u043a \u0431\u0430\u0437\u043e\u0432\u044b\u0445 \u0441\u0442\u0430\u043d\u0446\u0438\u0439' : data.provider === 'project_cell_tower_geocoding' ? '\u043f\u0440\u043e\u0435\u043a\u0442\u043d\u043e\u0435 \u043e\u0431\u043e\u0433\u0430\u0449\u0435\u043d\u0438\u0435 \u0430\u0434\u0440\u0435\u0441\u043e\u0432 \u0411\u0421' : '\u0434\u0430\u043d\u043d\u044b\u0435 \u0430\u0440\u0442\u0435\u0444\u0430\u043a\u0442\u0430'}.
           </p>
         </section>
-        <aside className="map-details">
+        {showDetails ? <aside className="map-details">
           <h3>{isHeatmap ? '\u0412\u044b\u0431\u0440\u0430\u043d\u043d\u0430\u044f \u0442\u043e\u0447\u043a\u0430' : '\u0421\u043e\u0431\u044b\u0442\u0438\u0435'}</h3>
           {selected ? <dl>
             <dt>MSISDN</dt><dd>{selected.msisdn || '-'}</dd>
@@ -516,7 +519,7 @@ const MapView: React.FC<MapViewProps> = ({ artifact, dataOverride, titleOverride
             <h3>{'\u041c\u0430\u0440\u0448\u0440\u0443\u0442\u044b'}</h3>
             {groups.map(([msisdn], index) => <div key={msisdn}><span style={{ backgroundColor: palette[index % palette.length] }} />{msisdn}</div>)}
           </div> : null}
-        </aside>
+        </aside> : null}
       </div>
       {showRouteTable && (
       <section className="map-route-table">

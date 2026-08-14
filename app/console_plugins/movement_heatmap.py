@@ -97,6 +97,7 @@ def _heat_points(rows: list[Dict[str, Any]]) -> list[Dict[str, Any]]:
             "latitude": latitude,
             "longitude": longitude,
             "weight": 0,
+            "event_count": 0,
             "msisdns": set(),
             "first_event": None,
             "last_event": None,
@@ -105,6 +106,7 @@ def _heat_points(rows: list[Dict[str, Any]]) -> list[Dict[str, Any]]:
             "bs": "",
         })
         bucket["weight"] += float(row.get("location_probability") or 1.0)
+        bucket["event_count"] += 1
         bucket["msisdns"].add(str(row.get("msisdn") or ""))
         occurred_at = row.get("event_time")
         if isinstance(occurred_at, datetime):
