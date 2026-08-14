@@ -36,7 +36,6 @@ ENV PATH=/root/.local/bin:$PATH
 # Copy application code
 COPY app ./app
 COPY plugins ./plugins
-COPY scripts ./scripts
 RUN mkdir -p /app/data
 
 COPY alembic.ini /app/alembic.ini
