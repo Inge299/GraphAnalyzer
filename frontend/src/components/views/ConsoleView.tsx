@@ -670,6 +670,18 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
     [selectionContext.selected_edges],
   );
 
+  if (executing) {
+    return (
+      <div className="console-view" style={{ height: '100%', minHeight: 0, overflow: 'hidden' }}>
+        <div className="artifact-load-state" role="status" aria-live="polite">
+          <div className="artifact-load-spinner" />
+          <h2>Выполняем анализ</h2>
+          <p>Получаем и обрабатываем данные. Для больших выборок это может занять несколько секунд.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="console-view" style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
       <div
@@ -1174,14 +1186,13 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
                     .map((value) => String(value || ''))
                     .filter((value) => Boolean(value) && value !== '-'))]
                   : (isLocationTimeline ? [`${String(row.msisdn || '')}-${String(row.sequence || '')}`] : []);
-                const isLocationSelected = locationPointIds.some((pointId) => selectedLocationIds.includes(pointId));
                 const isArtifactRow = canOpenArtifactFromRow(row);
                 return (
                   <tr
                     key={`row-${rowIndex}`}
                     tabIndex={locationPointIds.length ? 0 : undefined}
                     onClick={(event) => {
-                      if (domainEntity) {
+                      if (domainEntity || locationPointIds.length) {
                         setSelectedRows((previous) => {
                           if (!event.ctrlKey && !event.metaKey) return { [rowKey]: row };
                           const next = { ...previous };
@@ -1220,7 +1231,7 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
                       const rows = event.currentTarget.parentElement?.querySelectorAll('tr[tabindex="0"]');
                       (rows?.[targetIndex] as HTMLElement | undefined)?.focus();
                     }}
-                    style={(isSelected || isLocationSelected)
+                    style={isSelected
                       ? { cursor: domainEntity || isArtifactRow || locationPointIds.length ? 'pointer' : undefined, background: '#dbeafe' }
                       : (domainEntity || isArtifactRow || locationPointIds.length ? { cursor: 'pointer' } : undefined)}
                   >
