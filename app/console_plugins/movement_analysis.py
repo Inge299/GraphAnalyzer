@@ -95,6 +95,52 @@ def _distance_km(left: Dict[str, Any], right: Dict[str, Any]) -> float | None:
     return round(6371.0088 * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a)), 2)
 
 
+def _project_by_azimuth(latitude: float, longitude: float, azimuth_deg: object, distance_m: float) -> tuple[float, float] | None:
+    """Return a derived sector point while retaining the base-station point separately."""
+    try:
+        bearing = float(azimuth_deg)
+    except (TypeError, ValueError):
+        return None
+    if not 0 <= bearing < 360:
+        return None
+    radius_m = 6_371_008.8
+    angular_distance = distance_m / radius_m
+    bearing_rad = math.radians(bearing)
+    latitude_rad = math.radians(latitude)
+    longitude_rad = math.radians(longitude)
+    target_lat = math.asin(
+        math.sin(latitude_rad) * math.cos(angular_distance)
+        + math.cos(latitude_rad) * math.sin(angular_distance) * math.cos(bearing_rad)
+    )
+    target_lon = longitude_rad + math.atan2(
+        math.sin(bearing_rad) * math.sin(angular_distance) * math.cos(latitude_rad),
+        math.cos(angular_distance) - math.sin(latitude_rad) * math.sin(target_lat),
+    )
+    return math.degrees(target_lat), (math.degrees(target_lon) + 540) % 360 - 180
+
+
+def _apply_probabilistic_location(row: Dict[str, Any]) -> None:
+    """Use a sector projection as a weighted estimate, never as a replacement for the BS location."""
+    try:
+        latitude, longitude = float(row["latitude"]), float(row["longitude"])
+    except (KeyError, TypeError, ValueError):
+        return
+    row["base_station_latitude"] = latitude
+    row["base_station_longitude"] = longitude
+    row["location_probability"] = 1.0
+    row["location_method"] = "base_station"
+    # A concrete address is the available proxy for a populated area. Road/settlement
+    # attraction is intentionally left to a dedicated geometry provider.
+    distance_m = 300.0 if is_concrete_geocoded_address(row.get("resolved_address")) else 1000.0
+    projected = _project_by_azimuth(latitude, longitude, row.get("azimuth"), distance_m)
+    if projected is None:
+        return
+    row["latitude"], row["longitude"] = projected
+    row["location_method"] = "azimuth_projection"
+    row["location_distance_m"] = int(distance_m)
+    row["location_probability"] = 0.65
+
+
 async def fetch_movement_source_rows(
     *,
     project_id: int,
@@ -222,6 +268,8 @@ async def resolve_movement_coordinates(project_id: int, rows: list[Dict[str, Any
             row["latitude"] = None
             row["longitude"] = None
             row["resolved_address"] = row.get("address")
+        if row.get("latitude") is not None and row.get("longitude") is not None:
+            _apply_probabilistic_location(row)
     return {
         "provider": provider,
         "external_count": external_count,

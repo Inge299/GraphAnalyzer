@@ -86,7 +86,7 @@ async def resolve_local_cell_towers(cells: list[dict[str, Any]]) -> dict[tuple[s
                 candidates AS (
                     SELECT
                         r.mcc AS request_mcc, r.mnc AS request_mnc, r.lac AS request_lac, r.cid AS request_cid,
-                        tower.latitude, tower.longitude, tower.address,
+                        tower.latitude, tower.longitude, tower.azimuth, tower.address,
                         row_number() OVER (
                             PARTITION BY r.mcc, r.mnc, r.lac, r.cid
                             ORDER BY CASE WHEN r.mcc <> '' AND COALESCE(tower.mcc, '') = r.mcc THEN 0 ELSE 1 END,
@@ -101,7 +101,7 @@ async def resolve_local_cell_towers(cells: list[dict[str, Any]]) -> dict[tuple[s
                      AND (r.mnc = '' OR LTRIM(COALESCE(tower.mnc, ''), '0') = r.mnc)
                     WHERE tower.latitude IS NOT NULL AND tower.longitude IS NOT NULL
                 )
-                SELECT request_mcc, request_mnc, request_lac, request_cid, latitude, longitude, address
+                SELECT request_mcc, request_mnc, request_lac, request_cid, latitude, longitude, azimuth, address
                 FROM candidates
                 WHERE rank = 1
             """), params)
@@ -110,6 +110,7 @@ async def resolve_local_cell_towers(cells: list[dict[str, Any]]) -> dict[tuple[s
                 resolved[key] = {
                     "latitude": float(row["latitude"]),
                     "longitude": float(row["longitude"]),
+                    "azimuth": float(row["azimuth"]) if row["azimuth"] is not None else None,
                     "address": _cell_value(row["address"]) or None,
                 }
     return resolved

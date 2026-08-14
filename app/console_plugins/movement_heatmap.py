@@ -51,7 +51,7 @@ def _heat_points(rows: list[Dict[str, Any]]) -> list[Dict[str, Any]]:
             "lac": "",
             "bs": "",
         })
-        bucket["weight"] += 1
+        bucket["weight"] += float(row.get("location_probability") or 1.0)
         bucket["msisdns"].add(str(row.get("msisdn") or ""))
         occurred_at = row.get("event_time")
         if isinstance(occurred_at, datetime):
@@ -61,18 +61,18 @@ def _heat_points(rows: list[Dict[str, Any]]) -> list[Dict[str, Any]]:
             bucket["address"] = _display(row.get("resolved_address") or row.get("address"), "")
             bucket["lac"] = _display(row.get("lac"), "")
             bucket["bs"] = _display(row.get("bs"), "")
-    max_weight = max((int(bucket["weight"]) for bucket in buckets.values()), default=1)
+    max_weight = max((float(bucket["weight"]) for bucket in buckets.values()), default=1.0)
     weight_scale = log1p(max_weight)
     points: list[Dict[str, Any]] = []
     for bucket in buckets.values():
         msisdns = sorted(item for item in bucket.pop("msisdns") if item)
         bucket["msisdn"] = ", ".join(msisdns[:3]) + (" +" if len(msisdns) > 3 else "")
-        bucket["heat_weight"] = round(log1p(int(bucket["weight"])) / weight_scale, 6) if weight_scale else 1.0
+        bucket["heat_weight"] = round(log1p(float(bucket["weight"])) / weight_scale, 6) if weight_scale else 1.0
         bucket["event_time"] = bucket["last_event"].isoformat() if bucket["last_event"] else None
         bucket["first_event"] = bucket["first_event"].isoformat() if bucket["first_event"] else None
         bucket["last_event"] = bucket["last_event"].isoformat() if bucket["last_event"] else None
         points.append(bucket)
-    return sorted(points, key=lambda item: (-int(item["weight"]), str(item.get("address") or "")))
+    return sorted(points, key=lambda item: (-float(item["weight"]), str(item.get("address") or "")))
 
 
 def _map_tab(tab_id: str, name: str, rows: list[Dict[str, Any]], source: Dict[str, Any]) -> Dict[str, Any]:
