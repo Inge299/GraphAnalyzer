@@ -1169,13 +1169,10 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
                 const rowKey = `${activeTabId}:${rowIndex}`;
                 const domainEntity = selectedEntityFromRow(row);
                 const isSelected = Boolean(selectedRows[rowKey]);
-                const routePointIds = Array.isArray(row.route_point_ids)
-                  ? row.route_point_ids.map((value) => String(value || '')).filter((value) => Boolean(value) && value !== '-')
-                  : [];
                 const locationPointIds = isMovementAnalysis
-                  ? (routePointIds.length ? routePointIds : [row.from_point_id, row.to_point_id, row.map_point_id]
+                  ? [...new Set([row.from_point_id, row.to_point_id, row.map_point_id]
                     .map((value) => String(value || ''))
-                    .filter((value) => Boolean(value) && value !== '-'))
+                    .filter((value) => Boolean(value) && value !== '-'))]
                   : (isLocationTimeline ? [`${String(row.msisdn || '')}-${String(row.sequence || '')}`] : []);
                 const isLocationSelected = locationPointIds.some((pointId) => selectedLocationIds.includes(pointId));
                 const isArtifactRow = canOpenArtifactFromRow(row);
@@ -1213,12 +1210,9 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
                       event.preventDefault();
                       const targetGlobalIndex = pageStart + targetIndex;
                       const targetKey = `${activeTabId}:${targetGlobalIndex}`;
-                      const targetRoute = Array.isArray(targetRow.route_point_ids)
-                        ? targetRow.route_point_ids.map((value) => String(value || '')).filter((value) => Boolean(value) && value !== '-')
-                        : [];
                       const targetPointIds = isMovementAnalysis
-                        ? (targetRoute.length ? targetRoute : [targetRow.from_point_id, targetRow.to_point_id, targetRow.map_point_id]
-                          .map((value) => String(value || '')).filter((value) => Boolean(value) && value !== '-'))
+                        ? [...new Set([targetRow.from_point_id, targetRow.to_point_id, targetRow.map_point_id]
+                          .map((value) => String(value || '')).filter((value) => Boolean(value) && value !== '-'))]
                         : [`${String(targetRow.msisdn || '')}-${String(targetRow.sequence || '')}`];
                       setSelectedRows({ [targetKey]: targetRow });
                       setSelectedLocationIds(targetPointIds);

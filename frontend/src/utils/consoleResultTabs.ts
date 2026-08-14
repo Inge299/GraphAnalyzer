@@ -113,7 +113,11 @@ export const normalizeConsoleTabs = (data: RawConsoleArtifactData): NormalizedCo
       };
     });
 
-  const followingTabNames = tryExtractFollowingTabNames(tabs);
+  // New console plugins provide explicit names for every tab.  The legacy
+  // metadata-table convention must not reinterpret the first data table as
+  // a list of tab names.
+  const hasExplicitTabNames = rawTabs.every((tab) => Boolean(normalizeText(tab.name)));
+  const followingTabNames = hasExplicitTabNames ? [] : tryExtractFollowingTabNames(tabs);
   if (followingTabNames.length > 0) {
     return tabs.slice(1).map((tab, index) => ({
       ...tab,
