@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, time
 from math import log1p
 from typing import Any, Dict
 
@@ -26,9 +26,62 @@ _WEEKDAYS = [
 ]
 
 
-def _is_night(row: Dict[str, Any]) -> bool:
-    value = row.get("event_time")
-    return isinstance(value, datetime) and (value.hour >= 23 or value.hour < 6)
+def _parse_weekdays(value: object) -> set[int]:
+    result: set[int] = set()
+    for item in str(value or "").split(","):
+        try:
+            weekday = int(item.strip())
+        except ValueError:
+            continue
+        if 0 <= weekday <= 6:
+            result.add(weekday)
+    return result
+
+
+def _parse_time(value: object) -> time | None:
+    source = str(value or "").strip()
+    if not source:
+        return None
+    try:
+        return time.fromisoformat(source)
+    except ValueError:
+        return None
+
+
+def _matches_time_window(row: Dict[str, Any], time_from: time | None, time_to: time | None) -> bool:
+    occurred_at = row.get("event_time")
+    if not isinstance(occurred_at, datetime):
+        return False
+    if time_from is None and time_to is None:
+        return True
+    current = occurred_at.time()
+    if time_from is None:
+        return current <= time_to
+    if time_to is None:
+        return current >= time_from
+    return time_from <= current <= time_to if time_from <= time_to else current >= time_from or current <= time_to
+
+
+def _filter_description(
+    date_from: datetime | None,
+    date_to: datetime | None,
+    weekdays: set[int],
+    time_from: time | None,
+    time_to: time | None,
+) -> str:
+    parts: list[str] = []
+    if date_from or date_to:
+        start = date_from.date().isoformat() if date_from else "\u043d\u0430\u0447\u0430\u043b\u043e \u0434\u0430\u043d\u043d\u044b\u0445"
+        end = date_to.date().isoformat() if date_to else "\u043a\u043e\u043d\u0435\u0446 \u0434\u0430\u043d\u043d\u044b\u0445"
+        parts.append(f"\u041f\u0435\u0440\u0438\u043e\u0434: {start} \u2014 {end}")
+    if weekdays:
+        titles = ", ".join(title for day, title in _WEEKDAYS if day in weekdays)
+        parts.append(f"\u0414\u043d\u0438: {titles}")
+    if time_from or time_to:
+        start = time_from.strftime("%H:%M") if time_from else "00:00"
+        end = time_to.strftime("%H:%M") if time_to else "23:59"
+        parts.append(f"\u0412\u0440\u0435\u043c\u044f: {start} \u2014 {end}")
+    return "; ".join(parts) or "\u0411\u0435\u0437 \u043e\u0433\u0440\u0430\u043d\u0438\u0447\u0435\u043d\u0438\u0439 \u043f\u043e \u0434\u0430\u0442\u0435 \u0438 \u0432\u0440\u0435\u043c\u0435\u043d\u0438"
 
 
 def _heat_points(rows: list[Dict[str, Any]]) -> list[Dict[str, Any]]:
@@ -96,7 +149,7 @@ def _map_tab(tab_id: str, name: str, rows: list[Dict[str, Any]], source: Dict[st
 class MovementHeatmapExecutor(ConsoleExecutorPlugin):
     id = "movement_heatmap"
     name = "\u0422\u0435\u043f\u043b\u043e\u0432\u044b\u0435 \u043a\u0430\u0440\u0442\u044b \u043b\u043e\u043a\u0430\u0446\u0438\u0439"
-    description = "\u0410\u0433\u0440\u0435\u0433\u0438\u0440\u0443\u0435\u0442 \u0440\u0435\u0433\u0438\u0441\u0442\u0440\u0430\u0446\u0438\u0438 \u0432 \u0442\u043e\u0447\u043a\u0438 \u0438 \u043f\u043e\u043a\u0430\u0437\u044b\u0432\u0430\u0435\u0442 \u0438\u043d\u0442\u0435\u043d\u0441\u0438\u0432\u043d\u043e\u0441\u0442\u044c \u043e\u0431\u0449\u0443\u044e, \u0434\u043d\u0435\u0432\u043d\u0443\u044e, \u043d\u043e\u0447\u043d\u0443\u044e \u0438 \u043f\u043e \u0434\u043d\u044f\u043c \u043d\u0435\u0434\u0435\u043b\u0438."
+    description = "\u0421\u0442\u0440\u043e\u0438\u0442 \u0442\u0435\u043f\u043b\u043e\u0432\u0443\u044e \u043a\u0430\u0440\u0442\u0443 \u0440\u0435\u0433\u0438\u0441\u0442\u0440\u0430\u0446\u0438\u0439 \u0441 \u0444\u0438\u043b\u044c\u0442\u0440\u0430\u043c\u0438 \u043f\u043e \u043f\u0435\u0440\u0438\u043e\u0434\u0443, \u0434\u043d\u044f\u043c \u043d\u0435\u0434\u0435\u043b\u0438 \u0438 \u0432\u0440\u0435\u043c\u0435\u043d\u0438 \u0441\u0443\u0442\u043e\u043a."
     menu_path = "\u0410\u043d\u0430\u043b\u0438\u0437/\u0413\u0435\u043e"
     menu_order = 25
     supports_graph_selection = True
@@ -106,6 +159,9 @@ class MovementHeatmapExecutor(ConsoleExecutorPlugin):
         {"name": "msisdn", "label": "MSISDN (\u0447\u0435\u0440\u0435\u0437 \u0437\u0430\u043f\u044f\u0442\u0443\u044e, \u0435\u0441\u043b\u0438 \u043d\u0435 \u0432\u044b\u0431\u0440\u0430\u043d \u043d\u0430 \u0433\u0440\u0430\u0444\u0435)", "type": "string", "default": "", "required": False},
         {"name": "date_from", "label": "\u041d\u0430\u0447\u0430\u043b\u043e \u043f\u0435\u0440\u0438\u043e\u0434\u0430", "type": "date", "default": "", "required": False},
         {"name": "date_to", "label": "\u041a\u043e\u043d\u0435\u0446 \u043f\u0435\u0440\u0438\u043e\u0434\u0430", "type": "date", "default": "", "required": False},
+        {"name": "weekdays", "label": "\u0414\u043d\u0438 \u043d\u0435\u0434\u0435\u043b\u0438", "type": "weekday_set", "default": "", "required": False},
+        {"name": "time_from", "label": "\u0412\u0440\u0435\u043c\u044f \u0441", "type": "time", "default": "", "required": False},
+        {"name": "time_to", "label": "\u0412\u0440\u0435\u043c\u044f \u0434\u043e", "type": "time", "default": "", "required": False},
         {"name": "limit", "label": "\u041b\u0438\u043c\u0438\u0442 \u0441\u043e\u0431\u044b\u0442\u0438\u0439 (\u043d\u0435 \u0431\u043e\u043b\u0435\u0435 50000)", "type": "integer", "default": 50000, "required": False},
     ]
 
@@ -118,14 +174,24 @@ class MovementHeatmapExecutor(ConsoleExecutorPlugin):
             limit = min(50000, max(1, int(values.get("limit") or self.default_limit)))
             date_from = datetime.fromisoformat(str(values["date_from"]).strip()) if values.get("date_from") else None
             date_to = datetime.fromisoformat(str(values["date_to"]).strip()) if values.get("date_to") else None
+            time_from = _parse_time(values.get("time_from"))
+            time_to = _parse_time(values.get("time_to"))
         except ValueError:
             return self._empty("\u041f\u0440\u043e\u0432\u0435\u0440\u044c\u0442\u0435 \u0434\u0430\u0442\u044b \u0438 \u043b\u0438\u043c\u0438\u0442 \u0441\u043e\u0431\u044b\u0442\u0438\u0439.")
 
         rows = await fetch_movement_source_rows(project_id=project_id, msisdns=msisdns, date_from=date_from, date_to=date_to, limit=limit)
         if not rows:
             return self._empty("\u041f\u043e \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u044b\u043c \u0443\u0441\u043b\u043e\u0432\u0438\u044f\u043c \u0441\u043e\u0431\u044b\u0442\u0438\u0439 \u043b\u043e\u043a\u0430\u0446\u0438\u0439 \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u043e.")
-        stats = await resolve_movement_coordinates(project_id, rows)
-        mapped_rows = [row for row in rows if row.get("latitude") is not None and row.get("longitude") is not None]
+        weekdays = _parse_weekdays(values.get("weekdays"))
+        filtered_rows = [
+            row for row in rows
+            if (not weekdays or (isinstance(row.get("event_time"), datetime) and row["event_time"].weekday() in weekdays))
+            and _matches_time_window(row, time_from, time_to)
+        ]
+        if not filtered_rows:
+            return self._empty("\u041f\u043e \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u044b\u043c \u0444\u0438\u043b\u044c\u0442\u0440\u0430\u043c \u0441\u043e\u0431\u044b\u0442\u0438\u0439 \u043b\u043e\u043a\u0430\u0446\u0438\u0439 \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u043e.")
+        stats = await resolve_movement_coordinates(project_id, filtered_rows)
+        mapped_rows = [row for row in filtered_rows if row.get("latitude") is not None and row.get("longitude") is not None]
         source = {
             "plugin_id": self.id,
             "provider": "external_cell_tower_reference" if stats["external_count"] else ("local_cell_tower_reference" if stats["local_count"] else ("project_cell_tower_geocoding" if stats["project_count"] or stats["address_count"] else "local_cell_tower_reference")),
@@ -135,24 +201,21 @@ class MovementHeatmapExecutor(ConsoleExecutorPlugin):
             "local_coordinates_used": stats["local_count"],
             "project_coordinates_used": stats["project_count"],
             "project_address_coordinates_used": stats["address_count"],
+            "filter_description": _filter_description(date_from, date_to, weekdays, time_from, time_to),
         }
         if not mapped_rows:
             return self._empty("\u0414\u043b\u044f \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u044b\u0445 \u0441\u043e\u0431\u044b\u0442\u0438\u0439 \u043d\u0435\u0442 \u043a\u043e\u043e\u0440\u0434\u0438\u043d\u0430\u0442. \u0421\u043d\u0430\u0447\u0430\u043b\u0430 \u043e\u0431\u043e\u0433\u0430\u0442\u044c\u0442\u0435 \u0411\u0421 \u043f\u043e \u0430\u0434\u0440\u0435\u0441\u0430\u043c.")
 
         summary_rows = []
         for msisdn in msisdns:
-            msisdn_rows = [row for row in rows if row.get("msisdn") == msisdn]
+            msisdn_rows = [row for row in filtered_rows if row.get("msisdn") == msisdn]
             msisdn_mapped = [row for row in mapped_rows if row.get("msisdn") == msisdn]
-            summary_rows.append({"msisdn": msisdn, "events": len(msisdn_rows), "with_coordinates": len(msisdn_mapped), "unique_places": len(_heat_points(msisdn_mapped))})
+            summary_rows.append({"msisdn": msisdn, "events": len(msisdn_rows), "with_coordinates": len(msisdn_mapped), "unique_places": len(_heat_points(msisdn_mapped)), "filters": source["filter_description"]})
         tabs = [
-            tab("summary", "\u0418\u0442\u043e\u0433", [column("msisdn", "MSISDN", "string", 160), column("events", "\u0421\u043e\u0431\u044b\u0442\u0438\u0439", "integer", 120), column("with_coordinates", "\u0421 \u043a\u043e\u043e\u0440\u0434\u0438\u043d\u0430\u0442\u0430\u043c\u0438", "integer", 140), column("unique_places", "\u0422\u043e\u0447\u0435\u043a \u0442\u0435\u043f\u043b\u0430", "integer", 140)], summary_rows),
-            _map_tab("heat_all", "\u0412\u0441\u0435 \u0441\u043e\u0431\u044b\u0442\u0438\u044f", mapped_rows, source),
-            _map_tab("heat_night", "\u041d\u043e\u0447\u044c (23:00\u201306:00)", [row for row in mapped_rows if _is_night(row)], source),
-            _map_tab("heat_day", "\u0414\u0435\u043d\u044c (06:00\u201323:00)", [row for row in mapped_rows if not _is_night(row)], source),
+            tab("summary", "\u0418\u0442\u043e\u0433", [column("msisdn", "MSISDN", "string", 160), column("events", "\u0421\u043e\u0431\u044b\u0442\u0438\u0439", "integer", 120), column("with_coordinates", "\u0421 \u043a\u043e\u043e\u0440\u0434\u0438\u043d\u0430\u0442\u0430\u043c\u0438", "integer", 140), column("unique_places", "\u0422\u043e\u0447\u0435\u043a \u0442\u0435\u043f\u043b\u0430", "integer", 140), column("filters", "\u0412\u044b\u0431\u0440\u0430\u043d\u043d\u044b\u0439 \u0441\u0440\u0435\u0437", "string", 360)], summary_rows),
+            _map_tab("heatmap", "\u0422\u0435\u043f\u043b\u043e\u0432\u0430\u044f \u043a\u0430\u0440\u0442\u0430", mapped_rows, source),
         ]
-        for weekday, title in _WEEKDAYS:
-            tabs.append(_map_tab(f"heat_weekday_{weekday}", title, [row for row in mapped_rows if isinstance(row.get("event_time"), datetime) and row["event_time"].weekday() == weekday], source))
-        return {"profile_id": self.id, "profile_name": self.name, "tabs": tabs, "active_tab_id": "heat_all"}
+        return {"profile_id": self.id, "profile_name": self.name, "tabs": tabs, "active_tab_id": "heatmap"}
 
     def _empty(self, status: str) -> Dict[str, Any]:
         return {"profile_id": self.id, "profile_name": self.name, "tabs": [tab("summary", "\u0418\u0442\u043e\u0433", [column("status", "\u0421\u0442\u0430\u0442\u0443\u0441", "string", 620)], [{"status": status}])], "active_tab_id": "summary"}

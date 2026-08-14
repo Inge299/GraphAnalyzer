@@ -126,6 +126,9 @@ const artifactTypeLabels: Record<string, string> = {
   report: 'Отчет',
   text: 'Текстовый документ',
 };
+const weekdayOptions = [
+  ['0', 'Пн'], ['1', 'Вт'], ['2', 'Ср'], ['3', 'Чт'], ['4', 'Пт'], ['5', 'Сб'], ['6', 'Вс'],
+] as const;
 
 const getFriendlyArtifactType = (value: unknown): string => {
   const key = String(value || '').trim().toLowerCase();
@@ -924,6 +927,31 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
                   </div>
                 );
 
+                if (type === 'weekday_set') {
+                  const selectedWeekdays = new Set(String(value || '').split(',').map((item) => item.trim()).filter(Boolean));
+                  return (
+                    <div key={key} className="service-field" style={{ border: '1px solid #e2e8f0', borderRadius: 10, padding: 10, gap: 8 }}>
+                      {header}
+                      <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                        {weekdayOptions.map(([day, label]) => (
+                          <button
+                            key={day}
+                            type="button"
+                            disabled={!isManual}
+                            onClick={() => setParamValues((previous) => {
+                              const next = new Set(String(previous[key] || '').split(',').map((item) => item.trim()).filter(Boolean));
+                              if (next.has(day)) next.delete(day); else next.add(day);
+                              return { ...previous, [key]: [...next].sort().join(',') };
+                            })}
+                            style={{ minWidth: 34, border: selectedWeekdays.has(day) ? '1px solid #2563eb' : '1px solid #cbd5e1', background: selectedWeekdays.has(day) ? '#dbeafe' : '#fff', color: selectedWeekdays.has(day) ? '#1d4ed8' : '#475569', borderRadius: 7, padding: '5px 7px', fontWeight: 700, cursor: isManual ? 'pointer' : 'default' }}
+                          >{label}</button>
+                        ))}
+                      </div>
+                      <div style={{ fontSize: 12, color: '#64748b' }}>Ничего не выбрано — учитываются все дни.</div>
+                    </div>
+                  );
+                }
+
                 if (type === 'boolean') {
                   return (
                     <div key={key} className="service-field" style={{ border: '1px solid #e2e8f0', borderRadius: 10, padding: 10, gap: 8 }}>
@@ -957,7 +985,7 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
                       ) : (
                         <input
                           className="service-input"
-                          type={type === 'number' || type === 'float' || type === 'integer' || type === 'int' ? 'number' : 'text'}
+                          type={type === 'number' || type === 'float' || type === 'integer' || type === 'int' ? 'number' : (type === 'date' ? 'date' : (type === 'time' ? 'time' : 'text'))}
                           value={String(value)}
                           onChange={(event) => setParamValues((prev) => ({ ...prev, [key]: event.target.value }))}
                           placeholder={param.required ? 'Обязательный параметр' : ''}
