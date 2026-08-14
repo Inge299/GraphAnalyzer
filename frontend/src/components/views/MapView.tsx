@@ -32,6 +32,7 @@ type MapPoint = {
   bs?: string;
   weight?: number;
   event_count?: number;
+  heat_radius_m?: number;
   first_event?: string;
   last_event?: string;
   location_method?: string;
@@ -254,9 +255,10 @@ const MapView: React.FC<MapViewProps> = ({ artifact, dataOverride, titleOverride
       const maxWeight = Math.max(...visiblePoints.map((point) => Number(point.weight) || 1), 1);
       const zoom = map.getZoom();
       const closeZoomBoost = Math.max(0, Math.min(1, (zoom - 11) / 6));
-      const radius = Math.max(28, Math.min(108, 16 + zoom * 4.8));
       visiblePoints.forEach((point) => {
         const projected = map.project([point.longitude, point.latitude]);
+        const metersPerPixel = 156543.03392 * Math.cos(point.latitude * Math.PI / 180) / Math.pow(2, zoom);
+        const radius = Math.max(8, Math.min(180, Number(point.heat_radius_m || 300) / Math.max(metersPerPixel, 0.01)));
         const strength = 0.14 + closeZoomBoost * 0.14
           + Math.log1p(Number(point.weight) || 1) / Math.log1p(maxWeight) * (0.62 + closeZoomBoost * 0.12);
         const gradient = maskContext.createRadialGradient(projected.x, projected.y, 0, projected.x, projected.y, radius);

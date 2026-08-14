@@ -24,6 +24,31 @@ _WEEKDAYS = [
     (5, "\u0421\u0443\u0431\u0431\u043e\u0442\u0430"),
     (6, "\u0412\u043e\u0441\u043a\u0440\u0435\u0441\u0435\u043d\u044c\u0435"),
 ]
+HEATMAP_MAX_DWELL_MINUTES = 15.0
+HEATMAP_SINGLE_EVENT_MINUTES = 2.0
+
+
+def _heat_radius_m(row: Dict[str, Any]) -> float:
+    if row.get("location_method") != "azimuth_projection":
+        return 300.0
+    return 60.0 if float(row.get("location_distance_m") or 0) <= 300 else 200.0
+
+
+def _assign_heat_weights(rows: list[Dict[str, Any]]) -> None:
+    """Estimate dwell time from midpoints between sequential registrations."""
+    by_msisdn: dict[str, list[Dict[str, Any]]] = {}
+    for row in rows:
+        if isinstance(row.get("event_time"), datetime):
+            by_msisdn.setdefault(str(row.get("msisdn") or ""), []).append(row)
+    for items in by_msisdn.values():
+        items.sort(key=lambda item: item["event_time"])
+        for index, row in enumerate(items):
+            current = row["event_time"]
+            before = (current - items[index - 1]["event_time"]).total_seconds() / 120 if index else 0.0
+            after = (items[index + 1]["event_time"] - current).total_seconds() / 120 if index + 1 < len(items) else 0.0
+            dwell_minutes = before + after
+            row["heat_dwell_minutes"] = min(HEATMAP_MAX_DWELL_MINUTES, dwell_minutes if dwell_minutes > 0 else HEATMAP_SINGLE_EVENT_MINUTES)
+            row["heat_radius_m"] = _heat_radius_m(row)
 
 
 def _parse_weekdays(value: object) -> set[int]:
@@ -98,6 +123,8 @@ def _heat_points(rows: list[Dict[str, Any]]) -> list[Dict[str, Any]]:
             "longitude": longitude,
             "weight": 0,
             "event_count": 0,
+            "dwell_minutes": 0,
+            "heat_radius_m": 0,
             "msisdns": set(),
             "first_event": None,
             "last_event": None,
@@ -105,8 +132,11 @@ def _heat_points(rows: list[Dict[str, Any]]) -> list[Dict[str, Any]]:
             "lac": "",
             "bs": "",
         })
-        bucket["weight"] += float(row.get("location_probability") or 1.0)
+        dwell_minutes = float(row.get("heat_dwell_minutes") or HEATMAP_SINGLE_EVENT_MINUTES)
+        bucket["weight"] += dwell_minutes * float(row.get("location_probability") or 1.0)
         bucket["event_count"] += 1
+        bucket["dwell_minutes"] += dwell_minutes
+        bucket["heat_radius_m"] = max(float(bucket["heat_radius_m"]), float(row.get("heat_radius_m") or 300.0))
         bucket["msisdns"].add(str(row.get("msisdn") or ""))
         occurred_at = row.get("event_time")
         if isinstance(occurred_at, datetime):
@@ -139,6 +169,8 @@ def _map_tab(tab_id: str, name: str, rows: list[Dict[str, Any]], source: Dict[st
             "longitude": row.get("longitude"),
             "event_time": row["event_time"].isoformat() if isinstance(row.get("event_time"), datetime) else None,
             "location_probability": row.get("location_probability") or 1.0,
+            "heat_dwell_minutes": row.get("heat_dwell_minutes") or HEATMAP_SINGLE_EVENT_MINUTES,
+            "heat_radius_m": row.get("heat_radius_m") or 300.0,
             "msisdn": row.get("msisdn"),
             "address": row.get("resolved_address") or row.get("address"),
             "lac": row.get("lac"),
@@ -200,6 +232,7 @@ class MovementHeatmapExecutor(ConsoleExecutorPlugin):
         if not rows:
             return self._empty("\u041f\u043e \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u044b\u043c \u0443\u0441\u043b\u043e\u0432\u0438\u044f\u043c \u0441\u043e\u0431\u044b\u0442\u0438\u0439 \u043b\u043e\u043a\u0430\u0446\u0438\u0439 \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u043e.")
         stats = await resolve_movement_coordinates(project_id, rows)
+        _assign_heat_weights(rows)
         mapped_rows = [row for row in rows if row.get("latitude") is not None and row.get("longitude") is not None]
         source = {
             "plugin_id": self.id,

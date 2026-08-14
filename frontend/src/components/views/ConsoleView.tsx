@@ -150,9 +150,10 @@ const InteractiveHeatmap: React.FC<{ artifact: ApiArtifact; mapData: Record<stri
       const latitude = Number(row.latitude); const longitude = Number(row.longitude);
       if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
       const key = `${latitude.toFixed(6)},${longitude.toFixed(6)}`;
-      const current = buckets.get(key) || { id: `heat-${buckets.size + 1}`, latitude, longitude, weight: 0, event_count: 0, msisdns: new Set<string>(), first_event: String(row.event_time || ''), last_event: String(row.event_time || ''), address: row.address || '', lac: row.lac || '', bs: row.bs || '' };
-      current.weight = Number(current.weight || 0) + Number(row.location_probability || 1);
+      const current = buckets.get(key) || { id: `heat-${buckets.size + 1}`, latitude, longitude, weight: 0, event_count: 0, heat_radius_m: 0, msisdns: new Set<string>(), first_event: String(row.event_time || ''), last_event: String(row.event_time || ''), address: row.address || '', lac: row.lac || '', bs: row.bs || '' };
+      current.weight = Number(current.weight || 0) + Number(row.heat_dwell_minutes || 2) * Number(row.location_probability || 1);
       current.event_count = Number(current.event_count || 0) + 1;
+      current.heat_radius_m = Math.max(Number(current.heat_radius_m || 0), Number(row.heat_radius_m || 300));
       (current.msisdns as Set<string>).add(String(row.msisdn || ''));
       if (String(row.event_time || '') < String(current.first_event || '')) current.first_event = String(row.event_time || '');
       if (String(row.event_time || '') > String(current.last_event || '')) current.last_event = String(row.event_time || '');
@@ -174,7 +175,7 @@ const InteractiveHeatmap: React.FC<{ artifact: ApiArtifact; mapData: Record<stri
       <div style={{ display: 'flex', gap: 3 }}>{weekdayOptions.map(([day, label]) => <button key={day} type="button" onClick={() => setWeekdays((previous) => { const next = new Set(previous); if (next.has(day)) next.delete(day); else next.add(day); return next; })} style={{ minWidth: 29, padding: '3px 5px', borderRadius: 6, border: weekdays.has(day) ? '1px solid #2563eb' : '1px solid #cbd5e1', background: weekdays.has(day) ? '#dbeafe' : '#fff', color: weekdays.has(day) ? '#1d4ed8' : '#475569', fontWeight: 700 }}>{label}</button>)}</div>
       <button type="button" className="service-btn" onClick={reset} style={{ marginLeft: 'auto' }}>Сбросить</button>
     </div>
-    <MapView artifact={artifact} _onUpdate={() => {}} dataOverride={filteredMapData} titleOverride="Тепловая карта" descriptionOverride={`Отфильтровано регистраций: ${points.reduce((total, point) => total + Number(point.event_count || 0), 0)}`} showRouteTable={false} showDetails={false} />
+    <MapView artifact={artifact} _onUpdate={() => {}} dataOverride={filteredMapData} titleOverride="Тепловая карта" descriptionOverride={`Регистраций: ${points.reduce((total, point) => total + Number(point.event_count || 0), 0)}. Интенсивность учитывает время пребывания, не частоту технических событий.`} showRouteTable={false} showDetails={false} />
   </div>;
 };
 
