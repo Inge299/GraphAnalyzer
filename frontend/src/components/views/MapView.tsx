@@ -186,12 +186,11 @@ const MapView: React.FC<MapViewProps> = ({ artifact, dataOverride, titleOverride
       element.type = 'button';
       const isAzimuthEstimate = point.location_method === 'azimuth_projection';
       element.className = `map-location-marker${isAzimuthEstimate ? ' is-azimuth-estimate' : ''}${point.id === selectedId ? ' is-selected' : ''}`;
-      if (isAzimuthEstimate) element.style.setProperty('--marker-angle', `${point.azimuth || 0}deg`);
       const estimateDetail = isAzimuthEstimate
         ? ` \u00b7 азимут ${Math.round(point.azimuth || 0)}\u00b0, ${Math.round(point.location_distance_m || 0)} м`
         : '';
       element.title = `${point.msisdn || 'MSISDN'} \u00b7 ${point.event_time ? formatDateTime(point.event_time) : '\u0432\u0440\u0435\u043c\u044f \u043d\u0435 \u0443\u043a\u0430\u0437\u0430\u043d\u043e'}${estimateDetail}`;
-      element.textContent = isAzimuthEstimate ? '\u25b2' : (point.sequence ? String(point.sequence) : '\u2022');
+      element.textContent = point.sequence ? String(point.sequence) : '\u2022';
       element.addEventListener('click', (event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -336,17 +335,17 @@ const MapView: React.FC<MapViewProps> = ({ artifact, dataOverride, titleOverride
         link.setAttribute('x2', String(estimate.x));
         link.setAttribute('y2', String(estimate.y));
         link.setAttribute('stroke', '#d97706');
-        link.setAttribute('stroke-width', '1.5');
-        link.setAttribute('stroke-dasharray', '3 3');
-        link.setAttribute('opacity', '0.8');
+        link.setAttribute('stroke-width', '2.5');
+        link.setAttribute('stroke-dasharray', '4 3');
+        link.setAttribute('opacity', '0.95');
         svg.appendChild(link);
         const tower = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         tower.setAttribute('cx', String(base.x));
         tower.setAttribute('cy', String(base.y));
-        tower.setAttribute('r', '3');
-        tower.setAttribute('fill', '#64748b');
+        tower.setAttribute('r', '5');
+        tower.setAttribute('fill', '#334155');
         tower.setAttribute('stroke', '#ffffff');
-        tower.setAttribute('stroke-width', '1.2');
+        tower.setAttribute('stroke-width', '2');
         svg.appendChild(tower);
       });
     };
