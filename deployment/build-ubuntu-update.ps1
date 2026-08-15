@@ -75,7 +75,7 @@ an images.tar file.
    extracted directory. If the Nodex installation is not the parent directory of this
    extracted folder, specify it through NODEX_HOME:
 
-   sudo NODEX_HOME=/opt/nodex NODEX_IMAGES_TAR=/mnt/nodex-images.tar ./install-update.sh
+   sudo NODEX_HOME=/opt/nodex NODEX_IMAGES_TAR=/mnt/nodex-images.tar bash ./install-update.sh
 
 4. Verify the service:
 

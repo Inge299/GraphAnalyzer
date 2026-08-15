@@ -75,7 +75,7 @@ curl -fsS http://127.0.0.1:8080/health
 ```bash
 tar -xzf nodex-update-*.tar.gz
 cd nodex-update-*
-sudo NODEX_HOME=/opt/nodex NODEX_IMAGES_TAR=/opt/nodex-delivery/nodex-images.tar ./install-update.sh
+sudo NODEX_HOME=/opt/nodex NODEX_IMAGES_TAR=/opt/nodex-delivery/nodex-images.tar bash ./install-update.sh
 ```
 
 Скрипт сохраняет предыдущие плагины в каталоге `plugins.before-YYYYMMDD-HHMMSS`, заменяет плагины из обновления и перезапускает только `app` и `frontend`. Данные PostgreSQL, Redis и проекта сохраняются.
