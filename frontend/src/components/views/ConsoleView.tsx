@@ -130,6 +130,88 @@ const weekdayOptions = [
   ['0', 'Пн'], ['1', 'Вт'], ['2', 'Ср'], ['3', 'Чт'], ['4', 'Пт'], ['5', 'Сб'], ['6', 'Вс'],
 ] as const;
 
+const heatmapDateValue = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+const heatmapTimeLabel = (minutes: number) => `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
+
+const HeatmapHistogram: React.FC<{ values: number[]; active: (index: number) => boolean; label: string }> = ({ values, active, label }) => {
+  const max = Math.max(...values, 1);
+  const width = 280;
+  const barWidth = Math.max(1, width / Math.max(values.length, 1));
+  return <div style={{ minWidth: 180, flex: '1 1 240px' }}>
+    <div style={{ color: '#64748b', fontSize: 11, marginBottom: 2 }}>{label}</div>
+    <svg viewBox={`0 0 ${width} 42`} preserveAspectRatio="none" aria-label={label} style={{ display: 'block', width: '100%', height: 42, borderRadius: 5, background: '#f8fafc' }}>
+      {values.map((value, index) => {
+        const height = Math.max(1, value / max * 38);
+        return <rect key={index} x={index * barWidth} y={40 - height} width={Math.max(0.6, barWidth - 0.5)} height={height} fill={active(index) ? '#2563eb' : '#cbd5e1'} opacity={active(index) ? 0.9 : 0.75} />;
+      })}
+    </svg>
+  </div>;
+};
+
+const EnhancedInteractiveHeatmap: React.FC<{ artifact: ApiArtifact; mapData: Record<string, unknown> }> = ({ artifact, mapData }) => {
+  const [dateRange, setDateRange] = useState<[number, number] | null>(null);
+  const [timeRange, setTimeRange] = useState<[number, number]>([0, 1439]);
+  const [weekdays, setWeekdays] = useState<Set<string>>(new Set());
+  const rawPoints = useMemo(() => Array.isArray(mapData.filter_points) ? mapData.filter_points.filter((item): item is Record<string, unknown> => Boolean(item && typeof item === 'object')) : [], [mapData.filter_points]);
+  const datedEvents = useMemo(() => rawPoints.map((row) => ({ row, date: new Date(String(row.event_time || '')) })).filter((item) => !Number.isNaN(item.date.getTime())), [rawPoints]);
+  const dateValues = useMemo(() => [...new Set(datedEvents.map(({ date }) => heatmapDateValue(date)))].sort(), [datedEvents]);
+  const effectiveDateRange: [number, number] = dateRange || [0, Math.max(0, dateValues.length - 1)];
+  const selectedDateValues = useMemo(() => new Set(dateValues.slice(effectiveDateRange[0], effectiveDateRange[1] + 1)), [dateValues, effectiveDateRange]);
+  const dateHistogram = useMemo(() => dateValues.map((value) => datedEvents.filter(({ date }) => heatmapDateValue(date) === value).length), [dateValues, datedEvents]);
+  const timeHistogram = useMemo(() => Array.from({ length: 24 }, (_, hour) => datedEvents.filter(({ date }) => selectedDateValues.has(heatmapDateValue(date)) && date.getHours() === hour).length), [datedEvents, selectedDateValues]);
+  const points = useMemo<Array<Record<string, unknown>>>(() => {
+    const buckets = new Map<string, Record<string, unknown>>();
+    datedEvents.forEach(({ row, date }) => {
+      const dateValue = heatmapDateValue(date);
+      const minute = date.getHours() * 60 + date.getMinutes();
+      const weekday = String((date.getDay() + 6) % 7);
+      if (!selectedDateValues.has(dateValue) || minute < timeRange[0] || minute > timeRange[1] || (weekdays.size && !weekdays.has(weekday))) return;
+      const latitude = Number(row.latitude); const longitude = Number(row.longitude);
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
+      const key = `${latitude.toFixed(6)},${longitude.toFixed(6)}`;
+      const current = buckets.get(key) || { id: `heat-${buckets.size + 1}`, latitude, longitude, weight: 0, event_count: 0, heat_radius_m: 0, msisdns: new Set<string>(), first_event: String(row.event_time || ''), last_event: String(row.event_time || ''), address: row.address || '', lac: row.lac || '', bs: row.bs || '' };
+      current.weight = Number(current.weight || 0) + Number(row.heat_dwell_minutes || 2) * Number(row.location_probability || 1);
+      current.event_count = Number(current.event_count || 0) + 1;
+      current.heat_radius_m = Math.max(Number(current.heat_radius_m || 0), Number(row.heat_radius_m || 300));
+      (current.msisdns as Set<string>).add(String(row.msisdn || ''));
+      if (String(row.event_time || '') < String(current.first_event || '')) current.first_event = String(row.event_time || '');
+      if (String(row.event_time || '') > String(current.last_event || '')) current.last_event = String(row.event_time || '');
+      buckets.set(key, current);
+    });
+    return [...buckets.values()].map((point) => ({ ...point, msisdn: [...(point.msisdns as Set<string>)].filter(Boolean).slice(0, 3).join(', '), event_time: point.last_event })).sort((a, b) => Number((b as Record<string, unknown>).weight) - Number((a as Record<string, unknown>).weight));
+  }, [datedEvents, selectedDateValues, timeRange, weekdays]);
+  const filteredMapData = useMemo(() => ({ ...mapData, points }), [mapData, points]);
+  const updateDateBoundary = (boundary: 0 | 1, value: number) => setDateRange((previous) => {
+    const current = previous || [0, Math.max(0, dateValues.length - 1)];
+    return boundary === 0 ? [Math.min(value, current[1]), current[1]] : [current[0], Math.max(value, current[0])];
+  });
+  const updateTimeBoundary = (boundary: 0 | 1, value: number) => setTimeRange((current) => boundary === 0 ? [Math.min(value, current[1]), current[1]] : [current[0], Math.max(value, current[0])]);
+  const reset = () => { setDateRange(null); setTimeRange([0, 1439]); setWeekdays(new Set()); };
+  const dateLabel = dateValues.length ? `${dateValues[effectiveDateRange[0]]} — ${dateValues[effectiveDateRange[1]]}` : '—';
+  const sliderStyle: React.CSSProperties = { width: '100%', margin: 0, accentColor: '#2563eb' };
+  return <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0, gap: 8 }}>
+    <section style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 1.25fr) minmax(260px, 1fr)', gap: '8px 16px', alignItems: 'end', padding: '9px 12px', border: '1px solid #dbe3f0', borderRadius: 10, background: '#f8fafc', fontSize: 12 }}>
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, color: '#334155', fontWeight: 700 }}><span>Период дат</span><span>{dateLabel}</span></div>
+        <div style={{ color: '#64748b', fontSize: 11, margin: '2px 0 4px' }}>Данные: {dateValues[0] || '—'} — {dateValues[dateValues.length - 1] || '—'}</div>
+        <input type="range" min={0} max={Math.max(0, dateValues.length - 1)} value={effectiveDateRange[0]} onChange={(event) => updateDateBoundary(0, Number(event.target.value))} aria-label="Начальная дата" style={sliderStyle} />
+        <input type="range" min={0} max={Math.max(0, dateValues.length - 1)} value={effectiveDateRange[1]} onChange={(event) => updateDateBoundary(1, Number(event.target.value))} aria-label="Конечная дата" style={sliderStyle} />
+      </div>
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, color: '#334155', fontWeight: 700 }}><span>Время суток</span><span>{heatmapTimeLabel(timeRange[0])} — {heatmapTimeLabel(timeRange[1])}</span></div>
+        <div style={{ color: '#64748b', fontSize: 11, margin: '2px 0 4px' }}>00:00 — 23:59</div>
+        <input type="range" min={0} max={1439} value={timeRange[0]} onChange={(event) => updateTimeBoundary(0, Number(event.target.value))} aria-label="Время от" style={sliderStyle} />
+        <input type="range" min={0} max={1439} value={timeRange[1]} onChange={(event) => updateTimeBoundary(1, Number(event.target.value))} aria-label="Время до" style={sliderStyle} />
+      </div>
+      <HeatmapHistogram values={dateHistogram} active={(index) => index >= effectiveDateRange[0] && index <= effectiveDateRange[1]} label="Частота событий по датам" />
+      <HeatmapHistogram values={timeHistogram} active={(hour) => hour * 60 >= timeRange[0] && hour * 60 <= timeRange[1]} label="Частота событий по времени суток" />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}><span style={{ color: '#64748b', marginRight: 3 }}>Дни:</span>{weekdayOptions.map(([day, label]) => <button key={day} type="button" onClick={() => setWeekdays((previous) => { const next = new Set(previous); if (next.has(day)) next.delete(day); else next.add(day); return next; })} style={{ minWidth: 28, padding: '2px 5px', borderRadius: 6, border: weekdays.has(day) ? '1px solid #2563eb' : '1px solid #cbd5e1', background: weekdays.has(day) ? '#dbeafe' : '#fff', color: weekdays.has(day) ? '#1d4ed8' : '#475569', fontWeight: 700 }}>{label}</button>)}</div>
+      <button type="button" className="service-btn" onClick={reset} style={{ justifySelf: 'end' }}>Сбросить фильтры</button>
+    </section>
+    <MapView artifact={artifact} _onUpdate={() => {}} dataOverride={filteredMapData} titleOverride="Тепловая карта" descriptionOverride={`Регистраций: ${points.reduce((total, point) => total + Number(point.event_count || 0), 0).toLocaleString('ru-RU')}. Интенсивность учитывает время пребывания, не частоту технических событий.`} showRouteTable={false} showDetails={false} />
+  </div>;
+};
+
 const InteractiveHeatmap: React.FC<{ artifact: ApiArtifact; mapData: Record<string, unknown> }> = ({ artifact, mapData }) => {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -178,6 +260,8 @@ const InteractiveHeatmap: React.FC<{ artifact: ApiArtifact; mapData: Record<stri
     <MapView artifact={artifact} _onUpdate={() => {}} dataOverride={filteredMapData} titleOverride="Тепловая карта" descriptionOverride={`Регистраций: ${points.reduce((total, point) => total + Number(point.event_count || 0), 0)}. Интенсивность учитывает время пребывания, не частоту технических событий.`} showRouteTable={false} showDetails={false} />
   </div>;
 };
+
+void InteractiveHeatmap;
 
 const getFriendlyArtifactType = (value: unknown): string => {
   const key = String(value || '').trim().toLowerCase();
@@ -1146,7 +1230,7 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
           </div>
         )}
         {activeTab?.view === 'map' && activeTab.map_data && profileId === 'movement_heatmap' ? (
-          <InteractiveHeatmap artifact={artifact} mapData={activeTab.map_data} />
+          <EnhancedInteractiveHeatmap artifact={artifact} mapData={activeTab.map_data} />
         ) : activeTab?.view === 'map' && activeTab.map_data ? (
           <MapView
             artifact={artifact}
