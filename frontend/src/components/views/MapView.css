@@ -3,7 +3,7 @@
 .map-header h2 { margin: 0; font-size: 18px; }
 .map-header p { margin: 5px 0 0; color: #526174; font-size: 13px; }
 .map-header-actions { display: flex; align-items: flex-end; gap: 8px; flex-direction: column; }
-.map-report-button { border: 0; background: transparent; color: #2563eb; padding: 3px 1px; font: 600 12px/1.2 inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.map-report-button { border: 0; background: transparent; color: #2563eb; padding: 3px 1px; font: 600 12px/1.2 inherit; white-space: nowrap; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .map-report-button:hover { color: #1d4ed8; }
 .map-summary { white-space: nowrap; border: 1px solid #cdd8e7; border-radius: 8px; background: #fff; padding: 8px 10px; font-size: 13px; }
 .map-layout { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 14px; max-width: 1500px; margin: 0 auto; }

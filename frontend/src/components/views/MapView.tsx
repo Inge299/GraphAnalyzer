@@ -494,7 +494,7 @@ const MapView: React.FC<MapViewProps> = ({ artifact, dataOverride, titleOverride
     if (!mapCanvas || !reportPanel) return;
     try {
       const deviceScale = Math.max(1, mapCanvas.width / Math.max(1, mapCanvas.clientWidth));
-      const panelWidth = Math.round(360 * deviceScale);
+      const panelWidth = Math.round(280 * deviceScale);
       const output = document.createElement('canvas');
       output.width = mapCanvas.width + panelWidth;
       output.height = mapCanvas.height;
@@ -544,7 +544,7 @@ const MapView: React.FC<MapViewProps> = ({ artifact, dataOverride, titleOverride
   return (
     <div className="map-view">
       <header className={`map-header${isHeatmap ? ' is-heatmap' : ''}`}>
-        {isHeatmap ? <div className="map-heat-summary">{reportPanel ? `Средство связи: ${reportPanel.identifier}` : 'Координат: ' + visiblePoints.length + ' · регистраций: ' + visiblePoints.reduce((total, point) => total + Number(point.event_count ?? Math.round(Number(point.weight || 1))), 0).toLocaleString('ru-RU')}</div> : null}
+        {isHeatmap ? null : <div className="map-heat-summary">{'Координат: ' + visiblePoints.length + ' · регистраций: ' + visiblePoints.reduce((total, point) => total + Number(point.event_count ?? Math.round(Number(point.weight || 1))), 0).toLocaleString('ru-RU')}</div>}
         <div>
           <h2>{titleOverride || artifact.name}</h2>
           <p>{descriptionOverride || (isHeatmap ? '\u0418\u043d\u0442\u0435\u043d\u0441\u0438\u0432\u043d\u043e\u0441\u0442\u044c \u043f\u043e\u043a\u0430\u0437\u044b\u0432\u0430\u0435\u0442 \u0447\u0438\u0441\u043b\u043e \u0440\u0435\u0433\u0438\u0441\u0442\u0440\u0430\u0446\u0438\u0439 \u0432 \u043a\u0430\u0436\u0434\u043e\u0439 \u043a\u043e\u043e\u0440\u0434\u0438\u043d\u0430\u0442\u043d\u043e\u0439 \u0442\u043e\u0447\u043a\u0435.' : artifact.description || '\u041c\u0430\u0440\u0448\u0440\u0443\u0442 \u043f\u043e \u043a\u043e\u043e\u0440\u0434\u0438\u043d\u0430\u0442\u0430\u043c \u0431\u0430\u0437\u043e\u0432\u044b\u0445 \u0441\u0442\u0430\u043d\u0446\u0438\u0439.')}</p>
