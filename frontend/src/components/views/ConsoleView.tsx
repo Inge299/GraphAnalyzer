@@ -132,6 +132,18 @@ const weekdayOptions = [
 
 const heatmapDateValue = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 const heatmapTimeLabel = (minutes: number) => `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
+const heatmapDateLabel = (value: string) => {
+  const [year, month, day] = value.split('-');
+  return year && month && day ? `${day}.${month}.${year}` : value;
+};
+
+const HeatmapDualRange: React.FC<{ min: number; max: number; value: [number, number]; onChange: (boundary: 0 | 1, value: number) => void; labels: [string, string] }> = ({ min, max, value, onChange, labels }) => <div className="heatmap-dual-range">
+  <div className="heatmap-dual-range-labels"><span>{labels[0]}</span><span>{labels[1]}</span></div>
+  <div className="heatmap-dual-range-track">
+    <input type="range" min={min} max={max} value={value[0]} onChange={(event) => onChange(0, Number(event.target.value))} aria-label={labels[0]} />
+    <input type="range" min={min} max={max} value={value[1]} onChange={(event) => onChange(1, Number(event.target.value))} aria-label={labels[1]} />
+  </div>
+</div>;
 
 const HeatmapHistogram: React.FC<{ values: number[]; active: (index: number) => boolean; label: string }> = ({ values, active, label }) => {
   const max = Math.max(...values, 1);
@@ -203,29 +215,34 @@ const EnhancedInteractiveHeatmap: React.FC<{ artifact: ApiArtifact; mapData: Rec
   });
   const updateTimeBoundary = (boundary: 0 | 1, value: number) => setTimeRange((current) => boundary === 0 ? [Math.min(value, current[1]), current[1]] : [current[0], Math.max(value, current[0])]);
   const reset = () => { setDateRange(null); setTimeRange([0, 1439]); setWeekdays(new Set()); };
-  const dateLabel = dateValues.length ? `${dateValues[effectiveDateRange[0]]} — ${dateValues[effectiveDateRange[1]]}` : '—';
-  const sliderStyle: React.CSSProperties = { width: '100%', margin: 0, accentColor: '#2563eb' };
+  const dateLabel = dateValues.length ? `${heatmapDateLabel(dateValues[effectiveDateRange[0]])} — ${heatmapDateLabel(dateValues[effectiveDateRange[1]])}` : '—';
+  const selectedWeekdays = weekdayOptions.filter(([day]) => !weekdays.size || weekdays.has(day)).map(([, label]) => label).join(', ');
+  const reportPanel = {
+    filterSummary: `Период: ${dateLabel}\nВремя: ${heatmapTimeLabel(timeRange[0])} — ${heatmapTimeLabel(timeRange[1])}\nДни: ${selectedWeekdays}`,
+    stats: `Регистраций: ${points.reduce((total, point) => total + Number(point.event_count || 0), 0).toLocaleString('ru-RU')}; координат: ${points.length.toLocaleString('ru-RU')}`,
+    dateHistogram,
+    timeHistogram,
+    weekdayHistogram,
+  };
   return <div className="heatmap-workbench" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', minHeight: 0, gap: 12 }}>
     <section style={{ order: 2, flex: '0 1 330px', width: 330, display: 'grid', gridTemplateColumns: '1fr', gap: 10, alignItems: 'end', padding: '10px 12px', border: '1px solid #dbe3f0', borderRadius: 10, background: '#f8fafc', fontSize: 12 }}>
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, color: '#334155', fontWeight: 700 }}><span>Период дат</span><span>{dateLabel}</span></div>
-        <div style={{ color: '#64748b', fontSize: 11, margin: '2px 0 4px' }}>Данные: {dateValues[0] || '—'} — {dateValues[dateValues.length - 1] || '—'}</div>
-        <input type="range" min={0} max={Math.max(0, dateValues.length - 1)} value={effectiveDateRange[0]} onChange={(event) => updateDateBoundary(0, Number(event.target.value))} aria-label="Начальная дата" style={sliderStyle} />
-        <input type="range" min={0} max={Math.max(0, dateValues.length - 1)} value={effectiveDateRange[1]} onChange={(event) => updateDateBoundary(1, Number(event.target.value))} aria-label="Конечная дата" style={sliderStyle} />
+        <div style={{ color: '#64748b', fontSize: 11, margin: '2px 0 4px' }}>Данные: {heatmapDateLabel(dateValues[0] || '—')} — {heatmapDateLabel(dateValues[dateValues.length - 1] || '—')}</div>
+        <HeatmapDualRange min={0} max={Math.max(0, dateValues.length - 1)} value={effectiveDateRange} onChange={updateDateBoundary} labels={[heatmapDateLabel(dateValues[effectiveDateRange[0]] || '—'), heatmapDateLabel(dateValues[effectiveDateRange[1]] || '—')]} />
       </div>
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, color: '#334155', fontWeight: 700 }}><span>Время суток</span><span>{heatmapTimeLabel(timeRange[0])} — {heatmapTimeLabel(timeRange[1])}</span></div>
         <div style={{ color: '#64748b', fontSize: 11, margin: '2px 0 4px' }}>00:00 — 23:59</div>
-        <input type="range" min={0} max={1439} value={timeRange[0]} onChange={(event) => updateTimeBoundary(0, Number(event.target.value))} aria-label="Время от" style={sliderStyle} />
-        <input type="range" min={0} max={1439} value={timeRange[1]} onChange={(event) => updateTimeBoundary(1, Number(event.target.value))} aria-label="Время до" style={sliderStyle} />
+        <HeatmapDualRange min={0} max={1439} value={timeRange} onChange={updateTimeBoundary} labels={[heatmapTimeLabel(timeRange[0]), heatmapTimeLabel(timeRange[1])]} />
       </div>
       <HeatmapHistogram values={dateHistogram} active={(index) => index >= effectiveDateRange[0] && index <= effectiveDateRange[1]} label="Частота событий по датам" />
       <HeatmapLineChart values={timeHistogram} active={(hour) => hour * 60 >= timeRange[0] && hour * 60 <= timeRange[1]} label="Частота событий по времени суток" />
       <HeatmapHistogram values={weekdayHistogram} active={(weekday) => !weekdays.size || weekdays.has(String(weekday))} label="Частота событий по дням недели" />
       <div style={{ display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}><span style={{ color: '#64748b', marginRight: 3 }}>Дни:</span>{weekdayOptions.map(([day, label]) => <button key={day} type="button" onClick={() => setWeekdays((previous) => { const next = new Set(previous); if (next.has(day)) next.delete(day); else next.add(day); return next; })} style={{ minWidth: 28, padding: '2px 5px', borderRadius: 6, border: weekdays.has(day) ? '1px solid #2563eb' : '1px solid #cbd5e1', background: weekdays.has(day) ? '#dbeafe' : '#fff', color: weekdays.has(day) ? '#1d4ed8' : '#475569', fontWeight: 700 }}>{label}</button>)}</div>
-      <button type="button" className="service-btn" onClick={reset} style={{ justifySelf: 'end' }}>Сбросить фильтры</button>
+      <button type="button" className="console-link-button" onClick={reset} style={{ justifySelf: 'end' }}>Сбросить фильтры</button>
     </section>
-    <MapView artifact={artifact} _onUpdate={() => {}} dataOverride={filteredMapData} titleOverride="Тепловая карта" descriptionOverride={`Регистраций: ${points.reduce((total, point) => total + Number(point.event_count || 0), 0).toLocaleString('ru-RU')}. Интенсивность учитывает время пребывания, не частоту технических событий.`} showRouteTable={false} showDetails={false} />
+    <MapView artifact={artifact} _onUpdate={() => {}} dataOverride={filteredMapData} titleOverride="Тепловая карта" descriptionOverride={`Регистраций: ${points.reduce((total, point) => total + Number(point.event_count || 0), 0).toLocaleString('ru-RU')}. Интенсивность учитывает время пребывания, не частоту технических событий.`} showRouteTable={false} showDetails={false} reportPanel={reportPanel} />
   </div>;
 };
 
@@ -864,7 +881,7 @@ const ConsoleView: React.FC<ConsoleViewProps> = ({ artifact }) => {
           </div>
           <button
             type="button"
-            className="service-btn"
+            className="console-link-button"
             onClick={() => void loadProfiles()}
             disabled={profilesLoading || executing}
           >

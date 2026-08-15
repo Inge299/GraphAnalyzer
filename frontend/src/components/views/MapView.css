@@ -2,6 +2,9 @@
 .map-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin: 0 auto 14px; max-width: 1500px; }
 .map-header h2 { margin: 0; font-size: 18px; }
 .map-header p { margin: 5px 0 0; color: #526174; font-size: 13px; }
+.map-header-actions { display: flex; align-items: flex-end; gap: 8px; flex-direction: column; }
+.map-report-button { border: 0; background: transparent; color: #2563eb; padding: 3px 1px; font: 600 12px/1.2 inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.map-report-button:hover { color: #1d4ed8; }
 .map-summary { white-space: nowrap; border: 1px solid #cdd8e7; border-radius: 8px; background: #fff; padding: 8px 10px; font-size: 13px; }
 .map-layout { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 14px; max-width: 1500px; margin: 0 auto; }
 .map-canvas-wrap, .map-details, .map-empty { border: 1px solid #cdd8e7; border-radius: 10px; background: #fff; box-shadow: 0 8px 22px rgb(38 58 88 / 7%); }
@@ -30,6 +33,19 @@
 .heatmap-workbench > .map-view { order: 1; flex: 1 1 720px; min-width: 0; height: auto; padding: 0; background: transparent; overflow: visible; }
 .heatmap-workbench > .map-view .map-header, .heatmap-workbench > .map-view .map-layout { max-width: none; }
 .heatmap-workbench > .map-view .map-layout { grid-template-columns: minmax(0, 1fr); }
+.heatmap-workbench > section { align-self: stretch; }
+.heatmap-dual-range { margin-top: 5px; }
+.heatmap-dual-range-labels { display: flex; justify-content: space-between; color: #64748b; font-size: 10px; }
+.heatmap-dual-range-track { position: relative; height: 18px; margin: 1px 2px 0; }
+.heatmap-dual-range-track::before { content: ''; position: absolute; top: 8px; right: 0; left: 0; height: 4px; border-radius: 999px; background: #cbd5e1; }
+.heatmap-dual-range-track input { position: absolute; inset: 0; width: 100%; height: 18px; margin: 0; appearance: none; pointer-events: none; background: transparent; }
+.heatmap-dual-range-track input::-webkit-slider-runnable-track { height: 4px; border-radius: 999px; background: transparent; }
+.heatmap-dual-range-track input::-webkit-slider-thumb { width: 13px; height: 13px; margin-top: -4px; appearance: none; pointer-events: auto; border: 2px solid #ffffff; border-radius: 50%; background: #2563eb; box-shadow: 0 1px 3px rgb(15 23 42 / 30%); cursor: ew-resize; }
+.heatmap-dual-range-track input::-moz-range-track { height: 4px; border-radius: 999px; background: transparent; }
+.heatmap-dual-range-track input::-moz-range-thumb { width: 10px; height: 10px; pointer-events: auto; border: 2px solid #ffffff; border-radius: 50%; background: #2563eb; box-shadow: 0 1px 3px rgb(15 23 42 / 30%); cursor: ew-resize; }
+.console-link-button { border: 0; border-radius: 5px; background: transparent; color: #2563eb; padding: 4px 2px; font: 600 12px/1.2 inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.console-link-button:hover { color: #1d4ed8; background: #eff6ff; }
+.console-link-button:disabled { color: #94a3b8; cursor: progress; text-decoration: none; }
 @media (max-width: 1200px) { .heatmap-workbench > .map-view { flex-basis: 100%; } .heatmap-workbench > section { flex-basis: 100% !important; width: 100% !important; } }
 @media (max-width: 900px) { .map-header, .map-layout { grid-template-columns: 1fr; display: grid; } .map-summary { justify-self: start; } .map-stage { min-height: 390px; } }
 .map-location-marker { display: grid; width: 21px; height: 21px; place-items: center; border: 2px solid #1d4ed8; border-radius: 50%; background: #ffffff; color: #172033; box-shadow: 0 1px 5px rgb(15 23 42 / 32%); font: 700 9px/1 system-ui, sans-serif; cursor: pointer; }
