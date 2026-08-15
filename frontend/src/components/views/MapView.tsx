@@ -503,7 +503,12 @@ const MapView: React.FC<MapViewProps> = ({ artifact, dataOverride, titleOverride
       context.fillStyle = '#ffffff';
       context.fillRect(0, 0, output.width, output.height);
       context.drawImage(mapCanvas, 0, 0);
-      if (heatOverlayRef.current) context.drawImage(heatOverlayRef.current, 0, 0, mapCanvas.width, mapCanvas.height);
+      if (heatOverlayRef.current) {
+        context.save();
+        context.globalAlpha = 0.62;
+        context.drawImage(heatOverlayRef.current, 0, 0, mapCanvas.width, mapCanvas.height);
+        context.restore();
+      }
       const x = mapCanvas.width + Math.round(18 * deviceScale);
       const width = panelWidth - Math.round(36 * deviceScale);
       const font = (size: number, weight = 400) => `${weight} ${Math.round(size * deviceScale)}px system-ui, sans-serif`;
