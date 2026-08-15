@@ -13,7 +13,7 @@ PostgreSQL является служебной БД Nodex. Внутренний 
 
 1. Скопируйте `.env.closed.example` в `.env.closed` и укажите адрес внутреннего
    Nominatim.
-2. При необходимости укажите `VITE_MAP_TILE_URL` для внутреннего сервера тайлов.
+2. При необходимости укажите `MAP_PMTILES_URL`, `MAP_STYLE_URL` и `MAP_GLYPHS_URL` для внутренней картографической основы.
    Nominatim выполняет геокодирование, но не является источником картографической
    подложки.
 3. Выполните:
@@ -33,16 +33,17 @@ Server, а Nodex хранит только их регистрацию и рез
 
 ## Перенос на изолированный сервер
 
-На машине со сборкой заранее получите базовые образы и соберите поставку:
+На машине со сборкой заранее сформируйте поставку одной командой:
 
 ```powershell
-docker compose --env-file .env.closed -f docker-compose.closed.yml build
-docker save -o nodex-images.tar nodex/app:pilot nodex/frontend:pilot postgres:15-alpine redis:7-alpine
+.\deployment\build-closed-delivery.ps1
 ```
 
-Передайте исходный каталог проекта, `data/`, требуемые Python-плагины и архив
-образов. На изолированном сервере загрузите образы командой
-`docker load -i nodex-images.tar`, после чего выполните первый запуск.
+Скрипт создаст каталог в `dist/` с архивом исходников, `nodex-images.tar`, примером
+конфигурации и `SHA256SUMS.txt`. Передайте весь этот каталог, а также нужные файлы
+справочников в `data/`. На изолированном сервере загрузите образы командой
+`docker load -i nodex-images.tar`, распакуйте исходники, скопируйте `.env.closed.example`
+в `.env.closed`, задайте внутренние адреса сервисов и выполните первый запуск.
 
 Данные PostgreSQL и Redis сохраняются в Docker volumes. Для резервного
 копирования PostgreSQL используйте `pg_dump` из контейнера PostgreSQL и
