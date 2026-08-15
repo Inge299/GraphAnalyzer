@@ -148,6 +148,21 @@ const HeatmapHistogram: React.FC<{ values: number[]; active: (index: number) => 
   </div>;
 };
 
+const HeatmapLineChart: React.FC<{ values: number[]; active: (index: number) => boolean; label: string }> = ({ values, active, label }) => {
+  const max = Math.max(...values, 1);
+  const width = 280;
+  const points = values.map((value, index) => `${values.length > 1 ? index * width / (values.length - 1) : width / 2},${40 - value / max * 34}`).join(' ');
+  const area = `0,42 ${points} ${width},42`;
+  return <div style={{ minWidth: 180, flex: '1 1 240px' }}>
+    <div style={{ color: '#64748b', fontSize: 11, marginBottom: 2 }}>{label}</div>
+    <svg viewBox={`0 0 ${width} 42`} preserveAspectRatio="none" aria-label={label} style={{ display: 'block', width: '100%', height: 42, borderRadius: 5, background: '#f8fafc' }}>
+      <polygon points={area} fill="#bfdbfe" opacity="0.8" />
+      <polyline points={points} fill="none" stroke="#2563eb" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+      {values.map((value, index) => <circle key={index} cx={values.length > 1 ? index * width / (values.length - 1) : width / 2} cy={40 - value / max * 34} r="2" fill={active(index) ? '#1d4ed8' : '#94a3b8'} />)}
+    </svg>
+  </div>;
+};
+
 const EnhancedInteractiveHeatmap: React.FC<{ artifact: ApiArtifact; mapData: Record<string, unknown> }> = ({ artifact, mapData }) => {
   const [dateRange, setDateRange] = useState<[number, number] | null>(null);
   const [timeRange, setTimeRange] = useState<[number, number]>([0, 1439]);
@@ -159,6 +174,7 @@ const EnhancedInteractiveHeatmap: React.FC<{ artifact: ApiArtifact; mapData: Rec
   const selectedDateValues = useMemo(() => new Set(dateValues.slice(effectiveDateRange[0], effectiveDateRange[1] + 1)), [dateValues, effectiveDateRange]);
   const dateHistogram = useMemo(() => dateValues.map((value) => datedEvents.filter(({ date }) => heatmapDateValue(date) === value).length), [dateValues, datedEvents]);
   const timeHistogram = useMemo(() => Array.from({ length: 24 }, (_, hour) => datedEvents.filter(({ date }) => selectedDateValues.has(heatmapDateValue(date)) && date.getHours() === hour).length), [datedEvents, selectedDateValues]);
+  const weekdayHistogram = useMemo(() => Array.from({ length: 7 }, (_, weekday) => datedEvents.filter(({ date }) => selectedDateValues.has(heatmapDateValue(date)) && (date.getDay() + 6) % 7 === weekday).length), [datedEvents, selectedDateValues]);
   const points = useMemo<Array<Record<string, unknown>>>(() => {
     const buckets = new Map<string, Record<string, unknown>>();
     datedEvents.forEach(({ row, date }) => {
@@ -189,8 +205,8 @@ const EnhancedInteractiveHeatmap: React.FC<{ artifact: ApiArtifact; mapData: Rec
   const reset = () => { setDateRange(null); setTimeRange([0, 1439]); setWeekdays(new Set()); };
   const dateLabel = dateValues.length ? `${dateValues[effectiveDateRange[0]]} — ${dateValues[effectiveDateRange[1]]}` : '—';
   const sliderStyle: React.CSSProperties = { width: '100%', margin: 0, accentColor: '#2563eb' };
-  return <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0, gap: 8 }}>
-    <section style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 1.25fr) minmax(260px, 1fr)', gap: '8px 16px', alignItems: 'end', padding: '9px 12px', border: '1px solid #dbe3f0', borderRadius: 10, background: '#f8fafc', fontSize: 12 }}>
+  return <div className="heatmap-workbench" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', minHeight: 0, gap: 12 }}>
+    <section style={{ order: 2, flex: '0 1 330px', width: 330, display: 'grid', gridTemplateColumns: '1fr', gap: 10, alignItems: 'end', padding: '10px 12px', border: '1px solid #dbe3f0', borderRadius: 10, background: '#f8fafc', fontSize: 12 }}>
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, color: '#334155', fontWeight: 700 }}><span>Период дат</span><span>{dateLabel}</span></div>
         <div style={{ color: '#64748b', fontSize: 11, margin: '2px 0 4px' }}>Данные: {dateValues[0] || '—'} — {dateValues[dateValues.length - 1] || '—'}</div>
@@ -204,7 +220,8 @@ const EnhancedInteractiveHeatmap: React.FC<{ artifact: ApiArtifact; mapData: Rec
         <input type="range" min={0} max={1439} value={timeRange[1]} onChange={(event) => updateTimeBoundary(1, Number(event.target.value))} aria-label="Время до" style={sliderStyle} />
       </div>
       <HeatmapHistogram values={dateHistogram} active={(index) => index >= effectiveDateRange[0] && index <= effectiveDateRange[1]} label="Частота событий по датам" />
-      <HeatmapHistogram values={timeHistogram} active={(hour) => hour * 60 >= timeRange[0] && hour * 60 <= timeRange[1]} label="Частота событий по времени суток" />
+      <HeatmapLineChart values={timeHistogram} active={(hour) => hour * 60 >= timeRange[0] && hour * 60 <= timeRange[1]} label="Частота событий по времени суток" />
+      <HeatmapHistogram values={weekdayHistogram} active={(weekday) => !weekdays.size || weekdays.has(String(weekday))} label="Частота событий по дням недели" />
       <div style={{ display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}><span style={{ color: '#64748b', marginRight: 3 }}>Дни:</span>{weekdayOptions.map(([day, label]) => <button key={day} type="button" onClick={() => setWeekdays((previous) => { const next = new Set(previous); if (next.has(day)) next.delete(day); else next.add(day); return next; })} style={{ minWidth: 28, padding: '2px 5px', borderRadius: 6, border: weekdays.has(day) ? '1px solid #2563eb' : '1px solid #cbd5e1', background: weekdays.has(day) ? '#dbeafe' : '#fff', color: weekdays.has(day) ? '#1d4ed8' : '#475569', fontWeight: 700 }}>{label}</button>)}</div>
       <button type="button" className="service-btn" onClick={reset} style={{ justifySelf: 'end' }}>Сбросить фильтры</button>
     </section>
