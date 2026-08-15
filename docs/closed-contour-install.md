@@ -1,87 +1,91 @@
-# Nodex: установка во внутреннем контуре
+# Nodex: установка в закрытом контуре (Ubuntu)
 
-Эта инструкция рассчитана на сервер без доступа в интернет. В поставке должны быть
-`nodex-images.tar`, `nodex-source.zip`, `docker-compose.closed.yml`,
-`.env.closed.example` и `SHA256SUMS.txt`.
+Поставка рассчитана на сервер Ubuntu без доступа к Интернету. В каталоге поставки должны находиться `nodex-images.tar`, `nodex-source.zip`, `docker-compose.closed.yml`, `.env.closed.example` и `SHA256SUMS.txt`.
 
-## 1. Требования
+## Требования
 
-- Docker Engine / Docker Desktop с Docker Compose v2;
-- не менее 8 ГБ RAM и 20 ГБ свободного диска для пилота;
-- свободный TCP-порт 8080 или другой выбранный порт;
-- при необходимости: внутренние серверы геокодирования и картографических тайлов.
+- Ubuntu 22.04 LTS или новее;
+- Docker Engine и Docker Compose v2 уже установлены на сервере;
+- не менее 8 ГБ RAM и 20 ГБ свободного места;
+- свободный TCP-порт `8080` либо другой выбранный порт;
+- при необходимости — внутренние сервисы геокодирования и картографии.
 
-## 2. Проверка перед установкой
+## 1. Проверка поставки
 
-Скопируйте всю папку поставки на сервер, например в `C:\Nodex-delivery`.
-Проверьте контрольные суммы:
+Скопируйте всю папку поставки на сервер, например в `/opt/nodex-delivery`, и проверьте контрольные суммы:
 
-```powershell
-Set-Location C:\Nodex-delivery
-Get-Content .\SHA256SUMS.txt | ForEach-Object {
-  $parts = $_ -split '\s{2,}', 2
-  $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $parts[1]).Hash.ToLowerInvariant()
-  if ($actual -ne $parts[0]) { throw "Checksum mismatch: $($parts[1])" }
-}
+```bash
+cd /opt/nodex-delivery
+sha256sum -c SHA256SUMS.txt
 ```
 
-## 3. Подготовка каталога приложения
+Все строки должны завершиться `OK`.
 
-```powershell
-Expand-Archive .\nodex-source.zip -DestinationPath C:\Nodex -Force
-Copy-Item .\.env.closed.example C:\Nodex\.env.closed
-Copy-Item .\docker-compose.closed.yml C:\Nodex\docker-compose.closed.yml -Force
-New-Item -ItemType Directory -Path C:\Nodex\data -Force
+## 2. Подготовка приложения
+
+```bash
+sudo mkdir -p /opt/nodex
+sudo unzip -o /opt/nodex-delivery/nodex-source.zip -d /opt/nodex
+sudo cp /opt/nodex-delivery/.env.closed.example /opt/nodex/.env.closed
+sudo cp /opt/nodex-delivery/docker-compose.closed.yml /opt/nodex/docker-compose.closed.yml
+sudo mkdir -p /opt/nodex/data
+sudo chown -R "$USER":"$USER" /opt/nodex
 ```
 
-Откройте `C:\Nodex\.env.closed` и обязательно задайте:
+Откройте `/opt/nodex/.env.closed` и обязательно задайте уникальные значения:
 
-- `POSTGRES_PASSWORD` — уникальный пароль БД;
-- `SECRET_KEY` — уникальное случайное значение;
-- `NODEX_PORT` — порт публикации, если 8080 занят;
-- `GEOCODER_ENABLED=false`, если внутренний Nominatim не предусмотрен;
-- `MAP_MODE=local` и внутренние `MAP_*` URL, если используется внутренняя карта.
+- `POSTGRES_PASSWORD` — пароль базы данных;
+- `SECRET_KEY` — случайная секретная строка;
+- `NODEX_PORT` — порт публикации, если `8080` занят.
 
-Для генерации значения `SECRET_KEY` можно выполнить:
+Для генерации `SECRET_KEY` можно выполнить:
 
-```powershell
-[Convert]::ToBase64String((1..48 | ForEach-Object { Get-Random -Maximum 256 }))
+```bash
+openssl rand -base64 48
 ```
 
-## 4. Загрузка образов и первый запуск
+Если внутреннего геокодера нет, установите `GEOCODER_ENABLED=false`. Для внутренней картографии выберите `MAP_MODE=local` и задайте доступные в контуре `MAP_*` URL.
 
-```powershell
-Set-Location C:\Nodex-delivery
-docker load -i .\nodex-images.tar
+## 3. Загрузка образов и первый запуск
 
-Set-Location C:\Nodex
+```bash
+cd /opt/nodex-delivery
+docker load -i nodex-images.tar
+
+cd /opt/nodex
 docker compose --env-file .env.closed -f docker-compose.closed.yml up -d --no-build
 ```
 
-Опция `--no-build` обязательна для изолированного контура: она использует образы,
-загруженные из поставки, и не обращается к внешним registries.
+`--no-build` обязателен: он использует образы из поставки и исключает обращение к внешним registry.
 
-## 5. Проверка
+## 4. Проверка
 
-```powershell
+```bash
+cd /opt/nodex
 docker compose --env-file .env.closed -f docker-compose.closed.yml ps
-Invoke-WebRequest http://localhost:8080/health -UseBasicParsing
+curl -fsS http://127.0.0.1:8080/health
 ```
 
-Откройте `http://<адрес-сервера>:8080`. При необходимости настройте внутренний
-reverse proxy и HTTPS перед предоставлением доступа пользователям.
+Откройте `http://<адрес-сервера>:8080` из сети внутреннего контура. При необходимости настройте внутренний reverse proxy и HTTPS.
 
-## 6. Эксплуатация и резервное копирование
+## Обновление
 
-Данные PostgreSQL и Redis находятся в Docker volumes, справочники и внешние
-плагины — в `C:\Nodex\data` и `C:\Nodex\plugins`.
+Перед обновлением сохраните резервную копию БД и каталога `/opt/nodex/data`. Распакуйте переданный архив `nodex-update-*.tar.gz` и выполните:
 
-Резервная копия БД:
-
-```powershell
-docker compose --env-file .env.closed -f docker-compose.closed.yml exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' > nodex-backup.sql
+```bash
+tar -xzf nodex-update-*.tar.gz
+cd nodex-update-*
+sudo NODEX_HOME=/opt/nodex NODEX_IMAGES_TAR=/opt/nodex-delivery/nodex-images.tar ./install-update.sh
 ```
 
-Также регулярно архивируйте каталог `C:\Nodex\data`. Перед обновлением делайте
-резервную копию БД и данных, затем загружайте новый архив образов и запускайте
-`docker compose ... up -d --no-build`.
+Скрипт сохраняет предыдущие плагины в каталоге `plugins.before-YYYYMMDD-HHMMSS`, заменяет плагины из обновления и перезапускает только `app` и `frontend`. Данные PostgreSQL, Redis и проекта сохраняются.
+
+## Резервное копирование
+
+```bash
+cd /opt/nodex
+docker compose --env-file .env.closed -f docker-compose.closed.yml exec -T postgres \
+  sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' > nodex-backup.sql
+```
+
+Регулярно архивируйте `nodex-backup.sql` и `/opt/nodex/data` во внутреннее хранилище.

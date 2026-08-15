@@ -16,7 +16,13 @@ if (Test-Path -LiteralPath $OutputDirectory) { throw "Update directory already e
 New-Item -ItemType Directory -Path $OutputDirectory | Out-Null
 New-Item -ItemType Directory -Path (Join-Path $OutputDirectory 'plugins') | Out-Null
 
-Get-ChildItem -LiteralPath 'plugins' -Force | Copy-Item -Destination (Join-Path $OutputDirectory 'plugins') -Recurse -Force
+Get-ChildItem -LiteralPath 'plugins' -Force |
+  Where-Object { $_.Name -ne '__pycache__' -and $_.Extension -ne '.pyc' } |
+  Copy-Item -Destination (Join-Path $OutputDirectory 'plugins') -Recurse -Force
+Get-ChildItem -LiteralPath (Join-Path $OutputDirectory 'plugins') -Directory -Recurse -Filter '__pycache__' |
+  Remove-Item -Recurse -Force
+Get-ChildItem -LiteralPath (Join-Path $OutputDirectory 'plugins') -File -Recurse -Filter '*.pyc' |
+  Remove-Item -Force
 Copy-Item -LiteralPath 'docker-compose.closed.yml' -Destination (Join-Path $OutputDirectory 'docker-compose.closed.yml')
 
 @'
