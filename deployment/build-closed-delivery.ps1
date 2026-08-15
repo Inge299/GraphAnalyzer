@@ -34,6 +34,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Source archive creation failed.' }
 Copy-Item -LiteralPath '.env.closed.example' -Destination (Join-Path $OutputDirectory '.env.closed.example')
 Copy-Item -LiteralPath 'docker-compose.closed.yml' -Destination (Join-Path $OutputDirectory 'docker-compose.closed.yml')
 Copy-Item -LiteralPath 'docs\closed-contour-deployment.md' -Destination (Join-Path $OutputDirectory 'README.md')
+Copy-Item -LiteralPath 'docs\closed-contour-install.md' -Destination (Join-Path $OutputDirectory 'INSTALL.md')
 
 Get-ChildItem -LiteralPath $OutputDirectory -File |
   Get-FileHash -Algorithm SHA256 |
