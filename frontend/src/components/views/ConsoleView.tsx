@@ -169,8 +169,9 @@ const HeatmapLineChart: React.FC<{ values: number[]; active: (index: number) => 
     <div style={{ color: '#64748b', fontSize: 11, marginBottom: 2 }}>{label}</div>
     <svg viewBox={`0 0 ${width} 42`} preserveAspectRatio="none" aria-label={label} style={{ display: 'block', width: '100%', height: 42, borderRadius: 5, background: '#f8fafc' }}>
       <polygon points={area} fill="#bfdbfe" opacity="0.8" />
-      <polyline points={points} fill="none" stroke="#2563eb" strokeWidth="2" vectorEffect="non-scaling-stroke" />
-      {values.map((value, index) => <circle key={index} cx={values.length > 1 ? index * width / (values.length - 1) : width / 2} cy={40 - value / max * 34} r="2" fill={active(index) ? '#1d4ed8' : '#94a3b8'} />)}
+      {values.map((_, index) => !active(index) ? <rect key={`mask-${index}`} x={index * width / values.length} y="0" width={width / values.length} height="42" fill="#f8fafc" opacity="0.86" /> : null)}
+      {values.slice(1).map((value, index) => <line key={index} x1={index * width / (values.length - 1)} y1={40 - values[index] / max * 34} x2={(index + 1) * width / (values.length - 1)} y2={40 - value / max * 34} stroke={active(index) && active(index + 1) ? '#2563eb' : '#cbd5e1'} strokeWidth="2" vectorEffect="non-scaling-stroke" />)}
+      {values.map((value, index) => <circle key={index} cx={values.length > 1 ? index * width / (values.length - 1) : width / 2} cy={40 - value / max * 34} r="2" fill={active(index) ? '#1d4ed8' : '#cbd5e1'} />)}
     </svg>
   </div>;
 };
@@ -217,12 +218,18 @@ const EnhancedInteractiveHeatmap: React.FC<{ artifact: ApiArtifact; mapData: Rec
   const reset = () => { setDateRange(null); setTimeRange([0, 1439]); setWeekdays(new Set()); };
   const dateLabel = dateValues.length ? `${heatmapDateLabel(dateValues[effectiveDateRange[0]])} — ${heatmapDateLabel(dateValues[effectiveDateRange[1]])}` : '—';
   const selectedWeekdays = weekdayOptions.filter(([day]) => !weekdays.size || weekdays.has(day)).map(([, label]) => label).join(', ');
+  const identifiers = [...new Set(rawPoints.map((row) => String(row.msisdn || '').trim()).filter(Boolean))];
+  const identifier = identifiers.join(', ') || 'не определено';
   const reportPanel = {
+    identifier,
     filterSummary: `Период: ${dateLabel}\nВремя: ${heatmapTimeLabel(timeRange[0])} — ${heatmapTimeLabel(timeRange[1])}\nДни: ${selectedWeekdays}`,
     stats: `Регистраций: ${points.reduce((total, point) => total + Number(point.event_count || 0), 0).toLocaleString('ru-RU')}; координат: ${points.length.toLocaleString('ru-RU')}`,
     dateHistogram,
     timeHistogram,
     weekdayHistogram,
+    dateActive: dateHistogram.map((_, index) => index >= effectiveDateRange[0] && index <= effectiveDateRange[1]),
+    timeActive: timeHistogram.map((_, hour) => hour * 60 >= timeRange[0] && hour * 60 <= timeRange[1]),
+    weekdayActive: weekdayHistogram.map((_, weekday) => !weekdays.size || weekdays.has(String(weekday))),
   };
   return <div className="heatmap-workbench" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', minHeight: 0, gap: 12 }}>
     <section style={{ order: 2, flex: '0 1 330px', width: 330, display: 'grid', gridTemplateColumns: '1fr', gap: 10, alignItems: 'end', padding: '10px 12px', border: '1px solid #dbe3f0', borderRadius: 10, background: '#f8fafc', fontSize: 12 }}>

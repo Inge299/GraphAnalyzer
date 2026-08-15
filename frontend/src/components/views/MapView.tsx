@@ -19,11 +19,15 @@ interface MapViewProps {
   showRouteTable?: boolean;
   showDetails?: boolean;
   reportPanel?: {
+    identifier: string;
     filterSummary: string;
     stats: string;
     dateHistogram: number[];
     timeHistogram: number[];
     weekdayHistogram: number[];
+    dateActive: boolean[];
+    timeActive: boolean[];
+    weekdayActive: boolean[];
   };
 }
 
@@ -504,29 +508,27 @@ const MapView: React.FC<MapViewProps> = ({ artifact, dataOverride, titleOverride
       const width = panelWidth - Math.round(36 * deviceScale);
       const font = (size: number, weight = 400) => `${weight} ${Math.round(size * deviceScale)}px system-ui, sans-serif`;
       const drawText = (text: string, y: number, size = 12, weight = 400, color = '#334155') => { context.font = font(size, weight); context.fillStyle = color; context.fillText(text, x, y); };
-      const drawHistogram = (title: string, values: number[], y: number, line = false) => {
+      const drawHistogram = (title: string, values: number[], active: boolean[], y: number, line = false) => {
         drawText(title, y, 11, 700, '#475569');
         const top = y + Math.round(8 * deviceScale); const height = Math.round(58 * deviceScale); const maximum = Math.max(...values, 1);
         context.fillStyle = '#f1f5f9'; context.fillRect(x, top, width, height);
-        context.strokeStyle = '#2563eb'; context.fillStyle = '#93c5fd'; context.lineWidth = Math.max(1, deviceScale);
+        context.lineWidth = Math.max(1, deviceScale);
         values.forEach((value, index) => {
           const itemWidth = width / Math.max(values.length, 1); const itemHeight = Math.max(1, value / maximum * (height - 6 * deviceScale));
           if (line) {
             const px = x + (values.length > 1 ? index * width / (values.length - 1) : width / 2); const py = top + height - itemHeight;
-            if (index === 0) context.moveTo(px, py); else context.lineTo(px, py);
-          } else context.fillRect(x + index * itemWidth, top + height - itemHeight, Math.max(1, itemWidth - deviceScale), itemHeight);
+            if (index) { context.beginPath(); context.moveTo(x + (index - 1) * width / (values.length - 1), top + height - Math.max(1, values[index - 1] / maximum * (height - 6 * deviceScale))); context.lineTo(px, py); context.strokeStyle = active[index - 1] && active[index] ? '#2563eb' : '#cbd5e1'; context.stroke(); }
+          } else { context.fillStyle = active[index] ? '#3b82f6' : '#cbd5e1'; context.fillRect(x + index * itemWidth, top + height - itemHeight, Math.max(1, itemWidth - deviceScale), itemHeight); }
         });
-        if (line) context.stroke();
         return top + height + Math.round(22 * deviceScale);
       };
       let y = Math.round(34 * deviceScale);
-      drawText('Тепловая карта — отчёт', y, 17, 700, '#0f172a'); y += Math.round(28 * deviceScale);
-      drawText(new Date().toLocaleString('ru-RU'), y, 10, 400, '#64748b'); y += Math.round(26 * deviceScale);
+      drawText(`Отчёт о местоположении средства связи ${reportPanel.identifier}`, y, 15, 700, '#0f172a'); y += Math.round(28 * deviceScale);
       reportPanel.filterSummary.split('\n').forEach((line) => { drawText(line, y, 11, 400); y += Math.round(17 * deviceScale); });
       y += Math.round(6 * deviceScale); drawText(reportPanel.stats, y, 11, 700, '#1d4ed8'); y += Math.round(24 * deviceScale);
-      y = drawHistogram('События по датам', reportPanel.dateHistogram, y);
-      y = drawHistogram('События по времени суток', reportPanel.timeHistogram, y, true);
-      drawHistogram('События по дням недели', reportPanel.weekdayHistogram, y);
+      y = drawHistogram('События по датам', reportPanel.dateHistogram, reportPanel.dateActive, y);
+      y = drawHistogram('События по времени суток', reportPanel.timeHistogram, reportPanel.timeActive, y, true);
+      drawHistogram('События по дням недели', reportPanel.weekdayHistogram, reportPanel.weekdayActive, y);
       output.toBlob((blob) => {
         if (!blob) return;
         const link = document.createElement('a'); const url = URL.createObjectURL(blob);
@@ -541,12 +543,12 @@ const MapView: React.FC<MapViewProps> = ({ artifact, dataOverride, titleOverride
   return (
     <div className="map-view">
       <header className={`map-header${isHeatmap ? ' is-heatmap' : ''}`}>
-        {isHeatmap ? <div className="map-heat-summary">{'Координат: ' + visiblePoints.length + ' · регистраций: ' + visiblePoints.reduce((total, point) => total + Number(point.event_count ?? Math.round(Number(point.weight || 1))), 0).toLocaleString('ru-RU')}</div> : null}
+        {isHeatmap ? <div className="map-heat-summary">{reportPanel ? `Средство связи: ${reportPanel.identifier}` : 'Координат: ' + visiblePoints.length + ' · регистраций: ' + visiblePoints.reduce((total, point) => total + Number(point.event_count ?? Math.round(Number(point.weight || 1))), 0).toLocaleString('ru-RU')}</div> : null}
         <div>
           <h2>{titleOverride || artifact.name}</h2>
           <p>{descriptionOverride || (isHeatmap ? '\u0418\u043d\u0442\u0435\u043d\u0441\u0438\u0432\u043d\u043e\u0441\u0442\u044c \u043f\u043e\u043a\u0430\u0437\u044b\u0432\u0430\u0435\u0442 \u0447\u0438\u0441\u043b\u043e \u0440\u0435\u0433\u0438\u0441\u0442\u0440\u0430\u0446\u0438\u0439 \u0432 \u043a\u0430\u0436\u0434\u043e\u0439 \u043a\u043e\u043e\u0440\u0434\u0438\u043d\u0430\u0442\u043d\u043e\u0439 \u0442\u043e\u0447\u043a\u0435.' : artifact.description || '\u041c\u0430\u0440\u0448\u0440\u0443\u0442 \u043f\u043e \u043a\u043e\u043e\u0440\u0434\u0438\u043d\u0430\u0442\u0430\u043c \u0431\u0430\u0437\u043e\u0432\u044b\u0445 \u0441\u0442\u0430\u043d\u0446\u0438\u0439.')}</p>
         </div>
-        <div className="map-header-actions"><div className="map-summary">{(isHeatmap ? '\u0422\u043e\u0447\u0435\u043a \u0442\u0435\u043f\u043b\u0430: ' : '\u0422\u043e\u0447\u0435\u043a: ') + visiblePoints.length + (hasPointFilter ? ' \u0438\u0437 ' + points.length : '') + (isHeatmap ? ' \u00b7 \u0441\u043e\u0431\u044b\u0442\u0438\u0439: ' + visiblePoints.reduce((total, point) => total + Number(point.weight || 1), 0) : ' \u00b7 \u0410\u0431\u043e\u043d\u0435\u043d\u0442\u043e\u0432: ' + groups.length)}</div>{reportPanel ? <button type="button" className="map-report-button" onClick={exportHeatmapReport}>Сохранить отчёт PNG</button> : null}</div>
+        <div className="map-header-actions">{!isHeatmap ? <div className="map-summary">{'Точек: ' + visiblePoints.length + (hasPointFilter ? ' из ' + points.length : '') + ' · Абонентов: ' + groups.length}</div> : null}{reportPanel ? <button type="button" className="map-report-button" onClick={exportHeatmapReport}>Сохранить отчёт PNG</button> : null}</div>
       </header>
       <div className="map-layout">
         <section className="map-canvas-wrap" aria-label="location map">
