@@ -30,10 +30,10 @@
 .map-legend span { width: 14px; height: 4px; border-radius: 4px; }
 .map-empty { max-width: 700px; margin: 64px auto; padding: 24px; }
 .map-empty h2 { margin-top: 0; }
-.heatmap-workbench > .map-view { order: 1; flex: 1 1 720px; min-width: 0; height: auto; padding: 0; background: transparent; overflow: visible; }
+.heatmap-workbench > .map-view { order: 1; flex: 3 1 0; min-width: 0; height: auto; padding: 0; background: transparent; overflow: visible; }
 .heatmap-workbench > .map-view .map-header, .heatmap-workbench > .map-view .map-layout { max-width: none; }
 .heatmap-workbench > .map-view .map-layout { grid-template-columns: minmax(0, 1fr); }
-.heatmap-workbench > section { align-self: stretch; }
+.heatmap-workbench > section { flex: 2 1 0 !important; width: auto !important; min-width: 360px; align-self: stretch; }
 .heatmap-dual-range { margin-top: 5px; }
 .heatmap-dual-range-labels { display: flex; justify-content: space-between; color: #64748b; font-size: 10px; }
 .heatmap-dual-range-track { position: relative; height: 18px; margin: 1px 2px 0; }

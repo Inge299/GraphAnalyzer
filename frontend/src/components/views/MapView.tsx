@@ -523,7 +523,8 @@ const MapView: React.FC<MapViewProps> = ({ artifact, dataOverride, titleOverride
         return top + height + Math.round(22 * deviceScale);
       };
       let y = Math.round(34 * deviceScale);
-      drawText(`Отчёт о местоположении средства связи ${reportPanel.identifier}`, y, 15, 700, '#0f172a'); y += Math.round(28 * deviceScale);
+      drawText('Отчёт о местоположении средства связи', y, 15, 700, '#0f172a'); y += Math.round(22 * deviceScale);
+      drawText(reportPanel.identifier, y, 14, 700, '#1d4ed8'); y += Math.round(26 * deviceScale);
       reportPanel.filterSummary.split('\n').forEach((line) => { drawText(line, y, 11, 400); y += Math.round(17 * deviceScale); });
       y += Math.round(6 * deviceScale); drawText(reportPanel.stats, y, 11, 700, '#1d4ed8'); y += Math.round(24 * deviceScale);
       y = drawHistogram('События по датам', reportPanel.dateHistogram, reportPanel.dateActive, y);

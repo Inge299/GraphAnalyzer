@@ -249,7 +249,7 @@ const EnhancedInteractiveHeatmap: React.FC<{ artifact: ApiArtifact; mapData: Rec
       <div style={{ display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}><span style={{ color: '#64748b', marginRight: 3 }}>Дни:</span>{weekdayOptions.map(([day, label]) => <button key={day} type="button" onClick={() => setWeekdays((previous) => { const next = new Set(previous); if (next.has(day)) next.delete(day); else next.add(day); return next; })} style={{ minWidth: 28, padding: '2px 5px', borderRadius: 6, border: weekdays.has(day) ? '1px solid #2563eb' : '1px solid #cbd5e1', background: weekdays.has(day) ? '#dbeafe' : '#fff', color: weekdays.has(day) ? '#1d4ed8' : '#475569', fontWeight: 700 }}>{label}</button>)}</div>
       <button type="button" className="console-link-button" onClick={reset} style={{ justifySelf: 'end' }}>Сбросить фильтры</button>
     </section>
-    <MapView artifact={artifact} _onUpdate={() => {}} dataOverride={filteredMapData} titleOverride="Тепловая карта" descriptionOverride={`Регистраций: ${points.reduce((total, point) => total + Number(point.event_count || 0), 0).toLocaleString('ru-RU')}. Интенсивность учитывает время пребывания, не частоту технических событий.`} showRouteTable={false} showDetails={false} reportPanel={reportPanel} />
+    <MapView artifact={artifact} _onUpdate={() => {}} dataOverride={filteredMapData} titleOverride={`Местоположение средства связи ${identifier}`} descriptionOverride={`Регистраций: ${points.reduce((total, point) => total + Number(point.event_count || 0), 0).toLocaleString('ru-RU')}. Интенсивность учитывает время пребывания, не частоту технических событий.`} showRouteTable={false} showDetails={false} reportPanel={reportPanel} />
   </div>;
 };
 
