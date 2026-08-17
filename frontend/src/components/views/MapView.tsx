@@ -69,6 +69,10 @@ const defaultPmtilesUrl = runtimeConfig.pmtilesUrl || import.meta.env.VITE_PMTIL
 const defaultStyleUrl = runtimeConfig.mapStyleUrl || import.meta.env.VITE_MAP_STYLE_URL || '';
 const defaultGlyphsUrl = runtimeConfig.mapGlyphsUrl || import.meta.env.VITE_MAP_GLYPHS_URL || '';
 const mapMode = runtimeConfig.mapMode || (defaultPmtilesUrl ? 'local' : 'online');
+// MapLibre's default worker URL is not emitted by Vite.  Resolve it through
+// Vite so the worker is copied to the production assets with the right MIME
+// type instead of nginx returning the SPA index page.
+maplibregl.setWorkerUrl(new URL('maplibre-gl/dist/maplibre-gl-worker.mjs', import.meta.url).toString());
 const pmtilesProtocol = new Protocol();
 maplibregl.addProtocol('pmtiles', pmtilesProtocol.tile);
 
