@@ -56,7 +56,10 @@ def _canonical_entity_key(type_id: str, value: Any) -> str:
     return key
 
 
-DOMAIN_WRITE_BATCH_SIZE = max(1_000, int(os.getenv("DOMAIN_WRITE_BATCH_SIZE", "10000")))
+# JSON-to-recordset turns every slice into one PostgreSQL statement.  A larger
+# slice substantially reduces round trips while remaining well below a typical
+# PostgreSQL parameter/message limit for telecom rows.
+DOMAIN_WRITE_BATCH_SIZE = max(25_000, int(os.getenv("DOMAIN_WRITE_BATCH_SIZE", "25000")))
 
 
 def _batches(items: list[Any], size: int = DOMAIN_WRITE_BATCH_SIZE) -> Iterable[list[Any]]:
@@ -362,11 +365,7 @@ async def upsert_manual_domain_entities(
         ) VALUES (
             :project_id, :type_id, :external_key, :label, CAST(:attributes AS jsonb), :first_seen_at, :last_seen_at
         )
-        ON CONFLICT (project_id, type_id, external_key) DO UPDATE
-        SET label = EXCLUDED.label,
-            attributes = project_domain_entities.attributes || EXCLUDED.attributes,
-            last_seen_at = EXCLUDED.last_seen_at,
-            updated_at = NOW()
+        ON CONFLICT (project_id, type_id, external_key) DO NOTHING
     """), [{**row, "project_id": project_id, "first_seen_at": now, "last_seen_at": now} for row in rows])
     created = sum((row["type_id"], row["external_key"]) not in existing for row in rows)
     return {"requested": len(rows), "created": created, "existing": len(rows) - created}

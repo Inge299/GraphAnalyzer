@@ -40,7 +40,11 @@ IMPORT_GROUPED_PLUGIN_IDS = {
     "nodex_telecom_connections",
     "nodex_subscriber_ownership",
 }
-STREAM_IMPORT_BATCH_SIZE = max(2_000, int(os.getenv("IMPORT_STREAM_BATCH_SIZE", "10000")))
+# Normalized telecom input expands one raw CDR into several facts and relations.
+# 10k rows therefore incurred thousands of small PostgreSQL operations on a
+# modest closed-contour server.  Keep substantially larger source batches; the
+# domain writer still subdivides them to cap a single SQL payload.
+STREAM_IMPORT_BATCH_SIZE = max(50_000, int(os.getenv("IMPORT_STREAM_BATCH_SIZE", "50000")))
 
 
 def _next_normalized_batch(iterator):
