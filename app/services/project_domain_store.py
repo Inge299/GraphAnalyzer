@@ -24,6 +24,21 @@ from app.services.domain_model_service import get_domain_model
 _domain_store_ready = False
 _domain_store_lock = asyncio.Lock()
 
+# The primary and unique constraints stay in place during import.  These
+# secondary indexes are rebuilt once after the bulk write instead of being
+# maintained for every imported fact, relation and participant.
+_BULK_IMPORT_INDEXES = (
+    "ix_project_domain_entities_lookup",
+    "ix_project_domain_relations_lookup",
+    "ix_project_domain_relations_target",
+    "ix_project_domain_facts_lookup",
+    "ix_project_domain_facts_location_event_address",
+    "ix_project_domain_facts_observation_station",
+    "ix_project_domain_relations_source_time",
+    "ix_project_domain_relations_target_time",
+    "ix_project_domain_fact_participants_lookup",
+)
+
 
 def invalidate_project_domain_store_schema() -> None:
     """Request a registry refresh after domain metadata was edited."""
@@ -245,6 +260,38 @@ async def ensure_project_domain_store(db: AsyncSession) -> None:
                 SET label = EXCLUDED.label, definition = EXCLUDED.definition, updated_at = NOW()
             """), registry_rows)
         _domain_store_ready = True
+
+
+async def suspend_project_domain_import_indexes(db: AsyncSession) -> None:
+    """Suspend non-essential indexes inside an all-or-nothing import transaction."""
+
+    await ensure_project_domain_store(db)
+    for index_name in _BULK_IMPORT_INDEXES:
+        await db.execute(text(f"DROP INDEX IF EXISTS {index_name}"))
+
+
+async def restore_project_domain_import_indexes(db: AsyncSession) -> None:
+    """Restore analyst query indexes before the surrounding import commits."""
+
+    await db.execute(text("CREATE INDEX IF NOT EXISTS ix_project_domain_entities_lookup ON project_domain_entities (project_id, type_id, external_key)"))
+    await db.execute(text("CREATE INDEX IF NOT EXISTS ix_project_domain_relations_lookup ON project_domain_relations (project_id, relation_type, from_type, from_key)"))
+    await db.execute(text("CREATE INDEX IF NOT EXISTS ix_project_domain_relations_target ON project_domain_relations (project_id, relation_type, to_type, to_key)"))
+    await db.execute(text("CREATE INDEX IF NOT EXISTS ix_project_domain_facts_lookup ON project_domain_facts (project_id, fact_type, occurred_at)"))
+    await db.execute(text("""
+        CREATE INDEX IF NOT EXISTS ix_project_domain_facts_location_event_address
+        ON project_domain_facts (project_id)
+        WHERE fact_type = 'location_event'
+          AND NULLIF(BTRIM(payload ->> 'address'), '') IS NOT NULL
+    """))
+    await db.execute(text("""
+        CREATE INDEX IF NOT EXISTS ix_project_domain_facts_observation_station
+        ON project_domain_facts (project_id, BTRIM(payload ->> 'base_station'))
+        WHERE fact_type = 'telecom_base_station_observation'
+          AND NULLIF(BTRIM(payload ->> 'base_station'), '') IS NOT NULL
+    """))
+    await db.execute(text("CREATE INDEX IF NOT EXISTS ix_project_domain_relations_source_time ON project_domain_relations (project_id, relation_type, from_type, from_key, occurred_at)"))
+    await db.execute(text("CREATE INDEX IF NOT EXISTS ix_project_domain_relations_target_time ON project_domain_relations (project_id, relation_type, to_type, to_key, occurred_at)"))
+    await db.execute(text("CREATE INDEX IF NOT EXISTS ix_project_domain_fact_participants_lookup ON project_domain_fact_participants (project_id, entity_type, entity_key, fact_type, occurred_at, fact_id)"))
 
 async def clear_project_domain_store(db: AsyncSession, project_id: int) -> dict[str, int]:
     result_relations = await db.execute(text("DELETE FROM project_domain_relations WHERE project_id = :project_id"), {"project_id": project_id})

@@ -26,7 +26,12 @@ from app.services.project_data_import_plugins import (
 )
 from app.import_plugin_sdk import ProjectDataImportPlugin
 from app.services.project_data_import_pipeline import insert_normalized_source_rows
-from app.services.project_domain_store import clear_project_domain_store, ensure_project_domain_store
+from app.services.project_domain_store import (
+    clear_project_domain_store,
+    ensure_project_domain_store,
+    restore_project_domain_import_indexes,
+    suspend_project_domain_import_indexes,
+)
 from app.services.project_cell_tower_geocoding_service import (
     clear_project_cell_tower_geocoding,
     enrich_project_domain_addresses,
@@ -216,6 +221,7 @@ async def _load_project_data_from_collected_files(
         groups.setdefault(match.plugin_id, []).append(input_file)
 
     await ensure_project_domain_store(db)
+    await suspend_project_domain_import_indexes(db)
     total_entities = total_facts = total_relations = 0
     total_sources: dict[str, int] = {}
     ownership_addresses: dict[str, dict[str, str]] = {}
@@ -340,6 +346,8 @@ async def _load_project_data_from_collected_files(
 
     if progress_callback:
         await progress_callback(90, "Завершение импорта")
+
+    await restore_project_domain_import_indexes(db)
 
     load_log = {
         "mode": mode,
