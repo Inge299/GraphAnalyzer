@@ -39,6 +39,6 @@ Copy-Item -LiteralPath 'docs\closed-contour-install.md' -Destination (Join-Path 
 Get-ChildItem -LiteralPath $OutputDirectory -File |
   Get-FileHash -Algorithm SHA256 |
   ForEach-Object { "{0}  {1}" -f $_.Hash.ToLowerInvariant(), $_.Path.Substring($OutputDirectory.Length + 1) } |
-  Set-Content -LiteralPath (Join-Path $OutputDirectory 'SHA256SUMS.txt') -Encoding utf8
+  Set-Content -LiteralPath (Join-Path $OutputDirectory 'SHA256SUMS.txt') -Encoding ascii
 
 Write-Host "Delivery is ready: $OutputDirectory"

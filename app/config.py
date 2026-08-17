@@ -76,6 +76,7 @@ class Settings(BaseSettings):
     GEOCODER_USER_AGENT: str = "Nodex/0.1"
     GEOCODER_TIMEOUT_SECONDS: int = 10
     GEOCODER_MIN_INTERVAL_SECONDS: float = 1.0
+    GEOCODER_MAX_CONCURRENCY: int = 1
 
     # External reference-provider. The cell-tower catalogue is intentionally
     # stored outside the project database and queried by analysis plugins.

@@ -56,7 +56,7 @@ node_port="${node_port:-8080}"
 if command -v curl >/dev/null 2>&1; then
   curl -fsS "http://127.0.0.1:${node_port}/health" || true
 fi
-'@ | Set-Content -LiteralPath (Join-Path $OutputDirectory 'install-update.sh') -NoNewline -Encoding utf8
+'@ | Set-Content -LiteralPath (Join-Path $OutputDirectory 'install-update.sh') -NoNewline -Encoding ascii
 
 @'
 Nodex update for Ubuntu (offline)
@@ -84,7 +84,7 @@ an images.tar file.
 The script loads images, backs up the current plugins directory as
 plugins.before-YYYYMMDD-HHMMSS, replaces bundled plugins and restarts only app
 and frontend with --no-build. PostgreSQL, Redis and project data are preserved.
-'@ | Set-Content -LiteralPath (Join-Path $OutputDirectory 'README.txt') -NoNewline -Encoding utf8
+'@ | Set-Content -LiteralPath (Join-Path $OutputDirectory 'README.txt') -NoNewline -Encoding ascii
 
 if ($IncludeImages) {
   Write-Host 'Saving update Docker images...'

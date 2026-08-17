@@ -11,6 +11,7 @@ import asyncio
 from datetime import datetime
 import hashlib
 import json
+import os
 import re
 from typing import Any, Iterable
 
@@ -55,7 +56,10 @@ def _canonical_entity_key(type_id: str, value: Any) -> str:
     return key
 
 
-def _batches(items: list[Any], size: int = 1_000) -> Iterable[list[Any]]:
+DOMAIN_WRITE_BATCH_SIZE = max(1_000, int(os.getenv("DOMAIN_WRITE_BATCH_SIZE", "10000")))
+
+
+def _batches(items: list[Any], size: int = DOMAIN_WRITE_BATCH_SIZE) -> Iterable[list[Any]]:
     for offset in range(0, len(items), size):
         yield items[offset:offset + size]
 
@@ -194,6 +198,18 @@ async def ensure_project_domain_store(db: AsyncSession) -> None:
         await db.execute(text("CREATE INDEX IF NOT EXISTS ix_project_domain_relations_lookup ON project_domain_relations (project_id, relation_type, from_type, from_key)"))
         await db.execute(text("CREATE INDEX IF NOT EXISTS ix_project_domain_relations_target ON project_domain_relations (project_id, relation_type, to_type, to_key)"))
         await db.execute(text("CREATE INDEX IF NOT EXISTS ix_project_domain_facts_lookup ON project_domain_facts (project_id, fact_type, occurred_at)"))
+        await db.execute(text("""
+            CREATE INDEX IF NOT EXISTS ix_project_domain_facts_location_event_address
+            ON project_domain_facts (project_id)
+            WHERE fact_type = 'location_event'
+              AND NULLIF(BTRIM(payload ->> 'address'), '') IS NOT NULL
+        """))
+        await db.execute(text("""
+            CREATE INDEX IF NOT EXISTS ix_project_domain_facts_observation_station
+            ON project_domain_facts (project_id, BTRIM(payload ->> 'base_station'))
+            WHERE fact_type = 'telecom_base_station_observation'
+              AND NULLIF(BTRIM(payload ->> 'base_station'), '') IS NOT NULL
+        """))
         await db.execute(text("CREATE INDEX IF NOT EXISTS ix_project_domain_relations_source_time ON project_domain_relations (project_id, relation_type, from_type, from_key, occurred_at)"))
         await db.execute(text("CREATE INDEX IF NOT EXISTS ix_project_domain_relations_target_time ON project_domain_relations (project_id, relation_type, to_type, to_key, occurred_at)"))
         await db.execute(text("CREATE INDEX IF NOT EXISTS ix_project_domain_fact_participants_lookup ON project_domain_fact_participants (project_id, entity_type, entity_key, fact_type, occurred_at, fact_id)"))

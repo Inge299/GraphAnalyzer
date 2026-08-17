@@ -40,7 +40,7 @@ IMPORT_GROUPED_PLUGIN_IDS = {
     "nodex_telecom_connections",
     "nodex_subscriber_ownership",
 }
-STREAM_IMPORT_BATCH_SIZE = 2_000
+STREAM_IMPORT_BATCH_SIZE = max(2_000, int(os.getenv("IMPORT_STREAM_BATCH_SIZE", "10000")))
 
 
 def _next_normalized_batch(iterator):

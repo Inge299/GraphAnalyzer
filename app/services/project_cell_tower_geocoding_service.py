@@ -136,6 +136,7 @@ async def clear_project_cell_tower_geocoding(db: AsyncSession, project_id: int) 
 
 async def _collect_candidates(db: AsyncSession, project_id: int) -> list[dict[str, str]]:
     result = await db.execute(text("""
+        WITH raw_candidates AS (
         SELECT payload ->> 'mcc' AS mcc, payload ->> 'mnc' AS mnc,
                payload ->> 'lac' AS lac, payload ->> 'bs' AS cid,
                payload ->> 'address' AS address
@@ -164,6 +165,9 @@ async def _collect_candidates(db: AsyncSession, project_id: int) -> list[dict[st
         FROM project_domain_relations
         WHERE project_id = :project_id AND relation_type = 'base_station_location'
           AND NULLIF(BTRIM(to_key), '') IS NOT NULL
+        )
+        SELECT DISTINCT mcc, mnc, lac, cid, address
+        FROM raw_candidates
     """), {"project_id": project_id})
     unique: dict[tuple[str, str, str, str, str], dict[str, str]] = {}
     for row in result.mappings():
@@ -377,6 +381,8 @@ async def _write_common_reference(db: AsyncSession, project_id: int, candidates:
 
 async def _enrich_project_cell_towers(db: AsyncSession, project_id: int, progress: ProgressCallback | None = None) -> dict[str, int]:
     await ensure_project_cell_tower_geocoding_tables(db)
+    if progress:
+        await progress(2, "Сбор кандидатов БС")
     candidates = await _collect_candidates(db, project_id)
     if progress:
         await progress(8, "\u0410\u0433\u0440\u0435\u0433\u0430\u0446\u0438\u044f \u0430\u0434\u0440\u0435\u0441\u043e\u0432 \u0411\u0421")
@@ -409,7 +415,9 @@ async def _enrich_project_cell_towers(db: AsyncSession, project_id: int, progres
     geocoder = NominatimGeocoder()
     resolved, not_found, failed = 0, 0, 0
     total = max(1, len(pending))
-    for index, (address_norm, address) in enumerate(pending.items(), start=1):
+    concurrency = max(1, min(16, int(settings.GEOCODER_MAX_CONCURRENCY or 1)))
+
+    async def resolve_address(address_norm: str, address: str) -> tuple[str, str, Any | None, str, bool]:
         try:
             found = await geocoder.search(address)
             if found is not None and not is_concrete_geocoded_address(getattr(found, "display_name", None)):
@@ -417,14 +425,26 @@ async def _enrich_project_cell_towers(db: AsyncSession, project_id: int, progres
                 status = "not_precise"
             else:
                 status = "resolved" if found else "not_found"
-            await _upsert_cache(db, address_norm, address, found, status)
-            cache[address_norm] = {"status": status, "latitude": getattr(found, "latitude", None), "longitude": getattr(found, "longitude", None), "display_name": getattr(found, "display_name", None)}
-            resolved += int(status == "resolved")
-            not_found += int(status in {"not_found", "not_precise"})
+            return address_norm, address, found, status, False
         except Exception:
-            failed += 1
-        if progress:
-            await progress(12 + int(78 * index / total), f"\u0413\u0435\u043e\u043a\u043e\u0434\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u0435 \u0430\u0434\u0440\u0435\u0441\u043e\u0432: {index} / {len(pending)}")
+            return address_norm, address, None, "failed", True
+
+    processed = 0
+    pending_items = list(pending.items())
+    for offset in range(0, len(pending_items), concurrency):
+        chunk = pending_items[offset:offset + concurrency]
+        outcomes = await asyncio.gather(*(resolve_address(address_norm, address) for address_norm, address in chunk))
+        for address_norm, address, found, status, request_failed in outcomes:
+            processed += 1
+            if request_failed:
+                failed += 1
+            else:
+                await _upsert_cache(db, address_norm, address, found, status)
+                cache[address_norm] = {"status": status, "latitude": getattr(found, "latitude", None), "longitude": getattr(found, "longitude", None), "display_name": getattr(found, "display_name", None)}
+                resolved += int(status == "resolved")
+                not_found += int(status in {"not_found", "not_precise"})
+            if progress:
+                await progress(12 + int(78 * processed / total), f"\u0413\u0435\u043e\u043a\u043e\u0434\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u0435 \u0430\u0434\u0440\u0435\u0441\u043e\u0432: {processed} / {len(pending)}")
     written = 0
     common_reference_candidates: list[dict[str, Any]] = []
     for item in active:

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as maplibregl from 'maplibre-gl';
 import { LngLatBounds, type Map as MapLibreMap, type MapLayerMouseEvent } from 'maplibre-gl';
-import { Protocol } from 'pmtiles';
+import { PMTiles, Protocol } from 'pmtiles';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import type { ApiArtifact } from '../../types/api';
 import { formatDateTime } from '../../utils/formatters';
@@ -80,21 +80,43 @@ const makeFallbackStyle = (pmtilesUrl: string): maplibregl.StyleSpecification =>
       ? { osm: { type: 'raster', tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize: 256, maxzoom: 19, attribution: '&copy; OpenStreetMap contributors' } }
       : {},
   ...(defaultGlyphsUrl ? { glyphs: defaultGlyphsUrl } : {}),
-  layers: pmtilesUrl ? [
-    { id: 'background', type: 'background', paint: { 'background-color': '#f2efe9' } },
-    { id: 'water', type: 'fill', source: 'russia', 'source-layer': 'water', paint: { 'fill-color': '#a0c8e0' } },
-    { id: 'water-name', type: 'symbol', source: 'russia', 'source-layer': 'water_name', layout: { 'text-field': ['coalesce', ['get', 'name:ru'], ['get', 'name']], 'text-font': ['Open Sans Regular'], 'text-size': 11, 'symbol-placement': 'line' }, paint: { 'text-color': '#4c7899', 'text-halo-color': '#ffffff', 'text-halo-width': 1 } },
-    { id: 'landuse', type: 'fill', source: 'russia', 'source-layer': 'landuse', paint: { 'fill-color': '#d0e0b0', 'fill-opacity': 0.72 } },
-    { id: 'boundary', type: 'line', source: 'russia', 'source-layer': 'boundary', paint: { 'line-color': '#8b8b8b', 'line-width': 1, 'line-dasharray': [2, 2] } },
-    { id: 'roads', type: 'line', source: 'russia', 'source-layer': 'transportation', paint: { 'line-color': '#888888', 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 0.6, 12, 2.4, 17, 4] } },
-    { id: 'roads-name', type: 'symbol', source: 'russia', 'source-layer': 'transportation_name', layout: { 'text-field': ['coalesce', ['get', 'name:ru'], ['get', 'name']], 'text-font': ['Open Sans Regular'], 'text-size': 11, 'symbol-placement': 'line' }, paint: { 'text-color': '#595959', 'text-halo-color': '#ffffff', 'text-halo-width': 1 } },
-    { id: 'buildings', type: 'fill', source: 'russia', 'source-layer': 'building', minzoom: 13, paint: { 'fill-color': '#d4b28c', 'fill-opacity': 0.5, 'fill-outline-color': '#c39f79' } },
-    { id: 'place-labels', type: 'symbol', source: 'russia', 'source-layer': 'place', layout: { 'text-field': ['coalesce', ['get', 'name:ru'], ['get', 'name']], 'text-font': ['Open Sans Regular'], 'text-size': ['interpolate', ['linear'], ['zoom'], 5, 11, 12, 16], 'text-max-width': 8 }, paint: { 'text-color': '#303030', 'text-halo-color': '#ffffff', 'text-halo-width': 1.4 } },
-    { id: 'housenumbers', type: 'symbol', source: 'russia', 'source-layer': 'housenumber', minzoom: 17, layout: { 'text-field': ['get', 'housenumber'], 'text-font': ['Open Sans Regular'], 'text-size': 10 }, paint: { 'text-color': '#222222', 'text-halo-color': '#ffffff', 'text-halo-width': 1.2 } },
-  ] : mapMode === 'online'
+  // Layer names in PMTiles are not standardised. They are created from archive
+  // metadata after the style has loaded, so any valid internal PMTiles archive
+  // gets a useful base map instead of an empty canvas.
+  layers: pmtilesUrl ? [{ id: 'background', type: 'background', paint: { 'background-color': '#f2efe9' } }] : mapMode === 'online'
     ? [{ id: 'background', type: 'background', paint: { 'background-color': '#f2efe9' } }, { id: 'osm-raster', type: 'raster', source: 'osm' }]
     : [{ id: 'background', type: 'background', paint: { 'background-color': '#f2efe9' } }],
 });
+
+type PmtilesMetadata = { vector_layers?: Array<{ id?: string }> };
+
+const baseLayerPalette = (layerName: string) => {
+  const normalized = layerName.toLowerCase();
+  if (/(water|river|lake|ocean)/.test(normalized)) return { fill: '#9fc7df', line: '#7aaac8', point: '#6ca8ca' };
+  if (/(park|landuse|landcover|wood|forest|green)/.test(normalized)) return { fill: '#c9dfb2', line: '#8db77d', point: '#79a86b' };
+  if (/(road|transport|street|rail|route)/.test(normalized)) return { fill: '#eee9df', line: '#8d8d8d', point: '#737373' };
+  if (/(building|house)/.test(normalized)) return { fill: '#e6d3b9', line: '#c7ab88', point: '#bc9568' };
+  if (/(boundary|admin|border)/.test(normalized)) return { fill: '#eee9e4', line: '#9b8b99', point: '#8d7789' };
+  return { fill: '#e6e2d8', line: '#a9a39a', point: '#958f87' };
+};
+
+const addPmtilesBaseLayers = async (map: MapLibreMap, pmtilesUrl: string) => {
+  try {
+    const metadata = await new PMTiles(pmtilesUrl).getMetadata() as PmtilesMetadata;
+    const layerNames = [...new Set((metadata.vector_layers || []).map((item) => String(item.id || '').trim()).filter(Boolean))];
+    for (const [index, layerName] of layerNames.entries()) {
+      const colors = baseLayerPalette(layerName);
+      const safeId = `pmtiles-${index}-${layerName.replace(/[^a-z0-9_-]+/gi, '-').toLowerCase()}`;
+      const beforeId = map.getLayer('routes-line') ? 'routes-line' : undefined;
+      map.addLayer({ id: `${safeId}-fill`, type: 'fill', source: 'russia', 'source-layer': layerName, filter: ['==', '$type', 'Polygon'], paint: { 'fill-color': colors.fill, 'fill-opacity': 0.74 } }, beforeId);
+      map.addLayer({ id: `${safeId}-line`, type: 'line', source: 'russia', 'source-layer': layerName, filter: ['==', '$type', 'LineString'], paint: { 'line-color': colors.line, 'line-width': ['interpolate', ['linear'], ['zoom'], 4, 0.45, 12, 1.6, 17, 3.2] } }, beforeId);
+      map.addLayer({ id: `${safeId}-point`, type: 'circle', source: 'russia', 'source-layer': layerName, filter: ['==', '$type', 'Point'], paint: { 'circle-color': colors.point, 'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 1, 12, 3, 17, 5], 'circle-opacity': 0.78 } }, beforeId);
+    }
+  } catch (error) {
+    // The application overlays stay usable when a cartographic archive is unavailable.
+    console.warn('Unable to build PMTiles base map', error);
+  }
+};
 
 const updateMapOverlays = (map: MapLibreMap, groups: Array<[string, MapPoint[]]>, heatmap: boolean, fitToRoute = false) => {
   if (!map.getSource('locations') || !map.getSource('routes') || !map.getSource('heat-points')) return;
@@ -415,6 +437,7 @@ const MapView: React.FC<MapViewProps> = ({ artifact, dataOverride, titleOverride
       map.addSource('heat-points', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
       map.addLayer({ id: 'routes-line', type: 'line', source: 'routes', paint: { 'line-color': '#1d4ed8', 'line-width': 5, 'line-opacity': 0.9 } });
       map.addLayer({ id: 'locations-point', type: 'circle', source: 'locations', paint: { 'circle-radius': 8, 'circle-color': '#ffffff', 'circle-stroke-color': '#1d4ed8', 'circle-stroke-width': 3 } });
+      if (pmtilesUrl && typeof style !== 'string') void addPmtilesBaseLayers(map, pmtilesUrl);
       map.addLayer({
         id: 'heatmap-layer',
         type: 'heatmap',

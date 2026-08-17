@@ -84,36 +84,38 @@ class NominatimGeocoder:
         if not settings.GEOCODER_ENABLED or not query:
             return None
 
-        async with self._lock:
-            async with httpx.AsyncClient(timeout=settings.GEOCODER_TIMEOUT_SECONDS) as client:
-                for candidate in address_query_variants(query):
+        async with httpx.AsyncClient(timeout=settings.GEOCODER_TIMEOUT_SECONDS) as client:
+            for candidate in address_query_variants(query):
+                # Serialise only the rate guard. A trusted internal geocoder can
+                # serve several requests concurrently when no interval is set.
+                async with self._lock:
                     elapsed = monotonic() - self._last_request_at
                     wait_for = max(0.0, settings.GEOCODER_MIN_INTERVAL_SECONDS - elapsed)
                     if wait_for:
                         await asyncio.sleep(wait_for)
                     self._last_request_at = monotonic()
-                    response = await client.get(
-                        f"{self.base_url}/search",
-                        params={"q": candidate, "format": "jsonv2", "limit": 1, "countrycodes": "ru"},
-                        headers={"User-Agent": settings.GEOCODER_USER_AGENT},
+                response = await client.get(
+                    f"{self.base_url}/search",
+                    params={"q": candidate, "format": "jsonv2", "limit": 1, "countrycodes": "ru"},
+                    headers={"User-Agent": settings.GEOCODER_USER_AGENT},
+                )
+                response.raise_for_status()
+                payload: Any = response.json()
+                if not isinstance(payload, list) or not payload or not isinstance(payload[0], dict):
+                    continue
+                item = payload[0]
+                display_name = str(item.get("display_name") or candidate)
+                locality_match = re.search(r"(?:\b\u0433\.?\s+|\b\u0433\u043e\u0440\u043e\u0434\s+)([^,]+)", query, flags=re.IGNORECASE)
+                locality = locality_match.group(1).strip() if locality_match else ""
+                if locality and locality.casefold() not in display_name.casefold():
+                    continue
+                try:
+                    return GeocodedAddress(
+                        latitude=float(item["lat"]),
+                        longitude=float(item["lon"]),
+                        display_name=display_name,
+                        provider=self.base_url,
                     )
-                    response.raise_for_status()
-                    payload: Any = response.json()
-                    if not isinstance(payload, list) or not payload or not isinstance(payload[0], dict):
-                        continue
-                    item = payload[0]
-                    display_name = str(item.get("display_name") or candidate)
-                    locality_match = re.search(r"(?:\b\u0433\.?\s+|\b\u0433\u043e\u0440\u043e\u0434\s+)([^,]+)", query, flags=re.IGNORECASE)
-                    locality = locality_match.group(1).strip() if locality_match else ""
-                    if locality and locality.casefold() not in display_name.casefold():
-                        continue
-                    try:
-                        return GeocodedAddress(
-                            latitude=float(item["lat"]),
-                            longitude=float(item["lon"]),
-                            display_name=display_name,
-                            provider=self.base_url,
-                        )
-                    except (KeyError, TypeError, ValueError):
-                        continue
+                except (KeyError, TypeError, ValueError):
+                    continue
         return None
