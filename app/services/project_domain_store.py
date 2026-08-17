@@ -614,11 +614,15 @@ async def mirror_source_rows(
     now = datetime.utcnow()
     entity_rows = [{**item, "project_id": project_id, "first_seen_at": now, "last_seen_at": now} for item in entities.values()]
     entity_insert = text("""
-        INSERT INTO project_domain_entities (
+        WITH source_rows AS (
+          SELECT * FROM json_to_recordset(CAST(:rows AS json)) AS r(
+            project_id INTEGER, type_id TEXT, external_key TEXT, label TEXT,
+            attributes TEXT, first_seen_at TIMESTAMP, last_seen_at TIMESTAMP
+          )
+        ) INSERT INTO project_domain_entities (
             project_id, type_id, external_key, label, attributes, first_seen_at, last_seen_at
-        ) VALUES (
-            :project_id, :type_id, :external_key, :label, CAST(:attributes AS jsonb), :first_seen_at, :last_seen_at
-        )
+        ) SELECT project_id, type_id, external_key, label, CAST(attributes AS jsonb), first_seen_at, last_seen_at
+          FROM source_rows
         ON CONFLICT (project_id, type_id, external_key) DO UPDATE
         SET label = EXCLUDED.label,
             attributes = project_domain_entities.attributes || EXCLUDED.attributes,
@@ -626,16 +630,23 @@ async def mirror_source_rows(
             updated_at = NOW()
     """)
     for batch in _batches(entity_rows):
-        await db.execute(entity_insert, batch)
+        await db.execute(entity_insert, {"rows": json.dumps(batch, ensure_ascii=False, default=str)})
 
     fact_rows = list(facts.values())
+    fact_insert_rows = [{key: value for key, value in fact.items() if key != "participants"} for fact in fact_rows]
     fact_insert = text("""
-        INSERT INTO project_domain_facts (project_id, load_batch_id, fact_type, occurred_at, payload, fact_key)
-        VALUES (:project_id, :load_batch_id, :fact_type, :occurred_at, CAST(:payload AS jsonb), :fact_key)
+        WITH source_rows AS (
+          SELECT * FROM json_to_recordset(CAST(:rows AS json)) AS r(
+            project_id INTEGER, load_batch_id TEXT, fact_type TEXT, occurred_at TIMESTAMP,
+            payload TEXT, fact_key TEXT
+          )
+        ) INSERT INTO project_domain_facts (project_id, load_batch_id, fact_type, occurred_at, payload, fact_key)
+        SELECT project_id, load_batch_id, fact_type, occurred_at, CAST(payload AS jsonb), fact_key
+          FROM source_rows
         ON CONFLICT (project_id, fact_type, fact_key) DO NOTHING
     """)
-    for batch in _batches(fact_rows):
-        await db.execute(fact_insert, batch)
+    for batch in _batches(fact_insert_rows):
+        await db.execute(fact_insert, {"rows": json.dumps(batch, ensure_ascii=False, default=str)})
 
     fact_ids: dict[tuple[str, str], int] = {}
     facts_by_type: dict[str, list[dict[str, Any]]] = {}
@@ -673,26 +684,37 @@ async def mirror_source_rows(
                 "occurred_at": fact["occurred_at"],
             })
     participant_insert = text("""
-        INSERT INTO project_domain_fact_participants (
+        WITH source_rows AS (
+          SELECT * FROM json_to_recordset(CAST(:rows AS json)) AS r(
+            fact_id BIGINT, project_id INTEGER, fact_type TEXT, entity_type TEXT,
+            entity_key TEXT, role TEXT, occurred_at TIMESTAMP
+          )
+        ) INSERT INTO project_domain_fact_participants (
             fact_id, project_id, fact_type, entity_type, entity_key, role, occurred_at
-        ) VALUES (
-            :fact_id, :project_id, :fact_type, :entity_type, :entity_key, :role, :occurred_at
-        ) ON CONFLICT DO NOTHING
+        ) SELECT fact_id, project_id, fact_type, entity_type, entity_key, role, occurred_at
+          FROM source_rows
+        ON CONFLICT DO NOTHING
     """)
     for batch in _batches(participant_rows):
-        await db.execute(participant_insert, batch)
+        await db.execute(participant_insert, {"rows": json.dumps(batch, ensure_ascii=False, default=str)})
 
     relation_insert = text("""
-        INSERT INTO project_domain_relations (
+        WITH source_rows AS (
+          SELECT * FROM json_to_recordset(CAST(:rows AS json)) AS r(
+            project_id INTEGER, load_batch_id TEXT, relation_type TEXT, from_type TEXT,
+            from_key TEXT, to_type TEXT, to_key TEXT, occurred_at TIMESTAMP,
+            directed BOOLEAN, attributes TEXT, fact_key TEXT
+          )
+        ) INSERT INTO project_domain_relations (
             project_id, load_batch_id, relation_type, from_type, from_key, to_type, to_key,
             occurred_at, directed, attributes, fact_key
-        ) VALUES (
-            :project_id, :load_batch_id, :relation_type, :from_type, :from_key, :to_type, :to_key,
-            :occurred_at, :directed, CAST(:attributes AS jsonb), :fact_key
-        ) ON CONFLICT (project_id, relation_type, fact_key) DO NOTHING
+        ) SELECT project_id, load_batch_id, relation_type, from_type, from_key, to_type, to_key,
+                 occurred_at, directed, CAST(attributes AS jsonb), fact_key
+          FROM source_rows
+        ON CONFLICT (project_id, relation_type, fact_key) DO NOTHING
     """)
     for batch in _batches(relations):
-        await db.execute(relation_insert, batch)
+        await db.execute(relation_insert, {"rows": json.dumps(batch, ensure_ascii=False, default=str)})
 
     # Report this write batch only. Querying the whole load batch here turns a
     # multi-part import into an increasingly expensive repeated aggregation.
