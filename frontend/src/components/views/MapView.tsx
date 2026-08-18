@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as maplibregl from 'maplibre-gl';
 import { LngLatBounds, type Map as MapLibreMap, type MapLayerMouseEvent } from 'maplibre-gl';
-import { Protocol } from 'pmtiles';
 import pmtilesWorkerUrl from '../../maplibre-pmtiles-worker?worker&url';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import type { ApiArtifact } from '../../types/api';
@@ -74,13 +73,13 @@ const mapMode = runtimeConfig.mapMode || (defaultPmtilesUrl ? 'local' : 'online'
 // Vite so the worker is copied to the production assets with the right MIME
 // type instead of nginx returning the SPA index page.
 maplibregl.setWorkerUrl(pmtilesWorkerUrl);
-const pmtilesProtocol = new Protocol();
-maplibregl.addProtocol('pmtiles', pmtilesProtocol.tile);
-
 const makeFallbackStyle = (pmtilesUrl: string): maplibregl.StyleSpecification => ({
   version: 8,
   sources: pmtilesUrl
-    ? { russia: { type: 'vector', url: 'pmtiles://' + pmtilesUrl } }
+    // The browser uses the standard MVT URL. The application reads PMTiles
+    // server-side, which is reliable in closed networks and avoids a custom
+    // protocol inside a WebWorker.
+    ? { russia: { type: 'vector', tiles: ['/api/v1/map/tiles/{z}/{x}/{y}.pbf'], minzoom: 0, maxzoom: 14, bounds: [-180, 35.6140399, 180, 83.8313299] } }
     : mapMode === 'online'
       ? { osm: { type: 'raster', tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize: 256, maxzoom: 19, attribution: '&copy; OpenStreetMap contributors' } }
       : {},

@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     LOG_LEVEL: str = "INFO"
     API_V1_PREFIX: str = "/api/v1"
+    # Internal PMTiles archive used by the closed-contour basemap proxy.
+    MAP_PMTILES_URL: str = ""
 
     # CORS
     BACKEND_CORS_ORIGINS: List[str] = [

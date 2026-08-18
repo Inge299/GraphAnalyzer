@@ -13,6 +13,7 @@ from app.database import engine, Base
 # Import all routers
 from app.api.routes import projects, schema, nodes, edges, graphs, project_data, project_domain, console
 from app.routers import plugins, analytics, domain_model
+from app.routers import map_tiles
 from app.api.routes import artifacts
 from app.api.routes import history
 
@@ -131,6 +132,7 @@ app.include_router(console.router, prefix="/api/v1", tags=["console"])
 app.include_router(plugins.router, prefix="/api/v1/plugins", tags=["plugins"])
 app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["analytics"])
 app.include_router(domain_model.router, prefix="/api/v1/config", tags=["domain-model"])
+app.include_router(map_tiles.router, prefix="/api/v1/map", tags=["map"])
 app.include_router(artifacts.router, prefix="/api/v2", tags=["artifacts"])
 app.include_router(history.router, prefix="/api/v2", tags=["history"])
 
