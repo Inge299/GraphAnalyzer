@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as maplibregl from 'maplibre-gl';
 import { LngLatBounds, type Map as MapLibreMap, type MapLayerMouseEvent } from 'maplibre-gl';
 import { Protocol } from 'pmtiles';
+import pmtilesWorkerUrl from '../../maplibre-pmtiles-worker?worker&url';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import type { ApiArtifact } from '../../types/api';
 import { formatDateTime } from '../../utils/formatters';
@@ -72,7 +73,7 @@ const mapMode = runtimeConfig.mapMode || (defaultPmtilesUrl ? 'local' : 'online'
 // MapLibre's default worker URL is not emitted by Vite.  Resolve it through
 // Vite so the worker is copied to the production assets with the right MIME
 // type instead of nginx returning the SPA index page.
-maplibregl.setWorkerUrl(new URL('maplibre-gl/dist/maplibre-gl-worker.mjs', import.meta.url).toString());
+maplibregl.setWorkerUrl(pmtilesWorkerUrl);
 const pmtilesProtocol = new Protocol();
 maplibregl.addProtocol('pmtiles', pmtilesProtocol.tile);
 
