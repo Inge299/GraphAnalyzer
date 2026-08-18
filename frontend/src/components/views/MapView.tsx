@@ -79,18 +79,7 @@ maplibregl.addProtocol('pmtiles', pmtilesProtocol.tile);
 const makeFallbackStyle = (pmtilesUrl: string): maplibregl.StyleSpecification => ({
   version: 8,
   sources: pmtilesUrl
-    ? {
-      // Do not rely on the PMTiles TileJSON adapter.  MapLibre 6 can consume
-      // the PMTiles protocol directly and this keeps the exact MVT request
-      // path used by the supplied v3/gzip archive.
-      russia: {
-        type: 'vector',
-        tiles: ['pmtiles://' + pmtilesUrl + '/{z}/{x}/{y}'],
-        minzoom: 0,
-        maxzoom: 14,
-        bounds: [-180, 35.6140399, 180, 83.8313299],
-      },
-    }
+    ? { russia: { type: 'vector', url: 'pmtiles://' + pmtilesUrl } }
     : mapMode === 'online'
       ? { osm: { type: 'raster', tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize: 256, maxzoom: 19, attribution: '&copy; OpenStreetMap contributors' } }
       : {},
