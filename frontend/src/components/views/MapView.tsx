@@ -406,7 +406,19 @@ const MapView: React.FC<MapViewProps> = ({ artifact, dataOverride, titleOverride
     const container = mapContainerRef.current;
     if (!container || mapRef.current || !points.length) return;
 
-    const map = new maplibregl.Map({ container, style, zoom: 9, maxZoom: pmtilesUrl ? 22 : 19, canvasContextAttributes: { preserveDrawingBuffer: true } });
+    // A local PMTiles archive covers Russia only.  Starting MapLibre at its
+    // default [0, 0] can leave the vector source outside its bounds before
+    // the asynchronous overlay code fits the camera.  Initialise directly at
+    // the analysed data point so base tiles are requested immediately.
+    const initialPoint = points[0];
+    const map = new maplibregl.Map({
+      container,
+      style,
+      center: [initialPoint.longitude, initialPoint.latitude],
+      zoom: 9,
+      maxZoom: pmtilesUrl ? 22 : 19,
+      canvasContextAttributes: { preserveDrawingBuffer: true },
+    });
     let overlaysInstalled = false;
     setMapError(null);
     map.addControl(new maplibregl.NavigationControl(), 'top-right');
