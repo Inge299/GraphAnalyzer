@@ -385,10 +385,10 @@ const MapView: React.FC<MapViewProps> = ({ artifact, dataOverride, titleOverride
   }, [visiblePoints, selected]);
 
   const pmtilesUrl = data.pmtiles_url || defaultPmtilesUrl;
-  // Preserve the pre-runtime-config precedence: an artifact can carry the
-  // style that was used when it was produced.  The closed-contour mode must
-  // not suppress that local style merely because MAP_MODE=local.
-  const style = data.map_style_url || defaultStyleUrl || makeFallbackStyle(pmtilesUrl);
+  // In the closed contour, artifacts may retain a legacy online style.  It
+  // can refer to unavailable terrain/sources, so prefer the configured local
+  // PMTiles style.  Artifact styles are only meaningful in online mode.
+  const style = defaultStyleUrl || (mapMode === 'online' ? data.map_style_url : '') || makeFallbackStyle(pmtilesUrl);
 
   useEffect(() => {
     if (!visiblePoints.length) {
