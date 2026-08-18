@@ -69,6 +69,7 @@ const defaultPmtilesUrl = runtimeConfig.pmtilesUrl || import.meta.env.VITE_PMTIL
 const defaultStyleUrl = runtimeConfig.mapStyleUrl || import.meta.env.VITE_MAP_STYLE_URL || '';
 const defaultGlyphsUrl = runtimeConfig.mapGlyphsUrl || import.meta.env.VITE_MAP_GLYPHS_URL || '';
 const mapMode = runtimeConfig.mapMode || (defaultPmtilesUrl ? 'local' : 'online');
+const localVectorTilesUrl = `${window.location.origin}/api/v1/map/tiles/{z}/{x}/{y}.pbf`;
 // MapLibre's default worker URL is not emitted by Vite.  Resolve it through
 // Vite so the worker is copied to the production assets with the right MIME
 // type instead of nginx returning the SPA index page.
@@ -79,7 +80,7 @@ const makeFallbackStyle = (pmtilesUrl: string): maplibregl.StyleSpecification =>
     // The browser uses the standard MVT URL. The application reads PMTiles
     // server-side, which is reliable in closed networks and avoids a custom
     // protocol inside a WebWorker.
-    ? { russia: { type: 'vector', tiles: ['/api/v1/map/tiles/{z}/{x}/{y}.pbf'], minzoom: 0, maxzoom: 14, bounds: [-180, 35.6140399, 180, 83.8313299] } }
+    ? { russia: { type: 'vector', tiles: [localVectorTilesUrl], scheme: 'xyz', minzoom: 0, maxzoom: 14 } }
     : mapMode === 'online'
       ? { osm: { type: 'raster', tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize: 256, maxzoom: 19, attribution: '&copy; OpenStreetMap contributors' } }
       : {},
