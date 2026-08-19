@@ -9,6 +9,14 @@ config_file=/usr/share/nginx/html/runtime-config.js
 nginx_config=/etc/nginx/conf.d/default.conf
 pmtiles_upstream="${MAP_PMTILES_URL:-}"
 pmtiles_runtime_url="$pmtiles_upstream"
+map_mode="${MAP_MODE:-online}"
+
+# docker-compose.closed.yml sets this flag deliberately.  It prevents a
+# legacy .env.closed value or artifact from activating an online terrain
+# style in an air-gapped installation.
+if [ "${NODEX_FORCE_LOCAL_MAP:-}" = "1" ]; then
+  map_mode='local'
+fi
 
 # Fetch the archive through the Nodex frontend.  This avoids depending on
 # CORS response-header exposure on the separate internal map server.
@@ -22,7 +30,7 @@ sed -i "s|__NODEX_PMTILES_UPSTREAM__|$escaped_pmtiles_upstream|g" "$nginx_config
 
 {
   printf 'window.__NODEX_RUNTIME_CONFIG__ = Object.freeze({\n'
-  printf "  mapMode: '%s',\n" "$(json_escape "${MAP_MODE:-online}")"
+  printf "  mapMode: '%s',\n" "$(json_escape "$map_mode")"
   printf "  pmtilesUrl: '%s',\n" "$(json_escape "$pmtiles_runtime_url")"
   printf "  mapStyleUrl: '%s',\n" "$(json_escape "${MAP_STYLE_URL:-}")"
   printf "  mapGlyphsUrl: '%s',\n" "$(json_escape "${MAP_GLYPHS_URL:-}")"

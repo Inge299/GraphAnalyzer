@@ -76,7 +76,11 @@ services:
       context: .
       dockerfile: Dockerfile.frontend
     environment:
-      MAP_MODE: ${MAP_MODE:-local}
+      # A closed deployment must never select a saved online/terrain style.
+      # This dedicated flag is consumed by the frontend entrypoint and cannot
+      # be accidentally changed by a legacy MAP_MODE value in .env.closed.
+      NODEX_FORCE_LOCAL_MAP: "1"
+      MAP_MODE: local
       MAP_PMTILES_URL: ${MAP_PMTILES_URL:-}
       MAP_STYLE_URL: ${MAP_STYLE_URL:-}
       MAP_GLYPHS_URL: ${MAP_GLYPHS_URL:-}
