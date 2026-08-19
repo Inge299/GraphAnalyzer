@@ -74,9 +74,9 @@ const localVectorTilesUrl = `${window.location.origin}/api/v1/map/tiles/{z}/{x}/
 // Vite so the worker is copied to the production assets with the right MIME
 // type instead of nginx returning the SPA index page.
 maplibregl.setWorkerUrl(pmtilesWorkerUrl);
-const makeFallbackStyle = (pmtilesUrl: string): maplibregl.StyleSpecification => ({
+const makeFallbackStyle = (useLocalVectorTiles: boolean): maplibregl.StyleSpecification => ({
   version: 8,
-  sources: pmtilesUrl
+  sources: useLocalVectorTiles
     // The browser uses the standard MVT URL. The application reads PMTiles
     // server-side, which is reliable in closed networks and avoids a custom
     // protocol inside a WebWorker.
@@ -85,7 +85,7 @@ const makeFallbackStyle = (pmtilesUrl: string): maplibregl.StyleSpecification =>
       ? { osm: { type: 'raster', tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize: 256, maxzoom: 19, attribution: '&copy; OpenStreetMap contributors' } }
       : {},
   ...(defaultGlyphsUrl ? { glyphs: defaultGlyphsUrl } : {}),
-  layers: pmtilesUrl ? [
+  layers: useLocalVectorTiles ? [
     { id: 'background', type: 'background', paint: { 'background-color': '#f2efe9' } },
     { id: 'water', type: 'fill', source: 'russia', 'source-layer': 'water', paint: { 'fill-color': '#a0c8e0' } },
     { id: 'water-name', type: 'symbol', source: 'russia', 'source-layer': 'water_name', layout: { 'text-field': ['coalesce', ['get', 'name:ru'], ['get', 'name']], 'text-font': ['Open Sans Regular'], 'text-size': 11, 'symbol-placement': 'line' }, paint: { 'text-color': '#4c7899', 'text-halo-color': '#ffffff', 'text-halo-width': 1 } },
@@ -386,12 +386,13 @@ const MapView: React.FC<MapViewProps> = ({ artifact, dataOverride, titleOverride
   }, [visiblePoints, selected]);
 
   const pmtilesUrl = data.pmtiles_url || defaultPmtilesUrl;
-  // A configured PMTiles archive is authoritative in the closed contour.
-  // Do not let a legacy artifact style or MAP_STYLE_URL override it: those
-  // styles can contain terrain and external sources unavailable there.
-  const style = pmtilesUrl
-    ? makeFallbackStyle(pmtilesUrl)
-    : defaultStyleUrl || (mapMode === 'online' ? data.map_style_url : '') || makeFallbackStyle('');
+  // In the closed contour the browser always uses the standard Nodex tile
+  // route.  The archive URL belongs only to the backend; it must not decide
+  // whether to create the basemap source in the browser.
+  const useLocalVectorTiles = mapMode === 'local';
+  const style = useLocalVectorTiles
+    ? makeFallbackStyle(true)
+    : defaultStyleUrl || data.map_style_url || makeFallbackStyle(false);
 
   useEffect(() => {
     if (!visiblePoints.length) {
@@ -419,7 +420,7 @@ const MapView: React.FC<MapViewProps> = ({ artifact, dataOverride, titleOverride
       style,
       center: [initialPoint.longitude, initialPoint.latitude],
       zoom: 9,
-      maxZoom: pmtilesUrl ? 22 : 19,
+      maxZoom: useLocalVectorTiles ? 22 : 19,
       canvasContextAttributes: { preserveDrawingBuffer: true },
     });
     let overlaysInstalled = false;
@@ -491,7 +492,7 @@ const MapView: React.FC<MapViewProps> = ({ artifact, dataOverride, titleOverride
       map.remove();
       mapRef.current = null;
     };
-  }, [pmtilesUrl, data.map_style_url, defaultStyleUrl]);
+  }, [useLocalVectorTiles, data.map_style_url, defaultStyleUrl]);
 
   useEffect(() => {
     const map = mapRef.current;
