@@ -1,7 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as maplibregl from 'maplibre-gl';
 import { LngLatBounds, type Map as MapLibreMap, type MapLayerMouseEvent } from 'maplibre-gl';
-import pmtilesWorkerUrl from '../../maplibre-pmtiles-worker?worker&url';
+// The closed contour requests ordinary MVT tiles from the Nodex backend.
+// Use MapLibre's own worker, emitted by Vite as a module asset.  A custom
+// PMTiles worker is neither required nor safe here: vector-tile decoding and
+// source activation happen inside this worker.
+import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import type { ApiArtifact } from '../../types/api';
 import { formatDateTime } from '../../utils/formatters';
@@ -70,10 +74,10 @@ const defaultStyleUrl = runtimeConfig.mapStyleUrl || import.meta.env.VITE_MAP_ST
 const defaultGlyphsUrl = runtimeConfig.mapGlyphsUrl || import.meta.env.VITE_MAP_GLYPHS_URL || '';
 const mapMode = runtimeConfig.mapMode || (defaultPmtilesUrl ? 'local' : 'online');
 const localVectorTilesUrl = `${window.location.origin}/api/v1/map/tiles/{z}/{x}/{y}.pbf`;
-// MapLibre's default worker URL is not emitted by Vite.  Resolve it through
-// Vite so the worker is copied to the production assets with the right MIME
+// MapLibre's default worker URL is not emitted by Vite. Resolve the official
+// worker through Vite so it is copied to production assets with a JS MIME
 // type instead of nginx returning the SPA index page.
-maplibregl.setWorkerUrl(pmtilesWorkerUrl);
+maplibregl.setWorkerUrl(maplibreWorkerUrl);
 const makeFallbackStyle = (useLocalVectorTiles: boolean): maplibregl.StyleSpecification => ({
   version: 8,
   sources: useLocalVectorTiles
