@@ -9,14 +9,14 @@ from __future__ import annotations
 
 import gzip
 import logging
+import os
 import struct
+from collections import OrderedDict
 from dataclasses import dataclass
 from typing import Dict, Optional
 
 import httpx
 from fastapi import APIRouter, HTTPException, Response
-
-from app.config import settings
 
 
 router = APIRouter()
@@ -101,19 +101,23 @@ def _deserialize_directory(data: bytes) -> list[_DirectoryEntry]:
 
 
 class PMTilesHttpReader:
-    """Small, cached PMTiles v3 reader backed by HTTP Range requests."""
+    """Cached PMTiles v3 reader backed by a pooled HTTP Range client."""
 
     def __init__(self, url: str) -> None:
         self.url = url
         self._header: Optional[dict[str, int]] = None
         self._directories: Dict[tuple[int, int], list[_DirectoryEntry]] = {}
+        self._tiles: OrderedDict[tuple[int, int, int], tuple[bytes, int]] = OrderedDict()
+        self._client = httpx.AsyncClient(
+            timeout=httpx.Timeout(30.0, connect=5.0),
+            limits=httpx.Limits(max_connections=24, max_keepalive_connections=12, keepalive_expiry=90.0),
+        )
 
     async def _read_range(self, start: int, length: int) -> bytes:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.get(
-                self.url,
-                headers={"Range": f"bytes={start}-{start + length - 1}"},
-            )
+        response = await self._client.get(
+            self.url,
+            headers={"Range": f"bytes={start}-{start + length - 1}"},
+        )
         response.raise_for_status()
         return response.content
 
@@ -143,6 +147,11 @@ class PMTilesHttpReader:
         return self._directories[cache_key]
 
     async def get_tile(self, z: int, x: int, y: int) -> tuple[Optional[bytes], int]:
+        cache_key = (z, x, y)
+        cached = self._tiles.get(cache_key)
+        if cached is not None:
+            self._tiles.move_to_end(cache_key)
+            return cached
         header = await self._get_header()
         tile_id = _zxy_to_tile_id(z, x, y)
         directory_offset = header["root_offset"]
@@ -158,8 +167,20 @@ class PMTilesHttpReader:
                 continue
             if tile_id >= candidate.tile_id + candidate.run_length:
                 return None, header["tile_compression"]
-            return await self._read_range(header["tile_offset"] + candidate.offset, candidate.length), header["tile_compression"]
+            tile = await self._read_range(header["tile_offset"] + candidate.offset, candidate.length)
+            # Keep the viewport warm while putting a hard ceiling on memory.  The
+            # browser also caches responses, so this chiefly helps repeated pans
+            # and concurrent maps inside one Nodex session.
+            if len(tile) <= 2 * 1024 * 1024:
+                self._tiles[cache_key] = (tile, header["tile_compression"])
+                self._tiles.move_to_end(cache_key)
+                while len(self._tiles) > 192:
+                    self._tiles.popitem(last=False)
+            return tile, header["tile_compression"]
         raise RuntimeError("PMTiles directory nesting is too deep")
+
+    async def close(self) -> None:
+        await self._client.aclose()
 
 
 _reader: Optional[PMTilesHttpReader] = None
@@ -167,12 +188,22 @@ _reader: Optional[PMTilesHttpReader] = None
 
 def _get_reader() -> PMTilesHttpReader:
     global _reader
-    url = settings.MAP_PMTILES_URL.strip()
+    # This module is also served by the dedicated map sidecar, which does not
+    # initialise the database/application settings.  Keep it dependent only
+    # on the one environment value it actually needs.
+    url = os.getenv("MAP_PMTILES_URL", "").strip()
     if not url:
         raise HTTPException(status_code=503, detail="Local map archive is not configured")
     if _reader is None or _reader.url != url:
         _reader = PMTilesHttpReader(url)
     return _reader
+
+
+async def close_reader() -> None:
+    global _reader
+    if _reader is not None:
+        await _reader.close()
+        _reader = None
 
 
 @router.get("/tiles/{z}/{x}/{y}.pbf", include_in_schema=False)

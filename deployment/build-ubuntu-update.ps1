@@ -48,7 +48,7 @@ cp -a "$bundle_dir/plugins/." "$deployment_dir/plugins/"
 cp "$bundle_dir/docker-compose.closed.yml" "$deployment_dir/docker-compose.closed.yml"
 
 cd "$deployment_dir"
-docker compose --env-file .env.closed -f docker-compose.closed.yml up -d --no-build --force-recreate app frontend
+docker compose --env-file .env.closed -f docker-compose.closed.yml up -d --no-build --force-recreate app map frontend
 docker compose --env-file .env.closed -f docker-compose.closed.yml ps
 
 node_port="$(grep -E '^NODEX_PORT=' .env.closed | tail -n 1 | cut -d= -f2 | tr -d '[:space:]')"

@@ -70,6 +70,21 @@ services:
         condition: service_healthy
     networks: [nodex]
 
+  # Map requests must not wait behind imports, enrichment or database-heavy
+  # API calls.  The service uses the same small application image but exposes
+  # only the PMTiles reader and keeps its own HTTP connection/tile cache.
+  map:
+    image: nodex/app:pilot
+    command: uvicorn app.map_service:app --host 0.0.0.0 --port 5001
+    environment:
+      MAP_PMTILES_URL: ${MAP_PMTILES_URL:-}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5001/health', timeout=5)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    networks: [nodex]
+
   frontend:
     image: nodex/frontend:pilot
     build:
@@ -88,6 +103,8 @@ services:
       - "${NODEX_PORT:-8080}:80"
     depends_on:
       app:
+        condition: service_started
+      map:
         condition: service_started
     networks: [nodex]
 
