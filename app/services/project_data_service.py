@@ -7,6 +7,7 @@ import shutil
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from time import perf_counter
 from typing import Any, Awaitable, Callable
 
 from fastapi import HTTPException
@@ -257,12 +258,15 @@ async def _load_project_data_from_collected_files(
         batch_source_counts: dict[str, int] = {}
         batch_fact_counts: dict[str, int] = {}
         batch_entities = batch_facts = batch_relations = 0
+        batch_timings: list[dict[str, Any]] = []
         warnings: list[str] = []
         if supports_streaming:
             batches = plugin.iter_normalized_source_batches(plugin_source_dir, STREAM_IMPORT_BATCH_SIZE)
             batch_number = 0
             while True:
+                normalize_started_at = perf_counter()
                 normalized_sources = await asyncio.to_thread(_next_normalized_batch, batches)
+                normalize_seconds = perf_counter() - normalize_started_at
                 if normalized_sources is None:
                     break
                 if not any(normalized_sources.values()):
@@ -280,7 +284,24 @@ async def _load_project_data_from_collected_files(
                 if plugin_id == "nodex_subscriber_ownership":
                     collect_ownership_addresses(normalized_sources)
 
+                source_rows_count = sum(len(rows) for rows in normalized_sources.values())
+                write_started_at = perf_counter()
                 insert_result = await insert_normalized_source_rows(db, project_id, normalized_sources, load_batch_id)
+                write_seconds = perf_counter() - write_started_at
+                batch_timings.append({
+                    "batch": batch_number,
+                    "source_rows": source_rows_count,
+                    "normalize_seconds": round(normalize_seconds, 3),
+                    "write_seconds": round(write_seconds, 3),
+                })
+                if progress_callback:
+                    await progress_callback(
+                        batch_progress,
+                        (
+                            f"Сохранено: {plugin.name}, порция {batch_number} "
+                            f"· разбор {normalize_seconds:.1f} с · БД {write_seconds:.1f} с"
+                        ),
+                    )
                 batch_entities += insert_result.entities
                 batch_facts += insert_result.facts
                 batch_relations += insert_result.relations
@@ -327,6 +348,7 @@ async def _load_project_data_from_collected_files(
                 "facts": batch_facts,
                 "relations": batch_relations,
                 "fact_types": batch_fact_counts,
+                "timings": batch_timings,
             },
             "manifest": read_manifest(result.manifest_path),
             "score": match.score,
