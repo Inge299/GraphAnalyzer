@@ -34,6 +34,7 @@ HEADERS = {
     "cell_contact_start": ("\u041c/\u041f \u043a\u043e\u043d\u0442\u0430\u043a\u0442\u0430 \u043d\u0430 \u043d\u0430\u0447\u0430\u043b\u043e",),
     "cell_contact_end": ("\u041c/\u041f \u043a\u043e\u043d\u0442\u0430\u043a\u0442\u0430 \u043d\u0430 \u043a\u043e\u043d\u0435\u0446",),
 }
+HEADER_KEYS = {field: tuple(header.casefold() for header in headers) for field, headers in HEADERS.items()}
 
 
 def _text(value: Any) -> str:
@@ -116,15 +117,14 @@ def _read_rows(path: Path) -> Iterator[dict[str, str]]:
             source.seek(0)
             reader = csv.DictReader(source, delimiter=delimiter)
             for row in reader:
-                yield {_text(key): _text(value) for key, value in row.items() if key}
+                yield {_text(key).casefold(): _text(value) for key, value in row.items() if key}
     except (OSError, UnicodeError, csv.Error):
         return
 
 
 def _value(row: dict[str, str], field: str) -> str:
-    lookup = {key.casefold(): value for key, value in row.items()}
-    for header in HEADERS[field]:
-        value = lookup.get(header.casefold())
+    for header in HEADER_KEYS[field]:
+        value = row.get(header)
         if value:
             return value
     return ""

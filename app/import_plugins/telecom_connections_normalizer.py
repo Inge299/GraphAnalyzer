@@ -31,6 +31,7 @@ HEADERS = {
     "contact_address_end": ("\u0410\u0434\u0440\u0435\u0441 \u0411\u0421 \u043a\u043e\u043d\u0442\u0430\u043a\u0442\u0430 \u043d\u0430 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u0438\u0435",),
     "direction": ("\u041d\u0430\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u0438\u0435 \u0441\u043e\u0435\u0434\u0438\u043d\u0435\u043d\u0438\u044f",),
 }
+HEADER_KEYS = {field: tuple(header.casefold() for header in headers) for field, headers in HEADERS.items()}
 NULL_VALUES = {"", "null", "none", "n/a", "na", "-"}
 
 
@@ -39,9 +40,8 @@ def _text(value: Any) -> str:
 
 
 def _value(row: dict[str, str], field: str) -> str:
-    values = {key.casefold(): value for key, value in row.items()}
-    for header in HEADERS[field]:
-        value = values.get(header.casefold(), "")
+    for header in HEADER_KEYS[field]:
+        value = row.get(header, "")
         if _text(value):
             return _text(value)
     return ""
@@ -139,7 +139,9 @@ def _read_rows(path: Path) -> Iterator[dict[str, str]]:
             source.seek(0)
             reader = csv.DictReader(source, delimiter=delimiter)
             for row in reader:
-                yield {_text(key): _text(value) for key, value in row.items() if key}
+                # Normalizing headers once removes 15-25 case-folded dictionary
+                # constructions per telecom record in _value().
+                yield {_text(key).casefold(): _text(value) for key, value in row.items() if key}
     except (OSError, UnicodeError, csv.Error):
         return
 

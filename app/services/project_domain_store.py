@@ -24,9 +24,12 @@ from app.services.domain_model_service import get_domain_model
 _domain_store_ready = False
 _domain_store_lock = asyncio.Lock()
 
-# The primary and unique constraints stay in place during import.  These
-# secondary indexes are rebuilt once after the bulk write instead of being
-# maintained for every imported fact, relation and participant.
+# The primary and unique constraints stay in place during import.  Rebuilding
+# secondary indexes was useful for an initial one-off load, but it rebuilds an
+# index over *all* projects.  That makes each subsequent project import slower
+# as the shared store grows.  Incremental imports keep these project-leading
+# indexes online by default; a maintenance operator can explicitly opt in to a
+# one-off rebuild for an empty/new database.
 _BULK_IMPORT_INDEXES = (
     "ix_project_domain_entities_lookup",
     "ix_project_domain_relations_lookup",
@@ -38,6 +41,10 @@ _BULK_IMPORT_INDEXES = (
     "ix_project_domain_relations_target_time",
     "ix_project_domain_fact_participants_lookup",
 )
+
+REBUILD_DOMAIN_IMPORT_INDEXES = os.getenv("REBUILD_DOMAIN_IMPORT_INDEXES", "false").strip().casefold() in {
+    "1", "true", "yes", "on",
+}
 
 
 def invalidate_project_domain_store_schema() -> None:
@@ -263,15 +270,24 @@ async def ensure_project_domain_store(db: AsyncSession) -> None:
 
 
 async def suspend_project_domain_import_indexes(db: AsyncSession) -> None:
-    """Suspend non-essential indexes inside an all-or-nothing import transaction."""
+    """Optionally suspend indexes for a deliberate initial bulk load.
+
+    Normal imports must not rebuild global indexes, otherwise activity in one
+    project degrades imports and queries in every other project.
+    """
 
     await ensure_project_domain_store(db)
+    if not REBUILD_DOMAIN_IMPORT_INDEXES:
+        return
     for index_name in _BULK_IMPORT_INDEXES:
         await db.execute(text(f"DROP INDEX IF EXISTS {index_name}"))
 
 
 async def restore_project_domain_import_indexes(db: AsyncSession) -> None:
-    """Restore analyst query indexes before the surrounding import commits."""
+    """Restore indexes only after an explicitly requested maintenance load."""
+
+    if not REBUILD_DOMAIN_IMPORT_INDEXES:
+        return
 
     await db.execute(text("CREATE INDEX IF NOT EXISTS ix_project_domain_entities_lookup ON project_domain_entities (project_id, type_id, external_key)"))
     await db.execute(text("CREATE INDEX IF NOT EXISTS ix_project_domain_relations_lookup ON project_domain_relations (project_id, relation_type, from_type, from_key)"))
@@ -674,6 +690,12 @@ async def mirror_source_rows(
             attributes = project_domain_entities.attributes || EXCLUDED.attributes,
             last_seen_at = EXCLUDED.last_seen_at,
             updated_at = NOW()
+        -- Identifier entities repeat in almost every telecom event.  Avoid a
+        -- physical UPDATE (and table/index bloat) when the new row adds no
+        -- information; this is particularly important for large CDR imports.
+        WHERE project_domain_entities.label IS DISTINCT FROM EXCLUDED.label
+           OR project_domain_entities.attributes IS DISTINCT FROM
+              (project_domain_entities.attributes || EXCLUDED.attributes)
     """)
     for batch in _batches(entity_rows):
         await db.execute(entity_insert, {"rows": json.dumps(batch, ensure_ascii=False, default=str)})
