@@ -126,8 +126,18 @@ async def load_project_data(
     timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
     load_batch_id = timestamp
     output_dir = DATA_ROOT / "imports" / f"project_{project_id}" / timestamp
+    collect_started_at = perf_counter()
+    if progress_callback:
+        await progress_callback(2, "Сканирование файлов импорта")
     input_files = await asyncio.to_thread(collect_input_files, source_dir)
+    if progress_callback:
+        await progress_callback(5, f"Найдено файлов: {len(input_files)}. Подготовка архивов")
     input_files = await asyncio.to_thread(expand_import_containers, source_dir, input_files)
+    if progress_callback:
+        await progress_callback(
+            9,
+            f"Подготовлено файлов: {len(input_files)} · {perf_counter() - collect_started_at:.1f} с",
+        )
     return await _load_project_data_from_collected_files(
         db=db,
         project_id=project_id,
