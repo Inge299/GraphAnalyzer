@@ -47,7 +47,7 @@ services:
       GEOCODER_MIN_INTERVAL_SECONDS: ${GEOCODER_MIN_INTERVAL_SECONDS:-0}
       GEOCODER_MAX_CONCURRENCY: ${GEOCODER_MAX_CONCURRENCY:-4}
       IMPORT_STREAM_BATCH_SIZE: ${IMPORT_STREAM_BATCH_SIZE:-50000}
-      DOMAIN_WRITE_BATCH_SIZE: ${DOMAIN_WRITE_BATCH_SIZE:-25000}
+      DOMAIN_WRITE_BATCH_SIZE: ${DOMAIN_WRITE_BATCH_SIZE:-50000}
       # Keep project-leading indexes online during normal incremental imports.
       # Rebuilding them scans data from every project and is for one-off DB maintenance only.
       REBUILD_DOMAIN_IMPORT_INDEXES: ${REBUILD_DOMAIN_IMPORT_INDEXES:-false}

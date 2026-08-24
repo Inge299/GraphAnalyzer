@@ -293,13 +293,20 @@ async def _load_project_data_from_collected_files(
                     "source_rows": source_rows_count,
                     "normalize_seconds": round(normalize_seconds, 3),
                     "write_seconds": round(write_seconds, 3),
+                    "database_stages": insert_result.timings,
                 })
                 if progress_callback:
+                    stage_summary = ", ".join(
+                        f"{name}: {seconds:.1f} с"
+                        for name, seconds in insert_result.timings.items()
+                        if seconds >= 0.1
+                    )
                     await progress_callback(
                         batch_progress,
                         (
                             f"Сохранено: {plugin.name}, порция {batch_number} "
                             f"· разбор {normalize_seconds:.1f} с · БД {write_seconds:.1f} с"
+                            + (f" ({stage_summary})" if stage_summary else "")
                         ),
                     )
                 batch_entities += insert_result.entities

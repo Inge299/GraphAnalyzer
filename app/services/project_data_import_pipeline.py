@@ -15,6 +15,7 @@ class ImportInsertResult:
     relations: int
     fact_counts: dict[str, int]
     source_counts: dict[str, int]
+    timings: dict[str, float]
 
 
 async def insert_normalized_source_rows(
@@ -32,4 +33,5 @@ async def insert_normalized_source_rows(
         relations=int(domain_result.get("relations", 0)),
         fact_counts={str(name): int(count) for name, count in dict(domain_result.get("fact_counts") or {}).items()},
         source_counts={name: len(rows) for name, rows in normalized.items()},
+        timings={str(name): float(value) for name, value in dict(domain_result.get("timings") or {}).items()},
     )

@@ -13,6 +13,7 @@ import hashlib
 import json
 import os
 import re
+from time import perf_counter
 from typing import Any, Iterable
 
 from sqlalchemy import text
@@ -78,10 +79,10 @@ def _canonical_entity_key(type_id: str, value: Any) -> str:
     return key
 
 
-# JSON-to-recordset turns every slice into one PostgreSQL statement.  A larger
-# slice substantially reduces round trips while remaining well below a typical
-# PostgreSQL parameter/message limit for telecom rows.
-DOMAIN_WRITE_BATCH_SIZE = max(25_000, int(os.getenv("DOMAIN_WRITE_BATCH_SIZE", "25000")))
+# JSON-to-recordset turns every slice into one PostgreSQL statement.  Match the
+# streamed source size so a 50k source portion is not split into two full sets
+# of entities/facts/relations before reaching PostgreSQL.
+DOMAIN_WRITE_BATCH_SIZE = max(50_000, int(os.getenv("DOMAIN_WRITE_BATCH_SIZE", "50000")))
 
 
 def _batches(items: list[Any], size: int = DOMAIN_WRITE_BATCH_SIZE) -> Iterable[list[Any]]:
@@ -573,6 +574,8 @@ async def mirror_source_rows(
 ) -> dict[str, Any]:
     """Persist normalized source rows and their typed, indexed fact participants."""
 
+    started_at = perf_counter()
+    timings: dict[str, float] = {}
     await ensure_project_domain_store(db)
     entities: dict[tuple[str, str], dict[str, Any]] = {}
     facts: dict[tuple[str, str], dict[str, Any]] = {}
@@ -672,6 +675,7 @@ async def mirror_source_rows(
                     _mapping_attributes(row, definition.get("attributes")),
                     bool(definition.get("directed", False)),
                 ))
+    timings["prepare"] = round(perf_counter() - started_at, 3)
 
     now = datetime.utcnow()
     entity_rows = [{**item, "project_id": project_id, "first_seen_at": now, "last_seen_at": now} for item in entities.values()]
@@ -699,6 +703,7 @@ async def mirror_source_rows(
     """)
     for batch in _batches(entity_rows):
         await db.execute(entity_insert, {"rows": json.dumps(batch, ensure_ascii=False, default=str)})
+    timings["entities"] = round(perf_counter() - started_at - sum(timings.values()), 3)
 
     fact_rows = list(facts.values())
     fact_insert_rows = [{key: value for key, value in fact.items() if key != "participants"} for fact in fact_rows]
@@ -715,6 +720,7 @@ async def mirror_source_rows(
     """)
     for batch in _batches(fact_insert_rows):
         await db.execute(fact_insert, {"rows": json.dumps(batch, ensure_ascii=False, default=str)})
+    timings["facts"] = round(perf_counter() - started_at - sum(timings.values()), 3)
 
     fact_ids: dict[tuple[str, str], int] = {}
     facts_by_type: dict[str, list[dict[str, Any]]] = {}
@@ -735,6 +741,7 @@ async def mirror_source_rows(
                 "fact_keys": [fact["fact_key"] for fact in batch],
             })
             fact_ids.update({(fact_type, str(row.fact_key)): int(row.id) for row in result})
+    timings["fact_lookup"] = round(perf_counter() - started_at - sum(timings.values()), 3)
 
     participant_rows: list[dict[str, Any]] = []
     for fact in fact_rows:
@@ -765,6 +772,7 @@ async def mirror_source_rows(
     """)
     for batch in _batches(participant_rows):
         await db.execute(participant_insert, {"rows": json.dumps(batch, ensure_ascii=False, default=str)})
+    timings["participants"] = round(perf_counter() - started_at - sum(timings.values()), 3)
 
     relation_insert = text("""
         WITH source_rows AS (
@@ -783,6 +791,7 @@ async def mirror_source_rows(
     """)
     for batch in _batches(relations):
         await db.execute(relation_insert, {"rows": json.dumps(batch, ensure_ascii=False, default=str)})
+    timings["relations"] = round(perf_counter() - started_at - sum(timings.values()), 3)
 
     # Report this write batch only. Querying the whole load batch here turns a
     # multi-part import into an increasingly expensive repeated aggregation.
@@ -795,6 +804,7 @@ async def mirror_source_rows(
         "facts": len(fact_rows),
         "relations": len(relations),
         "fact_counts": fact_counts,
+        "timings": timings,
     }
 
 def _resolve_relation_type(model: dict[str, Any], from_type: str, to_type: str) -> str:
