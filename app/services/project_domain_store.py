@@ -111,6 +111,20 @@ async def _copy_to_temp_stage(
     await db.execute(text(f"TRUNCATE {table_name}"))
     if not records:
         return
+    await _copy_records_to_table(db, table_name=table_name, columns=columns, records=records)
+
+
+async def _copy_records_to_table(
+    db: AsyncSession,
+    *,
+    table_name: str,
+    columns: tuple[str, ...],
+    records: list[tuple[Any, ...]],
+) -> None:
+    """Use the asyncpg binary COPY transport on the session's transaction."""
+
+    if not records:
+        return
     connection = await db.connection()
     raw_connection = await connection.get_raw_connection()
     driver_connection = getattr(raw_connection, "driver_connection", None)
@@ -742,7 +756,9 @@ async def mirror_source_rows(
         SELECT project_id, load_batch_id, fact_type, occurred_at, CAST(payload AS jsonb), fact_key
           FROM nodex_import_fact_stage
         ON CONFLICT (project_id, fact_type, fact_key) DO NOTHING
+        RETURNING id, fact_type, fact_key
     """)
+    fact_ids: dict[tuple[str, str], int] = {}
     for batch in _batches(fact_insert_rows):
         await _copy_to_temp_stage(
             db,
@@ -754,29 +770,17 @@ async def mirror_source_rows(
                 for row in batch
             ],
         )
-        await db.execute(fact_insert)
+        result = await db.execute(fact_insert)
+        fact_ids.update({
+            (str(row.fact_type), str(row.fact_key)): int(row.id)
+            for row in result
+        })
     timings["facts"] = round(perf_counter() - started_at - sum(timings.values()), 3)
 
-    fact_ids: dict[tuple[str, str], int] = {}
-    facts_by_type: dict[str, list[dict[str, Any]]] = {}
-    for fact in fact_rows:
-        facts_by_type.setdefault(fact["fact_type"], []).append(fact)
-    fact_lookup = text("""
-        SELECT id, fact_key
-        FROM project_domain_facts
-        WHERE project_id = :project_id
-          AND fact_type = :fact_type
-          AND fact_key = ANY(:fact_keys)
-    """)
-    for fact_type, type_facts in facts_by_type.items():
-        for batch in _batches(type_facts):
-            result = await db.execute(fact_lookup, {
-                "project_id": project_id,
-                "fact_type": fact_type,
-                "fact_keys": [fact["fact_key"] for fact in batch],
-            })
-            fact_ids.update({(fact_type, str(row.fact_key)): int(row.id) for row in result})
-    timings["fact_lookup"] = round(perf_counter() - started_at - sum(timings.values()), 3)
+    # Participants for facts already in the store were written with that fact
+    # during its original import.  Keeping only newly inserted facts avoids a
+    # large conflict check for every repeated technical observation.
+    timings["fact_lookup"] = 0.0
 
     participant_rows: list[dict[str, Any]] = []
     for fact in fact_rows:
@@ -793,25 +797,16 @@ async def mirror_source_rows(
                 "role": participant["role"],
                 "occurred_at": fact["occurred_at"],
             })
-    participant_insert = text("""
-        INSERT INTO project_domain_fact_participants (
-            fact_id, project_id, fact_type, entity_type, entity_key, role, occurred_at
-        ) SELECT fact_id, project_id, fact_type, entity_type, entity_key, role, occurred_at
-          FROM nodex_import_participant_stage
-        ON CONFLICT DO NOTHING
-    """)
     for batch in _batches(participant_rows):
-        await _copy_to_temp_stage(
+        await _copy_records_to_table(
             db,
-            table_name="nodex_import_participant_stage",
-            definition="fact_id BIGINT, project_id INTEGER, fact_type TEXT, entity_type TEXT, entity_key TEXT, role TEXT, occurred_at TIMESTAMP",
+            table_name="project_domain_fact_participants",
             columns=("fact_id", "project_id", "fact_type", "entity_type", "entity_key", "role", "occurred_at"),
             records=[
                 (row["fact_id"], row["project_id"], row["fact_type"], row["entity_type"], row["entity_key"], row["role"], row["occurred_at"])
                 for row in batch
             ],
         )
-        await db.execute(participant_insert)
     timings["participants"] = round(perf_counter() - started_at - sum(timings.values()), 3)
 
     relation_insert = text("""
