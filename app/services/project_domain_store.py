@@ -634,7 +634,7 @@ async def mirror_source_rows(
         row: dict[str, Any],
         occurred_at: Any,
         participants: list[dict[str, str]],
-    ) -> None:
+    ) -> str:
         payload = {key: value for key, value in row.items() if key not in {"project_id", "load_batch_id", "created_at"}}
         fact_key = _fact_key(fact_type, payload)
         fact = facts.setdefault((fact_type, fact_key), {
@@ -649,10 +649,16 @@ async def mirror_source_rows(
         for participant in participants:
             key = (participant["entity_type"], participant["entity_key"], participant["role"])
             fact["participants"][key] = participant
+        return fact_key
 
-    def add_relation(item: dict[str, Any] | None) -> None:
+    def add_relation(item: dict[str, Any] | None, source_fact_key: str | None) -> None:
         if item:
-            relations.append({"project_id": project_id, "load_batch_id": load_batch_id, **item})
+            relations.append({
+                "project_id": project_id,
+                "load_batch_id": load_batch_id,
+                "_source_fact_key": source_fact_key,
+                **item,
+            })
 
     source_rows = {_clean(key): rows for key, rows in source_rows.items()}
     model = get_domain_model()
@@ -690,8 +696,9 @@ async def mirror_source_rows(
                         "role": _clean(definition.get("role")) or f"entity_{entity_index}",
                     })
             fact_type = _clean(fact_definition.get("type"))
+            source_fact_key: str | None = None
             if fact_type:
-                add_fact(
+                source_fact_key = add_fact(
                     fact_type,
                     row,
                     _mapping_value(row, fact_definition.get("occurred_at")),
@@ -718,7 +725,7 @@ async def mirror_source_rows(
                     _mapping_value(row, definition.get("occurred_at")),
                     _mapping_attributes(row, definition.get("attributes")),
                     bool(definition.get("directed", False)),
-                ))
+                ), source_fact_key)
     timings["prepare"] = round(perf_counter() - started_at, 3)
 
     now = datetime.utcnow()
@@ -818,12 +825,35 @@ async def mirror_source_rows(
           FROM nodex_import_relation_stage
         ON CONFLICT (project_id, relation_type, fact_key) DO NOTHING
     """)
-    for batch in _batches(relations):
+    relation_columns = (
+        "project_id", "load_batch_id", "relation_type", "from_type", "from_key",
+        "to_type", "to_key", "occurred_at", "directed", "attributes", "fact_key",
+    )
+    new_fact_keys = {fact_key for _, fact_key in fact_ids}
+    new_relations_by_key: dict[tuple[str, str], dict[str, Any]] = {}
+    for row in relations:
+        if row.get("_source_fact_key") in new_fact_keys:
+            new_relations_by_key[(str(row["relation_type"]), str(row["fact_key"]))] = row
+    new_relations = list(new_relations_by_key.values())
+    # A relation generated from a newly inserted fact cannot already exist.
+    # Direct COPY therefore avoids an expensive unique-index probe per CDR row.
+    for batch in _batches(new_relations):
+        await _copy_records_to_table(
+            db,
+            table_name="project_domain_relations",
+            columns=relation_columns,
+            records=[
+                (row["project_id"], row["load_batch_id"], row["relation_type"], row["from_type"], row["from_key"], row["to_type"], row["to_key"], row["occurred_at"], row["directed"], row["attributes"], row["fact_key"])
+                for row in batch
+            ],
+        )
+    legacy_relations = [row for row in relations if row.get("_source_fact_key") is None]
+    for batch in _batches(legacy_relations):
         await _copy_to_temp_stage(
             db,
             table_name="nodex_import_relation_stage",
             definition="project_id INTEGER, load_batch_id TEXT, relation_type TEXT, from_type TEXT, from_key TEXT, to_type TEXT, to_key TEXT, occurred_at TIMESTAMP, directed BOOLEAN, attributes TEXT, fact_key TEXT",
-            columns=("project_id", "load_batch_id", "relation_type", "from_type", "from_key", "to_type", "to_key", "occurred_at", "directed", "attributes", "fact_key"),
+            columns=relation_columns,
             records=[
                 (row["project_id"], row["load_batch_id"], row["relation_type"], row["from_type"], row["from_key"], row["to_type"], row["to_key"], row["occurred_at"], row["directed"], row["attributes"], row["fact_key"])
                 for row in batch

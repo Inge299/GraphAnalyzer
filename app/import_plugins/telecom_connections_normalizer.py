@@ -42,8 +42,11 @@ def _text(value: Any) -> str:
 def _value(row: dict[str, str], field: str) -> str:
     for header in HEADER_KEYS[field]:
         value = row.get(header, "")
-        if _text(value):
-            return _text(value)
+        # _read_rows already strips/collapses whitespace exactly once.  Doing
+        # the same regular-expression cleanup for every requested field made
+        # large CDR parsing needlessly CPU-bound.
+        if value:
+            return value
     return ""
 
 
