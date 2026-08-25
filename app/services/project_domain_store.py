@@ -90,6 +90,36 @@ def _batches(items: list[Any], size: int = DOMAIN_WRITE_BATCH_SIZE) -> Iterable[
         yield items[offset:offset + size]
 
 
+async def _copy_to_temp_stage(
+    db: AsyncSession,
+    *,
+    table_name: str,
+    definition: str,
+    columns: tuple[str, ...],
+    records: list[tuple[Any, ...]],
+) -> None:
+    """Load a large batch through asyncpg COPY, not a JSON SQL parameter.
+
+    COPY writes into a transaction-local staging table.  The following merge
+    still applies regular project-scoped uniqueness rules, while the expensive
+    client/server JSON parsing is removed from the hot import path.
+    """
+
+    await db.execute(text(
+        f"CREATE TEMP TABLE IF NOT EXISTS {table_name} ({definition}) ON COMMIT PRESERVE ROWS"
+    ))
+    await db.execute(text(f"TRUNCATE {table_name}"))
+    if not records:
+        return
+    connection = await db.connection()
+    raw_connection = await connection.get_raw_connection()
+    driver_connection = getattr(raw_connection, "driver_connection", None)
+    copy_records = getattr(driver_connection, "copy_records_to_table", None)
+    if not callable(copy_records):
+        raise RuntimeError("PostgreSQL asyncpg COPY transport is unavailable")
+    await copy_records(table_name, records=records, columns=columns)
+
+
 def _fact_key(kind: str, payload: dict[str, Any]) -> str:
     encoded = json.dumps(payload, ensure_ascii=True, default=str, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256((kind + "|" + encoded).encode("utf-8")).hexdigest()
@@ -708,18 +738,23 @@ async def mirror_source_rows(
     fact_rows = list(facts.values())
     fact_insert_rows = [{key: value for key, value in fact.items() if key != "participants"} for fact in fact_rows]
     fact_insert = text("""
-        WITH source_rows AS (
-          SELECT * FROM json_to_recordset(CAST(:rows AS json)) AS r(
-            project_id INTEGER, load_batch_id TEXT, fact_type TEXT, occurred_at TIMESTAMP,
-            payload TEXT, fact_key TEXT
-          )
-        ) INSERT INTO project_domain_facts (project_id, load_batch_id, fact_type, occurred_at, payload, fact_key)
+        INSERT INTO project_domain_facts (project_id, load_batch_id, fact_type, occurred_at, payload, fact_key)
         SELECT project_id, load_batch_id, fact_type, occurred_at, CAST(payload AS jsonb), fact_key
-          FROM source_rows
+          FROM nodex_import_fact_stage
         ON CONFLICT (project_id, fact_type, fact_key) DO NOTHING
     """)
     for batch in _batches(fact_insert_rows):
-        await db.execute(fact_insert, {"rows": json.dumps(batch, ensure_ascii=False, default=str)})
+        await _copy_to_temp_stage(
+            db,
+            table_name="nodex_import_fact_stage",
+            definition="project_id INTEGER, load_batch_id TEXT, fact_type TEXT, occurred_at TIMESTAMP, payload TEXT, fact_key TEXT",
+            columns=("project_id", "load_batch_id", "fact_type", "occurred_at", "payload", "fact_key"),
+            records=[
+                (row["project_id"], row["load_batch_id"], row["fact_type"], row["occurred_at"], row["payload"], row["fact_key"])
+                for row in batch
+            ],
+        )
+        await db.execute(fact_insert)
     timings["facts"] = round(perf_counter() - started_at - sum(timings.values()), 3)
 
     fact_ids: dict[tuple[str, str], int] = {}
@@ -759,38 +794,47 @@ async def mirror_source_rows(
                 "occurred_at": fact["occurred_at"],
             })
     participant_insert = text("""
-        WITH source_rows AS (
-          SELECT * FROM json_to_recordset(CAST(:rows AS json)) AS r(
-            fact_id BIGINT, project_id INTEGER, fact_type TEXT, entity_type TEXT,
-            entity_key TEXT, role TEXT, occurred_at TIMESTAMP
-          )
-        ) INSERT INTO project_domain_fact_participants (
+        INSERT INTO project_domain_fact_participants (
             fact_id, project_id, fact_type, entity_type, entity_key, role, occurred_at
         ) SELECT fact_id, project_id, fact_type, entity_type, entity_key, role, occurred_at
-          FROM source_rows
+          FROM nodex_import_participant_stage
         ON CONFLICT DO NOTHING
     """)
     for batch in _batches(participant_rows):
-        await db.execute(participant_insert, {"rows": json.dumps(batch, ensure_ascii=False, default=str)})
+        await _copy_to_temp_stage(
+            db,
+            table_name="nodex_import_participant_stage",
+            definition="fact_id BIGINT, project_id INTEGER, fact_type TEXT, entity_type TEXT, entity_key TEXT, role TEXT, occurred_at TIMESTAMP",
+            columns=("fact_id", "project_id", "fact_type", "entity_type", "entity_key", "role", "occurred_at"),
+            records=[
+                (row["fact_id"], row["project_id"], row["fact_type"], row["entity_type"], row["entity_key"], row["role"], row["occurred_at"])
+                for row in batch
+            ],
+        )
+        await db.execute(participant_insert)
     timings["participants"] = round(perf_counter() - started_at - sum(timings.values()), 3)
 
     relation_insert = text("""
-        WITH source_rows AS (
-          SELECT * FROM json_to_recordset(CAST(:rows AS json)) AS r(
-            project_id INTEGER, load_batch_id TEXT, relation_type TEXT, from_type TEXT,
-            from_key TEXT, to_type TEXT, to_key TEXT, occurred_at TIMESTAMP,
-            directed BOOLEAN, attributes TEXT, fact_key TEXT
-          )
-        ) INSERT INTO project_domain_relations (
+        INSERT INTO project_domain_relations (
             project_id, load_batch_id, relation_type, from_type, from_key, to_type, to_key,
             occurred_at, directed, attributes, fact_key
         ) SELECT project_id, load_batch_id, relation_type, from_type, from_key, to_type, to_key,
                  occurred_at, directed, CAST(attributes AS jsonb), fact_key
-          FROM source_rows
+          FROM nodex_import_relation_stage
         ON CONFLICT (project_id, relation_type, fact_key) DO NOTHING
     """)
     for batch in _batches(relations):
-        await db.execute(relation_insert, {"rows": json.dumps(batch, ensure_ascii=False, default=str)})
+        await _copy_to_temp_stage(
+            db,
+            table_name="nodex_import_relation_stage",
+            definition="project_id INTEGER, load_batch_id TEXT, relation_type TEXT, from_type TEXT, from_key TEXT, to_type TEXT, to_key TEXT, occurred_at TIMESTAMP, directed BOOLEAN, attributes TEXT, fact_key TEXT",
+            columns=("project_id", "load_batch_id", "relation_type", "from_type", "from_key", "to_type", "to_key", "occurred_at", "directed", "attributes", "fact_key"),
+            records=[
+                (row["project_id"], row["load_batch_id"], row["relation_type"], row["from_type"], row["from_key"], row["to_type"], row["to_key"], row["occurred_at"], row["directed"], row["attributes"], row["fact_key"])
+                for row in batch
+            ],
+        )
+        await db.execute(relation_insert)
     timings["relations"] = round(perf_counter() - started_at - sum(timings.values()), 3)
 
     # Report this write batch only. Querying the whole load batch here turns a
