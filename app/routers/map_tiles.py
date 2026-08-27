@@ -7,6 +7,7 @@ path and avoids relying on a custom WebWorker protocol.
 
 from __future__ import annotations
 
+import asyncio
 import gzip
 import logging
 import os
@@ -106,10 +107,12 @@ class PMTilesHttpReader:
     def __init__(self, url: str) -> None:
         self.url = url
         self._header: Optional[dict[str, int]] = None
+        self._header_task: Optional[asyncio.Task[dict[str, int]]] = None
         self._directories: Dict[tuple[int, int], list[_DirectoryEntry]] = {}
+        self._directory_tasks: Dict[tuple[int, int], asyncio.Task[list[_DirectoryEntry]]] = {}
         self._tiles: OrderedDict[tuple[int, int, int], tuple[bytes, int]] = OrderedDict()
         self._client = httpx.AsyncClient(
-            timeout=httpx.Timeout(30.0, connect=5.0),
+            timeout=httpx.Timeout(90.0, connect=10.0),
             limits=httpx.Limits(max_connections=24, max_keepalive_connections=12, keepalive_expiry=90.0),
         )
 
@@ -121,13 +124,11 @@ class PMTilesHttpReader:
         response.raise_for_status()
         return response.content
 
-    async def _get_header(self) -> dict[str, int]:
-        if self._header is not None:
-            return self._header
+    async def _load_header(self) -> dict[str, int]:
         header = await self._read_range(0, 127)
         if header[:7] != b"PMTiles" or header[7] != 3:
             raise RuntimeError("the configured map is not a PMTiles v3 archive")
-        self._header = {
+        return {
             "root_offset": struct.unpack_from("<Q", header, 8)[0],
             "root_length": struct.unpack_from("<Q", header, 16)[0],
             "leaf_offset": struct.unpack_from("<Q", header, 40)[0],
@@ -135,16 +136,54 @@ class PMTilesHttpReader:
             "internal_compression": header[97],
             "tile_compression": header[98],
         }
-        return self._header
+
+    async def _get_header(self) -> dict[str, int]:
+        if self._header is not None:
+            return self._header
+        # A newly opened map asks for many tiles at once.  Without one shared
+        # task every request downloads the same PMTiles header concurrently.
+        if self._header_task is None:
+            self._header_task = asyncio.create_task(self._load_header())
+        task = self._header_task
+        try:
+            self._header = await asyncio.shield(task)
+            return self._header
+        except Exception:
+            if self._header_task is task:
+                self._header_task = None
+            raise
+
+    async def _load_directory(
+        self, cache_key: tuple[int, int], compression: int
+    ) -> list[_DirectoryEntry]:
+        offset, length = cache_key
+        payload = await self._read_range(offset, length)
+        if compression == 2:
+            # Decompression and directory decoding are CPU-bound.  Keeping
+            # them off the event loop lets the sidecar continue serving tiles
+            # that are already cached.
+            payload = await asyncio.to_thread(gzip.decompress, payload)
+        entries = await asyncio.to_thread(_deserialize_directory, payload)
+        self._directories[cache_key] = entries
+        return entries
 
     async def _directory(self, offset: int, length: int, compression: int) -> list[_DirectoryEntry]:
         cache_key = (offset, length)
-        if cache_key not in self._directories:
-            payload = await self._read_range(offset, length)
-            if compression == 2:
-                payload = gzip.decompress(payload)
-            self._directories[cache_key] = _deserialize_directory(payload)
-        return self._directories[cache_key]
+        cached = self._directories.get(cache_key)
+        if cached is not None:
+            return cached
+        # All visible tiles normally share the root directory.  Deduplicate
+        # its remote range request, otherwise the initial viewport can issue
+        # dozens of identical large downloads and exhaust nginx's timeout.
+        task = self._directory_tasks.get(cache_key)
+        if task is None:
+            task = asyncio.create_task(self._load_directory(cache_key, compression))
+            self._directory_tasks[cache_key] = task
+        try:
+            return await asyncio.shield(task)
+        finally:
+            if task.done() and self._directory_tasks.get(cache_key) is task:
+                self._directory_tasks.pop(cache_key, None)
 
     async def get_tile(self, z: int, x: int, y: int) -> tuple[Optional[bytes], int]:
         cache_key = (z, x, y)
